@@ -15,7 +15,18 @@
                xmlns:client="http://xmlns.oracle.com/Application_Test/Project_Test/BPELProcess1"
                xmlns:ora="http://schemas.oracle.com/xpath/extension"
                xmlns:bpelx="http://schemas.oracle.com/bpel/extension"
-         xmlns:bpws="http://schemas.xmlsoap.org/ws/2003/03/business-process/">
+         xmlns:bpws="http://schemas.xmlsoap.org/ws/2003/03/business-process/"
+         xmlns:aia="http://www.oracle.com/XSL/Transform/java/oracle.apps.aia.core.xpath.AIAFunctions"
+         xmlns:xp20="http://www.oracle.com/XSL/Transform/java/oracle.tip.pc.services.functions.Xpath20"
+         xmlns:bpel2="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+         xmlns:oraext="http://www.oracle.com/XSL/Transform/java/oracle.tip.pc.services.functions.ExtFunc"
+         xmlns:dvm="http://www.oracle.com/XSL/Transform/java/oracle.tip.dvm.LookupValue"
+         xmlns:hwf="http://xmlns.oracle.com/bpel/workflow/xpath"
+         xmlns:ids="http://xmlns.oracle.com/bpel/services/IdentityService/xpath"
+         xmlns:bpm="http://xmlns.oracle.com/bpmn20/extensions"
+         xmlns:xdk="http://schemas.oracle.com/bpel/extension/xpath/function/xdk"
+         xmlns:xref="http://www.oracle.com/XSL/Transform/java/oracle.tip.xref.xpath.XRefXPathFunctions"
+         xmlns:ldap="http://schemas.oracle.com/xpath/extension/ldap">
 
     <!-- 
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +68,13 @@
 
     <!-- Receive input from requestor. (Note: This maps to operation defined in BPELProcess1.wsdl) -->
     <receive name="receiveInput" partnerLink="bpelprocess1_client" portType="client:BPELProcess1" operation="process" variable="inputVariable" createInstance="yes"/>
-
+    <assign name="Assign1">
+      <copy bpelx:ignoreMissingFromData="yes" bpelx:insertMissingToData="yes">
+        <from expression="'Success'"/>
+        <to variable="outputVariable" part="payload"
+            query="/client:processResponse/client:result"/>
+      </copy>
+    </assign>
     <!-- Generate reply to synchronous request -->
     <reply name="replyOutput" partnerLink="bpelprocess1_client" portType="client:BPELProcess1" operation="process" variable="outputVariable"/>
   </sequence>

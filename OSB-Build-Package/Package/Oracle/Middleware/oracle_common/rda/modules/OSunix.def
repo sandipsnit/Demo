@@ -1,0 +1,462 @@
+# OSunix.def: UNIX Specific Code
+# $Id: OSunix.def,v 2.9 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OSunix.def,v 2.9 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+OSunix - Submodule Specific to other UNIX Operating Systems
+
+=cut
+
+use Mrc
+
+# Make the module persistent
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('ping_command')
+
+# Get the calling module
+var $MODULE = $arg[0]
+import $TOC,$TOP
+
+=head1 DESCRIPTION
+
+This module determines the F<ps> command format.
+
+=cut
+
+if !$OS
+{keep $OS,$OSA,$OSP
+ var $OS = true
+
+ # Determine the ps command format
+ var $OSP = testCommand('ps -ef','/bin/ps -ef','/usr/bin/ps -ef')
+ var $OSA = concat($OSP,' -o comm,args')
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE INI MODULE
+
+Nothing required yet.
+
+=cut
+
+if compare('eq',$MODULE,'INI')
+{# Nothing required yet
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE END MODULE
+
+=head2 report - Report Settings
+
+Determines the operating system version.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_report')
+{# Load the system settings
+ write '|Platform|',getOsName(),'|'
+ write '|O/S Version|',uname('r'),'|'
+}
+
+=head2 system - System Information
+
+Extracts the system information. Not implemented because required commands are
+platform-specific.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_system')
+{write 'Not Implemented'
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE OS MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'OS')
+{
+
+=head2 cpu_info - CPUs
+
+Gets CPU information (not implemented).
+
+=cut
+
+ # debug ' Inside OS module, getting CPU information (UNIX)'
+ # report cpu_info
+ # write '---+ CPU Information'
+ # toc '2:[[',getFile(),'][rda_report][CPUs]]'
+
+
+=head2 memory_info - Memory
+
+Gets information about the physical memory (not implemented).
+
+=cut
+
+ # debug ' Inside OS module, about physical memory (UNIX)'
+ # report memory_info
+ # write '---+ Physical Memory Installed'
+ # toc '2:[[',getFile(),'][rda_report][Memory]]'
+
+=head2 disk_info - Disk Drives
+
+Gets information about the disks.
+
+=cut
+
+ debug ' Inside OS module, about disks (UNIX)'
+ report disk_info
+ write '---+!! Disk Information'
+ write $TOC
+
+ write '---+ Disk Mounts'
+ call writeCommand('mount')
+ write $TOP
+
+ write '---+ Disk Free'
+ call writeCommand('df -k')
+ write $TOP
+
+ # write '---+ Swap'
+ # call writeCommand('/sbin/swapon -s')
+ # write $TOP
+ toc '2:[[',getFile(),'][rda_report][Disk Drives]]'
+
+=head2 ipc_info - Kernel Tables and IPC
+
+Gets the kernel tables and IPC information.
+
+=cut
+
+ report kernel_info
+ write '---+!! Kernel Tables and IPC'
+ write $TOC
+
+ # write '---+ Kernel Tables'
+ # call writeCommand('sar -v 1 1')
+ # write $TOP
+
+ write '---+ Semaphores'
+ call writeCommand('ipcs -sa')
+ write $TOP
+
+ write '---+ Shared Memory'
+ call writeCommand('ipcs -ma')
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Kernel Tables and IPC]]'
+ 
+=head2 ntp - NTP Status and Configuration
+
+Collects NTP status information when NTP is running and accessible. It collects
+the F</etc/ntp.conf> file when present.
+
+=cut
+
+ debug ' Inside OS module, getting NTP status and configuration'
+ report ntp
+ var $ttl = '---+!! NTP Status and Configuration Information'
+
+ #Get NTP Status
+ if findCommand('ntpq')
+ {var $cmd = concat(last,' -p')
+
+  report ntpstatus
+  prefix
+  {if !isCreated()
+   {write $ttl
+    write $TOC
+   }
+   write '---+ NTP Status'
+   write '---## Using: ntpq -p'
+  }
+  var $hdr = true
+  loop $lin (grepCommand($cmd,'.'))
+  {if match($lin,'^=')
+    var $hdr = false
+   elsif match($lin,'No association ')
+    write $lin
+   elsif $hdr
+    write '|*',replace(trim($lin),'\s+','*|*',true),'*|'
+   else
+    write '|',replace(trim($lin),'\s+',' |',true),' |'
+  }
+ }
+
+ # Get the NTP configuration file
+ prefix
+ {if !isCreated()
+  {write $ttl
+   write $TOC
+  }
+  write '---+ NTP Configuration'
+  write '---## Information Taken from /etc/ntp.conf'
+ }
+ call writeFile('/etc/ntp.conf')
+ if hasOutput(true)
+  write $TOP
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][NTP Status and Configuration]]'
+
+=head2 packages - Operating System Packages
+
+Lists all operating system packages (not implemented)
+
+=cut
+
+ # debug ' Inside OS module, getting operating system package information'
+ # report packages
+ # write '---+ Operating System Package Information'
+ # toc '2:[[',getFile(),'][rda_report][Operating System Packages]]'
+
+=head2 sysdef - System/Kernel Settings
+
+Gets the system/kernel settings (not implemented).
+
+=cut
+
+ # debug ' Inside OS module, getting system/kernel settings'
+ # report sysdef
+ # write '---+ System/Kernel Settings'
+ # toc '2:[[',getFile(),'][rda_report][System/Kernel Settings]]'
+
+=head2 system_error_log - System Error Log
+
+Collects system error log data.
+
+=cut
+
+ collect RCunix|OS()
+
+=pod
+
+Identifies useful platform-related links (not implemented).
+
+=cut
+
+ var \@LINKS = $arg[1]
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE PERF MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'PERF')
+{# Produce the performance report
+ report overview
+ write '---+!! Performance Overview'
+ write $TOC
+ toc '2:[[',getFile(),'][rda_report][Overview]]'
+
+=pod
+
+Gets system uptime.
+
+=cut
+
+ debug ' Inside PERF module, about to execute uptime command'
+ prefix
+  write '---+ Uptime'
+ call writeCommand('uptime')
+ if hasOutput(true)
+  write $TOP
+
+=pod
+
+Gets a process overview in terms of running databases, users logged on, and top
+CPU users.
+
+=cut
+
+ if loadCommand($OSP)
+ {debug ' Inside PERF module, about to gather user and process counts'
+  write '---+ Process Overview'
+  var $cnt = grepLastFile('oracle')
+  write '|*Oracle Processes*| ',    $cnt,'|'
+  var $cnt = grepLastFile('tnslsn','i')
+  write '|*Listeners Processes*| ', $cnt,'|'
+  var $cnt = grepLastFile('DESCRIPTION=')
+  write '|*Background Processes*| ',$cnt,'|'
+  var $cnt = grepLastFile('root')
+  write '|*Root Processes*| ',      $cnt,'|'
+  var $cnt = getLastLength()
+  write '|*Total Processes*| ',     $cnt,'|'
+  var $cnt = command('who')
+  write '|*Number Users*| ',        $cnt,'|'
+  write $TOP
+
+  var ($hdr) = getLines(0,0)
+  call sortLastFile('ps_time')
+
+  debug ' Inside PERF module, about to determine running databases'
+  prefix
+  {write '---+ Running Databases'
+   write 'Note: the CPU usage in minutes'
+   write '<verbatim>'
+   write $hdr
+  }
+  loop $lin (grepLastFile('pmon'))
+   write $lin
+  if hasOutput(true)
+  {write '</verbatim>'
+   write $TOP
+  }
+
+  debug ' Inside PERF module, about to determine users logged on'
+  write '---+ Who is Logged On?'
+  call writeCommand('who | sort')
+  write $TOP
+
+  debug ' Inside PERF module, about to determine CPU hogs'
+  var $cnt = getSetting('PERF_TOP_PS',15)
+  write '---+ Current CPU Hogs / Top ',$cnt,' by CPU Time'
+  call writeLastFile(0,$cnt)
+  write $TOP
+
+  debug ' Inside PERF module, about to determine root CPU hogs'
+  var $cnt = getSetting('PERF_TOP_ROOT',5)
+  write '---+ Root CPU Hogs / Top ',$cnt,' by CPU Time'
+  write '<verbatim>'
+  write $hdr
+  loop $lin (grepLastFile('root'))
+  {next match($lin,'ckunix')
+   write $lin
+   decr $cnt
+   break !$cnt
+  }
+  write '</verbatim>'
+  write $TOP
+ }
+
+=pod
+
+Gets a disk overview in terms of free space.
+
+=cut
+
+ debug ' Inside PERF module, about to gather File System Free Space'
+ write '---+ File System Free Space in KiB'
+ call writeCommand('df')
+ write $TOP
+
+=pod
+
+Gets a system overview in terms of virtual memory.
+
+=cut
+
+ debug ' Inside PERF module, about to gather virtual memory statistics \
+        (takes 30 sec)'
+ write '---+ Virtual Memory Statistics'
+ write '---## Using: vmstat 10 3'
+ call writeCommand('vmstat 10 3')
+ write $TOP
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE NET MODULE
+
+Determines the F<ping> command format.
+
+=cut
+
+elsif compare('eq',$MODULE,'NET')
+{# usage: ping [-dfLnqRrv] [-c count] [-I ifaddr] [-i wait] [-l preload]
+ #             [-p pattern] [-S ifaddr] [-s packetsize] [-t ttl] [-w maxwait]
+ #             host
+ #        -R records the route.
+ var (undef,\$PING,\$NETSTAT) = @arg
+ var $PING = 'ping -R -c 10 -s %d %s'
+ var $NETSTAT = 'netstat'
+
+=head2 ifconfig - Interface Configuration
+
+Gets the network interface configuration.
+
+=cut
+
+ collect RCunix|NET()
+
+=head2 tcpip_settings - TCP/IP Settings
+
+Gets the TCP/IP settings (not implemented).
+
+=cut
+
+ debug ' Inside NET module, getting TCP/IP settings (UNIX)'
+ report tcpip_settings
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][TCP/IP Settings]]'
+
+=head2 udp_settings - UDP Settings
+
+Gets the UDP settings (not implemented).
+
+=cut
+
+ debug ' Inside NET module, getting UDP settings (UNIX)'
+ report udp_settings
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][UDP Settings]]'
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE DEV MODULE
+
+Sets up shared library path for Oracle Forms and Reports.
+
+=cut
+
+elsif compare('eq',$MODULE,'DEV')
+{# Setup shared library path for Forms and Reports
+ var (undef,\%ENV,\$PS_EF) = @arg
+ var $ora = getSetting('ORACLE_HOME')
+ var $key = ${CUR.SHLIB}
+ if and($ora,$key)
+ {var $lib = getEnv($key,undef,true)
+  var $ENV{$key} = $lib
+ }
+ var $PS_EF = $OSP
+}
+
+#------------------------------------------------------------------------------
+
+elsif compare('eq',$MODULE,'PS')
+{# Pass the command format of the ps variants
+ import $PS_ARG,$PS_EF
+ var $PS_ARG = $OSA
+ var $PS_EF  = $OSP
+}
+
+#------------------------------------------------------------------------------
+
+# Return a ping command
+macro ping_command
+ return concat('ping -R -c 10 -s ',nvl($arg[1],56),' ',$arg[0])
+ 
+=head1 SEE ALSO
+
+L<RCunix|modules::RCunix>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

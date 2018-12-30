@@ -1,0 +1,906 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!--  $Header: emas/sysman/admin/adml/server-oracle_oam-11.0.xml /st_emasgc_11.1as/9 2012/04/26 17:40:39 kchander Exp $ -->
+<!-- 
+ Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     server-oracle_oam-11.0.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   kchander    04/23/12 - Fix bug 13356910.
+   sunilkum    11/16/10 - change collection interval
+   sunilkum    10/26/10 - remove token binding tables
+   sunilkum    10/19/10 - services metrics update
+   sunilkum    10/11/10 - Add support for services data
+   sunilkum    07/09/10 - parse warning
+   sunilkum    04/30/10 - ADML parse error
+   sunilkum    03/19/10 - Add OAM client auth metrics
+   sunilkum    01/15/10 - user identity provider
+   sunilkum    10/21/09 - Add more handshake metrics
+   sunilkum    10/08/09 - Add OSSO success metric
+   sunilkum    09/25/09 - Add access client metrics
+   sunilkum    09/07/09 - OAM adml
+   sunilkum    08/03/09 - ADML for OAM
+   sunilkum    08/03/09 - Creation
+
+-->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="oracle_oam">
+      <Table Name="oam_controller">
+            <ColumnDef Name="Host" Type="String"/>
+            <ColumnDef Name="ServerName" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <Select Name="oam_controller_result">
+                  <TableFrom Name="OAMS.OAM_OAMController"/>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Host" Type="String">
+                        <ColumnFrom Name="Host"/>
+                  </Column>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthnRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="ValidateCredentialsSuccess.count"/>
+                                    <ColumnFrom Name="ValidateCredentials.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <Expression Operator="Plus">
+                              <ColumnFrom Name="AuthnProcess.avg"/>
+                              <ColumnFrom Name="PreAuthnProcess.avg"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthzRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuthzLatency" Type="Double">
+                        <ColumnFrom Name="Authz.avg"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="AuthzSuccess.count"/>
+                                    <ColumnFrom Name="AuthzRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Where>
+                        <Or>
+                              <Condition Type="String" Operator="EQ">
+                                    <ColumnFrom Name="ServerName"/>
+                                    <Value Name="ServerNames.parameter"/>
+                              </Condition>
+                              <Condition Type="String" Operator="EQ">
+                                    <Value Name="ServerNames.parameter"
+                                           xsi:nil="true"/>
+                                    <Null/>
+                              </Condition>
+                        </Or>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="log_operations">
+            <ColumnDef Name="Host" Type="String"/>
+            <ColumnDef Name="ServerName" Type="String" Key="true"/>
+            <ColumnDef Name="Process" Type="String" Key="true"/>
+            <ColumnDef Name="LogOperations.persec" Type="Double"/>
+            <ColumnDef Name="LogOperationLatency" Type="Double"/>
+            <Select Name="log_operations_result">
+                  <TableFrom Name="OAMS.OAM_Diagnostic"/>
+                  <Column Name="Process" Type="String">
+                        <ColumnFrom Name="Process"/>
+                  </Column>
+                  <Column Name="Host" Type="String">
+                        <ColumnFrom Name="Host"/>
+                  </Column>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="LogOperations.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="LogOps.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="LogOperationLatency" Type="Double">
+                        <ColumnFrom Name="Log.avg"/>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="audit_operations">
+            <ColumnDef Name="ServerName" Type="String" Key="true"/>
+            <ColumnDef Name="Host" Type="String"/>
+            <ColumnDef Name="Process" Type="String" Key="true"/>
+            <ColumnDef Name="AuditOperations.persec" Type="Double"/>
+            <ColumnDef Name="AuditOperationLatency" Type="Double"/>
+            <Select Name="audit_operations_result">
+                  <TableFrom Name="OAMS.OAM_Diagnostic"/>
+                  <Column Name="Process" Type="String">
+                        <ColumnFrom Name="Process"/>
+                  </Column>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Host" Type="String">
+                        <ColumnFrom Name="Host"/>
+                  </Column>
+                  <Column Name="AuditOperations.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuditProcess.completed"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuditOperationLatency" Type="Double">
+                        <ColumnFrom Name="AuditProcess.avg"/>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="access_clients_10g_OSSO">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="ServerName" Type="String"/>
+            <ColumnDef Name="Host" Type="String"/>
+            <ColumnDef Name="Process" Type="String"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <Select Name="osso_operations_result">
+                  <TableFrom Name="OAMS.OAM_Server.OSSO_Agents"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Host" Type="String">
+                        <ColumnFrom Name="Host"/>
+                  </Column>
+                  <Column Name="Process" Type="String">
+                        <ColumnFrom Name="Process"/>
+                  </Column>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthnRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <Expression Operator="Plus">
+                              <ColumnFrom Name="AuthnProcess.avg"/>
+                              <ColumnFrom Name="PreAuthnProcess.avg"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="ValidateCredentialsSuccess.count"/>
+                                    <ColumnFrom Name="ValidateCredentials.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Where>
+                        <Or>
+                              <Condition Type="String" Operator="EQ">
+                                    <ColumnFrom Name="ServerName"/>
+                                    <Value Name="ServerNames.parameter"/>
+                              </Condition>
+                              <Condition Type="String" Operator="EQ">
+                                    <Value Name="ServerNames.parameter"
+                                           xsi:nil="true"/>
+                                    <Null/>
+                              </Condition>
+                        </Or>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="access_clients_10g_OAM">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="ServerName" Type="String"/>
+            <ColumnDef Name="Host" Type="String"/>
+            <ColumnDef Name="Process" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <ColumnDef Name="NapHandshakeSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="NapHandshakeLatency" Type="Double"/>
+            <ColumnDef Name="NapNumberOfOpenConnections" Type="Double"/>
+            <ColumnDef Name="TotalNapOperations" Type="Double"/>
+            <ColumnDef Name="LastNapOperation" Type="String"/>
+            <Select Name="oam_operations_result">
+                  <TableFrom Name="OAMS.OAM_Server.OAM_Agents"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Host" Type="String">
+                        <ColumnFrom Name="Host"/>
+                  </Column>
+                  <Column Name="Process" Type="String">
+                        <ColumnFrom Name="Process"/>
+                  </Column>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="GetAuthnScheme.completed"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <ColumnFrom Name="GetAuthnScheme.avg"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="GetAuthnSchemeSuccess.count"/>
+                                    <ColumnFrom Name="GetAuthnScheme.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthzProcess.completed"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuthzLatency" Type="Double">
+                        <ColumnFrom Name="AuthzProcess.avg"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="AuthzSuccess.count"/>
+                                    <ColumnFrom Name="AuthzRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="NapHandshakeLatency" Type="Double">
+                        <ColumnFrom Name="napOperations.avg"/>
+                  </Column>
+                  <Column Name="NapHandshakeSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="napHandshakeSuccess.count"/>
+                                    <ColumnFrom Name="napOperations.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                              <Default>0</Default>
+                        </Expression>
+                  </Column>
+                  <Column Name="NapNumberOfOpenConnections" Type="Double">
+                        <ColumnFrom Name="numberOfOpenConnections.count"/>
+                  </Column>
+                  <Column Name="TotalNapOperations" Type="Double">
+                        <ColumnFrom Name="napOperations.completed"/>
+                  </Column>
+                  <Column Name="LastNapOperation" Type="String">
+                        <ColumnFrom Name="lastOperationTime.value"/>
+                  </Column>
+                  <Where>
+                        <Or>
+                              <Condition Type="String" Operator="EQ">
+                                    <ColumnFrom Name="ServerName"/>
+                                    <Value Name="ServerNames.parameter"/>
+                              </Condition>
+                              <Condition Type="String" Operator="EQ">
+                                    <Value Name="ServerNames.parameter"
+                                           xsi:nil="true"/>
+                                    <Null/>
+                              </Condition>
+                        </Or>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="access_clients_applications">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="ServerName" Type="String"/>
+            <ColumnDef Name="Host" Type="String"/>
+            <ColumnDef Name="Process" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <Select Name="apps_operations_result">
+                  <TableFrom Name="OAMS.OAM_Applications"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Host" Type="String">
+                        <ColumnFrom Name="Host"/>
+                  </Column>
+                  <Column Name="Process" Type="String">
+                        <ColumnFrom Name="Process"/>
+                  </Column>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthnRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <Expression Operator="Plus">
+                              <ColumnFrom Name="AuthnProcess.avg"/>
+                              <ColumnFrom Name="PreAuthnProcess.avg"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="ValidateCredentialsSuccess.count"/>
+                                    <ColumnFrom Name="ValidateCredentials.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthzProcess.completed"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="AuthzLatency" Type="Double">
+                        <ColumnFrom Name="AuthzProcess.avg"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="AuthzProcessSuccess.count"/>
+                                    <ColumnFrom Name="AuthzProcess.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Where>
+                        <Or>
+                              <Condition Type="String" Operator="EQ">
+                                    <ColumnFrom Name="ServerName"/>
+                                    <Value Name="ServerNames.parameter"/>
+                              </Condition>
+                              <Condition Type="String" Operator="EQ">
+                                    <Value Name="ServerNames.parameter"
+                                           xsi:nil="true"/>
+                                    <Null/>
+                              </Condition>
+                        </Or>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="user_identity_provider">
+            <ColumnDef Name="ServerName" Type="String" Key="true"/>
+            <ColumnDef Name="Host" Type="String"/>
+            <ColumnDef Name="Process" Type="String"/>
+            <ColumnDef Name="TotalOperations.count" Type="Double"/>
+            <ColumnDef Name="TotalFailedOperations.count" Type="Double"/>
+            <ColumnDef Name="TotalOperations.time" Type="Double"/>
+            <ColumnDef Name="OperationsLatency" Type="Double"/>
+            <ColumnDef Name="OperationsSuccessFailure.rate" Type="Double"/>
+            <Select Name="user_identity_provider_result_1">
+                  <TableFrom Name="OAMS.OAM_UserIdentityProvider"/>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Host" Type="String">
+                        <ColumnFrom Name="Host"/>
+                  </Column>
+                  <Column Name="Process" Type="String">
+                        <ColumnFrom Name="Process"/>
+                  </Column>
+                  <Column Name="TotalOperations.count" Type="Double">
+                        <Expression Operator="Plus">
+                              <ColumnFrom Name="assignGroupToUser.count"/>
+                              <Expression Operator="Plus">
+                                    <ColumnFrom Name="authenticateUser.count"/>
+                                    <Expression Operator="Plus">
+                                          <ColumnFrom Name="createGroup.count"/>
+                                          <Expression Operator="Plus">
+                                                <ColumnFrom Name="createUser.count"/>
+                                                <Expression Operator="Plus">
+                                                      <ColumnFrom Name="getGroups.count"/>
+                                                      <Expression Operator="Plus">
+                                                            <ColumnFrom Name="getUserAttributes.count"/>
+                                                            <Expression Operator="Plus">
+                                                                  <ColumnFrom Name="getUsers.count"/>
+                                                                  <Expression Operator="Plus">
+                                                                        <ColumnFrom Name="isUserAssignedToGroup.count"/>
+                                                                        <Expression Operator="Plus">
+                                                                              <ColumnFrom Name="removeGroup.count"/>
+                                                                              <ColumnFrom Name="removeUser.count"/>
+                                                                        </Expression>
+                                                                  </Expression>
+                                                            </Expression>
+                                                      </Expression>
+                                                </Expression>
+                                          </Expression>
+                                    </Expression>
+                              </Expression>
+                        </Expression>
+                  </Column>
+                  <Column Name="TotalFailedOperations.count" Type="Double">
+                        <Expression Operator="Plus">
+                              <ColumnFrom Name="assignGroupToUserFailure.count"/>
+                              <Expression Operator="Plus">
+                                    <ColumnFrom Name="authenticateUserFailure.count"/>
+                                    <Expression Operator="Plus">
+                                          <ColumnFrom Name="createGroupFailure.count"/>
+                                          <Expression Operator="Plus">
+                                                <ColumnFrom Name="createUserFailure.count"/>
+                                                <Expression Operator="Plus">
+                                                      <ColumnFrom Name="getGroupsFailure.count"/>
+                                                      <Expression Operator="Plus">
+                                                            <ColumnFrom Name="getUserAttributesFailure.count"/>
+                                                            <Expression Operator="Plus">
+                                                                  <ColumnFrom Name="getUsersFailure.count"/>
+                                                                  <Expression Operator="Plus">
+                                                                        <ColumnFrom Name="isUserAssignedToGroupFailure.count"/>
+                                                                        <Expression Operator="Plus">
+                                                                              <ColumnFrom Name="removeGroupFailure.count"/>
+                                                                              <ColumnFrom Name="removeUserFailure.count"/>
+                                                                        </Expression>
+                                                                  </Expression>
+                                                            </Expression>
+                                                      </Expression>
+                                                </Expression>
+                                          </Expression>
+                                    </Expression>
+                              </Expression>
+                        </Expression>
+                  </Column>
+                  <Column Name="TotalOperations.time" Type="Double">
+                        <Expression Operator="Plus">
+                              <ColumnFrom Name="AssignGroupToUser.time"/>
+                              <Expression Operator="Plus">
+                                    <ColumnFrom Name="AuthenticateUser.time"/>
+                                    <Expression Operator="Plus">
+                                          <ColumnFrom Name="CreateGroup.time"/>
+                                          <Expression Operator="Plus">
+                                                <ColumnFrom Name="CreateUser.time"/>
+                                                <Expression Operator="Plus">
+                                                      <ColumnFrom Name="GetGroups.time"/>
+                                                      <Expression Operator="Plus">
+                                                            <ColumnFrom Name="GetUserAttributes.time"/>
+                                                            <Expression Operator="Plus">
+                                                                  <ColumnFrom Name="GetUsers.time"/>
+                                                                  <Expression Operator="Plus">
+                                                                        <ColumnFrom Name="IsUserAssignedToGroup.time"/>
+                                                                        <Expression Operator="Plus">
+                                                                              <ColumnFrom Name="RemoveGroup.time"/>
+                                                                              <ColumnFrom Name="RemoveUser.time"/>
+                                                                        </Expression>
+                                                                  </Expression>
+                                                            </Expression>
+                                                      </Expression>
+                                                </Expression>
+                                          </Expression>
+                                    </Expression>
+                              </Expression>
+                        </Expression>
+                  </Column>
+            </Select>
+            <Select Name="user_identity_provider_result">
+                  <TableFrom Name="user_identity_provider_result_1"/>
+                  <Column Name="ServerName" Type="String"/>
+                  <Column Name="Host" Type="String"/>
+                  <Column Name="Process" Type="String"/>
+                  <Column Name="TotalOperations.count" Type="Double"/>
+                  <Column Name="TotalFailedOperations.count" Type="Double"/>
+                  <Column Name="TotalOperations.time" Type="Double"/>
+                  <Column Name="OperationsSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="TotalOperations.count"/>
+                                          <ColumnFrom Name="TotalFailedOperations.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="TotalOperations.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="OperationsLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="TotalOperations.time"/>
+                              <ColumnFrom Name="TotalOperations.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="user_identity_provider_rate">
+            <ColumnDef Name="ServerName" Type="String" Key="true"/>
+            <ColumnDef Name="TotalOperations.count" Type="Double"/>
+            <ColumnDef Name="LDAPOperations.persec" Type="Double"/>
+            <ColumnDef Name="OperationsLatency" Type="Double"/>
+            <ColumnDef Name="OperationsSuccessFailure.rate" Type="Double"/>
+            <Select Name="user_identity_provider_rate_result">
+                  <TableFrom Name="oracle_oam:user_identity_provider"/>
+                  <Column Name="ServerName" Type="String"/>
+                  <Column Name="TotalOperations.count" Type="Double"/>
+                  <Column Name="OperationsSuccessFailure.rate" Type="Double"/>
+                  <Column Name="OperationsLatency" Type="Double"/>
+                  <Column Name="LDAPOperations.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="TotalOperations.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Where>
+                        <Or>
+                              <Condition Type="String" Operator="EQ">
+                                    <ColumnFrom Name="ServerName"/>
+                                    <Value Name="ServerNames.parameter"/>
+                              </Condition>
+                              <Condition Type="String" Operator="EQ">
+                                    <Value Name="ServerNames.parameter"
+                                           xsi:nil="true"/>
+                                    <Null/>
+                              </Condition>
+                        </Or>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="token_requests">
+            <ColumnDef Name="ServerName" Type="String" Key="true"/>
+            <ColumnDef Name="IssueRequests.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestLatency" Type="Double"/>
+            <ColumnDef Name="IssueRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestLatency" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestsSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.persec" Type="Double"/>
+            <ColumnDef Name="IssueRequests.persec" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsSuccessFailure.rate"
+                       Type="Double"/>
+            <Select Name="token_requests_result">
+                  <TableFrom Name="OAMS.OAM_Requests"/>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="IssueRequests.count" Type="Double">
+                        <ColumnFrom Name="IssueRequests.completed"/>
+                  </Column>
+                  <Column Name="IssueRequestLatency" Type="Double">
+                        <ColumnFrom Name="IssueRequests.avg"/>
+                  </Column>
+                  <Column Name="IssueRequestsFailure.count" Type="Double">
+                        <ColumnFrom Name="IssueRequestsFailure.count"/>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double">
+                        <ColumnFrom Name="ValidateRequests.completed"/>
+                  </Column>
+                  <Column Name="ValidationRequestLatency" Type="Double">
+                        <ColumnFrom Name="ValidateRequests.avg"/>
+                  </Column>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double">
+                        <ColumnFrom Name="ValidateRequestsFailure.count"/>
+                  </Column>
+                  <Column Name="IssueRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="IssueRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="IssueRequestsSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="IssueRequests.count"/>
+                                          <ColumnFrom Name="IssueRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="IssueRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="ValidationRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="ValidationRequestsSuccessFailure.rate"
+                          Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="ValidationRequests.count"/>
+                                          <ColumnFrom Name="ValidationRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="ValidationRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Where>
+                        <And>
+                              <Or>
+                                    <Condition Type="String" Operator="EQ">
+                                          <ColumnFrom Name="ServerName"/>
+                                          <Value Name="ServerNames.parameter"/>
+                                    </Condition>
+                                    <Condition Type="String" Operator="EQ">
+                                          <Value Name="ServerNames.parameter"
+                                                 xsi:nil="true"/>
+                                          <Null/>
+                                    </Condition>
+                              </Or>
+                              <Condition Type="String" Operator="EQ">
+                                    <ColumnFrom Name="Name"/>
+                                    <Value>TotalEntries</Value>
+                              </Condition>
+                        </And>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="core_token_generation">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="ServerName" Type="String"/>
+            <ColumnDef Name="TokenCreation.count" Type="Double"/>
+            <ColumnDef Name="TokenCreation.persec" Type="Double"/>
+            <ColumnDef Name="TokenCreationLatency" Type="Double"/>
+            <Select Name="core_token_generation_result">
+                  <TableFrom Name="OAMS.OAM_TokenGeneration"/>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="TokenCreation.count" Type="Double">
+                        <ColumnFrom Name="Creation.completed"/>
+                  </Column>
+                  <Column Name="TokenCreation.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="Creation.completed"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="TokenCreationLatency" Type="Double">
+                        <ColumnFrom Name="Creation.avg"/>
+                  </Column>
+                  <Where>
+                        <And>
+                              <Or>
+                                    <Condition Type="String" Operator="EQ">
+                                          <ColumnFrom Name="ServerName"/>
+                                          <Value Name="ServerNames.parameter"/>
+                                    </Condition>
+                                    <Condition Type="String" Operator="EQ">
+                                          <Value Name="ServerNames.parameter"
+                                                 xsi:nil="true"/>
+                                          <Null/>
+                                    </Condition>
+                              </Or>
+                              <Condition Type="String" Operator="NE">
+                                    <ColumnFrom Name="Name"/>
+                                    <Value>TotalEntries</Value>
+                              </Condition>
+                        </And>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="core_token_validation">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="ServerName" Type="String"/>
+            <ColumnDef Name="TokenValidation.count" Type="Double"/>
+            <ColumnDef Name="TokenValidation.persec" Type="Double"/>
+            <ColumnDef Name="TokenValidationLatency" Type="Double"/>
+            <Select Name="core_token_validation_result">
+                  <TableFrom Name="OAMS.OAM_TokenValidation"/>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="TokenValidation.count" Type="Double">
+                        <ColumnFrom Name="Validation.completed"/>
+                  </Column>
+                  <Column Name="TokenValidation.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="Validation.completed"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="TokenValidationLatency" Type="Double">
+                        <ColumnFrom Name="Validation.avg"/>
+                  </Column>
+                  <Where>
+                        <And>
+                              <Or>
+                                    <Condition Type="String" Operator="EQ">
+                                          <ColumnFrom Name="ServerName"/>
+                                          <Value Name="ServerNames.parameter"/>
+                                    </Condition>
+                                    <Condition Type="String" Operator="EQ">
+                                          <Value Name="ServerNames.parameter"
+                                                 xsi:nil="true"/>
+                                          <Null/>
+                                    </Condition>
+                              </Or>
+                              <Condition Type="String" Operator="NE">
+                                    <ColumnFrom Name="Name"/>
+                                    <Value>TotalEntries</Value>
+                              </Condition>
+                        </And>
+                  </Where>
+            </Select>
+      </Table>
+      <Table Name="partner_requests">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="ServerName" Type="String"/>
+            <ColumnDef Name="RequesterName" Type="String"/>
+            <ColumnDef Name="IssueRequests.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestLatency" Type="Double"/>
+            <ColumnDef Name="IssueRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestLatency" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestsSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.persec" Type="Double"/>
+            <ColumnDef Name="IssueRequests.persec" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsSuccessFailure.rate"
+                       Type="Double"/>
+            <Select Name="sts_partners_result">
+                  <TableFrom Name="OAMS.OAM_Requests"/>
+                  <Column Name="ServerName" Type="String">
+                        <ColumnFrom Name="ServerName"/>
+                  </Column>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="RequesterName" Type="String">
+                        <ColumnFrom Name="OAMS.OAM_Requests"/>
+                  </Column>
+                  <Column Name="IssueRequests.count" Type="Double">
+                        <ColumnFrom Name="IssueRequests.completed"/>
+                  </Column>
+                  <Column Name="IssueRequestLatency" Type="Double">
+                        <ColumnFrom Name="IssueRequests.avg"/>
+                  </Column>
+                  <Column Name="IssueRequestsFailure.count" Type="Double">
+                        <ColumnFrom Name="IssueRequestsFailure.count"/>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double">
+                        <ColumnFrom Name="ValidateRequests.completed"/>
+                  </Column>
+                  <Column Name="ValidationRequestLatency" Type="Double">
+                        <ColumnFrom Name="ValidateRequests.avg"/>
+                  </Column>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double">
+                        <ColumnFrom Name="ValidateRequestsFailure.count"/>
+                  </Column>
+                  <Column Name="IssueRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="IssueRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="IssueRequestsSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="IssueRequests.count"/>
+                                          <ColumnFrom Name="IssueRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="IssueRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="ValidationRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="ValidationRequestsSuccessFailure.rate"
+                          Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="ValidationRequests.count"/>
+                                          <ColumnFrom Name="ValidationRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="ValidationRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Where>
+                        <And>
+                              <Or>
+                                    <Condition Type="String" Operator="EQ">
+                                          <ColumnFrom Name="ServerName"/>
+                                          <Value Name="ServerNames.parameter"/>
+                                    </Condition>
+                                    <Condition Type="String" Operator="EQ">
+                                          <Value Name="ServerNames.parameter"
+                                                 xsi:nil="true"/>
+                                          <Null/>
+                                    </Condition>
+                              </Or>
+                              <Condition Type="String" Operator="NE">
+                                    <ColumnFrom Name="Name"/>
+                                    <Value>TotalEntries</Value>
+                              </Condition>
+                        </And>
+                  </Where>
+            </Select>
+      </Table>
+</Adml>
+
+
+
+
+
+
+

@@ -1,0 +1,60 @@
+# HChpux.def: HPUX Specific Code
+# $Id: HChpux.def,v 2.5 2012/01/03 13:34:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/HChpux.def,v 2.5 2012/01/03 13:34:42 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+HChpux - Submodule Specific to the HP-UX Operating System
+
+=cut
+
+# Make the module persistent
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('get_df')
+
+=head1 DESCRIPTION
+
+This module determines the operating system version and its bit size.
+
+The following macro is available:
+
+=cut
+
+import $OS_ARC,$OS_BIT,$OS_NAM,$OS_PLT,$OS_VER
+var $OS_NAM = uname('s')
+var $OS_PLT = 'HP-UX'
+var $OS_VER = substr(uname('r'),2,5)
+debug ' Inside END module, determining OS characteristics'
+var $OS_BIT = 32
+if match($OS_VER,'^11')
+{var ($str) = command('getconf KERNEL_BITS')
+ if match($str,'^64')
+  var $OS_BIT = 64
+}
+var $OS_ARC = check(uname('m'),'^ia64','Itanium','PA-RISC')
+
+=head2 get_df($dir)
+
+This macro returns the number of free KiB on the file system containing the
+specified directory.
+
+=cut
+
+macro get_df
+{var ($dir) = @arg
+ return field('\s+',0,grepCommand(concat('df -k ',quote($dir,'x')),'free allocated','fi'))
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

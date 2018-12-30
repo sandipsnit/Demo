@@ -1,0 +1,233 @@
+# S125GTW.def: Collects Transparent/Procedural Gateway Information
+# $Id: S125GTW.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S125GTW.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S125GTW - Collects Transparent/Procedural Gateway Information
+
+=head1 DESCRIPTION
+
+This module collects Transparent/Procedural Gateway information (for example,
+initialization, trace, and log files)
+
+The following reports can be generated and are regrouped under C<Gateways>:
+
+=cut
+
+echo tput('bold'),'Processing Gateway module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $TRACE       = getSetting('GATEWAY_TRACE',5)
+var $TAIL        = getSetting('GATEWAY_TAIL',getSetting('RDA_TAIL',1000))
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+var $FLG = true
+var @TTL = ()
+toc '1:Gateways'
+
+=head2 Gateway Information
+
+Collects the initialization files (that is, the C<*.map>, C<*.ora> C<*.sh>
+files from the F<admin> directory) and the last lines of the 5 most recent
+trace and log files for the following:
+
+=over 2
+
+=item o Transparent gateway for DRDA
+
+=item o Transparent gateway for Informix
+
+=item o Transparent gateway for Ingres
+
+=item o Transparent gateway for Microsoft SQL Server
+
+=item o Transparent gateway for Sybase
+
+=item o Transparent gateway for Teradata
+
+=item o Procedural gateway for APPC
+
+=item o Procedural gateway for IBM MQ Series
+
+=back
+
+Depending on the operating system, only a subset of the gateways will be
+captured.
+
+=cut
+
+macro collect
+{var ($gtw,$ttl) = @arg
+ import $ORACLE_HOME,@TTL
+ keep $ORACLE_HOME,@TTL
+
+ debug ' Inside Gateway module, about to gather ',$gtw,' information'
+ if testDir('d',catDir($ORACLE_HOME,$gtw))
+ {# Collect the gateway files
+  var @TTL = ($ttl)
+  call get_admin($gtw,'admin','3:Initialization Files')
+  call get_log($gtw,'log','3:Log Files')
+  call get_log($gtw,'trace','3:Trace Files')
+
+  # Indicate if files have been found
+  if !@TTL
+  {import $FLG
+   var $FLG = false
+  }
+ }
+}
+
+macro get_admin
+{var ($gtw,$typ,$ttl) = @arg
+ import $ORACLE_HOME,@TTL
+ keep $ORACLE_HOME,@TTL
+
+ var $dir = catDir($ORACLE_HOME,$gtw,$typ)
+ var $pre = join('_',$gtw,$typ)
+ var @ttl = (@TTL, $ttl)
+
+ loop $nam (grepDir($dir,'\.(map|ora|sh)$','in'))
+ {var $fil = catFile($dir,$nam)
+  report concat($pre,$nam)
+  write '---+ Display of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  if !writeFile($fil)
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+
+  # Add it in the index
+  if @ttl
+  {loop $ttl (@ttl)
+    toc $ttl
+   var @ttl = ()
+   var @TTL = ()
+  }
+  toc '4:[[',getFile(),'][rda_report][',$nam,']]'
+ }
+}
+
+macro get_log
+{var ($gtw,$typ,$ttl) = @arg
+ import $ORACLE_HOME,$TAIL,$TRACE,@TTL
+ keep $ORACLE_HOME,$TAIL,$TRACE,@TTL
+
+ var $cnt = $TRACE
+ var $dir = catDir($ORACLE_HOME,$gtw,$typ)
+ var $pre = join('_',$gtw,$typ)
+ var @ttl = (@TTL, $ttl)
+
+ loop $nam (grepDir($dir,'.','t'))
+ {break !$cnt
+  var $fil = catFile($dir,$nam)
+  next !testFile('f',$fil)
+  decr $cnt
+  report concat(nvl($pre,''),$nam)
+  write '---+ Last ',$TAIL,' Lines of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  if !writeTail($fil,$TAIL)
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+
+  # Add it in the index
+  if @ttl
+  {loop $ttl (@ttl)
+    toc $ttl
+   var @ttl = ()
+   var @TTL = ()
+  }
+  toc '4:[[',getFile(),'][rda_report][',$nam,']]'
+ }
+}
+
+call collect('tg4drda','2:For DRDA')
+call collect('tg4ifmx','2:For Informix')
+call collect('tg4ingr','2:For Ingres')
+call collect('tg4msql','2:For Microsoft SQL Server')
+call collect('tg4sybs','2:For Sybase')
+call collect('tg4tera','2:For Teradata')
+call collect('pg4appc','2:For APPC')
+call collect('pg4mqseries','2:For IBM MQ Series')
+call collect('pg4mq','2:For IBM MQ Series')
+
+=head2 dblinks - Database Links
+
+When the database is installed, it lists the database links that are defined. No
+passwords are collected.
+
+=cut
+
+if getSetting('DATABASE_INSTALLED')
+{debug ' Inside Gateway module, about to gather database links'
+ report dblinks
+ prefix
+ {write '---+ Database Links'
+  write '|*Name*|*Owner*|*Username*|*Host*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       db_link || '|' ||
+ "       owner || '|' ||
+ "       username || '|' ||
+ "       host || ' |'
+ " FROM dba_db_links
+ " ORDER BY db_link;
+ }
+ call writeSql($sql)
+ if getSqlMessage()
+  write last,'%BR%'
+ if isCreated(true)
+ {toc '2:[[',getFile(),'][rda_report][Database Links]]'
+  var $FLG = undef
+ }
+}
+
+=head2 not_found - Not found
+
+Used as a warning when transparent or procedural gateway or database links
+information is found.
+
+=cut
+
+if $FLG
+{debug ' Inside Gateway module, no information found'
+ report not_found
+ write 'Neither transparent or procedural gateway files nor database links \
+        were found and all files were optional. This does not mean there was \
+        necessarily a problem with RDA, but it should be investigated.'
+ toc '2:[[',getFile(),'][rda_report][Not found]]'
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.0:  Ed Bangma.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

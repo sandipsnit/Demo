@@ -1,0 +1,631 @@
+# M246RAY.def: Collects information for Sun Ray servers
+# $Id: M246RAY.def,v 1.6 2012/08/10 12:57:17 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M246RAY.def,v 1.6 2012/08/10 12:57:17 mschenke Exp $
+#
+# Change History
+# 20120809  MSC  Restore ARCS tags.
+
+=head1 NAME
+
+M246RAY - Collects information for Sun Ray servers 
+
+=head1 DESCRIPTION
+
+This module collects information for Sun Ray servers.
+
+=cut
+
+use Mrc
+
+# Initialization
+var @COMMON_SECTIONS=('XPLR_all')
+var $VALIDATE = true
+keep $VALIDATE,@COMMON_SECTIONS
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+var $WRN = '* Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use the \
+              link to save them and use an adequate viewer.'
+
+run XPLRlib('sunray')
+
+# -----------------------------------------------------------------------------
+# XPLR_sunray section
+# -----------------------------------------------------------------------------
+
+section XPLR_sunray
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing RAY sections ...')
+if !is_pkg_installed('SUNWuto')
+ return log_info('SUNWuto not installed')
+
+pretoc '2:Sun Ray Servers'
+
+=head2 ray_cmd - Commands
+
+Gathers the Sun Ray Servers information using the following commands:
+
+=over 2
+
+=item o C</bin/ls -lRt /etc/opt/SUNWconn> (for versions 1.0 to 1.3)
+
+=item o C</bin/ls -lRt /etc/opt/SUNWut>
+
+=item o C</bin/ls -lRt /opt/SUNWut>
+
+=item o C</bin/ls -lRt /tftpboot>
+
+=item o C</bin/ls -lRt /tmp/SUNWut>
+
+=item o C</bin/ls -lRt /var/opt/SUNWconn> (for versions 1.0 to 1.3)
+
+=item o C</bin/ls -lRt /var/opt/SUNWut>
+
+=item o C</etc/opt/SUNWut/jre/bin/java -version> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/bin/utdiskadm -l -a> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/bin/utdiskadm -s -a> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/bin/utwho -Hac> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/bin/utwho -Hc> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/bin/utxconfig -o> (for version 1.2, or earlier than 1.0)
+
+=item o C</opt/SUNWut/lib/utprodinfo> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/lib/utprop> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/sbin/utadm -l> (for version 2.0 and later)
+
+=item o C</opt/SUNWut/sbin/utadm -p>
+
+=item o C</opt/SUNWut/sbin/utadm -x> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/sbin/utcard -l>
+
+=item o C</opt/SUNWut/sbin/utcrypto -o> (for version 2.0 and later)
+
+=item o C</opt/SUNWut/sbin/utdesktop -L -c>
+
+=item o C</opt/SUNWut/sbin/utdesktop -l -g>
+
+=item o C</opt/SUNWut/sbin/utfwadm -P>
+
+=item o C</opt/SUNWut/sbin/utfwload -Ha> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/sbin/utglpolicy>
+
+=item o C</opt/SUNWut/sbin/utgstatus>
+
+=item o C</opt/SUNWut/sbin/utmhadm>
+
+=item o C</opt/SUNWut/sbin/utpolicy>
+
+=item o C</opt/SUNWut/sbin/utquery -d ${network}>
+
+=item o C</opt/SUNWut/sbin/utreader> (for version 2.0 and later)
+
+=item o C</opt/SUNWut/sbin/utreplica -i> (for version 2.0 and later)
+
+=item o C</opt/SUNWut/sbin/utreplica -l>
+
+=item o C</opt/SUNWut/sbin/utresadm -o> (for version 2.0 and later)
+
+=item o C</opt/SUNWut/sbin/utsession -l> (for version 2.0 and later)
+
+=item o C</opt/SUNWut/sbin/utsession -p>
+
+=item o C</opt/SUNWut/sbin/utusbadm> (for version 3.0 and later)
+
+=item o C</opt/SUNWut/sbin/utuser -L>
+
+=item o C</opt/SUNWut/sbin/utuser -L -g>
+
+=item o C</usr/bin/cksum /etc/opt/SUNWut/gmSignature>
+
+=item o C</usr/bin/sum /etc/opt/SUNWut/utadmin.pw>
+
+=item o C</usr/sbin/dhtadm -P>
+
+=item o C</usr/sbin/pkgchk ${pkg}>
+
+=item o C</usr/sbin/pntadm -P ${NET}> (for versions 1.0 to 1.3)
+
+=item o C</usr/sbin/pntadm -P ${network}> (for version 2.0 and later)
+
+=back
+
+=cut
+
+# Determine what to collect
+var ($ver,@cfg,@cmd,@log) = (get_pkg_version('SUNWuto'))
+
+call push(@cmd,\
+  {cmd => 'TITLE',\
+   txt => '---+ Generic Commands'},\
+  ['sunray/sum_@etc@opt@SUNWut@utadmin.pw',\
+   '/usr/bin/sum','/etc/opt/SUNWut/utadmin.pw',\
+   '---++ Check Sum for File /etc/opt/SUNWut/utadmin.pw'],\
+  ['sunray/cksum_@etc@opt@SUNWut@gmSignature',\
+   '/usr/bin/cksum','/etc/opt/SUNWut/gmSignature',\
+   '---++ Check Sum for File /etc/opt/SUNWut/gmSignature'],\
+  ['sunray/ls_-lRt_@etc@opt@SUNWut',\
+   '/bin/ls','-lRt /etc/opt/SUNWut',\
+   '---++ Contents of /etc/opt/SUNWut Directory'],\
+  ['sunray/ls_-lRt_@opt@SUNWut',\
+   '/bin/ls','-lRt /opt/SUNWut',\
+   '---++ Contents of /opt/SUNWut Directory'],\
+  ['sunray/ls_-lRt_@tftpboot',\
+   '/bin/ls','-lRt /tftpboot',\
+   '---++ Contents of /tftpboot Directory'],\
+  ['sunray/ls_-lRt_@tmp@SUNWut',\
+   '/bin/ls','-lRt /tmp/SUNWut',\
+   '---++ Contents of /tmp/SUNWut Directory'],\
+  ['sunray/ls_-lRt_@var@opt@SUNWut',\
+   '/bin/ls','-lRt /var/opt/SUNWut',\
+   '---++ Contents of /var/opt/SUNWut Directory'],\
+  ['sunray/dhtadm_-P',\
+   '/usr/sbin/dhtadm','-P',\
+   '---++ Contents of DHCP Table'],\
+  ['sunray/utreplica_-l',\
+   '/opt/SUNWut/sbin/utreplica','-l',\
+   '---++ Current Failover Administration Status'],\
+  ['sunray/utadm_-p',\
+   '/opt/SUNWut/sbin/utadm','-p',\
+   '---++ Current Sun Ray Interconnect Configuration'],\
+  ['sunray/utdesktop_-l_-g',\
+   '/opt/SUNWut/sbin/utdesktop','-l -g',\
+   '---++ DTU’s Currently Connected'],\
+  ['sunray/utdesktop_-L_-c',\
+   '/opt/SUNWut/sbin/utdesktop','-L -c',\
+   '---++ DTU’s Currently Connected (Long Format)'],\
+  ['sunray/utgstatus',\
+   '/opt/SUNWut/sbin/utgstatus',undef,\
+   '---++ Failover Group Status'],\
+  ['sunray/utglpolicy',\
+   '/opt/SUNWut/sbin/utglpolicy',undef,\
+   '---++ Global Utpolicy Options'],\
+  ['sunray/utcard_-l',\
+   '/opt/SUNWut/sbin/utcard','-l',\
+   '---++ List of all Configured Cards'],\
+  ['sunray/utmhadm',\
+   '/opt/SUNWut/sbin/utmhadm',undef,\
+   '---++ Multihead Groups Configured on the System'])
+
+loop $pkg ('SUNWuta','SUNWutj','SUNWutk','SUNWutkx','SUNWutm','SUNWuto',\
+           'SUNWutr','SUNWutu','SUNWutux')
+ call push(@cmd,\
+  [concat('sunray/pkgchk_',$pkg),\
+   '/usr/sbin/pkgchk',$pkg,\
+   concat('---++ Package ',$pkg,' Installation Accuracy')])
+
+call push(@cmd,\
+  ['sunray/utuser_-L_-g',\
+   '/opt/SUNWut/sbin/utuser','-L -g',\
+   '---++ Registered Users Currently Logged In'],\
+  ['sunray/utpolicy',\
+   '/opt/SUNWut/sbin/utpolicy',undef,\
+   '---++ Sun Ray Policy in Effect'],\
+  ['sunray/utsession_-p',\
+   '/opt/SUNWut/sbin/utsession','-p',\
+   '---++ Sun Ray Sessions on the Current Server'],\
+  ['sunray/utuser_-L',\
+   '/opt/SUNWut/sbin/utuser','-L',\
+   '---++ Users Registered in the Admin Database (Long Format)'],\
+  ['sunray/utfwadm_-P',\
+   '/opt/SUNWut/sbin/utfwadm','-P',\
+   '---++ Version to on the Next Power Cycle'],\
+  {cmd => 'UNTITLE'})
+
+call push(@cfg,\
+  ['sunray/Xservers',      '/etc/dt/config/Xservers'],\
+  ['sunray/sessionetc',    '/etc/dt/config/sessionetc'],\
+  ['sunray/Xconfig',       '/etc/dt/config/Xconfig'],\
+  ['sunray/Xconfig.SUNWut.prototype',\
+                           '/etc/dt/config/Xconfig.SUNWut.prototype'],\
+  ['sunray/Xreset',        '/etc/dt/config/Xreset'],\
+  ['sunray/Xservers.SUNWut.prototype',\
+                           '/etc/dt/config/Xservers.SUNWut.prototype'],\
+  ['sunray/Xsetup',        '/etc/dt/config/Xsetup'],\
+  ['sunray/auth.props',    '/etc/opt/SUNWut/auth.props'],\
+  ['sunray/auth.props.bak','/etc/opt/SUNWut/auth.props.bak'],\
+  ['sunray/utpolicy',      '/etc/opt/SUNWut/policy/utpolicy'],\
+  ['sunray/utadmin.conf',  '/etc/opt/SUNWut/utadmin.conf'],\
+  ['sunray/utsettings_defaults.properties',\
+                           '/etc/opt/SUNWut/utsettings_defaults.properties'],\
+  ['sunray/utsettings_mandatory.properties',\
+                           '/etc/opt/SUNWut/utsettings_mandatory.properties'],\
+  ['sunray/Xstartup',      '/usr/dt/config/Xstartup'],\
+  ['sunray/dhcptab',       '/var/dhcp/dhcptab'],\
+  ['sunray/Xerrors',       '/var/dt/Xerrors'],\
+  ['sunray/Xpid',          '/var/dt/Xpid'],\
+  ['sunray/utpreserve.tar','/var/tmp/SUNWut/utpreserve.tar'])
+
+call push(@log,\
+  ['sunray/logs','/var/http/utadmin/websites/default_site/logs'],\
+  ['sunray',     '/var/opt/SUNWut/log', '','','^admin_log','n'],\
+  ['sunray',     '/var/opt/SUNWut/log', '','','^auth_log','n'],\
+  ['sunray',     '/var/opt/SUNWut/log', '','','^messages','n'],\
+  ['sunray',     '/var/opt/SUNWut/ndbm','','','^\.+$','nv'])
+
+call push(@cmd,\
+  {cmd => 'TITLE',\
+   txt => concat('---+ Version-Dependant Commands (',$ver,')')})
+if compare('valid',$ver,'2.0') 
+{call push(@cmd,\
+   ['sunray/utreader',\
+    '/opt/SUNWut/sbin/utreader',undef,\
+    '---++ Configured Token Readers'],\
+   ['sunray/utadm_-l',\
+    '/opt/SUNWut/sbin/utadm','-l',\
+    '---++ Current Configuration for all Sun Ray Subnetworks'],\
+   ['sunray/utsession_-l',\
+    '/opt/SUNWut/sbin/utsession','-l',\
+    '---++ Detailed Security Status'])
+
+ loop $net (grepCommand('/usr/sbin/pntadm -L','(\d+\.\d+\.\d+\.\d+)','1'))
+  call push(@cmd,\
+    {cmd => 'TITLE',\
+     txt => concat('---++ DHCP Information for network ',$net)},\
+    [concat('sunray/pntadm_-P_',$net),\
+     '/usr/sbin/pntadm',concat('-P ',$net),\
+     '---+++ DHCP Network Table'],\
+    [concat('sunray/utquery_-d_',$net),\
+     '/opt/SUNWut/sbin/utquery',concat('-d ',$net),\
+     '---+++ DHCP Parameters the DTU Obtained at Boot-up'],\
+    {cmd => 'UNTITLE'})
+
+ call push(@cmd,\
+   ['sunray/utreplica_-i',\
+    '/opt/SUNWut/sbin/utreplica','-i',\
+    '---++ Failover Status'],\
+   ['sunray/utcrypto_-o',\
+    '/opt/SUNWut/sbin/utcrypto','-o',\
+    '---++ Privacy Settings'],\
+   ['sunray/utresadm_-o',\
+    '/opt/SUNWut/sbin/utresadm','-o',\
+    '---++ Resolution Configuration Records'])
+
+ call push(@cfg,\
+   ['sunray/utdsd.conf','/etc/opt/SUNWut/srds/current/utdsd.conf'],\
+   ['sunray/utdsd.ini', '/etc/opt/SUNWut/srds/current/utdsd.ini'])
+
+ var $cnt = 2
+ loop $fil (grepDir('/var/opt/SUNWut/srds/log','^utdsd\.log','pt'))
+ {call push(@log,[concat('sunray/',basename($fil)),$fil])
+  break !decr($cnt)
+ }
+
+ call push(@log,\
+   ['sunray/utdsd.pid','/var/opt/SUNWut/srds/log/utdsd.pid'])
+
+ if expr('>=',getSize('/var/opt/SUNWut/srds/log/utdsd.replog'),'100000')
+  call push(@log,\
+    {cmd => 'TAIL',\
+     cnt => 4000,\
+     fil => '/var/opt/SUNWut/srds/log/utdsd.replog',\
+     nam => 'sunray/utdsd.replog'})
+ else
+  call push(@log,\
+    ['sunray/utdsd.replog','/var/opt/SUNWut/srds/log/utdsd.replog'])
+
+ call push(@log,\
+   ['sunray','/var/opt/SUNWut/srds/log','','','utpulld\.log.*','n'],\
+   ['sunray','/var/opt/SUNWut/srds/log','','','utpushd\.log.*','n'],\
+   ['sunray/utpulld.status','/var/opt/SUNWut/srds/replog/utpulld.status'],\
+   ['sunray/utpushd.status','/var/opt/SUNWut/srds/replog/utpushd.status'])
+
+ if compare('valid',$ver,'3.0')
+  call push(@cmd,\
+    ['sunray/utwho_-Hc',\
+      '/opt/SUNWut/bin/utwho','-Hc',\
+      '---++ Connected Sun Rays'],\
+    ['sunray/utwho_-Hac',\
+      '/opt/SUNWut/bin/utwho','-Hac',\
+      '---++ Connected Sun Rays Including Not Logged In User Sessions'],\
+    ['sunray/utadm_-x',\
+      '/opt/SUNWut/sbin/utadm','-x',\
+      '---++ Current Configuration in Machine-Readable Format'],\
+    ['sunray/utfwload_-Ha',\
+      '/opt/SUNWut/sbin/utfwload','-Ha',\
+      '---++ Current Session for Each Connected Sun Ray Including \
+             Not Logged In User Sessions'],\
+    ['sunray/@etc@opt@SUNWut@jre@bin@java_-version',\
+     '/etc/opt/SUNWut/jre/bin/java','-version',\
+     '---++ Java Version'],\
+    ['sunray/utdiskadm_-l_-a',\
+     '/opt/SUNWut/bin/utdiskadm','-l -a',\
+     '---++ List all Storage Devices on System'],\
+    ['sunray/utdiskadm_-s_-a',\
+     '/opt/SUNWut/bin/utdiskadm','-s -a',\
+     '---++ List Stale Mount Points on Entire System'],\
+    ['sunray/utprodinfo',\
+      '/opt/SUNWut/lib/utprodinfo',undef,\
+      '---++ Software Information'],\
+    ['sunray/utprop',\
+      '/opt/SUNWut/lib/utprop',undef,\
+      '---++ Sun Ray Properties'],\
+    ['sunray/utusbadm',\
+      '/opt/SUNWut/sbin/utusbadm',undef,\
+      '---++ USB Ports on Sun Ray Devices'])
+}
+elsif and(compare('older',$ver,'1.4'),compare('valid',$ver,'1.0'))
+{call push(@cmd,\
+   ['sunray/ls_-lRt_@etc@opt@SUNWconn',\
+    '/bin/ls','-lRt /etc/opt/SUNWconn',\
+    '---++ Contents of /etc/opt/SUNWconn directory'],\
+   ['sunray/ls_-lRt_@var@opt@SUNWconn',\
+    '/bin/ls','-lRt /var/opt/SUNWconn',\
+    '---++ Contents of /var/opt/SUNWconn directory'])
+
+ loop $lin (grepCommand('/opt/SUNWut/sbin/utadm -p','.*'))
+ {var $net = field('\s+',2,trim($lin))
+  next match($net,'Network')
+  call push(@cmd,\
+    [concat('sunray/pntadm_-P_',$net),\
+     '/usr/sbin/pntadm',concat('-P ',$net),\
+     concat('---++ DHCP Network Table for network ',$net)])
+ }
+
+ call push(@cfg,\
+   ['sunray/dsserv.acl.conf','/etc/opt/SUNWconn/ldap/current/dsserv.acl.conf'],\
+   ['sunray/dsnmprad.conf','/etc/opt/SUNWconn/ldap/current/dsnmprad.conf'],\
+   ['sunray/dsnmpserv.conf','/etc/opt/SUNWconn/ldap/current/dsnmpserv.conf'],\
+   ['sunray/dsserv.at.conf','/etc/opt/SUNWconn/ldap/current/dsserv.at.conf'],\
+   ['sunray/dsserv.at.ut.conf',\
+    '/etc/opt/SUNWconn/ldap/current/dsserv.at.ut.conf'],\
+   ['sunray/dsserv.conf','/etc/opt/SUNWconn/ldap/current/dsserv.conf'],\
+   ['sunray/dsserv.ini','/etc/opt/SUNWconn/ldap/current/dsserv.ini'],\
+   ['sunray/dsserv.oc.conf','/etc/opt/SUNWconn/ldap/current/dsserv.oc.conf'],\
+   ['sunray/dsserv.oc.ut.conf',\
+    '/etc/opt/SUNWconn/ldap/current/dsserv.oc.ut.conf'],\
+   ['sunray/dswebfilter.conf',\
+    '/etc/opt/SUNWconn/ldap/current/dswebfilter.conf'],\
+   ['sunray/dswebfriendly.conf',\
+    '/etc/opt/SUNWconn/ldap/current/dswebfriendly.conf'],\
+   ['sunray/ldapfilter.conf',\
+    '/etc/opt/SUNWconn/ldap/current/ldapfilter.conf'],\
+   ['sunray/ldapsync.conf',\
+    '/etc/opt/SUNWconn/ldap/current/ldapsync.conf'],\
+   ['sunray/ldaptemplates.conf',\
+    '/etc/opt/SUNWconn/ldap/current/ldaptemplates.conf'])
+
+ call push(@log,\
+   ['sunray/dsserv.replog', '/var/opt/SUNWconn/ldap/log/dsserv.replog'],\
+   ['sunray',               '/var/opt/SUNWconn/ldap/log','','','\.log$','n'],\
+   ['sunray/dspulld.status','/var/opt/SUNWconn/ldap/replog/dspulld.status'],\
+   ['sunray/dspushd.replog','/var/opt/SUNWconn/ldap/replog/dspushd.replog'])
+
+ if compare('SAME',$ver,'1.2')
+  call push(@cmd,\
+    ['sunray/utxconfig_-o',\
+     '/opt/SUNWut/bin/utxconfig','-o',\
+     '---++ System Settings'])
+
+ if compare('older',$ver,'1.3')
+  call push(@log,\
+    ['sunray','/var/opt/SUNWut/tmp','','','^utreplica\..*\.log$','n'],\
+    ['sunray','/var/tmp','','','^utconfig\..*\.log$','n'],\
+    ['sunray','/var/tmp','','','^utinstall\..*\.log$','n'])
+}
+else
+{call push(@cmd,\
+   ['sunray/utxconfig_-o',\
+    '/opt/SUNWut/bin/utxconfig','-o',\
+    '---++ System Settings'])
+ call push(@log,\
+   ['sunray','/var/adm/log','','','^ut','n'])
+}
+call push(@cmd,\
+  {cmd => 'UNTITLE'})
+
+report ray_cmd
+debug ' Inside RAY collection, collecting command outputs'
+title '---+!! Sun Ray Server Commands'
+title $TOC
+call do_exec(@cmd)
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Commands]]'
+
+=head2 ray_fil_cfg - Configuration Files
+
+Gathers the following configuration files:
+
+=over 2
+
+=item o F</etc/dt/config/sessionetc>
+
+=item o F</etc/dt/config/Xconfig>
+
+=item o F</etc/dt/config/Xconfig.SUNWut.prototype>
+
+=item o F</etc/dt/config/Xreset>
+
+=item o F</etc/dt/config/Xservers>
+
+=item o F</etc/dt/config/Xservers.SUNWut.prototype>
+
+=item o F</etc/dt/config/Xsetup>
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsnmprad.conf> (for version 1.0 to 1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsnmpserv.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsserv.acl.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsserv.at.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsserv.at.ut.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsserv.conf> (for version 1.0 to 1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsserv.ini> (for version 1.0 to 1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsserv.oc.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dsserv.oc.ut.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dswebfilter.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/dswebfriendly.conf> (for version 1.0
+to 1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/ldapfilter.conf> (for version 1.0 to
+1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/ldapsync.conf> (for version 1.0 to 1.3)
+
+=item o F</etc/opt/SUNWconn/ldap/current/ldaptemplates.conf> (for version 1.0
+to 1.3)
+
+=item o F</etc/opt/SUNWut/auth.props>
+
+=item o F</etc/opt/SUNWut/auth.props.bak>
+
+=item o F</etc/opt/SUNWut/policy/utpolicy>
+
+=item o F</etc/opt/SUNWut/srds/current/utdsd.conf> (for version 2.0 and later)
+
+=item o F</etc/opt/SUNWut/srds/current/utdsd.ini> (for version 2.0 and later)
+
+=item o F</etc/opt/SUNWut/utadmin.conf>
+
+=item o F</etc/opt/SUNWut/utsettings_defaults.properties>
+
+=item o F</etc/opt/SUNWut/utsettings_mandatory.properties>
+
+=item o F</usr/dt/config/Xstartup>
+
+=item o F</var/dhcp/dhcptab>
+
+=item o F</var/dt/Xerrors>
+
+=item o F</var/dt/Xpid>
+
+=item o F</var/opt/SUNWut/kiosk/* (recursively)> (for version earlier than 1.0,
+or later than 1.2 and earlier than 2.0) 
+
+=item o F</var/opt/SUNWut/ndbm/*>
+
+=item o F</var/tmp/SUNWut/utpreserve.tar>
+
+=back
+
+=cut
+
+debug ' Inside RAY collection, collecting configuration files'
+report ray_fil_cfg
+prefix
+{write '---+!! Sun Ray Server Configuration Files'
+ write $WRN
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_fil(@cfg)
+if !or(compare('valid',$ver,'2.0'),\
+       and(compare('older',$ver,'1.4'),compare('valid',$ver,'1.0')))
+ call do_collect_dir('sunray','/var/opt/SUNWut/kiosk',true)
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Configuration Files]]'
+}
+
+=head2 ray_fil_log - Log Files
+
+Gathers the following log files:
+
+=over 2
+
+=item o F</var/adm/log/ut*> (for version earlier than 1.0, or later than 1.2 and
+earlier than 2.0)
+
+=item o F</var/http/utadmin/websites/default_site/logs>
+
+=item o F</var/opt/SUNWconn/ldap/log/*.log> (for version 1.0 to 1.3)
+
+=item o F</var/opt/SUNWconn/ldap/log/dsserv.replog> (for version 1.0 to 1.3)
+
+=item o F</var/opt/SUNWconn/ldap/replog/dspulld.status> (for version 1.0 to 1.3)
+
+=item o F</var/opt/SUNWconn/ldap/replog/dspushd.replog> (for version 1.0 to 1.3)
+
+=item o F</var/opt/SUNWut/log/admin_log*>
+
+=item o F</var/opt/SUNWut/log/auth_log*>
+
+=item o F</var/opt/SUNWut/log/messages*>
+
+=item o F</var/opt/SUNWut/srds/log/utdsd.log*> (for version 2.0 and later)
+
+=item o F</var/opt/SUNWut/srds/log/utdsd.pid> (for version 2.0 and later)
+
+=item o F</var/opt/SUNWut/srds/log/utdsd.replog> (for version 2.0 and later)
+
+=item o F</var/opt/SUNWut/srds/log/utpulld.log*> (for version 2.0 and later)
+
+=item o F</var/opt/SUNWut/srds/log/utpushd.log*> (for version 2.0 and later)
+
+=item o F</var/opt/SUNWut/srds/replog/utpulld.status> (for version 2.0 and
+later)
+
+=item o F</var/opt/SUNWut/srds/replog/utpushd.status> (for version 2.0 and
+later)
+
+=item o F</var/opt/SUNWut/tmp/utreplica.*.log> (for versions 1.0 to 1.2)
+
+=item o F</var/tmp/utconfig.*.log> (for versions 1.0 to 1.2)
+
+=item o F</var/tmp/utinstall.*.log> (for versions 1.0 to 1.2)
+
+=back
+
+=cut
+
+debug ' Inside RAY collection, collecting log files'
+report ray_fil_log 
+prefix
+{write '---+!! Sun Ray Server Log Files'
+ write $WRN
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_fil(@log)
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Log Files]]'
+}
+
+ 
+# Adjust the table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,81 @@
+# HCwin32.def: Windows Specific Code
+# $Id: HCwin32.def,v 2.7 2012/07/30 20:53:54 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/HCwin32.def,v 2.7 2012/07/30 20:53:54 mschenke Exp $
+#
+# Change History
+# 20120730  MSC  Improve the service pack detection.
+
+=head1 NAME
+
+HCwin32 - Submodule Specific to the Windows Operating System
+
+=cut
+
+# Make the module persistent
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('get_df')
+
+=head1 DESCRIPTION
+
+This module determines the operating system version and its bit size.
+
+The following macro is available:
+
+=cut
+
+import $OS_BIT,$OS_LVL,$OS_NAM,$OS_PLT,$OS_VER
+var $reg = 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+var $OS_NAM = getRegValue($reg,'ProductName')
+var $OS_VER = getRegValue($reg,'CurrentVersion')
+var $OS_LVL = getReg64Value($reg,'CSDVersion','No Service Packs installed')
+var $OS_PLT = 'Windows'
+if getEnv('SYSTEMROOT')
+ var $sys = last
+else
+ var ($sys) = command('echo %SystemRoot%')
+if testDir('d',catDir($sys,'SysWOW64'))
+ var $OS_BIT = 64
+else
+ var $OS_BIT = 32
+
+=head2 get_df($dir)
+
+This macro returns the number of free KiB on the file system containing the
+specified directory.
+
+=cut
+
+if isCygwin()
+{macro get_df
+ {var ($dir) = @arg
+  var ($lin) = grepCommand(concat('df -k ',quote($dir,'x')),'\s\d+\%')
+  if match($lin,'\s(\d+)\s+\d+\%\s')
+   var ($siz) = last
+  return $siz
+ }
+}
+else
+{macro get_df
+ {var ($fil) = @arg
+  loop $lin (reverse(grepCommand(concat('cmd /C dir /-C ',quote($fil,'x')),\
+                                 '^\s+\d+\s')))
+  {if match($lin,'^\s+\d+\s.*\s(\d+)\s[^\d]+$')
+   {var ($siz) = last
+    var $siz = int(expr('/',$siz,1024))
+    return $siz
+   }
+  }
+  return undef
+ }
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

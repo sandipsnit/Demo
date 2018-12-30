@@ -1,0 +1,209 @@
+# RCaix.def: AIX Specific Multi-run Collection Code
+# $Id: RCaix.def,v 1.11 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/RCaix.def,v 1.11 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+RCaix - Submodule Specific to the AIX Operating System
+
+=cut
+
+use Mrc
+
+# Make the module persistent
+var @COMMON_SECTIONS = ('NET_ifconfig','OS_system_error_log')
+var @ROOT_SECTIONS   = ('OS_lsuser','OS_vmo')
+keep $KEEP_BLOCK,@COMMON_SECTIONS,@ROOT_SECTIONS
+
+# Initialization
+import $TOC,$TOP
+keep $TOC,$TOP
+
+=head1 CONTRIBUTION TO THE NET MODULE
+
+=head2 ifconfig - Interface Configuration
+
+Gets the network interface configuration.
+
+=cut
+
+section NET_ifconfig
+
+if testFile('x','/usr/sbin/ifconfig')
+{debug ' Inside NET module, getting network interface configuration (aix)'
+ report ifconfig
+ prefix
+ {write '---+ Interface Configuration'
+  write '---## Using: ifconfig -a'
+ }
+ call writeCommand('/usr/sbin/ifconfig -a')
+ if isCreated(true)
+ {call validate(true)
+  write $TOP
+  toc '2:[[',getFile(),'][rda_report][Interface Configuration]]'
+ }
+}
+
+=head1 CONTRIBUTION TO THE OS MODULE
+
+=head2 lsuser - User Account Attributes
+
+Collects the C<oracle> and C<root> account attributes using the
+F</usr/sbin/lsuser> command.
+
+=cut
+
+section OS_lsuser
+
+if testFile('x','/usr/sbin/lsuser')
+{debug ' Inside OS module, getting user account attributes (aix)'
+ report lsuser
+ title '---+!! User Account Attributes'
+ title $TOC
+ loop $rec (['/usr/sbin/lsuser -a capabilities oracle','User oracle'],\
+            ['/usr/sbin/lsuser -a capabilities root','User root'])
+ {var ($cmd,$ttl) = @{$rec}
+  prefix
+  {write '---+ ',$ttl
+   write '---## Using: ',encode($cmd)
+  }
+  call writeCommand($cmd)
+  if hasOutput(true)
+   write $TOP
+ }
+ if isCreated(true)
+ {call validate(true)
+  toc '2:[[',getFile(),'][rda_report][User Account Attributes]]'
+ }
+}
+
+=head2 vmo - Virtual Memory Tunable Parameters
+
+Collects the current value of current virtual memory tunable parameters using
+the F</usr/sbin/vmo> command.
+
+=cut
+
+section OS_vmo
+
+if testFile('x','/usr/sbin/vmo')
+{debug ' Inside OS module, getting virtual memory tuning parameters (aix)'
+ report vmo
+ prefix
+ {write '---+ Virtual Memory Tuning Parameters'
+  write '---## Using: vmo -a'
+ }
+ call writeCommand('/usr/sbin/vmo -a')
+ if isCreated(true)
+ {call validate(true)
+  toc '2:[[',getFile(),'][rda_report][Virtual Memory Tuning Parameters]]'
+ }
+}
+
+=head2 system_error_log - System Error Log
+
+Collects system error log data using the F</bin/errpt> command. The system log
+file (F</var/adm/ras/errlog>) is a binary file; therefore, a textual display
+of the file is not useful.
+
+=cut
+
+section OS_system_error_log
+
+debug ' Inside OS module, getting system error report (aix)'
+report system_error_log
+
+if testFile('x','/bin/errpt')
+{output d,'error.log'
+ if writeCommand(${CUR.LAST},concat('/bin/errpt -a'))
+ {write '---+!! System Error Log Data'
+  write $TOC
+  write '---+ System Error Report'
+  write '---## Using: errpt -a'
+  write '   * Link points to the command output captured in a separate file. \
+              Opening the file directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use \
+              the link to save them and use an adequate viewer.'
+  write ''
+  write 'Error report stored in [[',${CUR.LAST}->get_raw(true),\
+        '][_blank][this file]].'
+ }
+ call $[OUT]->end_report(${CUR.LAST})
+}
+
+prefix
+{if !isCreated()
+ {write '---+!! System Error Log Data'
+  write $TOC
+ }
+ write '---+ Contents of System Error Log Files'
+ write '   * The system log files are binary files and are captured only when \
+             RDA is able to read the files. Use the link to save it and use \
+             an adequate viewer.'
+ write '|*File Name*| *Size*|*Last Modified Date*|'
+}
+if grepCommand('/usr/lib/errdemon -l','Log File','f')
+ var $fil = field('\s*=\s*',1,value(last))
+else
+ var $fil = '/var/adm/ras/errlog'
+if and(testFile('f',$fil),not(isFiltered()))
+{var $lnk = encode($fil)
+ var $siz = getSize($fil)
+ if and($siz,testFile('fr',$fil))
+ {output b,basename($fil)
+  if ${CUR.LAST}->write_data($fil)
+   var $lnk = concat('[[',${CUR.LAST}->get_raw(true),'][_blank][',$lnk,']]')
+  call $[OUT]->end_report(${CUR.LAST})
+ }
+ write '|',$lnk,' | ',$siz,'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+}
+
+if !isFiltered()
+{var $cfg
+ if grepCommand('/usr/bin/ps -e -o args','syslogd','f')
+  var ($cfg) = match(last,'\s-f\s*(\S+)')
+ if !$cfg
+  var $cfg = '/etc/syslog.conf'
+ loop $lin (grepFile($cfg,'^[^#]'))
+ {var $fil = field('\s+',1,$lin)
+  var $lnk = encode($fil)
+  var $siz = getSize($fil)
+  if and($siz,testFile('fr',$fil))
+  {output b,basename($fil)
+   if ${CUR.LAST}->write_data($fil)
+    var $lnk = concat('[[',${CUR.LAST}->get_raw(true),'][_blank][',$lnk,']]')
+   call $[OUT]->end_report(${CUR.LAST})
+  }
+  write '|',$lnk,' | ',$siz,'|',\
+        getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+}
+
+if isCreated(true)
+{call validate(true)
+ toc '2:[[',getFile(),'][rda_report][System Error Log]]'
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.25: Jaime Alcoreza.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

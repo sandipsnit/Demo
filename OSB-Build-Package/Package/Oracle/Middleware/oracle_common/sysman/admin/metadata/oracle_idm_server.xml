@@ -1,0 +1,547 @@
+<?xml version="1.0" ?>
+<!-- $Header: oracle_idm_server.xml 18-jan-2008.06:59:15 bevoss Exp $ -->
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="2.1" TYPE="oracle_idm_server" 
+                CATEGORY_PROPERTIES="Version;AppServerType">
+  <Display>
+      <Label NLSID="ORACLE_IM_LABEL">Identity Manager Server</Label>
+      <ShortName NLSID="ORACLE_IM_NAME">Identity Manager Server</ShortName>
+      <Description NLSID="ORACLE_IM_DESC">Identity Manager Server</Description>
+  </Display>
+
+  <AssocTarget ASSOCIATION_NAME="ASTarget" ASSOC_TARGET_TYPE="weblogic_j2eeserver" CARDINALITY="OPTIONAL_SINGLE_CARDINAL" COMPUTE_RULE="PARENT"/>
+  <AssocTarget ASSOCIATION_NAME="ASTarget1" ASSOC_TARGET_TYPE="websphere_j2eeserver" CARDINALITY="OPTIONAL_SINGLE_CARDINAL" COMPUTE_RULE="PARENT"/>
+  <AssocTarget ASSOCIATION_NAME="ASTarget2" ASSOC_TARGET_TYPE="jboss_j2eeserver" CARDINALITY="OPTIONAL_SINGLE_CARDINAL" COMPUTE_RULE="PARENT"/>
+
+  <Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_RESPONSE">Response</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_SERVER_STATUS_LABEL">Status</Label>
+               <Description NLSID="ORACLE_IM_J2EE_SERVER_STATUS_DESC">Current Status of the Server</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="jboss_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="jboss_server_runtime" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+            <GetView  NAME="up_process" FROM_TABLE="jboss_server_runtime">
+                <Filter COLUMN_NAME="Started" OPERATOR="EQ">true</Filter>
+            </GetView>
+            <GroupBy NAME="result" FROM_TABLE="up_process">
+                <AggregateColumn  NAME="rows"
+                    COLUMN_NAME ="Started"
+                    OPERATOR="COUNT" />
+                <ComputeColumn NAME="Status" EXPR="(rows > 0) ? 1 : 0"/>
+            </GroupBy>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="ServerRuntime" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this" FROM_TABLE="ServerRuntime">
+            <Filter COLUMN_NAME="State" OPERATOR="EQ">RUNNING</Filter>
+         </GetView>
+         <GroupBy NAME="fresult1" FROM_TABLE="this">
+            <AggregateColumn NAME="noOfRows" COLUMN_NAME="State" OPERATOR="COUNT"/>
+            <ComputeColumn NAME="Status" EXPR="(noOfRows > 0) ? 1 : 0"/>
+         </GroupBy>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="websphere_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="JVM" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+          <GroupBy NAME="fresult1" FROM_TABLE="JVM">
+            <AggregateColumn  NAME="noOfRows" COLUMN_NAME="freeMemory1" OPERATOR="COUNT"/>
+            <ComputeColumn NAME="Status" EXPR="(noOfRows > 0) ? 1 : 0"/>
+        </GroupBy>
+      </ExecutionDescriptor>
+   </Metric>
+
+   <Metric NAME="Performance" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_PERFORMANCE">Performance</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="applicationResponseTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_LOGIN_TIME_LABEL">Application Response Time</Label>
+               <Description NLSID="ORACLE_IM_J2EE_LOGIN_TIME_DESC">Application Response Time</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="avgApplicationResponseTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_AVG_LOGIN_TIME_LABEL">Average Application Response Time</Label>
+               <Description NLSID="ORACLE_IM_J2EE_AVG_LOGIN_TIME_DESC">Average Application Response Time</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="invocationsPerSecond" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_INV_PER_SEC_LABEL">Invocations Per Second</Label>
+               <Description NLSID="ORACLE_IM_J2EE_INV_PER_SEC_DESC">Invocations Per Second</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="ServletRuntime" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_servlet_runtime" FROM_TABLE="ServletRuntime">
+             <Filter COLUMN_NAME="Name" OPERATOR="CONTAINS">xlWebApp_org.apache.struts.action.ActionServlet</Filter>
+         </GetView>
+         <GetView NAME="result" FROM_TABLE="this_servlet_runtime">
+            <Column NAME="applicationResponseTime" COLUMN_NAME="currentClientProcess" TABLE_NAME="this_servlet_runtime"/>
+            <Column NAME="avgApplicationResponseTime" COLUMN_NAME="ExecutionTimeAverage" TABLE_NAME="this_servlet_runtime"/>
+            <Column NAME="invocationsPerSecond" COLUMN_NAME="invocationspersecond" TABLE_NAME="this_servlet_runtime"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="websphere_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="Servlet" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_servlet_runtime" FROM_TABLE="Servlet">
+             <Filter COLUMN_NAME="name" OPERATOR="EQ">action</Filter>
+             <Filter COLUMN_NAME="Application" OPERATOR="CONTAINS">Xellerate</Filter>
+         </GetView>
+         <GetView NAME="result" FROM_TABLE="this_servlet_runtime">
+            <Column NAME="applicationResponseTime" COLUMN_NAME="currentClientProcessingTime" TABLE_NAME="this_servlet_runtime"/>
+            <Column NAME="avgApplicationResponseTime" COLUMN_NAME="averagetime" TABLE_NAME="this_servlet_runtime"/>
+            <Column NAME="invocationsPerSecond" COLUMN_NAME="requestspersecond" TABLE_NAME="this_servlet_runtime"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="jboss_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="ApplicationData" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_servlet_runtime" FROM_TABLE="ApplicationData">
+             <Filter COLUMN_NAME="parent" OPERATOR="CONTAINS">name=xlWebApp.war</Filter>
+         </GetView>
+         <GetView NAME="result" FROM_TABLE="this_servlet_runtime">
+            <Column NAME="avgApplicationResponseTime" COLUMN_NAME="AvgExecTime" TABLE_NAME="this_servlet_runtime"/>
+            <Column NAME="invocationsPerSecond" COLUMN_NAME="CurrentReqRate" TABLE_NAME="this_servlet_runtime"/>
+			<ComputeColumn NAME="applicationResponseTime" EXPR="-1" DEFAULT_WHEN_EMPTY="TRUE" DEFAULT_VALUE="-1"/>
+		</GetView>
+      </ExecutionDescriptor>
+   </Metric>
+
+   <Metric NAME="Load" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_LOAD">Load Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="activeSessionsCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_ACTIVE_SESSIONS_LABEL">Active Sessions Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_ACTIVE_SESSIONS_DESC">Active Sessions Count</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="activeInvocations" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_ACTIVE_INVOCATIONS_LABEL">Active Invocations</Label>
+               <Description NLSID="ORACLE_IM_J2EE_ACTIVE_INVOCATIONS_DESC">Active Invocations</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="jboss_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="ApplicationData" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_app_metric" FROM_TABLE="ApplicationData">
+             <Filter COLUMN_NAME="parent" OPERATOR="CONTAINS">name=xlWebApp.war</Filter>
+         </GetView>
+         <GetView NAME="fresult1" FROM_TABLE="this_app_metric">
+            <ComputeColumn NAME="activeInvocations" EXPR="(ActiveReqs > 0 ) ? ActiveReqs : 0"/>
+			<ComputeColumn NAME="activeSessionsCount" EXPR="-1" DEFAULT_WHEN_EMPTY="TRUE" DEFAULT_VALUE="-1"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="ApplicationMetrics" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_app_metric" FROM_TABLE="ApplicationMetrics">
+            <Filter COLUMN_NAME="ApplicationName" OPERATOR="EQ">Xellerate</Filter>
+         </GetView>
+         <GetView NAME="fresult1" FROM_TABLE="this_app_metric">
+            <Column NAME="activeSessionsCount" COLUMN_NAME="OpenSessionsCurrentCount" TABLE_NAME="this_app_metric"/>
+            <Column NAME="activeInvocations" COLUMN_NAME="active.invocations" TABLE_NAME="this_app_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="websphere_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="SessionManager" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_session_metric" FROM_TABLE="SessionManager">
+             <Filter COLUMN_NAME="name" OPERATOR="CONTAINS">Xellerate</Filter>
+         </GetView>
+         <GetTable NAME="Servlet" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_servlet_metric" FROM_TABLE="Servlet">
+             <Filter COLUMN_NAME="name" OPERATOR="EQ">action</Filter>
+             <Filter COLUMN_NAME="Application" OPERATOR="CONTAINS">Xellerate</Filter>
+         </GetView>
+        <JoinTables NAME="all_load_metric">
+          <Table NAME="this_session_metric"/>
+          <Table NAME="this_servlet_metric"/>
+			<Column NAME="activeSessionsCount" TABLE_NAME="this_session_metric" COLUMN_NAME="activeSessions"/>
+			<Column NAME="activeInvocations" TABLE_NAME="this_servlet_metric" COLUMN_NAME="activeRequests"/>
+		</JoinTables>
+      </ExecutionDescriptor>
+   </Metric>
+
+   <Metric NAME="JVMMetrics" TYPE="TABLE">
+      <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+      </ValidIf>
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_JVM_LOAD">JVM Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="jvmHeapUsage" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JVM_USAGE_LABEL">JVM Heap Usage</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JVM_USAGE_DESC">JVM Heap Usage</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="jvmVersion" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JVM_VERSION_LABEL">Java Version</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JVM_VERSION_DESC"> The Java Version value of the JVM</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="jvmVendor" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JVM_VENDOR_LABEL">Java Vendor</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JVM_VENDOR_LABEL">vendor of the JVM</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="jboss_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="server_info" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jvm_metric" FROM_TABLE="server_info">
+            <Column NAME="jvmHeapUsage" COLUMN_NAME="HeapMemory" TABLE_NAME="this_jvm_metric"/>
+            <Column NAME="jvmVersion" COLUMN_NAME="JavaVMVersion" TABLE_NAME="this_jvm_metric"/>
+            <Column NAME="jvmVendor" COLUMN_NAME="JavaVMVendor" TABLE_NAME="this_jvm_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="JVMRuntime" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jvm_metric" FROM_TABLE="JVMRuntime">
+            <Column NAME="jvmHeapUsage" COLUMN_NAME="HeapSizeCurrent" TABLE_NAME="this_jvm_metric"/>
+            <Column NAME="jvmVersion" COLUMN_NAME="JavaVersion" TABLE_NAME="this_jvm_metric"/>
+            <Column NAME="jvmVendor" COLUMN_NAME="JavaVendor" TABLE_NAME="this_jvm_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+   </Metric>
+
+   <Metric NAME="RuntimeMetrics" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_RUNTIME">Runtime Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="activeThreads" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_ACTIVE_THREADS_LABEL">Active Threads Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_ACTIVE_THREADS_DESC">Active Threads Count</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="heapUsage" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_HEAP_USAGE_LABEL">Heap Usage</Label>
+               <Description NLSID="ORACLE_IM_J2EE_HEAP_USAGE_DESC">Heap Usage</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="usedMemory" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_MEM_USAGE_LABEL">Used Physical Memory</Label>
+               <Description NLSID="ORACLE_IM_J2EE_MEM_USAGE_DESC">Used Physical Memory</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="cpuLoad" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_CPU_LOAD_LABEL">CPU Load (%)</Label>
+               <Description NLSID="ORACLE_IM_J2EE_CPU_LOAD_DESC">CPU Load (%)</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+		<ValidIf>
+			<CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+		</ValidIf>
+         <GetTable NAME="JRockitRuntime" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jrockit_metric" FROM_TABLE="JRockitRuntime">
+            <Column NAME="activeThreads" COLUMN_NAME="TotalNumberOfThreads" TABLE_NAME="this_jrockit_metric"/>
+            <Column NAME="heapUsage" COLUMN_NAME="UsedHeap" TABLE_NAME="this_jrockit_metric"/>
+            <Column NAME="usedMemory" COLUMN_NAME="UsedPhysicalMemory" TABLE_NAME="this_jrockit_metric"/>
+            <Column NAME="cpuLoad" COLUMN_NAME="JvmProcessorLoad" TABLE_NAME="this_jrockit_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+		<ValidIf>
+			<CategoryProp NAME="AppServerType" CHOICES="websphere_j2eeserver"/>
+		</ValidIf>
+         <GetTable NAME="ThreadPool" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="thread_pool" FROM_TABLE="ThreadPool">
+		 </GetView>
+         <GroupBy NAME="thread_result" FROM_TABLE="thread_pool">
+            <AggregateColumn NAME="active_thread_count" COLUMN_NAME="activeThreads" OPERATOR="SUM"/>
+			<ComputeColumn NAME="heap_usage" EXPR="-1" DEFAULT_WHEN_EMPTY="TRUE" DEFAULT_VALUE="-1"/>
+         </GroupBy>
+		 <GetTable NAME="JVM" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="SystemMetrics" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="sys_metrics" FROM_TABLE="SystemMetrics">
+		 </GetView>
+         <GroupBy NAME="sys_result" FROM_TABLE="sys_metrics">
+            <AggregateColumn NAME="cpuUtilization_sum" COLUMN_NAME="cpuUtilization" OPERATOR="SUM"/>
+			<ComputeColumn NAME="cpu_load" EXPR="cpuUtilization_sum/100"/>
+         </GroupBy>
+        <JoinTables NAME="all_exec_metric">
+          <Table NAME="thread_result"/>
+          <Table NAME="JVM"/>
+          <Table NAME="sys_result"/>
+			<Column NAME="activeThreads" TABLE_NAME="thread_result" COLUMN_NAME="active_thread_count"/>
+			<Column NAME="heapUsage" TABLE_NAME="thread_result" COLUMN_NAME="heap_usage"/>
+			<Column NAME="usedMemory" TABLE_NAME="JVM" COLUMN_NAME="usedMemory"/>
+			<Column NAME="cpuLoad" TABLE_NAME="sys_result" COLUMN_NAME="cpu_load"/>
+		</JoinTables>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="jboss_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="server_info" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_server_metric" FROM_TABLE="server_info">
+            <Column NAME="activeThreads" COLUMN_NAME="ActiveThreadCount" TABLE_NAME="this_server_metric"/>
+            <Column NAME="heapUsage" COLUMN_NAME="HeapMemory" TABLE_NAME="this_server_metric"/>
+			<ComputeColumn NAME="cpuLoad" EXPR="-1" DEFAULT_WHEN_EMPTY="TRUE" DEFAULT_VALUE="-1"/>
+         </GetView>
+         <GetTable NAME="ResourceUsage" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_res_metric" FROM_TABLE="ResourceUsage">
+            <Column NAME="usedMemory" COLUMN_NAME="HeapMemoryMB" TABLE_NAME="this_res_metric"/>
+         </GetView>
+        <JoinTables NAME="all_jvm_metric">
+          <Table NAME="this_server_metric"/>
+          <Table NAME="this_res_metric"/>
+            <Column NAME="activeThreads" COLUMN_NAME="activeThreads" TABLE_NAME="this_server_metric"/>
+            <Column NAME="heapUsage" COLUMN_NAME="heapUsage" TABLE_NAME="this_server_metric"/>
+            <Column NAME="usedMemory" COLUMN_NAME="usedMemory" TABLE_NAME="this_res_metric"/>
+            <Column NAME="cpuLoad" COLUMN_NAME="cpuLoad" TABLE_NAME="this_server_metric"/>
+		</JoinTables>
+	  </ExecutionDescriptor>
+   </Metric>
+
+   <Metric NAME="JMSMetrics" TYPE="TABLE">
+	  <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+      </ValidIf>
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_JMS_METRIC_LABEL">JMS Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="jmsName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JMS_NAME_LABEL">JMS Server Name</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JMS_NAME_DESC">JMS Server Name</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="jmsCurrentMsgCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JMS_CURRENT_MSG_LABEL">JMS Server - Messages Current Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JMS_CURRENT_MSG_DESC">JMS Server - Messages Current Count</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="jmsReceivedMsgCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JMS_RECEIVED_MSG_LABEL">JMS Server - Messages Received Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JMS_RECEIVED_MSG_DESC">JMS Server - Messages Received Count</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="jmsPendingMsgCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JMS_PENDING_MSG_LABEL">JMS Server - Messages Pending Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JMS_PENDING_MSG_DESC">JMS Server - Messages Pending Count</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+
+      <ExecutionDescriptor>
+		  <GetTable NAME="JMSServerRuntime" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+		  <GetView NAME="this_jms_metric" FROM_TABLE="JMSServerRuntime">
+				<Filter COLUMN_NAME="Name" OPERATOR="CONTAINS">xl</Filter>
+				<Filter COLUMN_NAME="Name" OPERATOR="CONTAINS">Queue</Filter>
+			 </GetView>
+			 <GetView NAME="result" FROM_TABLE="this_jms_metric">
+				<Column NAME="jmsName" COLUMN_NAME="Name" TABLE_NAME="this_jms_metric"/>
+				<Column NAME="jmsCurrentMsgCount" COLUMN_NAME="MessagesCurrentCount" TABLE_NAME="result"/>
+				<Column NAME="jmsReceivedMsgCount" COLUMN_NAME="MessagesReceivedCount" TABLE_NAME="result"/>
+				<Column NAME="jmsPendingMsgCount" COLUMN_NAME="MessagesPendingCount" TABLE_NAME="result"/>
+		  </GetView>
+      </ExecutionDescriptor>
+   </Metric>
+
+   <Metric NAME="JDBCMetrics" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_JDBC_LABEL">JDBC Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="jdbcConnPoolName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JDBC_CONN_LABEL">JDBC Connection Pool Name</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JDBC_CONN_DESC">JDBC Connection Pool Name</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="activeJDBCConnections" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JDBC_CONN_LABEL">Active JDBC Connections Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JDBC_CONN_DESC">Active JDBC Connections Count</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="jboss_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="jca_resources" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jca_metric" FROM_TABLE="jca_resources">
+            <Filter COLUMN_NAME="objectName" OPERATOR="CONTAINS">name=jdbc/xlXADS</Filter>
+         </GetView>
+         <GetView NAME="this_jdbc_metric" FROM_TABLE="this_jca_metric">
+            <Column NAME="jdbcConnPoolName" COLUMN_NAME="objectName" TABLE_NAME="this_jdbc_metric"/>
+            <Column NAME="activeJDBCConnections" COLUMN_NAME="currentPoolSize" TABLE_NAME="this_jdbc_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="JDBCConnectionPoolRuntime" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jdbc_metric" FROM_TABLE="JDBCConnectionPoolRuntime">
+            <Column NAME="jdbcConnPoolName" COLUMN_NAME="Name" TABLE_NAME="this_jdbc_metric"/>
+            <Column NAME="activeJDBCConnections" COLUMN_NAME="ActiveConnectionsCurrentCount" TABLE_NAME="this_jdbc_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="websphere_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="JDBCProvider" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jdbc_metric" FROM_TABLE="JDBCProvider">
+            <Filter COLUMN_NAME="name" OPERATOR="EQ">XL XA Provider</Filter>
+		 </GetView>
+		 <GetView NAME="jdbc_metric_result" FROM_TABLE="this_jdbc_metric">
+            <Column NAME="jdbcConnPoolName" COLUMN_NAME="name" TABLE_NAME="jdbc_metric_result"/>
+            <Column NAME="activeJDBCConnections" COLUMN_NAME="numManagedConnections" TABLE_NAME="jdbc_metric_result"/>
+		 </GetView>
+      </ExecutionDescriptor>
+   </Metric>
+
+   <Metric NAME="JTARuntimeMetrics" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ORACLE_IM_J2EE_JTA_LABEL">JTA Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="activeTxnsCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JTA_ACTIVE_TXN_COUNT_LABEL">Active JTA Transactions Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JTA_ACTIVE_TXN_COUNT_DESC">Active JTA Transactions Count</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="committedTxnsCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JTA_COMMITTED_TXN_COUNT_LABEL">Committed JTA Transactions Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JTA_COMMITTED_TXN_COUNT_DESC">Committed JTA Transactions Count</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="totalTxnsCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="ORACLE_IM_J2EE_JTA_TOTAL_TXN_COUNT_LABEL">Total JTA Transactions Count</Label>
+               <Description NLSID="ORACLE_IM_J2EE_JTA_TOTAL_TXN_COUNT_DESC">Total JTA Transactions Count</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="weblogic_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="JTARuntime" ASSOC_TARGET="ASTarget" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jta_metric" FROM_TABLE="JTARuntime">
+            <Column NAME="activeTxnsCount" COLUMN_NAME="ActiveTransactionsTotalCount" TABLE_NAME="this_jta_metric"/>
+            <Column NAME="committedTxnsCount" COLUMN_NAME="TransactionCommittedTotalCount" TABLE_NAME="this_jta_metric"/>
+            <Column NAME="totalTxnsCount" COLUMN_NAME="TransactionTotalCount" TABLE_NAME="this_jta_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="websphere_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="TransactionService" ASSOC_TARGET="ASTarget1" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jta_metric" FROM_TABLE="TransactionService">
+            <Column NAME="activeTxnsCount" COLUMN_NAME="activeGlobalTrans" TABLE_NAME="this_jta_metric"/>
+            <Column NAME="committedTxnsCount" COLUMN_NAME="globalTransCommitted" TABLE_NAME="this_jta_metric"/>
+            <Column NAME="totalTxnsCount" COLUMN_NAME="globalTransBegun" TABLE_NAME="this_jta_metric"/>
+         </GetView>
+      </ExecutionDescriptor>
+      <ExecutionDescriptor>
+        <ValidIf>
+	        <CategoryProp NAME="AppServerType" CHOICES="jboss_j2eeserver"/>
+        </ValidIf>
+         <GetTable NAME="TransactionRuntime" ASSOC_TARGET="ASTarget2" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetView NAME="this_jta_metric" FROM_TABLE="TransactionRuntime">
+            <Column NAME="activeTxnsCount" COLUMN_NAME="TransactionCount" TABLE_NAME="this_jta_metric"/>
+            <Column NAME="committedTxnsCount" COLUMN_NAME="CommitCount" TABLE_NAME="this_jta_metric"/>
+            <Column NAME="rollbackTxnsCount" COLUMN_NAME="RollbackCount" TABLE_NAME="this_jta_metric"/>
+            <ComputeColumn NAME="totalTxnsCount" EXPR="(committedTxnsCount + rollbackTxnsCount)"/>
+         </GetView>
+      </ExecutionDescriptor>
+   </Metric>
+
+   <InstanceProperties>
+      <InstanceProperty NAME="Version" OPTIONAL="FALSE">
+         <Display>
+            <Label NLSID="ORACLE_IM_J2EE_VERSION_LABEL">Version</Label>
+            <ShortName NLSID="ORACLE_IM_J2EE_VERSION_LABEL">Version</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="MachineName" OPTIONAL="FALSE">
+         <Display>
+            <Label NLSID="ORACLE_IM_J2EE_MACHINENAME_LABEL">Machine Name</Label>
+            <ShortName NLSID="ORACLE_IM_J2EE_MACHINENAME_NAME">Machine Name</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="AppServerName" OPTIONAL="FALSE">
+         <Display>
+            <Label NLSID="ORACLE_IM_J2EE_APPSERVERNAME_LABEL">Application Server Name</Label>
+            <ShortName NLSID="ORACLE_IM_J2EE_APPSERVERNAME_NAME">Application Server Name</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="AppServerType" OPTIONAL="FALSE">
+         <Display>
+            <Label NLSID="ORACLE_IM_J2EE_APPSERVERTYPE_LABEL">Application Server Type</Label>
+            <ShortName NLSID="ORACLE_IM_J2EE_APPSERVERTYPE_NAME">Application Server Type</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="OnHost" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="ORACLE_IM_J2EE_ONHOST_LABEL">On Host</Label>
+            <ShortName NLSID="ORACLE_IM_J2EE_ONHOST_NAME">On Host</ShortName>
+         </Display>
+      </InstanceProperty>
+   </InstanceProperties>
+</TargetMetadata>

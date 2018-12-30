@@ -1,0 +1,421 @@
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="1.0" TYPE="oracle_bi_dac"
+                CATEGORY_PROPERTIES="VersionCategory">
+   <Display>
+      <Label NLSID="oracle_bi_dacNLSID">Oracle BI DAC Server</Label>
+      <ShortName NLSID="oracle_bi_dacShortName">oracle_bi_dac</ShortName>
+      <Description NLSID="oracle_bi_dacDescription">Oracle BI DAC Server</Description>
+   </Display>
+   <Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_dac_resp">Response</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="oracle_bi_dac_resp_status">Status</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+         <Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/getStatus.pl</Property>
+         <Property NAME="args" SCOPE="GLOBAL">%BIHome% com.siebel.etl.net.QServer</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Resources" TYPE="TABLE">
+      <Display>
+         <Label NLSID="RESOURCES">Resources</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="CPU" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="CPU">CPU (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Memory" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="MEMORY">Memory (KB)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+         <Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/procResUsage.pl</Property>
+         <Property NAME="args" SCOPE="GLOBAL">%BIHome% com.siebel.etl.net.QServer</Property>
+      </QueryDescriptor>
+   </Metric>
+
+   <Metric NAME="ETL Performance" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_dac_etlTasks">ETL Performance</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="aggregateTotalTasks" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE" HELP="NO_HELP">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_aggrTotalTasks">Total tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="aggregateFailedTasks" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE" HELP="NO_HELP">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_aggrFailedTasks">Total failed tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="aggregateCompletedTasks" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE" HELP="NO_HELP">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_aggrCompletedTasks">Total completed tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="queuedTasks" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_queuedTasks">Queued tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="runningTasks" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_runningTasks">Running tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="runnableTasks" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_runnableTasks">Runnable tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="totalTasks" TYPE="NUMBER" IS_KEY="FALSE"
+                  COMPUTE_EXPR="(aggregateTotalTasks - _aggregateTotalTasks) > 0 ? (aggregateTotalTasks - _aggregateTotalTasks) : 0">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_totalTasks">Total tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedTasks" TYPE="NUMBER" IS_KEY="FALSE"
+                  COMPUTE_EXPR="(aggregateFailedTasks - _aggregateFailedTasks) > 0 ? (aggregateFailedTasks - _aggregateFailedTasks) : 0">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedTasks">Failed tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="completedTasks" TYPE="NUMBER" IS_KEY="FALSE"
+                  COMPUTE_EXPR="(aggregateCompletedTasks - _aggregateCompletedTasks) > 0 ? (aggregateCompletedTasks - _aggregateCompletedTasks) : 0">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_completedTasks">Completed tasks</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                 select max(c1), max(c2), max(c3), max(c4), max(c5), max(c6) from 
+		(
+                    select count(*) as c1, 0 as c2, 0 as c3, 0 as c4, 0 as c5, 0 as c6 from W_ETL_RUN_STEP
+                        UNION ALL
+		    select 0 as c1, count(*) as c2, 0 as c3, 0 as c4, 0 as c5, 0 as c6 from W_ETL_RUN_STEP where STATUS = 'Failed'
+                        UNION ALL
+		    select 0 as c1, 0 as c2, count(*) as c3, 0 as c4, 0 as c5, 0 as c6 from W_ETL_RUN_STEP where STATUS = 'Completed'
+                        UNION ALL
+		    select 0 as c1, 0 as c2, 0 as c3, count(*) as c4, 0 as c5, 0 as c6 from W_ETL_RUN_STEP where STATUS = 'Queued'
+                        UNION ALL
+		    select 0 as c1, 0 as c2, 0 as c3, 0 as c4, count(*) as c5, 0 as c6 from W_ETL_RUN_STEP where STATUS = 'Running'
+                        UNION ALL
+		    select 0 as c1, 0 as c2, 0 as c3, 0 as c4, 0 as c5, count(*) as c6 from W_ETL_RUN_STEP where STATUS = 'Runnable'
+                ) a
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Failed ETL Runs" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_dac_failedEtlRuns">Failed ETL Runs</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="failedEtlDefn" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlDefn">ETL Definition</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlProcessId" TYPE="NUMBER" IS_KEY="TRUE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlProcessId">Process Id</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlRunStatus" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlRunStatus">Status</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlStartTime" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlStartTime">Start Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlEndTime" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlEndTime">End Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlTotalSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlTotalSteps">Total Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlCompletedSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlCompletedSteps">Completed Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlFailedSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlFailedSteps">Failed Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedEtlRunningSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedEtlRunningSteps">Running Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                SELECT etl_defn_name, etl_proc_wid, status, start_ts, end_ts, total_steps, succ_steps, failed_steps, running_steps FROM w_etl_defn_run WHERE status = 'Failed' OR status = 'Stopped'
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="ETL Runs" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_dac_etlRuns">ETL Runs</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="etlDefn" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_etlDefn">ETL Definition</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="processId" TYPE="NUMBER" IS_KEY="TRUE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_processId">Process Id</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="runStatus" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_runStatus">Status</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="runStartTime" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_runStartTime">Start Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="runEndTime" TYPE="STRING" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_runEndTime">End Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="totalSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_totalSteps">Total Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="completedSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_completedSteps">Completed Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_failedSteps">Failed Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="runningSteps" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_runningSteps">Running Steps</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                SELECT etl_defn_name, etl_proc_wid, status, start_ts, end_ts, total_steps, succ_steps, failed_steps, running_steps FROM w_etl_defn_run
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="ETL Run Log" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_dac_etlRunLog">ETL Run Log</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="etlLog" TYPE="STRING" IS_KEY="FALSE">                      <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_dac_etlLog">ETL Log</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE">DBClassString</Property>
+         <Property NAME="ProcessId" SCOPE="USER">ProcessId</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                SELECT comments FROM w_etl_defn_run WHERE etl_proc_wid = '%ProcessId%'
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+   
+   <Metric NAME="BIDAC_CONFIG" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_DAC_CONFIG">
+      <!--ServerInstance-->
+      <ColumnDescriptor NAME="PRODUCT_VERSION" COLUMN_NAME="PRODUCT_VERSION" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TYPE" COLUMN_NAME="TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CONN_STR" COLUMN_NAME="CONN_STR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="HOST" COLUMN_NAME="HOST" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PORT" COLUMN_NAME="PORT" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DATABASE_USERNAME" COLUMN_NAME="DATABASE_USERNAME"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JDBC_DRIVER" COLUMN_NAME="JDBC_DRIVER" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JDBC_URL" COLUMN_NAME="JDBC_URL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="EMAIL_HOST" COLUMN_NAME="EMAIL_HOST"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="EMAIL_PROTOCOL" COLUMN_NAME="EMAIL_PROTOCOL"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="EMAIL_USER" COLUMN_NAME="EMAIL_USER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="EMAIL_ADDRESS" COLUMN_NAME="EMAIL_ADDRESS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DAC_PROP_SERVER_HOST" COLUMN_NAME="DAC_PROP_SERVER_HOST"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DAC_PROP_SERVER_PORT" COLUMN_NAME="DAC_PROP_SERVER_PORT" 
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DAC_PROP_REP_STAMP_VAL" COLUMN_NAME="DAC_PROP_REP_STAMP_VAL"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadprop.pl" "%ConfigFile%" "DAC" "V#ServerProp@type|conn_str|host|port|DatabaseUsername|JDBCDriver|JDBCUrl|email_host|email_protocol|email_user|email_address" "%BIHome%"  "%DACPropertyFile%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>
+  <Metric NAME="BIDAC_ETL_CONFIG" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_DAC_ETL_CONFIG">
+      <!--ServerInstance-->
+      <ColumnDescriptor NAME="STEP_NAME" COLUMN_NAME="STEP_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SRCDB_NAME" COLUMN_NAME="SRCDB_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TRGTDB_NAME" COLUMN_NAME="TRGTDB_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="STEP_TYPE_NAME" COLUMN_NAME="STEP_TYPE_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PHASE_NAME" COLUMN_NAME="PHASE_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="EXEC_NAME" COLUMN_NAME="EXEC_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RS_STATUS" COLUMN_NAME="RS_STATUS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SERVER_NAME" COLUMN_NAME="SERVER_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RS_STATUS_DESC" COLUMN_NAME="RS_STATUS_DESC" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RS_START_TS" COLUMN_NAME="RS_START_TS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RS_END_TS" COLUMN_NAME="RS_END_TS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RS_SUCCESS_ROWS" COLUMN_NAME="RS_SUCCESS_ROWS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RS_FAILED_ROWS" COLUMN_NAME="RS_FAILED_ROWS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RS_ERROR_CODE" COLUMN_NAME="RS_ERROR_CODE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadprop.pl" "%ETLSummaryFile%" "DAC" "V#ServerProp@STEP_NAME|SRCDB_NAME|TRGTDB_NAME|STEP_TYPE_NAME|PHASE_NAME|EXEC_NAME|RS_STATUS|SERVER_NAME|RS_STATUS_DESC|RS_START_TS|RS_END_TS|RS_SUCCESS_ROWS|RS_FAILED_ROWS|RS_ERROR_CODE" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+  </Metric>
+
+   <InstanceProperties>
+      <InstanceProperty NAME="BIHome">
+         <Display>
+            <Label NLSID="BI_HOME_LABEL">BI Home</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="Host">
+         <Display>
+            <Label NLSID="BI_HOST_LABEL">Host</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBConnectionString">
+         <Display>
+            <Label NLSID="BI_DAC_REPO_CONN_STRING_LABEL">DAC Repository JDBC Url</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBClassString">
+         <Display>
+            <Label NLSID="BI_DAC_REPO_CLASS_STRING_LABEL">DAC Repository JDBC Driver</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBUserName" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="BI_DAC_REPO_USER_NAME">DAC Repository Username</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBPassword" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="BI_DAC_REPO_PASSWORD">DAC Repository Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="ConfigFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_configFile">Configuration File</Label>
+         </Display>
+      </InstanceProperty> 
+      <InstanceProperty NAME="DACPropertyFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_DACPropertyFile">DAC Property File</Label>
+         </Display>
+      </InstanceProperty> 
+      <InstanceProperty NAME="ETLSummaryFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_ETLSummaryFile">ETL Summary File</Label>
+         </Display>
+      </InstanceProperty>       
+   </InstanceProperties>
+</TargetMetadata>

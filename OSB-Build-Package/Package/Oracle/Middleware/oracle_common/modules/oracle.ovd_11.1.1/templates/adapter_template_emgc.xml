@@ -1,0 +1,137 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<adapters schvers="303" version="1" xmlns="http://www.octetstring.com/schemas/Adapters" xmlns:adapters="http://www.w3.org/2001/XMLSchema-instance">
+   <dataBase id="USER_ADAPTER" version="0">
+      <root>%ROOT%</root>
+      <active>true</active>
+      <serverType>USER_ADAPTER</serverType>
+      <routing>
+         <critical>true</critical>
+         <priority>50</priority>
+         <inclusionFilter/>
+         <exclusionFilter/>
+         <plugin/>
+         <retrieve/>
+         <store/>
+         <visible>Yes</visible>
+         <levels>-1</levels>
+         <bind>true</bind>
+         <bind-adapters/>
+         <views/>
+         <dnpattern/>
+      </routing>
+      <pluginChains xmlns="http://xmlns.oracle.com/iam/management/ovd/config/plugins">
+         <plugins>
+            <plugin>
+              <name>DMSMetrics</name>
+              <class>oracle.ods.virtualization.engine.chain.plugins.DMSMetrics.MonitorPerformance</class>
+              <initParams/>
+            </plugin>
+            <plugin>
+               <name>DBGUID</name>
+               <class>oracle.ods.virtualization.engine.chain.plugins.dbguid.DBGuidPlugin</class>
+               <initParams>
+                  <param name="guidAttribute" value="orclguid"/>
+               </initParams>
+            </plugin>
+         </plugins>
+         <default>
+            <plugin name="DMSMetrics"/>
+            <plugin name="DBGUID"/>
+         </default>
+         <add/>
+         <bind/>
+         <delete/>
+         <get/>
+         <modify/>
+         <rename/>
+      </pluginChains>
+      <driver>oracle.jdbc.driver.OracleDriver</driver>
+      <url>%URL%</url>
+      <user>%USER%</user>
+      <password>%PASSWORD%</password>
+      <ignoreObjectClassOnModify>false</ignoreObjectClassOnModify>
+      <includeInheritedObjectClasses>true</includeInheritedObjectClasses>
+      <maxConnections>10</maxConnections>
+      <mapping>
+         <joins/>
+         <objectClass name="inetorgperson" rdn="cn">
+            <attribute ldap="cn" table="SYSMAN.GC_USERS" field="USER_NAME" type=""/>
+            <attribute ldap="displayname" table="SYSMAN.GC_USERS" field="USER_NAME" type=""/>
+            <attribute ldap="uid" table="SYSMAN.GC_USERS" field="USER_NAME" type=""/>
+            <attribute ldap="usernameattr" table="SYSMAN.GC_USERS" field="USER_NAME" type=""/>
+            <attribute ldap="loginid" table="SYSMAN.GC_USERS" field="USER_NAME" type=""/>
+            <attribute ldap="description" table="SYSMAN.GC_USERS" field="USER_DESCRIPTION" type=""/>
+            <attribute ldap="orclGUID" table="SYSMAN.GC_USERS" field="USER_GUID" type=""/>
+         </objectClass>
+      </mapping>
+      <useCaseInsensitiveSearch>true</useCaseInsensitiveSearch>
+      <connectionWaitTimeout>10</connectionWaitTimeout>
+      <oracleNetConnectTimeout>0</oracleNetConnectTimeout>
+      <validateConnection>false</validateConnection>
+   </dataBase>
+   <dataBase id="GROUP_ADAPTER" version="0">
+      <root>%ROOT%</root>
+      <active>true</active>
+      <serverType>GROUP_ADAPTER</serverType>
+      <routing>
+         <critical>true</critical>
+         <priority>50</priority>
+         <inclusionFilter/>
+         <exclusionFilter/>
+         <plugin/>
+         <retrieve/>
+         <store/>
+         <visible>Yes</visible>
+         <levels>-1</levels>
+         <bind>true</bind>
+         <bind-adapters/>
+         <views/>
+         <dnpattern/>
+      </routing>
+      <pluginChains xmlns="http://xmlns.oracle.com/iam/management/ovd/config/plugins">
+         <plugins>
+            <plugin>
+              <name>DMSMetrics</name>
+              <class>oracle.ods.virtualization.engine.chain.plugins.DMSMetrics.MonitorPerformance</class>
+              <initParams/>
+            </plugin>
+            <plugin>
+               <name>VirtualAttribute</name>
+               <class>oracle.ods.virtualization.engine.chain.plugins.virtualattr.VirtualAttributePlugin</class>
+               <initParams>
+                  <param name="ReplaceAttribute" value="uniquemember={cn=%uniquemember%,cn=users,dc=oracle,dc=com}"/>
+               </initParams>
+            </plugin>
+         </plugins>
+         <default>
+            <plugin name="DMSMetrics"/>
+            <plugin name="VirtualAttribute"/>
+         </default>
+         <add/>
+         <bind/>
+         <delete/>
+         <get/>
+         <modify/>
+         <rename/>
+      </pluginChains>
+      <driver>oracle.jdbc.driver.OracleDriver</driver>
+      <url>%URL%</url>
+      <user>%USER%</user>
+      <password>%PASSWORD%</password>
+      <ignoreObjectClassOnModify>false</ignoreObjectClassOnModify>
+      <includeInheritedObjectClasses>true</includeInheritedObjectClasses>
+      <maxConnections>10</maxConnections>
+      <mapping>
+         <joins/>
+         <objectClass name="groupofuniquenames" rdn="cn">
+            <attribute ldap="cn" table="SYSMAN.GC_USER_ROLES" field="ROLE_NAME" type=""/>
+            <attribute ldap="description" table="SYSMAN.GC_USER_ROLES" field="ROLE_DESCRIPTION" type=""/>
+            <attribute ldap="uniquemember" table="SYSMAN.GC_USER_ROLES" field="USER_NAME" type=""/>
+         </objectClass>
+      </mapping>
+      <useCaseInsensitiveSearch>true</useCaseInsensitiveSearch>
+      <connectionWaitTimeout>10</connectionWaitTimeout>
+      <oracleNetConnectTimeout>0</oracleNetConnectTimeout>
+      <validateConnection>false</validateConnection>
+   </dataBase>
+</adapters>

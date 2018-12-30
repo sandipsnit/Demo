@@ -1,0 +1,126 @@
+# S483NI.def: Collects Oracle Communications Network Integrity Information
+# $Id: S483NI.def,v 1.6 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S483NI.def,v 1.6 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S483NI - Collect Oracle Communications Network Integrity Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Communications Network Integrity-related
+information. The following reports can be generated and are regrouped under
+C<Network Integrity>:
+
+=cut
+
+echo tput('bold'),'Processing NI module ...',tput('off')
+
+# Initialization
+var $NI_DOMAIN = getSetting('NI_DOMAIN','')
+var $NI_LIMIT  = getSetting('NI_LIMIT',2000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+toc '1:Network Integrity'
+
+=head2 domain_directories - Domain Directory Listing
+
+Lists the content of the domain.
+
+=cut
+
+macro stat_tree
+{var ($dir) = @arg
+ import $TOP
+ keep $TOP
+
+ prefix
+ {
+ }
+ call statDir('n',$dir)
+ if hasOutput(true)
+  write $TOP
+
+ loop $pth (grepDir($dir,'^\.+$','npv'))
+ {if testFile('dr',$pth)
+  {next testFile('l',$pth)
+   call stat_tree($pth)
+  }
+ }
+}
+
+debug ' Inside NI module, listing domain directory structure'
+report domain_directories
+write '---+ Adminserver Domain Listing'
+write '---## Recursively Searched from ',encode($NI_DOMAIN)
+call stat_tree($NI_DOMAIN)
+toc '2:[[',getFile(),'][rda_report][Domain Directory Listing]]'
+
+=head2 domain_logs - Domain Log Files
+
+Collects domain log files.
+
+=cut
+
+debug ' Inside NI module, getting domain log files'
+report domain_logs
+
+write '---+!! Domain Log Files (',$NI_LIMIT,' lines of each type)'
+write '---## From ',$NI_DOMAIN
+write $TOC
+
+loop $fil (grepDir($NI_DOMAIN,'log$','np'))
+{prefix
+ {if isCreated()
+   write '---'
+  write '---+',encode($fil)
+ }
+ call writeTail($fil,$NI_LIMIT)
+ if hasOutput(true)
+  write $TOP
+}
+
+loop $dir (grepDir($NI_DOMAIN,'logs','dr'))
+{loop $log (grepDir($dir,'log$','dr'))
+ {var $max = $NI_LIMIT
+  loop $fil (grepDir(dirname($log),concat('^',quote(basename($log))),'tr'))
+  {break expr('<=',$max,0)
+   prefix
+   {if isCreated()
+     write '---'
+    write '---+',encode($fil)
+   }
+   call writeTail($fil,$max)
+   decr $max,getWriteLength()
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+}
+toc '2:[[',getFile(),'][rda_report][Domain Log Files]]'
+
+=begin credits
+
+=over 10
+
+=item RDA 4.19: Robert Finley
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,822 @@
+<?xml version='1.0'?>
+
+<!-- Copyright (c) 2007, 2010, Oracle and/or its affiliates. 
+All rights reserved. -->
+
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd" >
+
+
+<TargetMetadata META_VER="1.0" TYPE="oracle_ovd" RESOURCE_BUNDLE_PACKAGE="oracle.sysman.emas.rsc.gen.iam" CATEGORY_PROPERTIES="VersionCategory">
+    <Display>
+        <Label NLSID="oracle_ovd">Oracle Virtual Directory</Label>
+    </Display>
+
+    <AssocTarget ASSOCIATION_NAME="farm" ASSOC_TARGET_TYPE="*"/>
+    <AssocTarget ASSOCIATION_NAME="managedBy" ASSOC_TARGET_TYPE="*"/>
+
+    <Metric NAME="ResourceUsage" COLLECT_WHEN_NO_REPOS="TRUE" NUM_CACHE_VALUES="20" FORCE_CACHE="TRUE" TYPE="TABLE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="ResourceUsage">Resource Usage</Label>
+      </Display>
+      <TableDescriptor>
+          <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+              <Label NLSID="resource_cpu_component">CPU Utilization (%)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_cpu_other">Other CPU Utilization (%)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_cpu_idle">CPU Idle Time (%)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+              <Label NLSID="resource_memory_component">Memory Utilization (MB)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_memoryPercentage_component">Memory Utilization (%)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="memory.other" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_memory_other">Other Memory Utilization (MB)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="memoryPercentage.other" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_memoryPercentage_other">Other Memory Utilization (%)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="memory.free" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_memory_free">Free Memory (MB)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="memoryPercentage.free" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_memoryPercentage_free">Free Memory (%)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="memory.total" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+              <Label NLSID="resource_memory_total">Total Memory (MB)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME="heap.component" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display FOR_SUMMARY_UI="TRUE">
+              <Label NLSID="resource_heap_component">Heap Utilization (MB)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME='upTime.value' TYPE='NUMBER'>
+            <Display>
+              <Label NLSID="resource_upTime">Up Time (ms since Epoch)</Label>
+            </Display>
+          </ColumnDescriptor>
+          <ColumnDescriptor NAME='startTime.value' TYPE='NUMBER'>
+            <Display>
+              <Label NLSID="resource_startTime">Start Time (ms since Epoch)</Label>
+            </Display>
+          </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+          <Property NAME="metric" SCOPE="GLOBAL">opmn_component:ResourceUsage</Property>
+          <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+          <Property NAME="columnOrder" SCOPE="GLOBAL">cpu.component;cpu.other;cpu.idle;memory.component;memoryPercentage.component;memory.other;memory.free</Property>
+          <Property NAME="ServerNames" SCOPE="INSTANCE">CanonicalPath</Property>
+           <Property NAME="CanonicalPath.parameter" SCOPE="INSTANCE">CanonicalPath</Property>
+         <Property NAME="useCache" SCOPE="GLOBAL">refreshall</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>ServerNames.parameter</key><value type="java.lang.String">%CanonicalPath.parameter%</value></item></value></argument>]]>
+          </Property>         
+      </QueryDescriptor>
+  </Metric>
+     <!-- Resource Usage Metric -->
+     <!--<Metric NAME="ResourceUsage" NUM_CACHE_VALUES="20" FORCE_CACHE="TRUE" TYPE="TABLE">
+  <Display>
+    <Label NLSID="ovd_ResourceUsage">Resource Usage</Label>
+  </Display>
+  <TableDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="ovd_resource_cpu_component">CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+       <Label NLSID="ovd_resource_cpu_other">Other CPU Usage (%)</Label>
+      </Display></ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ovd_resource_cpu_idle">CPU Idle Time (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="ovd_resource_memory_component">Memory Usage (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ovd_resource_memoryPercentage_component">Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ovd_resource_memory_other">Other Memory Usage (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ovd_resource_memory_free">Free Memory (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">pcs_component:ResourceUsage</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">cpu.component;cpu.other;cpu.idle;memory.component;memoryPercentage.component;memory.other;memory.free</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>topologyNodeID.parameter</key><value type="java.lang.String">%topologyNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+  </QueryDescriptor>
+</Metric> -->
+    <!-- Metric Response -->
+    <Metric NAME="Response" TYPE="TABLE">
+        <Display>
+            <Label NLSID="response">Response</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="response_status">UpDown Status</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+       <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">opmn_component:Response</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">CanonicalPath</Property>
+          <Property NAME="CanonicalPath.parameter" SCOPE="INSTANCE">CanonicalPath</Property>
+         <Property NAME="useCache" SCOPE="GLOBAL">refreshall</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>ServerNames.parameter</key><value type="java.lang.String">%CanonicalPath.parameter%</value></item></value></argument>]]>
+         </Property>  
+  </QueryDescriptor>
+    </Metric>
+    <!--<Metric NAME="Response" TYPE="TABLE">
+        <Display>
+            <Label NLSID="response">Response</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="response_status">UpDown Status</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <ExecutionDescriptor>
+
+        <GetTable NAME="Response_raw"  USE_CACHE="FALSE"/>
+        <GetView  NAME="up_process" FROM_TABLE="Response_raw">
+          <Filter COLUMN_NAME="Status" OPERATOR="EQ">true</Filter>
+        </GetView>
+
+        <GroupBy NAME="result" FROM_TABLE="up_process">
+          <AggregateColumn  NAME="rows"
+                            COLUMN_NAME ="Status"
+                            OPERATOR="COUNT" />
+          <ComputeColumn    NAME="Status"
+                            EXPR="(rows > 0) ? 1 : 0"/>
+        </GroupBy>
+      </ExecutionDescriptor>
+    </Metric>
+
+     <Metric NAME="Response_raw" TYPE="TABLE" USAGE_TYPE="HIDDEN">
+        <Display>
+            <Label NLSID="response">Response</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="response_status">UpDown Status</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+       <QueryDescriptor FETCHLET_ID="OJMX">
+            <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+            <Property NAME="port" SCOPE="INSTANCE">HTTPPort</Property>
+            <Property NAME="useSSL" SCOPE="INSTANCE" OPTIONAL="TRUE">HTTPSSL</Property>
+            <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+            <Property NAME="authpwd" SCOPE="INSTANCE" >authPasswd</Property>
+            <Property NAME="metricType" SCOPE="GLOBAL" OPTIONAL="TRUE">GWS</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="soapVersion" SCOPE="GLOBAL" OPTIONAL="TRUE">SOAP1.1</Property>
+            <Property NAME="documentType" SCOPE="GLOBAL" OPTIONAL="TRUE">rpc/encoded</Property>
+            <Property NAME="targetNamespace" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" />]]></Property>
+            <Property NAME="rowType" SCOPE="GLOBAL">/ns1:getServerInfoResponse/getServerInfoReturn/</Property>
+            <Property NAME="columnOrder" SCOPE="GLOBAL">/serverRunning</Property>
+            <Property NAME="additionalNamespaces" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespaces><namespace prefix="wsdlsoap" uri="http://schemas.xmlsoap.org/wsdl/soap/" /><namespace prefix="apachesoap" uri="http://xml.apache.org/xml-soap" /><namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" /><namespace prefix="soapenc" uri="http://schemas.xmlsoap.org/soap/encoding/" /><namespace prefix="xsd" uri="http://www.w3.org/2001/XMLSchema" /><namespace prefix="wsdl" uri="http://schemas.xmlsoap.org/wsdl/" /><namespace prefix="tns1" uri="urn:BeanService" /></namespaces>]]></Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="URI" SCOPE="GLOBAL">/services/VDEStatusService</Property>
+            <Property NAME="soapAction" SCOPE="GLOBAL" OPTIONAL="TRUE"></Property>
+            <Property NAME="name" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="returnType" SCOPE="GLOBAL">ServerInfo</Property>
+            <Property NAME="arguments" SCOPE="GLOBAL"><![CDATA[<arguments></arguments>]]></Property>
+         </QueryDescriptor>
+     </Metric>-->
+    <Metric NAME="ServerWideMetrics" TYPE="TABLE" COLLECT_WHEN_NO_REPOS="TRUE" NUM_CACHE_VALUES="10" FORCE_CACHE="TRUE">
+        <Display>
+            <Label NLSID="ServerWideMetrics">Server wide Connection Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="OpCnt" TYPE="NUMBER" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="ServerWideMetrics_OpCnt">Total No of Operations</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpenConnections_raw" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="ServerWideMetrics_OpenConnections">Total No of Open Connections</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="NoofUsers" TYPE="NUMBER" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="ServerWideMetrics_NoOfUsers">Total No of Users connected currently</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="NoofIPs" TYPE="NUMBER" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="ServerWideMetrics_NoOfIPS">Total No of IPs connected currently</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpenConnections" TYPE="NUMBER"  COLUMN_NAME="OpenConnections"
+                COMPUTE_EXPR="(OpenConnections_raw >= 0) ? OpenConnections_raw : 0">
+                <Display>
+                    <Label NLSID="ServerWideMetrics_OpenConnections">Total No of Open Connections</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <ExecutionDescriptor>
+
+            <GetTable NAME="AdaptersInfo"  USE_CACHE="TRUE_IF_COLLECT"/>
+            <GetTable NAME="getUsers"  USE_CACHE="TRUE_IF_COLLECT"/>
+            <GetTable NAME="getIPs"  USE_CACHE="TRUE_IF_COLLECT"/>
+
+            <GroupBy NAME="result2" FROM_TABLE="getIPs">
+                <AggregateColumn  NAME="NoofIPs"
+                    COLUMN_NAME ="name"
+                    OPERATOR="COUNT" />
+            </GroupBy>
+            <GroupBy NAME="result1" FROM_TABLE="getUsers">
+                <AggregateColumn  NAME="OpenConnections_raw"
+                    COLUMN_NAME ="currentCons"
+                    OPERATOR="SUM" />
+                <AggregateColumn  NAME="NoofUsers"
+                    COLUMN_NAME ="name"
+                    OPERATOR="COUNT" />
+            </GroupBy>
+            <GroupBy NAME="result" FROM_TABLE="AdaptersInfo">
+                <AggregateColumn  NAME="OpCnt"
+                    COLUMN_NAME ="OpCnt"
+                    OPERATOR="SUM" />
+            </GroupBy>    
+            <JoinTables NAME="LoadAndResource">
+                <Table NAME="result1"/>
+                <Table NAME="result"/>
+                <Table NAME="result2"/>
+                <Column NAME="OpCnt" TABLE_NAME="result"/>
+                <Column NAME="OpenConnections_raw" TABLE_NAME="result1"/>
+                <Column NAME="NoofUsers" TABLE_NAME="result1"/>
+                <Column NAME="NoofIPs" TABLE_NAME="result2"/>
+            </JoinTables>
+        </ExecutionDescriptor>
+    </Metric>
+    <Metric NAME="getUsers" TYPE="TABLE" COLLECT_WHEN_NO_REPOS="TRUE" NUM_CACHE_VALUES="10" FORCE_CACHE="TRUE">
+        <Display>
+            <Label NLSID="getUsers">Connected Users</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="Name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="currentCons" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="CurrentConnections">Current Connections</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="totalCons" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="TotalConnections">Total Connections</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="OJMX">
+            <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+            <Property NAME="port" SCOPE="INSTANCE">HTTPPort</Property>
+            <Property NAME="useSSL" SCOPE="INSTANCE" OPTIONAL="TRUE">HTTPSSL</Property>
+            <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+            <Property NAME="authpwd" SCOPE="INSTANCE" >authPasswd</Property>
+            <Property NAME="metricType" SCOPE="GLOBAL" OPTIONAL="TRUE">GWS</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="soapVersion" SCOPE="GLOBAL" OPTIONAL="TRUE">SOAP1.1</Property>
+            <Property NAME="documentType" SCOPE="GLOBAL" OPTIONAL="TRUE">rpc/encoded</Property>
+            <Property NAME="targetNamespace" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" />]]></Property>
+            <Property NAME="rowType" SCOPE="GLOBAL">/ns1:getServerInfoResponse/getServerInfoReturn/users/users,/ns1:getServerInfoResponse/getServerInfoReturn/users/users,/ns1:getServerInfoResponse/getServerInfoReturn/users/users</Property>
+            <Property NAME="columnOrder" SCOPE="GLOBAL">/UTF8Name,/currentCons,/totalCons</Property>
+            <Property NAME="additionalNamespaces" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespaces><namespace prefix="wsdlsoap" uri="http://schemas.xmlsoap.org/wsdl/soap/" /><namespace prefix="apachesoap" uri="http://xml.apache.org/xml-soap" /><namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" /><namespace prefix="soapenc" uri="http://schemas.xmlsoap.org/soap/encoding/" /><namespace prefix="xsd" uri="http://www.w3.org/2001/XMLSchema" /><namespace prefix="wsdl" uri="http://schemas.xmlsoap.org/wsdl/" /><namespace prefix="tns1" uri="urn:BeanService" /></namespaces>]]></Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="URI" SCOPE="GLOBAL">/services/VDEStatusService</Property>
+            <Property NAME="soapAction" SCOPE="GLOBAL" OPTIONAL="TRUE"></Property>
+            <Property NAME="name" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="returnType" SCOPE="GLOBAL">ServerInfo</Property>
+            <Property NAME="arguments" SCOPE="GLOBAL"><![CDATA[<arguments></arguments>]]></Property>
+         </QueryDescriptor>
+    </Metric>
+    <Metric NAME="getIPs" TYPE="TABLE" COLLECT_WHEN_NO_REPOS="TRUE" NUM_CACHE_VALUES="10" FORCE_CACHE="TRUE">
+        <Display>
+            <Label NLSID="getIPs">Connected IPs</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="Name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="currentCons" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="CurrentConnections">Current Connections</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="totalCons" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="TotalConnections">Total Connections</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+       <QueryDescriptor FETCHLET_ID="OJMX">
+            <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+            <Property NAME="port" SCOPE="INSTANCE">HTTPPort</Property>
+            <Property NAME="useSSL" SCOPE="INSTANCE" OPTIONAL="TRUE">HTTPSSL</Property>
+            <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+            <Property NAME="authpwd" SCOPE="INSTANCE" >authPasswd</Property>
+            <Property NAME="metricType" SCOPE="GLOBAL" OPTIONAL="TRUE">GWS</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="soapVersion" SCOPE="GLOBAL" OPTIONAL="TRUE">SOAP1.1</Property>
+            <Property NAME="documentType" SCOPE="GLOBAL" OPTIONAL="TRUE">rpc/encoded</Property>
+            <Property NAME="targetNamespace" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" />]]></Property>
+            <Property NAME="rowType" SCOPE="GLOBAL">/ns1:getServerInfoResponse/getServerInfoReturn/ips/ips,/ns1:getServerInfoResponse/getServerInfoReturn/ips/ips,/ns1:getServerInfoResponse/getServerInfoReturn/ips/ips</Property>
+            <Property NAME="columnOrder" SCOPE="GLOBAL">/UTF8Name,/currentCons,/totalCons</Property>
+            <Property NAME="additionalNamespaces" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespaces><namespace prefix="wsdlsoap" uri="http://schemas.xmlsoap.org/wsdl/soap/" /><namespace prefix="apachesoap" uri="http://xml.apache.org/xml-soap" /><namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" /><namespace prefix="soapenc" uri="http://schemas.xmlsoap.org/soap/encoding/" /><namespace prefix="xsd" uri="http://www.w3.org/2001/XMLSchema" /><namespace prefix="wsdl" uri="http://schemas.xmlsoap.org/wsdl/" /><namespace prefix="tns1" uri="urn:BeanService" /></namespaces>]]></Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="URI" SCOPE="GLOBAL">/services/VDEStatusService</Property>
+            <Property NAME="soapAction" SCOPE="GLOBAL" OPTIONAL="TRUE"></Property>
+            <Property NAME="name" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="returnType" SCOPE="GLOBAL">ServerInfo</Property>
+            <Property NAME="arguments" SCOPE="GLOBAL"><![CDATA[<arguments></arguments>]]></Property>
+         </QueryDescriptor>
+    </Metric>
+     <Metric NAME="ServerMetrics" TYPE="TABLE" COLLECT_WHEN_NO_REPOS="TRUE" NUM_CACHE_VALUES="10" FORCE_CACHE="TRUE">
+        <Display>
+            <Label NLSID="ServerMetrics">Server Latency Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="vdeNumSearches_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="vdeNumSearches_raw">Total Number of LDAP Search Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumAdds_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="vdeNumAdds_raw">Total Number of LDAP Add Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumBinds_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="vdeNumBinds_raw">Total Number of LDAP Bind Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumDeletes_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="vdeNumDeletes_raw">Total Number of LDAP Delete Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumModifies_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="vdeNumModifies_raw">Total Number of LDAP Modify Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+             <ColumnDescriptor NAME="vdeNumRenames_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="vdeNumRenames_raw">Total Number of LDAP Rename Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeMinSearchCompleteTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="vdeMinSearchCompleteTime">Minimum Time(ms) to complete a search request ever</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeMaxSearchCompleteTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="vdeMaxSearchCompleteTime">Maximum Time(ms) to complete a search request ever</Label>
+                </Display>
+            </ColumnDescriptor>
+             <ColumnDescriptor NAME="vdeAverageSearchCompletionTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="vdeAverageSearchCompletionTime">Average time (ms) to complete an LDAP search request </Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumSearches" TYPE="NUMBER"  COLUMN_NAME="vdeNumSearches"
+                COMPUTE_EXPR="(vdeNumSearches_raw > _vdeNumSearches_raw) ? vdeNumSearches_raw - _vdeNumSearches_raw : 0">
+                <Display>
+                    <Label NLSID="vdeNumSearches">Number of LDAP Search Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumAdds" TYPE="NUMBER"  COLUMN_NAME="vdeNumAdds"
+                COMPUTE_EXPR="(vdeNumAdds_raw > _vdeNumAdds_raw) ? vdeNumAdds_raw - _vdeNumAdds_raw : 0">
+                <Display>
+                    <Label NLSID="vdeNumAdds">Number of LDAP Add Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumBinds" TYPE="NUMBER"  COLUMN_NAME="vdeNumBinds"
+                COMPUTE_EXPR="(vdeNumBinds_raw > _vdeNumBinds_raw) ? vdeNumBinds_raw - _vdeNumBinds_raw : 0">
+                <Display>
+                    <Label NLSID="vdeNumBinds">Number of LDAP Binds Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeNumDeletes" TYPE="NUMBER"  COLUMN_NAME="vdeNumDeletes"
+                COMPUTE_EXPR="(vdeNumDeletes_raw > _vdeNumDeletes_raw) ? vdeNumDeletes_raw - _vdeNumDeletes : 0">
+                <Display>
+                    <Label NLSID="vdeNumDeletes">Number of LDAP Delete Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+             <ColumnDescriptor NAME="vdeNumModifies" TYPE="NUMBER"  COLUMN_NAME="vdeNumModifies"
+                COMPUTE_EXPR="(vdeNumModifies_raw > _vdeNumModifies_raw) ? vdeNumModifies_raw - _vdeNumModifies : 0">
+                <Display>
+                    <Label NLSID="vdeNumModifies">Number of LDAP Modify Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+             <ColumnDescriptor NAME="vdeNumRenames" TYPE="NUMBER"  COLUMN_NAME="vdeNumRenames"
+                COMPUTE_EXPR="(vdeNumRenames_raw > _vdeNumRenames_raw) ? vdeNumRenames_raw - _vdeNumRenames : 0">
+                <Display>
+                    <Label NLSID="vdeNumRenames">Number of LDAP Rename Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="numCompletedOps" TYPE="NUMBER" IS_KEY="FALSE" COLUMN_NAME="numCompletedOps"
+                COMPUTE_EXPR="vdeNumSearches + vdeNumAdds + vdeNumBinds + vdeNumDeletes + vdeNumModifies + vdeNumRenames">
+                <Display FOR_SUMMARY_UI="TRUE">
+                    <Label NLSID="oracle_ovd_server_num_op">Total Operations </Label>
+                    <Description NLSID="oracle_ovd_server_num_op_desc">Total number of Operations </Description>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="OSLineToken">
+            <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+            <Property NAME="port" SCOPE="INSTANCE">LDAPPort</Property>
+            <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+            <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+            <Property NAME="useSSL" SCOPE="INSTANCE" OPTIONAL="TRUE">LDAPSSL</Property>
+            <Property NAME="STDINPASSWORD" SCOPE="INSTANCE">authPasswd</Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="URI" SCOPE="GLOBAL">/services/VDEStatusService</Property>
+            <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+            <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+            <Property NAME="walletLoc" SCOPE="SYSTEMGLOBAL">agentStateDir</Property>
+            <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/ovdmetrics.pl %machine% %port% %authuser%  Search %OracleHome% %useSSL% %walletLoc%</Property>
+            <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+        </QueryDescriptor> 
+    </Metric>
+    <Metric NAME="AdaptersInfo" TYPE="TABLE" COLLECT_WHEN_NO_REPOS="TRUE" NUM_CACHE_VALUES="10" FORCE_CACHE="TRUE">
+        <Display>
+            <Label NLSID="Adapters_Metrics">Adapter Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="enabled" TYPE="STRING">
+                <Display>
+                    <Label NLSID="Enabled">Enabled</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="operationalVersion" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="operationalVersion">Operational Version</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="provisionedVersion" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="provisionedVersion">Provisioned version</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="type" TYPE="STRING">
+                <Display>
+                    <Label NLSID="type">Type</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpCnt_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="OpCnt">Operations Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpAdds_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="OpAdds">Total No of Add Operations</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpMods_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="OpMods">Total No of Modify Operations</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpSearches_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="OpSearches">Total No of Search Operations</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpDeletes_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="OpDeletes">Total No of Delete Opertations</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpRenames" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="OpRenames">Total No of Rename Operations</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpBinds" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="OpBinds">Total No of Bind Operation</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ConsOpen_Raw" TYPE="NUMBER" TRANSIENT="TRUE">
+                <Display>
+                    <Label NLSID="ConsOpen">Total No of Connections Open</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ConsReuse" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="ConsReuse">Total No of Connections Reused</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ConsProcessed" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="ConsProcessed">Total No of Connections Processed</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeMinSearchCompleteTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="vdeMinSearchCompleteTime">Minimum Time(ms) took to complete a search request ever</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeMaxSearchCompleteTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="vdeMaxSearchCompleteTime">Maximum Time(ms) took to complete a search request ever</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="vdeAverageSearchCompletionTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="vdeAverageSearchCompletionTime">Average Time(ms) to complete a search request ever</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpCnt" TYPE="NUMBER" IS_KEY="FALSE" COLUMN_NAME="OpCnt"
+                COMPUTE_EXPR="(OpCnt_raw > _OpCnt_raw) ? OpCnt_raw - _OpCnt_raw : 0">
+                <Display>
+                    <Label NLSID="SMAI_LABEL_OPCOUNT">Operations Count</Label>
+                    <Description NLSID="SMAI_DESC_OPCOUNT">The total number of operations occured during the last interval</Description>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpAdds" TYPE="NUMBER" IS_KEY="FALSE" COLUMN_NAME="OpAdds"
+                COMPUTE_EXPR="(OpAdds_raw > _OpAdds_raw) ? OpAdds_raw - _OpAdds_raw : 0">
+                <Display>
+                    <Label NLSID="SMAI_LABEL_OPADDED">Add Operations</Label>
+                    <Description NLSID="SMAI_DESC_OPADDED">The total number of add operations occured during the last interval</Description>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpMods" TYPE="NUMBER" IS_KEY="FALSE" COLUMN_NAME="OpMods"
+                COMPUTE_EXPR="(OpMods_raw > _OpMods_raw) ? OpMods_raw - _OpMods_raw : 0">
+                <Display>
+                    <Label NLSID="SMAI_LABEL_OPMODS">Modify Operations</Label>
+                    <Description NLSID="SMAI_DESC_OPMODS">The total number of modified operations occured during the last interval</Description>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpSearches" TYPE="NUMBER" IS_KEY="FALSE" COLUMN_NAME="OpSearches"
+                COMPUTE_EXPR="(OpSearches_raw > _OpSearches_raw) ? OpSearches_raw - _OpSearches_raw : 0">
+                <Display>
+                    <Label NLSID="SMAI_LABEL_OPSRCH">Search Operations</Label>
+                    <Description NLSID="SMAI_DESC_OPSRCH">The total number of search operations occured during the last interval</Description>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OpDeletes" TYPE="NUMBER" IS_KEY="FALSE" COLUMN_NAME="OpDeletes"
+                COMPUTE_EXPR="(OpDeletes_raw > _OpDeletes_raw) ? OpDeletes_raw - _OpDeletes_raw : 0">
+                <Display>
+                    <Label NLSID="SMAI_LABEL_OPDEL">Delete Operations</Label>
+                    <Description NLSID="SMAI_DESC_OPDEL">The total number of delete operations occured during the last interval</Description>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ConsOpen" TYPE="NUMBER" IS_KEY="FALSE" COLUMN_NAME="ConsOpen"
+                COMPUTE_EXPR="(ConsOpen_Raw > _ConsOpen_Raw) ? ConsOpen_Raw - _ConsOpen_Raw : 0">
+                <Display>
+                    <Label NLSID="SMAI_LABEL_OPCON">Open Connections</Label>
+                    <Description NLSID="SMAI_DESC_OPCON">The total number of connections opened during the last interval</Description>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="OJMX">
+            <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+            <Property NAME="port" SCOPE="INSTANCE">HTTPPort</Property>
+            <Property NAME="useSSL" SCOPE="INSTANCE" OPTIONAL="TRUE">HTTPSSL</Property>
+            <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+            <Property NAME="authpwd" SCOPE="INSTANCE" >authPasswd</Property>
+            <Property NAME="metricType" SCOPE="GLOBAL" OPTIONAL="TRUE">GWS</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="soapVersion" SCOPE="GLOBAL" OPTIONAL="TRUE">SOAP1.1</Property>
+            <Property NAME="documentType" SCOPE="GLOBAL" OPTIONAL="TRUE">rpc/encoded</Property>
+            <Property NAME="targetNamespace" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" />]]></Property>
+            <Property NAME="rowType" SCOPE="GLOBAL">/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters,/ns1:getServerInfoResponse/getServerInfoReturn/adapters/adapters</Property>
+            <Property NAME="columnOrder" SCOPE="GLOBAL">/enabled,/UTF8Name,/operationalVersion,/provisionedVersion,/type,/opCnt,/opAdds,/opMods,/opSearches,/opDeletes,/opRenames,/opBinds,/consOpen,/consReuse,/consProcessed,/vdeMinSearchCompleteTime,/vdeMaxSearchCompleteTime,/vdeAverageSearchCompletionTime</Property>
+            <Property NAME="additionalNamespaces" SCOPE="GLOBAL" OPTIONAL="TRUE"><![CDATA[<namespaces><namespace prefix="wsdlsoap" uri="http://schemas.xmlsoap.org/wsdl/soap/" /><namespace prefix="apachesoap" uri="http://xml.apache.org/xml-soap" /><namespace prefix="ns1" uri="http://services.admin.vde.octetstring.com" /><namespace prefix="soapenc" uri="http://schemas.xmlsoap.org/soap/encoding/" /><namespace prefix="xsd" uri="http://www.w3.org/2001/XMLSchema" /><namespace prefix="wsdl" uri="http://schemas.xmlsoap.org/wsdl/" /><namespace prefix="tns1" uri="urn:BeanService" /></namespaces>]]></Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="URI" SCOPE="GLOBAL">/services/VDEStatusService</Property>
+            <Property NAME="soapAction" SCOPE="GLOBAL" OPTIONAL="TRUE"></Property>
+            <Property NAME="name" SCOPE="GLOBAL">getServerInfo</Property>
+            <Property NAME="returnType" SCOPE="GLOBAL">ServerInfo</Property>
+            <Property NAME="arguments" SCOPE="GLOBAL"><![CDATA[<arguments></arguments>]]></Property>
+         </QueryDescriptor>
+    </Metric>
+    <InstanceProperties>
+        <InstanceProperty NAME="HTTPMachine"><Display>
+                <Label NLSID="dms_HTTPMachine_iprop">Machine name</Label>
+                <ShortName NLSID="dms_HTTPMachine_iprop">Machine name</ShortName>
+            </Display>
+        </InstanceProperty> 
+        <InstanceProperty NAME="HTTPPort"><Display>
+                <Label NLSID="dms_HTTPPort_iprop">Virtual Directory Admin Port</Label>
+                <ShortName NLSID="dms_HTTPPort_iprop">Virtual Directory Admin Port</ShortName>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="LDAPPort"><Display>
+                <Label NLSID="dms_LDAPPort_iprop">Virtual Directory LDAP Port</Label>
+                <ShortName NLSID="dms_LDAPPort_iprop">Virtual Directory LDAP Port</ShortName>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="authUser" OPTIONAL="TRUE"><Display>
+                <Label NLSID="dms_authUser_iprop">Virtual Directory Username</Label>
+                <ShortName NLSID="dms_authUser_iprop">Virtual Directory Username</ShortName>
+            </Display> 
+        </InstanceProperty> 
+        <InstanceProperty NAME="authPasswd"  CREDENTIAL="TRUE" IS_COMPUTED="TRUE">
+            <Display>
+                <Label NLSID="dms_authPasswd_iprop">Virtual Directory Password</Label>
+                <ShortName NLSID="dms_authPasswd_iprop">Virtual Directory Password</ShortName>
+            </Display>
+        </InstanceProperty>
+       
+        <InstanceProperty NAME="version" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+            <Display>
+                <Label NLSID="oracle_ovd_version_iprop">Virtual Directory Version</Label>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="VersionCategory" IS_COMPUTED="TRUE">
+            <Display>
+                <Label NLSID="version_cat_iprop">Version Category</Label>
+            </Display>
+        </InstanceProperty>
+    <InstanceProperty NAME="serviceURL">
+      <Display>
+        <Label NLSID="jvm_serviceURL_LABEL">Middleware Administration Server Service URL</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="WeblogicUserName">
+      <Display>
+        <Label NLSID="jvm_UserName_Label">WebLogic Monitoring User Name</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="WeblogicPassword"  CREDENTIAL="TRUE">
+      <Display>
+        <Label NLSID="jvm_Password_Label">WebLogic Monitoring Password</Label>
+      </Display>
+    </InstanceProperty>
+     <InstanceProperty NAME="HTTPSSL">
+            <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+            <Display>
+                <Label NLSID="oracle_ovd_instprop_httpssl">Admin Gateway HTTP SSL Enabled</Label>
+            </Display>
+        </InstanceProperty>
+         <InstanceProperty NAME="LDAPSSL">
+            <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+            <Display>
+                <Label NLSID="oracle_ovd_instprop_ldapssl">LDAP Listener SSL Enabled</Label>
+            </Display>
+        </InstanceProperty>
+      <InstanceProperty NAME="farmName">
+            <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+            <Display>
+                <Label NLSID="oracle_ovd_instprop_farmName">Middle Administration Server Farm Name</Label>
+            </Display>
+        </InstanceProperty>
+          <InstanceProperty NAME="ObjectName" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+             <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+          <Display>
+            <Label NLSID="object_name_prop">Object Name</Label>
+          </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="CanonicalPath" CREDENTIAL="FALSE">
+          <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+          </ValidIf>
+          <Display>
+            <Label NLSID="canonical_path_prop">Canonical Path</Label>
+          </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="OracleInstance" CREDENTIAL="FALSE">
+          <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+          </ValidIf>
+          <Display>
+            <Label NLSID="oracle_instance_prop">Oracle Instance Home</Label>
+          </Display>
+        </InstanceProperty>
+         <InstanceProperty NAME="OracleHome" CREDENTIAL="FALSE">
+          <Display>
+            <Label NLSID="oracle_home_prop">Oracle Home</Label>
+          </Display>
+        </InstanceProperty>
+
+        
+        
+
+       <!-- <DynamicProperties NAME="DynamicPropertiesFromOVD" FORMAT="ROW"
+            PROP_LIST="authUser;authPasswd;HTTPMachine">
+            <QueryDescriptor FETCHLET_ID="JMX">
+                <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+                <Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+                <Property NAME="password" SCOPE="INSTANCE">password</Property>
+                <Property NAME="metric" SCOPE="GLOBAL">OracleAS_Topology_Nodes:name=%topologyNodeID%,*</Property>
+                <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+                <Property NAME="topologyNodeID.parameter" SCOPE="INSTANCE">topologyNodeID</Property>
+                <Property NAME="columnOrder" SCOPE="GLOBAL">MonitorUserName;MonitorPassword;Host</Property>
+            </QueryDescriptor>
+        </DynamicProperties> -->
+         <DynamicProperties NAME="ComputeVC" FORMAT="ROW"
+            PROP_LIST="VersionCategory">
+            <QueryDescriptor FETCHLET_ID="VersionRangeComputer">
+                <Property NAME="Version" SCOPE="INSTANCE">version</Property>
+                <Property NAME="11plus" SCOPE="GLOBAL">11.0.0.0</Property>
+            </QueryDescriptor>
+        </DynamicProperties>
+
+        <DynamicProperties NAME="password" FORMAT="ROW" PROP_LIST="authPasswd">
+            <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+        <QueryDescriptor FETCHLET_ID="OSLineToken" >
+           <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+           <Property NAME="OracleInstance" SCOPE="INSTANCE">OracleInstance</Property>
+            <Property NAME="CanonicalPath" SCOPE="INSTANCE">CanonicalPath</Property>
+           <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+           <Property NAME="command">%perlBin%/perl</Property>
+           <Property NAME="args">%scriptsDir%/iam/getCSFPassword.pl %OracleHome% %OracleInstance% %CanonicalPath% ovd</Property>
+           <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>   
+       </QueryDescriptor>
+      </DynamicProperties> 
+
+
+    </InstanceProperties>
+</TargetMetadata>
+
+

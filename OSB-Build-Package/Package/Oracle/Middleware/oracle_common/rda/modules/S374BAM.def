@@ -1,0 +1,451 @@
+# S374BAM.def: Collects Business Activity Monitoring Information
+# $Id: S374BAM.def,v 2.15 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S374BAM.def,v 2.15 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S374BAM - Collects Business Activity Monitoring Information
+
+=head1 DESCRIPTION
+
+This module collects Business Activity Monitoring-related information. The
+following reports can be generated and are regrouped under C<Business Activity
+Monitoring>:
+
+=cut
+
+echo tput('bold'),'Processing BAM module ...',tput('off')
+
+# Initialization
+var $BAM_AGE     = getSetting('BAM_AGE')
+var $ORACLE_HOME = getSetting('BAM_ORACLE_HOME','')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Business Activity Monitoring'
+
+# Set the current target
+call setCurrent(addTarget('OH_BAM',{ORACLE_HOME=>$ORACLE_HOME}))
+
+=head1 ORACLE HOME COLLECTIONS
+
+=head2 abbr - Abbreviations
+
+Displays the RDA abbreviations defined for the Oracle home collection.
+
+=cut
+
+debug ' Inside BAM module, collecting defined abbreviations'
+report abbr
+prefix
+{write '---+ Oracle Home Abbreviations'
+ write '|*Abbreviation*|*Location*|'
+}
+var %hsh = getSymbols()
+loop $key (keys(%hsh))
+ write '|',$key,' |',catDir(@{$hsh{$key}}),' |'
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Abbreviations]]'
+
+=head2 product_info - Product Information
+
+Gathers the product information if Oracle BAM is installed in a separate
+Oracle home.
+
+=cut
+
+if and(getSetting('BAM_DISTINCT_HOME'),testDir('d',$ORACLE_HOME))
+{# Load the common macros
+ run INSTinfo()
+
+ debug ' Inside BAM module, processing Product Information (can take time)'
+ report product_info
+ write '---+!! BAM Oracle Home Product Information'
+ write $TOC
+
+ write '---+ Files in BAM Oracle Home'
+ call statDir('an',$ORACLE_HOME)
+ write $TOP
+
+ call inventory_details(catDir($ORACLE_HOME,'inventory'),\
+                        getSetting('BAM_INTERIM'))
+ toc '2:[[',getFile(),'][rda_report][Product Information]]'
+}
+
+# Version prior 11g
+if !or(getSetting('BAM_REQ_IREQ'),\
+       getSetting('BAM_REQ_WREQ'),\
+       and(testDir('d',catDir($ORACLE_HOME,'bam')),\
+           testDir('d',catDir($ORACLE_HOME,'soa'))),\
+       testDir('d',catDir($ORACLE_HOME,'rcu')))
+{# Initialization
+ var $BAM_ROOT_DIR = getSetting('BAM_ROOT_DIR')
+ var $BAM_LOG_DIR  = getSetting('BAM_LOG_DIR')
+ var $TAIL         = getSetting('RDA_TAIL',1000)
+
+ # Load the common macros
+ run library()
+
+=head2 root_dir - Root Directory
+
+Displays the content of the Business Activity Monitoring root directory.
+
+=cut
+
+ debug ' Inside BAM module, processing BAM Root Directory'
+ report root_dir
+ prefix
+  write '---+!! BAM Root Directory Content'
+ call statDir('an',$BAM_ROOT_DIR)
+ if hasOutput(true)
+ {write $TOP
+  toc '2:[[',getFile(),'][rda_report][Root Directory]]'
+ }
+
+=head2 Configuration Files
+
+Collects the configuration files from the Business Activity Monitoring root
+directory.
+
+=cut
+
+ debug ' Inside BAM module, getting the configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(\
+  3,$TAIL,grepDir($BAM_ROOT_DIR,'\.config$','ip'),\
+          grepDir(catDir($BAM_ROOT_DIR,'config'),'\.(properties|xml)$','ip'))
+ unpretoc
+
+=head2 Log Files
+
+Collects the Business Activity Monitoring log files from the log directory.
+
+=cut
+
+ debug ' Inside BAM module, getting the log files'
+ pretoc '2:Log Files'
+ call sort_files(3,$TAIL,grepDir($BAM_LOG_DIR,'\.log$','ip'))
+ unpretoc
+}
+
+=head2 artifacts - Artifacts
+
+Collects Business Activity Monitoring artifacts when there is no need to
+provide a password interactively. (Available from 10g on Microsoft Windows and
+from 11g on UNIX)
+
+=cut
+
+if testDir('d',$ORACLE_HOME)
+{debug ' Inside BAM module, collecting artifacts information (can take time)'
+
+ # Macro to write the artifacts
+ macro write_artifacts
+ {var (\@tbl,$beg,$end,$tmp,$lvl,$lnk,$ttl,$env) = @arg
+  import $TOC,$TOP
+  keep $TOC,$TOP
+
+  if @tbl
+  {if $env
+    call source($env,true)
+   output F,artifacts
+   title '---+!! Business Activity Monitoring Artifacts',$ttl
+   title $TOC
+   loop $rec (@tbl)
+   {var $typ = field('\s',0,$rec)
+    debug '  - Inside BAM module, collecting ',$typ,' artifacts'
+    var $cmd = concat($beg,$rec,$end)
+    call loadCommand($cmd)
+    if getSize($tmp)
+    {write '---+ Export File Content for Type ``',$typ,'``'
+     write '---## Using: ',encode($cmd)
+     call writeFile($tmp)
+     write $TOP
+    }
+    else
+    {prefix
+     {write '---+ Export Command Output for Type ``',$typ,'``'
+      write '---## Using: ',encode($cmd)
+     }
+     call writeLastFile()
+     if hasOutput(true)
+      write $TOP
+    }
+   }
+   if isCreated(true)
+    toc $lvl,':[[',getFile(),'][rda_report][',$lnk,']]'
+   if $env
+    call unsource()
+  }
+ }
+
+ var ($tmp,@tbl) = (getTemp('TMP'))
+ if testFile('f',catFile($ORACLE_HOME,'bam','bin',${AS.BATCH:'icommand'}))
+ {# Prepare the command for BAM 11g
+  var $pgm = lastCommand()
+  var $xml = catFile($ORACLE_HOME,'bam','config','BAMICommandConfig.xml')
+  if and(grepFile($xml,'^[^<!\-]*<ICommand_Default_User_Name>','f'),\
+         grepFile($xml,'^[^<!\-]*<ICommand_Default_Password>','f'))
+  {var $beg = concat($pgm,' -cmd export -file ',quote($tmp,'x'),' -type ')
+   var $end = ' -all 1 -systemobjects 1 2>&1'
+   var @tbl = ('distributionlist','ems','eds','folder',\
+               'dataobject -contents 0','report','rule','securityfilters')
+   pretoc '2:Artifacts'
+   loop $key (grepSetting('^BAM_DOM\d+_REQ_DOMAIN$'))
+   {var $dom = catDir(getSetting($key))
+    var ($bas,$env) = (basename($dom))
+    debug '  - Inside BAM module, analyzing ',$bas,' domain'
+    if testFile('f',catFile($dom,'bin',${AS.CMD:'setDomainEnv'}))
+     var $env = lastFile()
+    call write_artifacts(\@tbl,$beg,$end,$tmp,3,concat("'",$bas,"' Domain"),\
+                         concat(' (',$bas,')'),$env)
+   }
+   unpretoc
+  }
+  else
+  {report artifacts
+   write '---+ Business Activity Monitoring Artifacts'
+   write '   * Security credentials not found in ',encode($xml)
+   write '   * and/or BAM server specified in ',encode($xml),' is not running'
+   write '   * Skipping BAM Artifacts Collection'
+   toc '2:[[',getFile(),'][rda_report][Artifacts]]'
+  }
+ }
+ elsif testFile('f',catFile($ORACLE_HOME,'bam',${AS.EXE:'icommand'}))
+ {# Prepare the command for BAM 10g
+  var $beg = concat(lastCommand(),' cmd=export file=',quote($tmp,'x'),' type=')
+  var $end = ' all=1 systemobjects=1 2>&1'
+  var @tbl = ('distributionlist','ems','emstype','eds','edstype','folder',\
+              'dataobject contents=0','report','rule','user','role','plan',\
+              'securityfilters')
+  call write_artifacts(\@tbl,$beg,$end,$tmp,2,'Artifacts')
+ }
+ call unlinkTemp('TMP')
+}
+
+=head2 eventx - Events
+
+Extracts the details of all the events related to Business Activity Monitoring
+services from the application event log using the F<wevtutil> command. (Only
+available for Windows Vista, Windows Server 2008, and Windows 7)
+
+=cut
+
+if or(isWindows(),isCygwin())
+{debug ' Inside BAM module, obtaining the BAM events'
+ var $osv = getRegValue('HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion',\
+                        'CurrentVersion')
+ if compare('ge',$osv,'6')
+ {if findCommand('wevtutil')
+  {var $evt = last
+   var $msc = expr('*',$BAM_AGE,86400000)
+   var $tmp = getTemp('dat')
+   call command(concat($evt,' qe Application ',\
+         '"/q:*[System[TimeCreated[timediff(@SystemTime) <= ',$msc,\
+         ']]]" /f:xml > ',quote($tmp,'x')))
+   code write_data
+   {loop $lin (parseBuffer())
+     write $lin
+   }
+   report eventx
+   write '---+!! Business Activity Monitoring Events'
+   prefix
+    call beginBlock(true)
+   if createBuffer('EVT','R',$tmp)
+   {call parseReset()
+    call parseBegin('TOP',\
+             '^<Event.*<System><Provider Name=.*\b[Bb][Aa][Mm]\b.*/>','Event')
+    call parseEnd('Event','</Event>$')
+    call parseInfo('Event','buf',-1)
+    call parseInfo('Event','end',&write_data)
+    call parseInfo('Event','llp',false)
+    call parse('EVT')
+    call deleteBuffer('EVT')
+   }
+   if hasOutput(true)
+    call endBlock(['C','wevtutil qe Application | grep -i BAM'])
+   else
+    write '**No Business Activity Monitoring events found.**%BR%'
+   toc '2:[[',getFile(),'][rda_report][Events]]'
+   call unlinkTemp('dat')
+  }
+ }
+
+=head2 events - Events
+
+Extracts the details of all the events related to Business Activity Monitoring
+services from the application event log. (Only available for Windows NT,
+Windows 2000, Windows XP, and Windows 2003)
+
+=cut
+
+ else
+ {# Get the event file
+  var $fil = replaceEnv(getRegValue(\
+                'HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application',\
+                'File'))
+
+  # If the file is not readable try to copy to a temporary file
+  var $flg = false
+  if testFile('r',$fil)
+  {var $evt = $fil
+  }
+  else
+  {if testFile('f',$cmd = getGroupFile('D_CWD','cmd.exe'))
+   {var $cmd = quote($cmd,'x')
+    if grepCommand(concat($cmd,' /c if exist mode.com echo 32to64'),'^32to64')
+    {var $flg = true
+     var $evt = getTemp('evt','.evt')
+     call system(concat($cmd,' /c copy ',\
+                        quote($fil,'x'),' ',\
+                        quote($evt,'x'),' >NUL 2>NUL'))
+    }
+   }
+  }
+
+  # Extract the BAM events
+  if testFile('r',$evt)
+  {report events
+   write '---+!! Business Activity Monitoring Events'
+   if !writeEvents($evt,'\b[Bb][Aa][Mm]\b',$BAM_AGE)
+    write '**No Business Activity Monitoring events found.**%BR%'
+   toc '2:[[',getFile(),'][rda_report][Events]]'
+  }
+  if $flg
+   call unlinkTemp('evt')
+ }
+}
+
+=head1 ORACLE HOME INFORMATION
+
+=head2 Manifest Information
+
+Gathers the Oracle home manifest information.
+
+=cut
+
+if or(getSetting('BAM_REQ_IREQ'),\
+      getSetting('BAM_REQ_WREQ'),\
+      and(testDir('d',catDir($ORACLE_HOME,'bam')),\
+          testDir('d',catDir($ORACLE_HOME,'soa'))),\
+      testDir('d',catDir($ORACLE_HOME,'rcu')))
+{# Load the common macros
+ run WLSlib()
+
+ debug ' Inside BAM module, getting Oracle home manifest information \
+         (can take time)'
+ pretoc '2:Manifest Information'
+ call dsp_manifest(3,$ORACLE_HOME)
+ unpretoc
+}
+
+=head1 COMMON HOME INFORMATION
+
+Includes the reports generated by the IREQ module about the common home.
+
+=cut
+
+if getSetting('BAM_REQ_IREQ')
+{toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1+:Common Product Home")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_IREQ_BAM_CH.toc")%'
+ toc '%POP2%'
+}
+
+=head1 ORACLE WEBLOGIC SERVER DOMAIN COLLECTIONS
+
+Includes all reports collected for the specified Oracle WebLogic Server domain.
+
+=cut
+
+if getSetting('BAM_REQ_WREQ')
+{# Identify the domains per Oracle WebLogic Server home
+ var (@orp,%dom,%nam,%top) = ()
+ loop $key (grepSetting('^BAM_DOM\d+_REQ_DOMAIN$'))
+ {var $tid = substr($key,0,-11)
+  var $dom = catDir(getSetting($key))
+  next !testDir('d',$dom)
+
+  if missing($dom{$dom})
+   var $dom{$dom} = addTarget('DOM_Req$$',{DOMAIN_HOME   =>$dom,\
+                                           MISSING_HOME  =>1,\
+                                           MISSING_COMMON=>1})
+  if and(defined($par = $dom{$dom}->get_wl_home),\
+         testDir('d',$par->get_info('wlh')))
+   call push($top{$par->get_info('oid')},$tid)
+  else
+   call push(@orp,$tid)
+  var $nam{$tid} = basename($dom)
+ }
+
+ # Report the domains per Oracle WebLogic Server home
+ var $cnt = 0
+ loop $oid (keys(%top))
+ {var ($flg,$tid) = ($cnt,replace($top{$oid}->[0],'_DOM','_TOP'))
+  incr $cnt
+  toc '%PUSH("%SPLIT%")%'
+  toc '%PUSH("1+:Oracle WebLogic Server Overview")%'
+  toc '%INCLUDE("',${CUR.GROUP},'_WREQ_',$tid,'.toc")%'
+  toc '%POP2%'
+  loop $tid (@{$top{$oid}})
+  {toc '%PUSH("%SPLIT%")%'
+   toc '%PUSH("1+:',"'",$nam{$tid},"'",' Domain")%'
+   toc '%INCLUDE("',${CUR.GROUP},'_WREQ_',$tid,'.toc")%'
+   toc '%POP2%'
+  }
+ }
+
+ # Report domains that are not associated to a Oracle WebLogic Server home
+ pretoc '%PUSH("0:   * Orphan Domains")%'
+ loop $tid (@orp)
+ {toc '%PUSH("%SPLIT%")%'
+  toc '%PUSH("1+:',"'",$nam{$tid},"'",' Domain")%'
+  toc '%INCLUDE("',${CUR.GROUP},'_WREQ_',$tid,'.toc")%'
+  toc '%POP2%'
+ }
+ if hasTocOutput(true)
+  toc '%POP%'
+}
+
+unpretoc
+
+# Restore the default target
+call setCurrent()
+
+=head1 SEE ALSO
+
+L<S301WREQ.def|modules::S301WREQ>,
+L<S313IREQ.def|modules::S313IREQ>,
+L<INSTinfo.def|modules::INSTinfo>,
+L<library.def|modules::library>,
+L<WLSlib.def|modules::WLSlib>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.15:  Marcus Lachmanez.
+
+=item RDA 4.22:  Antony Reynolds.
+
+=item RDA 4.24:  Greg Cook, Andrew Salt.
+
+=item RDA 4.25:  Pravin Pawar, Antony Reynolds, Maria Salzberger.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

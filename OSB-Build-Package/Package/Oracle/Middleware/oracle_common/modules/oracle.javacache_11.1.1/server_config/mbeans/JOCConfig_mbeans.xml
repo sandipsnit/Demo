@@ -1,0 +1,43 @@
+<?xml version = '1.0' encoding = 'UTF-8' standalone='yes'?>
+<application-mbeans
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="http://xmlns.oracle.com/oracleas/schema/11/application-mbeans-11_1.xsd"
+   schema-major-version="11"
+   schema-minor-version="1"
+> 
+   <!-- location can be omitted when using WLS-JMX Framework -->
+   <!-- parent directory is relative to WLS DOMAIN_HOME -->
+   <config-mbeans>
+
+      <!-- objectname can be omitted when using WLS-JMX Framework -->
+      <jmx-config-mbean
+         objectname="oracle.joc:type=JOCConfig"
+         class="oracle.ias.cache.jmx.JOCConfigPersistMXBeanImpl"
+         management-interface="oracle.ias.cache.jmx.JOCConfigMXBean">
+
+         <description>JOC Config MBean</description>
+         <config-file path="../javacache.xml" />
+
+         <persistence-manager
+            class="oracle.as.config.persistence.jaxb.JAXBXmlPersistenceManagerImpl" >
+            <property key="oracle.as.config.persistence.jaxb.contextpath"
+                      value="oracle.ias.cache.config"/>
+         </persistence-manager>
+
+      </jmx-config-mbean>
+
+      <jmx-config-mbean
+         objectname="oracle.jocssl:type=JOCSSLConfig"
+         class="oracle.ias.cache.jmx.JOCSSLConfigMXBeanImpl"
+         management-interface="oracle.ias.cache.jmx.JOCSSLConfigMXBean">
+
+         <description>JOC SSL Config MBean</description>
+         <config-file path="../.sslConfig" injection-name="sslConfig" />
+         <config-file path="../.KEYSTORE" injection-name="KEYSTORE" />
+         <config-file path="../.joc_demo_keystore.jks" injection-name="JOC_DEMO_KEYSTORE" />
+      </jmx-config-mbean>
+
+   </config-mbeans>
+
+</application-mbeans>
+

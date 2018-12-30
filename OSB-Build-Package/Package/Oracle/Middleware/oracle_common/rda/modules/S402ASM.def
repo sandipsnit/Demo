@@ -1,0 +1,1794 @@
+# S402ASM.def: Collects Automatic Storage Management Information
+# $Id: S402ASM.def,v 2.26 2012/03/20 16:36:59 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S402ASM.def,v 2.26 2012/03/20 16:36:59 mschenke Exp $
+#
+# Change History
+# 20120320  KRA  Change ASM_ALERT_TEXT default value to 1.
+
+=head1 NAME
+
+S402ASM - Collects Automatic Storage Management Information
+
+=head1 DESCRIPTION
+
+This module collects Automatic Storage Management (ASM) information (Oracle
+Database 10g or later). This module must be run as SYSDBA to collect all
+information.
+
+The following reports can be generated and are regrouped under C<ASM>:
+
+=cut
+
+echo tput('bold'),'Processing ASM module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME   = getSetting('ASM_ORACLE_HOME','')
+var $ORACLE_SID    = getSetting('ASM_ORACLE_SID','+ASM')
+var $ALERT_TEXT    = getSetting('ASM_ALERT_TEXT',1)
+var $ALERT_SUMMARY = getSetting('ASM_ALERT_SUMMARY')
+var $ALLOCATION    = getSetting('ASM_ALLOCATION',1)
+var $ADVANCED      = getSetting('ASM_ADVANCED')
+var $DEVICES       = getSetting('ASM_DEVICES',1)
+var $DISTINCT_HOME = getSetting('ASM_DISTINCT_HOME',0)
+var $BDUMP_MAX     = getSetting('ASM_TRACE_BDUMP',2)
+var $UDUMP_AGE     = getSetting('ASM_TRACE_UDUMP',0)
+var $LOG_AGE       = getSetting('ASM_TRACE_AGE',15)
+var $LOG_ERRORS    = max(1,getSetting('ASM_TRACE_ERRORS',250))
+var $LOG_TRESHOLD  = getSetting('ASM_TRACE_TRESHOLD',20480)
+var $LOG_RATIO     = max(1,getSetting('ASM_TRACE_RATIO',10))
+var $LOG_VOLUME    = getSetting('ASM_TRACE_VOLUME',10)
+var $SQL_LOGIN     = uc(getSetting('ASM_LOGIN','/'))
+
+var $OSN = getOsName()
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:ASM'
+
+# Load the libraries
+run DBalert()
+run DBinfo()
+run INSTinfo()
+run library()
+
+# Auto detect the ASM SID and ASM home in a cluster
+if compare('eq',$ORACLE_SID,'*')
+{run ASMinit(\$ORACLE_HOME,\$ORACLE_SID)
+ call setSetting('ASM_AUTO_HOME',$ORACLE_HOME,'D','Detected ASM Oracle home')
+ call setSetting('ASM_AUTO_SID', $ORACLE_SID ,'T','Detected ASM Oracle SID')
+}
+else
+{call setSetting('ASM_AUTO_HOME',$ORACLE_HOME,'D','ASM Oracle home')
+ call setSetting('ASM_AUTO_SID', $ORACLE_SID ,'T','ASM Oracle SID')
+}
+
+# Change the database context
+var $sid = setSqlSid($ORACLE_SID)
+var $try = setSqlFailure(0)
+if compare('eq',$SQL_LOGIN,'/')
+ var $old = setSqlLogin('@ AS SYSDBA','')
+else
+{if hasSqlPassword($usr,$sid)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$SQL_LOGIN,'@',$ORACLE_SID,\
+                                ' user password:'))
+ var $old = setSqlLogin(concat($SQL_LOGIN,'@ AS SYSDBA'),$pwd)
+}
+if $DISTINCT_HOME
+{call setCurrent(addTarget('OH_ASM',{ORACLE_HOME=>$ORACLE_HOME,\
+                                     OH_ABBR    =>'$OH_ASM'}))
+
+=head2 product_info - Product Information
+
+Gathers the ASM product information if ASM is installed in a separate Oracle
+Home.
+
+=cut
+
+ debug ' Inside ASM module, processing Product Information (can take time)'
+ report product_info
+ write '---+!! ASM Oracle Home Product Information'
+ write $TOC
+
+ write '---+ Files in Oracle Home'
+ call statDir('an',$ORACLE_HOME)
+ write $TOP
+
+ call inventory_details(catDir($ORACLE_HOME,'inventory'),\
+                        getSetting('ASM_INTERIM'))
+ toc '2:[[',getFile(),'][rda_report][Product Information]]'
+}
+
+=head2 no_access - No Instance Access
+
+Reports database access issue.
+
+=cut
+
+var $SQL_ACCESS = true
+if testSql()
+{report no_access
+ write 'Cannot connect to the ASM instance (',getSqlMessage(),')'
+ toc '2:[[',getFile(),'][rda_report][No Instance Access]]'
+ var $SQL_ACCESS = false
+}
+
+=head2 init_ora - INIT.ORA
+
+Determines if the spfile is used. RDA connects to the database and looks for a
+value coming from the spfile parameter. If a value is found, RDA does not
+search for F<init.ora>. A select for C<v$spparameter> is executed to determine
+whether to skip the search for F<init.ora>.
+
+=cut
+
+else
+{debug ' Inside ASM module, processing INIT.ORA'
+ report init_ora
+ set $sql
+ {SELECT '|' || p.name || '|' || p.value || '|'
+ " FROM v$parameter p
+ " WHERE p.name = 'spfile'
+ "   AND p.value IS NOT NULL;
+ }
+ var $SPFile_In_Use = grepSql($sql,'\|spfile\|','f')
+}
+
+if $SPFile_In_Use
+ write 'SPFile appears to be in use on this server%BR%\
+        Review "V$Parameters" and "Database SPFile Parameters" links \
+        for parameter settings.'
+elsif getSetting('ASM_PFILE_LOCAL')
+{if getSetting('ASM_PFILE_LOCATION')
+  var $fil = replace(last,'\*',$ORACLE_SID)
+ else
+ {if or(isWindows(),isCygwin())
+   var $dir = catDir($ORACLE_HOME,'database')
+  else
+   var $dir = catDir($ORACLE_HOME,'dbs')
+  var ($fil) = grepDir($dir,concat('^init',quote($ORACLE_SID),'\.ora$'),'p')
+ }
+ if $fil
+ {var %treated = ()
+  prefix
+  {write '---+!! INIT.ORA Information'
+   write $TOC
+   write '---+ Contents of INIT.ORA ',encode($fil)
+  }
+  if writeFile($fil)
+  {write $TOP
+
+   # Extract the IFILE, ignoring comments in the Oracle supplied INIT.ORA
+   var $treated{$fil} = 1
+   while value(grepFile($fil,'^[^#]*ifile','fi'))
+   {var $fil = trim(last)
+    var $fil = replace($fil,"'",'',true)
+    var $fil = replace($fil,'\?',$ORACLE_HOME)
+    var $fil = replace($fil,'\$ORACLE_HOME',$ORACLE_HOME)
+    var $fil = replace($fil,'\${ORACLE_HOME}',$ORACLE_HOME)
+    var $fil = replace($fil,'%ORACLE_HOME%',$ORACLE_HOME)
+    break exists($treated{$fil})
+    write '---+ Contents of IFILE ',encode($fil)
+    call writeFile($fil)
+    write $TOP
+    var $treated{$fil} = 1
+   }
+  }
+  else
+  {unprefix
+   write encode($fil),' is not readable or does not exist.%BR%\
+         File permissions are as follows:%BR%'
+   call statFile('b',$fil)
+   write '%BR%User: ',id(),'%BR%'
+  }
+ }
+ else
+  write 'INIT.ORA not located on this server.'
+}
+toc '2:[[',getFile(),'][rda_report][INIT.ORA]]'
+
+=head2 vspparameters - SPFile Parameters
+
+Gets C<V$SPParameter> information.
+
+=cut
+
+if $SQL_ACCESS
+{debug ' Inside ASM module, processing V$SPParameter'
+ debug '  SPFile_In_Use is ',$SPFile_In_Use
+ report vspparameters
+ if $SPFile_In_Use
+ {write '---+!! SPFile Parameter Values'
+  write '|*SID*|*Name*|*Value*|*Is Specified?*| *Ordinal*|*Update Comment*|'
+  set $sql
+  {SELECT '|' ||
+  "       s.sid || '|' ||
+  "       s.name || '|' ||
+  "       NVL(s.value, ' ') || '|' ||
+  "       s.isspecified || '| ' ||
+  "       s.ordinal || '|' ||
+  "       NVL(s.update_comment, ' ') || '|'
+  " FROM v$spparameter s
+  " ORDER BY s.name, s.sid;
+  }
+  call writeSql($sql)
+  if getSqlMessage()
+   write last,'%BR%'
+ }
+ else
+ {write '---+!! SPFile Parameter Values'
+  write 'This database instance is not using an spfile.'
+ }
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][SPFile Parameters]]'
+
+=head2 vparameters - V$Parameters
+
+Gets C<V$Parameter> information.
+
+=cut
+
+ debug ' Inside ASM module, processing V$Parameter'
+ report vparameters
+ var $TTL = undef
+ var @TTL = ('',\
+             '---+!! Automatic Storage Management Parameters')
+ var @HDR = ('',\
+             '|*Parameter Name*|*Value*|*Default*|*Modified*|')
+ set $sql
+ {SELECT '|' ||
+ "       SUBSTR(name, 0, 512) || '|' ||
+ "       NVL(SUBSTR(value, 0, 512), '%NULL%') || '|'  ||
+ "       isdefault || '|' ||
+ "       ismodified || '|'
+ " FROM v$parameter
+ " ORDER BY name;
+ }
+ call separator(1)
+ call writeSql($sql)
+ call separator(0,'V$Parameters')
+
+=head2 overview - Overview
+
+Extracts the ASM information from the database.
+
+=cut
+
+ debug ' Inside ASM module, gathering overview information'
+ report overview
+ var $TTL = '---+!! Automatic Storage Management Overview'
+ if $ADVANCED
+ {var @TTL = ('',\
+              '---+ Disk Groups',\
+              '---+ Partner Information',\
+              '---+ Robust Disk Information',\
+              '---+ ASM Attribute Information')
+  var @HDR = ('',\
+              '| *Grp*|*Name*|*State*|*Type*| *Total (MiB)*| *Free (MiB)*|',\
+              '| *Grp*| *Disk*| *number_kfdpartner*| *parity_kfdpartner*| \
+                 *active_kfdpartner*|',\
+              '| *Group Number*| *Disk Number*| *Incarnation*|*Mount Status*|\
+                 *Header Status*|*Mode Status*|*State*|*Library*| \
+                 *Total (MiB)*| *Free (MiB)*|*Name*|*FailGroup*|*Label*|*Path*|\
+                 *Create Date*|*Mount Date*| *Reads*| *Writes*| *Read Errs*| \
+                 *Write Errs*|*Read Time*|*Write Time*| *Bytes Read*| \
+                 *Bytes Written*|',\
+              '|*Diskgroup Name*|*Attribute Name*|*Value*|')
+  set $sql
+  {SELECT '| ' ||
+  "       group_number || '|' ||
+  "       name || '|' ||
+  "       state || '|' ||
+  "       type || '| ' ||
+  "       total_mb || '| ' ||
+  "       free_mb || '|'
+  " FROM v$asm_diskgroup;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '| ' ||
+  "       grp || '| ' ||
+  "       disk || '| ' ||
+  "       number_kfdpartner || '| ' ||
+  "       parity_kfdpartner || '| ' ||
+  "       active_kfdpartner || '|'
+  " FROM x$kfdpartner;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '[[[' || CHR(10) || '| ' ||
+  "       group_number || '| ' ||
+  "       disk_number || '| ' ||
+  "       incarnation || '|' ||
+  "       mount_status || ' |' ||
+  "       header_status || ' |' ||
+  "       mode_status || ' |' ||
+  "       state || ' |' ||
+  "       library || ' | ' ||
+  "       total_mb || '| ' ||
+  "       free_mb || '| ' ||
+  "       name || '| ' ||
+  "       failgroup || ' |' ||
+  "       label || ' |' ||
+  "       path || ' |' ||
+  "       TO_CHAR(create_date,'DD-Mon-YYYY') || ' |' ||
+  "       TO_CHAR(mount_date,'DD-Mon-YYYY') || ' | ' ||
+  "        reads || '| ' ||
+  "        writes || '| ' ||
+  "       read_errs || '| ' ||
+  "       write_errs || '| ' ||
+  "       read_time || ' | ' ||
+  "       write_time || '| ' ||
+  "       bytes_read || '| ' ||
+  "       bytes_written || '|' ||
+  "       CHR(10) || ']]]'
+  " FROM v$asm_disk;
+  }
+  var (undef,$col) = getSqlColumns('RDA','','V$ASM_ATTRIBUTE')
+  call clearSqlColumns('RDA')
+  if $col
+  {append $sql
+   {PROMPT ___Macro_separator(4)___
+   "SELECT '|' ||
+   "       g.name || ' |' ||
+   "       a.name || ' |' ||
+   "       a.value || ' |'
+   " FROM v$asm_diskgroup g,
+   "      v$asm_attribute a
+   " WHERE g.group_number=a.group_number
+   " ORDER BY g.name, a.name;
+   }
+  }
+  call separator(1)
+  call writeSql($sql,2)
+  call separator(0,'Overview')
+
+  if $ALLOCATION
+  {# Creating separate data files for the long-running queries.
+   prefix
+    write '---+ Allocation Information'
+   suspend overview
+   output D,kfdat
+   prefix
+   {write '---+ Allocation Information (Disk)'
+    write '| *group_kfdat*| *number_kfdat*| *aunum_kfdat*| *v_kfdat*| \
+             *fnum_kfdat*| *i_kfdat*| *xnum_kfdat*|*raw_kfdat*|'
+   }
+   set $sql
+   {SELECT '| ' ||
+   "       group_kfdat || '| ' ||
+   "       number_kfdat || '| ' ||
+   "       aunum_kfdat || '| ' ||
+   "       v_kfdat || '| ' ||
+   "       fnum_kfdat || '| ' ||
+   "       i_kfdat || '| ' ||
+   "       xnum_kfdat || '|' ||
+   "       raw_kfdat || '|'
+   " FROM x$kfdat;
+   }
+   call writeSql($sql,2)
+   if isCreated()
+   {var $url = getFile('.')
+    resume overview
+    write '|*Disk*|',concat('[[',$url,'][_blank][x$kfdat]]'),'|'
+    suspend overview
+   }
+   output D,kffxp
+   prefix
+   {write '---+ Allocation Information (ASM File)'
+    write '| *Grp*| *Num*|*Incarn*|*pxn_kffxp*| *xnum_kffxp*| *Lxn*| *Disk*| \
+             *au_kffxp*| *Flg*| *Chk*|'
+   }
+   set $sql
+   {SELECT '| ' ||
+   "       group_kffxp || '| ' ||
+   "       number_kffxp || '|' ||
+   "       incarn_kffxp || '|' ||
+   "       pxn_kffxp || '| ' ||
+   "       xnum_kffxp || '| ' ||
+   "       lxn_kffxp || '| ' ||
+   "       disk_kffxp || '|' ||
+   "       au_kffxp || '| ' ||
+   "       flags_kffxp || '| ' ||
+   "       chk_kffxp || '|'
+   " FROM x$kffxp;
+   }
+   call writeSql($sql,2)
+   if isCreated()
+   {var $url = getFile('.')
+    resume overview
+    write '|*ASM File*|',concat('[[',$url,'][_blank][x$kffxp]]'),'|'
+   }
+   else
+    resume overview
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+ else
+ {var @TTL = ('',\
+              '---+ Disk Group Information ',\
+              '---+ Disk Information',\
+              '---+ ASM Attribute Information')
+  var @HDR = ('',\
+              '| *Grp*|*Name*|*State*|*Type*| *Total (MiB)*| *Free (MiB)*|',\
+              '| *Group Number*| *Disk Number*|*Name*|*Mount Status*|\
+                 *Header Status*|*Mode Status*|*State*|*Redundancy*|\
+                 *Failgroup*|*Path*| *Total (MiB)*| *Free (MiB)*|',\
+              '|*Diskgroup Name*|*Attribute Name*|*Value*|')
+  set $sql
+  {SELECT '| ' ||
+  "       group_number || '|' ||
+  "       name || '|' ||
+  "       state || '|' ||
+  "       type || '| ' ||
+  "       total_mb || '| ' ||
+  "       free_mb || '|'
+  " FROM v$asm_diskgroup;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '[[[' || CHR(10) || '| ' ||
+  "       group_number || '| ' ||
+  "       disk_number || '| ' ||
+  "       name || '| ' ||
+  "       mount_status || ' |' ||
+  "       header_status || ' |' ||
+  "       mode_status || ' |' ||
+  "       state || ' |' ||
+  "       redundancy || ' |' ||
+  "       failgroup || ' |' ||
+  "       path || ' |' ||
+  "       total_mb || ' | ' ||
+  "       free_mb || '| ' ||
+  "       CHR(10) || ']]]'
+  " FROM v$asm_disk
+  " ORDER BY group_number,disk_number;
+  }
+  var (undef,$col) = getSqlColumns('RDA','','V$ASM_ATTRIBUTE')
+  call clearSqlColumns('RDA')
+  if $col
+  {append $sql
+   {PROMPT ___Macro_separator(3)___
+   "SELECT '|' ||
+   "       g.name || ' |' ||
+   "       a.name || ' |' ||
+   "       a.value || ' |'
+   " FROM v$asm_diskgroup g,
+   "      v$asm_attribute a
+   " WHERE g.group_number=a.group_number
+   " ORDER BY g.name, a.name;
+   }
+  }
+  call separator(1)
+  call writeSql($sql,2)
+  call separator(0,'Overview')
+ }
+
+=head2 storage_info - Storage Information
+
+Gathers the ASM storage information.
+
+=cut
+
+ debug ' Inside ASM module, gathering storage information'
+ report storage_info
+ var $TTL = '---+!! Storage Information'
+ var @TTL = ('',\
+             '---+ List of DB clients connected to ASM instance',\
+             '---+ List of templates',\
+             '---+ V$ASM_ALIAS Information',\
+             '---+ V$ASM_DISKGROUP Information',\
+             '---+ V$ASM_FILE Information',\
+             '---+ V$ASM_OPERATION Information')
+
+ var ($HDR[1],$col1) = getSqlColumns('RDA','','V$ASM_CLIENT')
+ call clearSqlColumns('RDA')
+ var ($HDR[2],$col2) = getSqlColumns('RDA','','V$ASM_TEMPLATE')
+ call clearSqlColumns('RDA')
+ if $ADVANCED
+ {var ($HDR[3],$col3) = getSqlColumns('RDA','','V$ASM_ALIAS')
+  call clearSqlColumns('RDA')
+  var ($HDR[4],$col4) = getSqlColumns('RDA','','V$ASM_DISKGROUP')
+  call clearSqlColumns('RDA')
+  var $HDR[4] = replace($HDR[4],'\sMb\*\|',' (MiB)*|',true)
+  var ($HDR[5],$col5) = getSqlColumns('RDA','','V$ASM_FILE')
+  call clearSqlColumns('RDA')
+  var ($HDR[6],$col6) = getSqlColumns('RDA','','V$ASM_OPERATION')
+  call clearSqlColumns('RDA')
+ }
+
+ if and($col6,$col5,$col4,$col3,$col2,$col1)
+ {set $sql
+  {SELECT :3
+  " FROM v$asm_alias;
+  "PROMPT ___Macro_separator(1)___
+  "SELECT :1
+  " FROM v$asm_client;
+  "PROMPT ___Macro_separator(4)___
+  "SELECT :4
+  " FROM v$asm_diskgroup;
+  "PROMPT ___Macro_separator(5)___
+  "SELECT :5
+  " FROM v$asm_file;
+  "PROMPT ___Macro_separator(6)___
+  "SELECT :6
+  " FROM v$asm_operation;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT :2
+  " FROM v$asm_template;
+  }
+  call separator(3)
+  call writeSql(bindSql($sql,$col1,$col2,$col3,$col4,$col5,$col6),2)
+  call separator(0,'Storage Information')
+ }
+ elsif and($col2,$col1)
+ {set $sql
+  {SELECT :1
+  " FROM v$asm_client;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT :2
+  " FROM v$asm_template;
+  }
+  call separator(1)
+  call writeSql(bindSql($sql,$col1,$col2),2)
+  call separator(0,'Storage Information')
+ }
+
+=head2 space_info - File/Space Related Information
+
+Gathers the File/Space-related information.
+
+=cut
+
+ debug ' Inside ASM module, gathering file/space related information'
+ report space_info
+ var $TTL = '---+!! File/Space Related Information'
+ if $ADVANCED
+ {var @TTL = ('',\
+              '---+ Files Stored in Diskgroup',\
+              '---+ Number of Allocation Units per Disk Group',\
+              '---+ Number of Allocation Units per Diskgroup,Disk',\
+              '---+ Number of Allocated (V) and Free (F) Allocation Units',\
+              '---+ Number of AUs per ASM file ordered by AU : Metadata Only',\
+              '---+ Number of AUs per ASM file ordered by AU : Non Metadata',\
+              '---+ File Utilization')
+
+  var @HDR = ('',\
+              '| *Group Number*| *File Number*|*Full Alias Path*|*File Type*|',\
+              '| *AU Count*| *DG#*|',\
+              '| *AU Count*|*Group#,Diskno*|',\
+              '| *Group#*| *Disk#*|*VF*| *Count*|',\
+              '| *AU Count*| *File#*| *DG#*|',\
+              '| *Group Kffxp*| *Number Kffxp*|*Name*| *Count*|',\
+              '| *Group No*| *File No*| *Bytes*| *Space*| *Space (MiB)*|\
+                 *Name*|')
+  set $sql
+  {SELECT '| ' ||
+  "       x.gnum || '| ' ||
+  "       x.filnum || '|' ||
+  "       x.full_alias_path || ' |' ||
+  "       f.ftype || ' |'
+  " FROM (SELECT gnum,
+  "              filnum,
+  "              CONCAT('+'||gname, sys_connect_by_path(aname, '/'))
+  "                  full_alias_path
+  "        FROM (SELECT g.name gname,
+  "                     a.parent_index pindex,
+  "                     a.name aname,
+  "                     a.reference_index rindex,
+  "                     a.group_number gnum,
+  "                     a.file_number filnum
+  "               FROM v$asm_alias a,
+  "                    v$asm_diskgroup g
+  "               WHERE a.group_number = g.group_number)
+  "               START WITH (MOD(pindex, POWER(2, 24))) = 0
+  "               CONNECT BY PRIOR rindex = pindex) x,
+  "             (SELECT group_number gnum,
+  "                     file_number filnum,
+  "                     type ftype
+  "               FROM v$asm_file
+  "               ORDER BY group_number,file_number) f
+  " WHERE x.filnum != 4294967295
+  "   AND x.gnum=f.gnum
+  "   AND x.filnum=f.filnum;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '| ' ||
+  "       COUNT(number_kfdat) || '| ' ||
+  "       group_kfdat || '|'
+  " FROM x$kfdat
+  " GROUP BY group_kfdat;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '| ' ||
+  "       COUNT(*) || '|' ||
+  "       group_kfdat||','||number_kfdat || ' |'
+  " FROM x$kfdat
+  " GROUP BY group_kfdat,number_kfdat;
+  "PROMPT ___Macro_separator(4)___
+  "SELECT '| ' ||
+  "       group_kfdat || '| ' ||
+  "       number_kfdat || '|' ||
+  "       v_kfdat || ' | ' ||
+  "       COUNT(*) || '|'
+  " FROM x$kfdat
+  " GROUP BY group_kfdat, number_kfdat, v_kfdat;
+  "PROMPT ___Macro_separator(5)___
+  "SELECT '| ' ||
+  "       COUNT(xnum_kffxp) || '| ' ||
+  "       number_kffxp || '| ' ||
+  "       group_kffxp || '|'
+  " FROM x$kffxp WHERE number_kffxp < 256
+  " GROUP BY number_kffxp, group_kffxp
+  " ORDER BY COUNT(xnum_kffxp);
+  "PROMPT ___Macro_separator(6)___
+  "SELECT '| ' ||
+  "       group_kffxp || '| ' ||
+  "       number_kffxp || '|' ||
+  "       name || ' | ' ||
+  "       COUNT(*) || '|'
+  " FROM x$kffxp, v$asm_alias
+  " WHERE group_kffxp = group_number
+  "  AND number_kffxp = file_number
+  "  AND system_created = 'Y'
+  " GROUP BY group_kffxp, number_kffxp, name
+  " ORDER BY group_kffxp, number_kffxp;
+  "PROMPT ___Macro_separator(7)___
+  "SELECT '| ' ||
+  "       f.group_number || '| ' ||
+  "       f.file_number || '| ' ||
+  "       bytes || '| ' ||
+  "       space || '| ' ||
+  "       space/1048576 || '|' ||
+  "       a.name || ' |'
+  " FROM v$asm_file f, v$asm_alias a
+  " WHERE f.group_number = a.group_number
+  "   AND f.file_number = a.file_number
+  "   AND system_created = 'N'
+  " ORDER BY f.group_number, f.file_number;
+  }
+ }
+ else
+ {var @TTL = ('',\
+              '---+ File Utilization',\
+              '---+ File utilization but using the Alias names.',\
+              '---+ Files stored in Diskgroup')
+  var @HDR = ('',\
+              '| *Group No*| *File No*| *Bytes*| *Space*| *Space (MiB)*|\
+                 *Name*|',\
+              '| *Group No*| *File No*| *Bytes*| *Space*| *Space (MiB)*|\
+                 *Name*|',\
+              '| *Group No*| *File No*|*Full Alias Path*|')
+  set $sql
+  {SELECT '| ' ||
+  "       f.group_number || '| ' ||
+  "       f.file_number || '| ' ||
+  "       bytes || '| ' ||
+  "       space || '| ' ||
+  "       space/1048576 || '|' ||
+  "       a.name || ' |'
+  " FROM v$asm_file f,v$asm_alias a
+  " WHERE f.group_number = a.group_number
+  "   AND f.file_number = a.file_number
+  "   AND system_created = 'Y'
+  " ORDER BY f.group_number,f.file_number;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '| ' ||
+  "       f.group_number || '| ' ||
+  "       f.file_number || '| ' ||
+  "       bytes || '| ' ||
+  "       space || '| ' ||
+  "       space/1048576 || '|' ||
+  "       a.name || ' |'
+  " FROM v$asm_file f,v$asm_alias a
+  " WHERE f.group_number = a.group_number
+  "   AND f.file_number = a.file_number
+  "   AND system_created = 'N'
+  " ORDER BY f.group_number,f.file_number;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '| ' ||
+  "       gnum || '|' ||
+  "       filnum || ' |' ||
+  "       concat('+'||gname,sys_connect_by_path(aname, '/')) || '| '
+  " FROM (SELECT g.name gname, a.parent_index pindex,
+  "              a.name aname, a.reference_index rindex,
+  "              a.group_number gnum,a.file_number filnum
+  "        FROM v$asm_alias a,v$asm_diskgroup g
+  "        WHERE a.group_number = g.group_number)
+  " START WITH (mod(pindex, power(2, 24))) = 0
+  " CONNECT BY PRIOR rindex = pindex;
+  }
+ }
+ call separator(1)
+ call writeSql($sql,2)
+ call separator(0,'File/Space Related Information')
+}
+
+=head2 lspv - Physical Volume Information
+
+For AIX, it gets physical volume information.
+
+=cut
+
+if match($OSN,'aix')
+{var $cmd = '/usr/sbin/lspv'
+ debug ' Inside ASM module, getting physical volume information'
+ report lspv
+ prefix
+ {write '---+!! Physical Volume Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Physical Volume Information]]'
+}
+
+=head2 ASMLIB
+
+=head3 rpm_info - ASM Library Information
+
+For Linux, it gets related package manager information.
+
+=cut
+
+elsif match($OSN,'linux')
+{pretoc '2:ASMLIB'
+ debug ' Inside ASM module, getting ASM library information'
+ report rpm_info
+ prefix
+ {write '---+!! ASM Library Information'
+  write '---## Using: rpm -qa | grep oracleasm'
+  write '<verbatim>'
+ }
+ loop $lin (grepCommand('rpm -qa','oracleasm'))
+  write $lin
+ if isCreated(true)
+ {write '</verbatim>'
+  toc '3:[[',getFile(),'][rda_report][ASM Library Information]]'
+ }
+
+=head3 asmlog_mask - /proc/fs/oracleasm/log_mask Contents
+
+For Linux, it collects the F</proc/fs/oracleasm/log_mask> file.
+
+=cut
+
+ debug ' Inside ASM module, collecting /proc/fs/oracleasm/log_mask file'
+ report asmlog_mask
+ var $fil = '/proc/fs/oracleasm/log_mask'
+ prefix
+  write '---+!! Contents of /proc/fs/oracleasm/log_mask'
+ call writeFile($fil)
+ if isCreated(true)
+  toc '4:[[',getFile(),'][rda_report][/proc/fs/oracleasm/log_mask Contents]]'
+
+=head3 asm_log - /var/log/oracleasm Contents
+
+For Linux, it collects the F</var/log/oracleasm> file.
+
+=cut
+
+ debug ' Inside ASM module, collecting /var/log/oracleasm file'
+ report asm_log
+ var $fil = '/var/log/oracleasm'
+ prefix
+  write '---+!! Contents of /var/log/oracleasm'
+ call writeFile($fil)
+ if isCreated(true)
+  toc '4:[[',getFile(),'][rda_report][/var/log/oracleasm Contents]]'
+
+=head3 asmlib_config - ASM Library Configuration
+
+For Linux, it collects the F</etc/sysconfig/oracleasm> file.
+
+=cut
+
+ debug ' Inside ASM module, collecting /etc/sysconfig/oracleasm file'
+ report asmlib_config
+ var $fil = '/etc/sysconfig/oracleasm'
+ prefix
+ {write '---+!! ASM Library Configuration'
+  write '---## From ',encode($fil)
+ }
+ call writeFile($fil)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][ASM Library Configuration]]'
+
+=head3 asmlib_conlist - ASM Library Configuration List
+
+For Linux, it collects the list of F</etc/sysconfig/oracleasm*> files.
+
+=cut
+
+ debug ' Inside ASM module, collecting /etc/sysconfig/oracleasm* list'
+ report asmlib_conlist
+ var $dir = '/etc/sysconfig'
+ prefix
+  write '---+!! ASM Library Configuration List'
+ call statFile('b',grepDir($dir,'^oracleasm','np'))
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][ASM Library Configuration List]]'
+
+=head3 asmlib_discovery - ASM Library Discovery Information
+
+For Linux, it collects ASM library discovery information.
+
+=cut
+
+ debug ' Inside ASM module, collecting ASM library discovery information'
+ report asmlib_discovery
+ var $cmd = "/usr/sbin/oracleasm-discover 'ORCL:*'"
+ prefix
+ {write '---+!! ASM Library Discovery Information'
+  write '---## Using ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][ASM Library Discovery Information]]'
+
+=head3 asmlib_disks - ASM Library Disk Information
+
+For Linux, it gets ASM library disk information.
+
+=cut
+
+ debug ' Inside ASM module, getting ASM library disk information'
+ report asmlib_disks
+ var $cmd = '/bin/ls -l /dev/oracleasm/disks'
+ prefix
+ {write '---+!! ASM Library Disk Information'
+  write $TOC
+  write '---+ List of ASM Devices'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+  write $TOP
+
+ var $cmd = '/sbin/blkid'
+ prefix
+ {write '---+ Devices Used With ASMLIB'
+  write '---## Using: ',encode($cmd),' | grep oracleasm'
+  call beginBlock(true)
+ }
+ loop $lin (grepCommand($cmd,'oracleasm'))
+  write $lin
+ if hasOutput(true)
+ {call endBlock(['C',concat($cmd,' | grep oracleasm')])
+  write $TOP
+ }
+
+ var $cmd = '/etc/init.d/oracleasm listdisks'
+ if loadCommand($cmd)
+ {prefix
+  {write '---+ List of ASM Disks'
+   write '---## Using: ',encode($cmd)
+  }
+  call writeLastFile()
+  if hasOutput(true)
+   write $TOP
+
+  loop $dsk (grepLastFile('.'))
+  {var $cmd = concat('/etc/init.d/oracleasm querydisk ',$dsk)
+   prefix
+   {write '---+ Disk Information for ',$dsk
+    write '---## Using: ',encode($cmd)
+   }
+   call writeCommand($cmd)
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][ASM Library Disk Information]]'
+ unpretoc
+
+=head2 partitions - Disk Partitions
+
+For Linux, it gets the disk partition information used to identify the physical
+devices with the ASM disk.
+
+=cut
+
+ debug ' Inside ASM module, getting disk partitions information'
+ report partitions
+ var $fil = '/proc/partitions'
+ prefix
+ {write '---+!! Disk Partition Information'
+  write '---## From ',encode($fil)
+ }
+ call writeFile($fil)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Disk Partitions]]'
+
+=head2 udev - Udev Settings
+
+For Linux, it gets the udev settings information. It excludes some rules files.
+
+=cut
+
+ debug ' Inside ASM module, getting udev settings information'
+ report udev
+ var $dir = '/etc/udev/rules.d'
+ pretoc '2:Udev Settings'
+ prefix
+ {write '---+!! Udev Settings Information'
+  write '---## From ',encode($dir)
+ }
+ call sort_files(3,0,grepDir($dir,'((alsa|bluetooth|fuse|kexec|libsane|net|\
+   pam\-console|pcmcia|pcscd_ccid|wacom)\.rules|fuse\.rules\.rpmnew)$','pv'))
+ unpretoc
+}
+
+=head2 vis_disks - ASM Visible Disks
+
+Lists the ASM visible disks.
+
+=cut
+
+debug ' Inside ASM module, getting ASM visible disks'
+var $cmd = concat(catCommand($ORACLE_HOME,'bin','kfod'),\
+                  ' disks=all status=true')
+report vis_disks
+prefix
+{write '---+!! ASM Visible Disks'
+ write '---## Using: ',encode($cmd)
+}
+call writeCommand($cmd)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][ASM Visible Disks]]'
+
+=head2 dev_list - Device List
+
+Lists the devices from the F</dev/> directory.
+
+=cut
+
+debug ' Inside ASM module, getting device information'
+report dev_list
+
+macro stat_dev
+{var ($dir) = @arg
+ import $TOP
+
+ call statDir('an',$dir)
+ write $TOP
+
+ loop $fil (grepDir($dir,'^\.+$','nv'))
+ {var $pth = catFile($dir,$fil)
+  if testFile('dr',$pth)
+  {next testFile('l',$pth)
+   call stat_dev($pth)
+  }
+ }
+}
+
+var $dir = '/dev'
+prefix
+ write '---+!! Listing of Devices from ',encode($dir)
+if testFile('dr',$dir)
+ call stat_dev($dir)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Device List]]'
+
+=head2 dev_header - ASM Devices Header Information
+
+Collects the ASM devices header information.
+
+=cut
+
+if $DEVICES
+{var ($pat0,$pat1,%dev,%fil) = (\
+  '^(\.+|agp|arp|audio|audit|bd\.off|bmc|bus|cd|ce|clone|conslog|console|\
+     control|core|cua|diskette|dmp|dri|dsp|dssa|dump|dvd|echo|ecp|envctrl|\
+     eri|error|event|fb|fd|full|ge|gxme|hdlc|hme|hpet|icmp|inet_cots|\
+     infiniband|input|ip|ipldevice|isa|iscsi|kb|key|kstat|ksyms|lan|le|lft|\
+     llc|lofictl|log|loop|lp|MAKEDEV|md|mem|mice|mixer|mouse|nca|net|nrst|nul|\
+     openprom|paging|par0|pci|pm|poll|port|ppp|print|ptc|ptmajor|ptmx|pts|pty|\
+     qe|qfe|ram|random|rawctl|rawip|rcd|rcm|refresh|rmt|root|rtape|rtc|rts|\
+     sad|sctp|sdp|sequencer|sg|slog|snap|snd|spx|ssa|stcpmap|stderr|stdin|\
+     stdout|strlog|swap|SWAP|syscon|systrace|systrctl|tape|tcp|telnetm|term|\
+     tic.?ts|tlclts|tlcots|tnf|tod|tty|tu|udp|unixdg|unixst|usb|vbi|vcs|video|\
+     volctl|vx|watchdog|winlock|wrsmd|wscons|X0R|zero)',\
+  '^(\.+|agp|arp|audio|audit|bd\.off|bmc|bus|cd|clone|conslog|console|control|\
+     core|cua|diskette|dmp|dri|dsp|dssa|dump|dvd|echo|ecp|envctrl|error|event|\
+     fd|full|gxme|hdlc|hpet|icmp|inet_cots|infiniband|input|ipldevice|isa|\
+     iscsi|key|kstat|ksyms|lan|lft|llc|lofictl|loop|MAKEDEV|md|mem|mice|mixer|\
+     mouse|net|nrst|openprom|paging|par0|poll|port|ppp|print|ptmajor|ptmx|pts|\
+     ram|random|rawctl|rawip|refresh|root|rtape|rtc|sctp|sdp|sequencer|sg|\
+     snap|snd|stcpmap|stderr|stdin|stdout|strlog|swap|SWAP|syscon|systrace|\
+     systrctl|tape|tcp|telnetm|term|tic.?ts|tlclts|tlcots|tnf|tty|tu|udp|\
+     unixdg|unixst|usb|vbi|vcs|video|volctl|watchdog|winlock|wrsmd|wscons|X0R|\
+     zero)')
+
+ # Get the devices
+ macro get_devices
+ {var (\%dev,$dir,$pat,$nxt) = @arg
+
+  # Analyze the directory
+  loop $fil (grepDir($dir,$pat,'nv'))
+  {var $pth = catFile($dir,$fil)
+   if testDir('d',$pth)
+    var $sub{$pth} = true
+   else
+    var $dev{$pth} = true
+  }
+
+  # Treat the subdirectories
+  loop $sub (keys(%sub))
+   call get_devices(\%dev,$sub,$nxt,$nxt)
+ }
+ call get_devices(\%dev,$dir,$pat0,$pat1)
+
+ # Collect ASM header properties
+ if testFile('x',catFile($ORACLE_HOME,'bin','kfed'))
+ {debug ' Inside ASM module, getting devices header information'
+  report dev_header
+  prefix
+  {write '---+ Display of ASM Devices Header Information'
+   write '|*Device*|*Header Information*|'
+  }
+  loop $fil (keys(%dev))
+  {if loadCommand(concat(lastCommand(),' read ',$fil,' 2>&1'),true,1)
+   {next !grepLastFile('kfbh\.type','f')
+    next match(last,'KFBTYP_INVALID|Unknown\s*Enum')
+    next $fil{$fil}
+    if grepLastFile('ausize|blksize|driver\.provstr|dskname|dsknum|dsksize|\
+                     fgname|grpname|grptyp|hdrsts')
+    {var @dev = last
+     var $fil{$fil} = replace(join("\001",@dev),'\s+','',true)
+     var @tbl = ()
+     loop $dev (@dev)
+     {var ($nam,$val,$off,$det) = split('\s*[:;]\s*',$dev,4)
+      call push(@tbl,concat($nam,' %NEXT% ',$val,'%NEXT% ',$off,'%NEXT%',$det))
+     }
+     write '|',encode($fil),\
+           ' |%TBL%%ID:name:value:offset:detail%',join('%BR%',@tbl),'%ENDTBL%|'
+    }
+   }
+  }
+  if hasOutput(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][ASM Devices Header Information]]'
+  }
+
+=head2 dev_duplicates - Potential Duplicate Devices
+
+Collects the potential duplicate devices information.
+
+=cut
+
+  # Collect ASMLIB devices information
+  debug ' Inside ASM module, getting duplicate devices information'
+  report dev_duplicates
+  prefix
+   write '---+ Display of Potential Duplicate Devices'
+  var @fil = keys(%fil)
+  var $cnt = @fil
+  decr $cnt
+  for $off1 (0,$cnt,1)
+  {var $lin1 = $fil{$fil[$off1]}
+   for $off2 ($off1,$cnt,1)
+   {next expr('==',$off1,$off2)
+    var $lin2 = $fil{$fil[$off2]}
+    if compare('eq',$lin1,$lin2)
+    {if match($fil[$off1],'oracleasm',true)
+      write '|``',encode($fil[$off1]),\
+            ' is the ASMLIB device corresponding to ',\
+            encode($fil[$off2]),'``|'
+     elsif match($fil[$off2],'oracleasm',true)
+      write '|``',encode($fil[$off2]),\
+            ' is the ASMLIB device corresponding to ',\
+            encode($fil[$off1]),'``|'
+     else
+      write '|``',encode($fil[$off1]),' is a duplicate of ',\
+            encode($fil[$off2]),'``|'
+    }
+   }
+  }
+  if hasOutput(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][Potential Duplicate Devices]]'
+  }
+ }
+}
+
+# Get the dump destinations
+call find_dest('ASM_')
+var $BDUMP_DIR = get_bdump()
+var $CDUMP_DIR = get_cdump()
+var $UDUMP_DIR = get_udump()
+var $ADR_BASE  = get_adr_base()
+var $ADR_HOME  = get_adr_home()
+
+var $ALERT_TAIL = getSetting('ASM_ALERT_TAIL',30000)
+
+var $TRACE_DIR = cond($ADR_HOME,catDir($ADR_HOME,'trace'),$BDUMP_DIR)
+
+# Define a macro to estimate the size after compression
+macro get_size
+{var ($fil) = @arg
+ import $LOG_RATIO,$LOG_TRESHOLD
+ keep $LOG_RATIO,$LOG_TRESHOLD
+ var $siz = getSize($fil)
+ if expr('>',$siz,$LOG_TRESHOLD)
+  var $siz = expr('/',$siz,$LOG_RATIO)
+ return $siz
+}
+
+=head2 alert_log - Alert Log
+
+Gathers the alert log information.
+
+=head2 alert_sum - Alert.log Analysis
+
+When requested, RDA analyzes the lines extracted from the alert log and
+produces a summary.
+
+=cut
+
+var @err = ()
+if and($ADR_HOME,not($ALERT_TEXT))
+{debug ' Inside ASM module, found diagdir ',$ADR_HOME,', get log info'
+ var $fil = catFile($ADR_HOME,'alert','log.xml')
+ if createBuffer('ALR','R',$fil)
+ {# Parse the alert log for errors and last startup
+  macro push_err
+  {var (\@err,$lin,$max) = @arg
+   if expr('<',scalar(@err),$max)
+    var @err = (@err,$lin)
+   else
+    var (undef,@err) = (@err,$lin)
+   return -1
+  }
+
+  var $lst = undef
+  call parseReset()
+  call parsePattern('TOP',\
+   '^<msg\b',code(parseMarker(line),-1),\
+   'Starting ORACLE instance',code($lst = parseLast(),-1),\
+   '(Errors in file|Details in trace file)',push_err(\@err,line,$LOG_ERRORS))
+  call parse('ALR')
+
+  # At a minimum, take the alert log back to the last instance startup
+  debug ' Inside ASM module, determining line count for alert log display'
+  report alert_log
+  var $max = inputLine('ALR')
+  if expr('<',$max,$ALERT_TAIL)
+  {call deleteBuffer('ALR')
+   write '---+!! Entire ALERT.log Content'
+   call writeFile($fil)
+  }
+  else
+  {var $cnt = $ALERT_TAIL
+   var $min = expr('-',$max,$cnt)
+   if $lst
+   {var ($pos,$lst,$lin) = match($lst,'^((\d+)\|\d+):(.*)$')
+    if expr('>',$lst,$min)
+     var $lst = undef
+   }
+   if $lst
+   {var $cnt = expr('-',$max,$lst)
+    incr $cnt
+    call setPos('ALR',$pos)
+   }
+   else
+   {call setPos('ALR')
+    while getLine('ALR',$min)
+    {var $lin = chomp(last)
+     break match($lin,'^<msg\b')
+     var $min = 0
+     decr $cnt
+    }
+   }
+   write '---+!! Last ',$cnt,' lines of ALERT.log'
+   call writeBuffer('ALR',$lin)
+   call deleteBuffer('ALR')
+  }
+  toc '2:[[',getFile(),'][rda_report][Alert.log]]'
+  if $ALERT_SUMMARY
+  {debug ' Inside ASM module, analyzing alert log report'
+   var $rpt = getFile('/')
+   report alert_sum
+   call analyze_alert($rpt,true)
+   if isCreated(true)
+    toc '2:[[',getFile(),'][rda_report][Alert.log Analysis]]'
+  }
+ }
+}
+elsif $BDUMP_DIR
+{debug ' Inside ASM module, found dumpdir ',$BDUMP_DIR,', get log info'
+ var $fil = catFile($BDUMP_DIR,get_alert_name())
+ if testFile('r',$fil)
+ {# Find associated trace files
+  debug ' Inside ASM module, finding trace files referenced in the alert.log'
+  var @err = (grepFile($fil,'(Errors in file|Details in trace file)','',\
+              expr('-',0,$LOG_ERRORS)))
+  var @tbl = grepFile($fil,'Starting ORACLE instance','n')
+  var $lst = field(':',0,$tbl[-1])
+  var $max = getLength()
+  report alert_log
+  if expr('<',$max,$ALERT_TAIL)
+  {write '---+!! Entire ALERT.log Content'
+   call writeFile($fil)
+  }
+  else
+  {var $cnt = $ALERT_TAIL
+   var $min = expr('-',$max,$cnt)
+   incr $min
+   if $lst
+   {var $min = min($lst,$min)
+    var $cnt = expr('-',$max,$min)
+    incr $cnt
+   }
+   write '---+!! Last ',$cnt,' lines of ALERT.log'
+   call writeLines($fil,$min,$max)
+  }
+  toc '2:[[',getFile(),'][rda_report][Alert.log]]'
+  if $ALERT_SUMMARY
+  {debug ' Inside LOG module, analyzing alert log report'
+   var $rpt = getFile('/')
+   report alert_sum
+   call analyze_alert($rpt,false)
+   if isCreated(true)
+    toc '2:[[',getFile(),'][rda_report][Alert.log Analysis]]'
+  }
+ }
+}
+
+if @err
+{# Determine the size of the alert.log report
+ var $tot = get_size(getFile('/'))
+
+ # Analyze the last errors
+ var $flg = true
+ var $vol = expr('*',$LOG_VOLUME,1048576)
+ loop $lin (reverse(@err))
+ {# Get the file name
+  if match($lin,'Errors in file\s+(.*)$')
+   var $fil = trim(last,':')
+  elsif match($lin,'Details in trace file\s+(.*)$')
+   var $fil = trim(last,':')
+  else
+   next
+
+  # Eliminate missing, duplicate, and old files
+  next !$fil
+  next exists($tbl{$fil})
+  var $tbl{$fil} = 1
+
+  # Get the file contribution
+  if and($flg,testFile('r',$fil),isNewer($fil,$LOG_AGE))
+  {incr $tot,get_size($fil)
+   if expr('<',$tot,$vol)
+   {var @col = (@col,$fil)
+    next
+   }
+   var $flag = false
+  }
+  var @exc = (@exc,$fil)
+ }
+
+=head2 last_errors - Last Errors
+
+RDA scans the alert log also to retrieve the trace files associated with
+errors. To limit the data collection volume, only the latest trace files are
+collected based on their last modification date and the total volume.
+
+=cut
+
+ debug ' Inside ASM module, retrieving last errors'
+ report last_errors
+ macro add_title
+ {if !isCreated()
+  {import $TOC,$LOG_AGE,$LOG_ERRORS,$LOG_VOLUME
+   write '---+!!Trace Files Related to Last Errors'
+   write $TOC
+   write '%BR%'
+   write '   * Investigation limited to ',$LOG_ERRORS,' last errors'
+   write '   * Trace files not older than ',$LOG_AGE,' days'
+   write '   * Trace file volume lower than ',$LOG_VOLUME,\
+         ' MiB after compression'
+  }
+ }
+ prefix
+ {call add_title()
+  write '---+ Collected Trace Files'
+ }
+ call statFile('p',@col)
+ if hasOutput(true)
+  write $TOP
+ prefix
+ {call add_title()
+  write '---+ Other Trace Files'
+  write 'Files not collected due to age, permissions problems or collected \
+         size constraints.'
+ }
+ call statFile('p',@exc)
+ if hasOutput(true)
+  write $TOP
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Last Errors]]'
+
+ # Collect the reports
+ if @col
+  call sort_files(3,0,@col)
+}
+
+=head2 Diagnostic Repository
+
+Automatic Diagnostic Repository (ADR) is a file-based repository for
+Application Server diagnostic data.
+
+The ADR Command Interpreter (ADRCI) is a command-line tool that you use to
+view diagnostic data within the ADR.
+
+Diagnostic data includes incident and problem descriptions.
+
+=cut
+
+=head3 diag_problems - Problem Overview
+
+Gathers diagnostic problems. A problem is a critical error in the Application
+Server. Critical errors manifest as internal errors. Problems are tracked in
+the Automatic Diagnostic Repository.
+
+It requires the availability of the ADRCI utility.
+
+=cut
+
+if grepDir(catDir($ORACLE_HOME,'bin'),'^adrci(\.exe)?$','fip')
+ var $cmd = catCommand(last)
+else
+ var $cmd = undef
+if and($cmd,$ADR_BASE,$ADR_HOME)
+{debug '  Inside ASM module, collecting diagnostic repository'
+ var $job = createTemp('job')
+ var $out = getTemp('out')
+ var $err = getTemp('err')
+ var $hom = join(cond(isWindows(),'\',isCygwin(),'\','/'),\
+                 splitDir(catDir($ADR_HOME),catDir($ADR_BASE)))
+ call writeTemp('job','SET BASE ',$ADR_BASE)
+ call writeTemp('job','SET HOMEPATH ',$hom)
+ call writeTemp('job','SHOW PROBLEM -ALL -ORDERBY LASTINC_TIME DSC')
+ call writeTemp('job','EXIT')
+ call closeTemp('job')
+ call command(concat($cmd,' script=',quote($job,'x'),\
+                     ' >',quote($out,'x'),' 2>',quote($err,'x')))
+ pretoc '2:Diagnostic Repository'
+ report diag_problems
+ if testFile('z',$out)
+ {echo 'Error encountered with ADRCI'
+  write '** Error encountered with ADRCI **'
+  write
+  call writeFile($err)
+ }
+ elsif createBuffer('ADR','R',$out)
+ {var ($cnt,$min,$cut,$src,$hdr) = (0,0,true)
+  prefix
+  {write '---+ List of Diagnostic Problems'
+   write '---## Using: SHOW PROBLEM -ALL -ORDERBY LASTINC_TIME DSC'
+   if $src
+    write '---## From: ',replace(encode($src),'\s','&nbsp;',true)
+   if $hdr
+    write $hdr
+  }
+  while getLine('ADR')
+  {var $lin = chomp(last)
+   if match($lin,'^ADR Home\s+=\s*(.*):$')
+    var ($cut,$row,$src) = (false,false,last)
+   elsif match($lin,'^DIA\-(\d+):')
+   {if $src
+     write '**',$lin,'**'
+    break
+   }
+   elsif $cut
+    next
+   elsif match($lin,'^\d+\s+rows\s+fetched$')
+   {if !isCreated()
+    {var $hdr = undef
+     write '**No problems found**'
+    }
+    break
+   }
+   elsif $row
+   {next expr('<',length($lin),$min)
+    var @tbl = ()
+    for $pos (0,$cnt)
+     var $tbl[$pos] = trim(substr($lin,$tb_off[$pos],$tb_lgt[$pos]))
+    if @tbl
+     write '|',join(' |',@tbl),' |'
+   }
+   elsif match($lin,'^[\-\s]+$')
+    var $row = true
+   elsif match($lin,'^\w+\s+')
+   {var ($min,@tb_key,@tb_lgt,@tb_off) = (0)
+    var %tbl = ('PROBLEM_ID','Problem ID',\
+                'PROBLEM_KEY','Problem Key',\
+                'LAST_INCIDENT','Last Incident',\
+                'LASTINC_TIME','Last Incident Time')
+    var $lin = trim($lin)
+    while match($lin,'^(\w+\s+)')
+    {var ($key) = last
+     var $lgt = length($key)
+     var $key = trim($key)
+     var $tb_key[$cnt] = nvl($tbl{$key},$key)
+     var $tb_off[$cnt] = $min
+     var $tb_lgt[$cnt] = $lgt
+     var $lin = substr($lin,$lgt)
+     incr $min,$lgt
+     incr $cnt
+    }
+    var $tb_key[$cnt] = nvl($tbl{$lin},$lin)
+    var $tb_off[$cnt] = $min
+    if $cnt
+     var $hdr = concat('|*',join('*|*',@tb_key),'*|')
+   }
+  }
+  call deleteBuffer('ADR')
+ }
+ call unlinkTemp('job')
+ call unlinkTemp('out')
+ call unlinkTemp('err')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Problem Overview]]'
+
+=head3 diag_incidents - Most Recent Incidents
+
+Gathers diagnostic incidents. An incident is a single occurrence of a problem.
+When a problem (critical error) occurs repeatedly, an incident is created
+for each occurrence. Incidents are time stamped and tracked in the Automatic
+Diagnostic Repository.
+
+By default, RDA collects the last 10 incidents.
+
+It requires the availability of the ADRCI utility.
+
+=cut
+
+ var $MAX = getSetting('ASM_INCIDENTS',10)
+ var $max = $MAX
+ if $max
+ {var ($cut,@inc,%lnk) = (true)
+
+  # Get the incident list
+  var $job = createTemp('job')
+  var $out = getTemp('out')
+  call writeTemp('job','SET BASE ',$ADR_BASE)
+  call writeTemp('job','SET HOMEPATH ',$hom)
+  call writeTemp('job','QUERY (INCIDENT_ID) INCIDENT -ORDERBY CREATE_TIME DSC')
+  call writeTemp('job','EXIT')
+  call closeTemp('job')
+  call command(concat($cmd,' script=',quote($job,'x'),' >',quote($out,'x')))
+  if createBuffer('ADR','R',$out)
+  {while getLine('ADR')
+   {var $lin = chomp(last)
+    if match($lin,'^-+\s*$')
+     var $cut = false
+    elsif $cut
+     next
+    elsif match($lin,'^(\d+)\s*$')
+     var @inc = (@inc,last)
+    elsif match($lin,'^\d+\s+rows\s+fetched$')
+     break
+   }
+   call deleteBuffer('ADR')
+  }
+
+  # Get the incident details
+  loop $inc (@inc)
+  {var $job = createTemp('job')
+   var $out = getTemp('out')
+   call writeTemp('job','SET BASE ',$ADR_BASE)
+   call writeTemp('job','SET HOMEPATH ',$hom)
+   call writeTemp('job','SHOW INCIDENT -MODE DETAIL -P "INCIDENT_ID=',$inc,'"')
+   call writeTemp('job','EXIT')
+   call closeTemp('job')
+   call command(concat($cmd,' script=',quote($job,'x'),' >',quote($out,'x')))
+   if createBuffer('ADR','R',$out)
+   {report concat('incident_',$inc)
+    var ($cut,$src) = (true)
+    prefix
+    {write '---+ Display of Incident ',$inc
+     write '---## Using: SHOW INCIDENT -MODE DETAIL -P "INCIDENT_ID=',$inc,'"'
+     if $src
+      write '---## From: ',replace(encode($src),'\s','&nbsp;',true)
+     write '|*Name*|*Value*|'
+    }
+    while getLine('ADR')
+    {var $lin = chomp(last)
+     if match($lin,'^ADR Home\s+=\s*(.*):$')
+      var ($cut,$src) = (false,last)
+     elsif $cut
+      next
+     elsif match($lin,'^\s+\w+\s')
+     {var (undef,$nam,$val) = split('\s+',$lin,3)
+      write '|',$nam,' |',$val,' |'
+     }
+     elsif match($lin,'^\d+\s+rows\s+fetched$')
+      break
+    }
+    if isCreated(true)
+    {write $TOP
+     var $lnk{$inc} = getFile()
+    }
+    call deleteBuffer('ADR')
+   }
+   call unlinkTemp('job')
+   call unlinkTemp('out')
+
+   # Limit the incident number
+   decr $max
+   break !$max
+  }
+  report diag_incidents
+  prefix
+  {write '---+ Display of Last ',$MAX,' Incidents'
+   write '| *Incident ID*|'
+  }
+  loop $inc (@inc)
+  {if exists($lnk{$inc})
+    write '| [[',$lnk{$inc},'][_blank][',$inc,']]|'
+  }
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][Most Recent Incidents]]'
+ }
+ unpretoc
+}
+
+=head2 log_trace - Trace/Log Directory Listings
+
+Lists the contents of the trace/dump directories.
+
+=cut
+
+debug ' Inside ASM module, doing list of Oracle trace/log directories'
+report log_trace
+write '---+!!Listing of Files from Oracle Log/Trace Directories'
+write $TOC
+
+if $ADR_HOME
+{write '---+ Diagnostic Traces'
+ if !statDir('at',catDir($ADR_HOME,'trace'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ write $TOP
+
+ write '---+ Incidents'
+ if !statDir('at',catDir($ADR_HOME,'incident'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ write $TOP
+
+ write '---+ Incident Packages'
+ if !statDir('at',catDir($ADR_HOME,'incpkg'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ write $TOP
+
+ write '---+ Core Dumps'
+ if !statDir('at',catDir($ADR_HOME,'cdump'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ write $TOP
+
+ if match(getOsName(),'solaris')
+ {run COREinfo()
+  call run_coreadm((concat('_',$ORACLE_SID,'\b')))
+ }
+}
+
+write '---+ Background Dump Destination'
+if !$BDUMP_DIR
+ write 'Background Dump destination could not be determined.%BR%'
+elsif !statDir('at',$BDUMP_DIR)
+ write 'Could not list files in ',encode($BDUMP_DIR),'%BR%'
+write $TOP
+
+var $dir = catDir($ORACLE_HOME,'rdbms','log')
+if compare('ne',$BDUMP_DIR,$dir)
+{write '---+ Default Background Dump Destination.%BR%'
+ if !statDir('at',$dir)
+  write 'Could not list files in ',encode($dir),'%BR%'
+ write $TOP
+}
+
+write '---+ Core Dump Destination'
+if !$CDUMP_DIR
+ write 'Core Dump destination could not be determined.%BR%'
+elsif !statDir('at',$CDUMP_DIR)
+ write 'Could not list files in ',encode($CDUMP_DIR),'%BR%'
+write $TOP
+
+var $dir = catDir($ORACLE_HOME,'dbs')
+if compare('ne',$CDUMP_DIR,$dir)
+{write '---+ Default Core Dump Destination'
+ if !statDir('at',$dir)
+  write 'Could not list files in ',encode($dir),'%BR%'
+ write $TOP
+
+ if match(getOsName(),'solaris')
+ {run COREinfo()
+  call run_coreadm((concat('_',$ORACLE_SID,'\b')))
+ }
+}
+
+write '---+ User Dump Destination'
+if !$UDUMP_DIR
+ write 'User Dump destination could not be determined.%BR%'
+elsif compare('eq',$UDUMP_DIR,$BDUMP_DIR)
+ write 'User Dump destination and Background Dump destination are the same.\
+        %BR%Please see Background Dump destination for listing.%BR%'
+elsif !statDir('at',$UDUMP_DIR)
+ write 'Could not list files in ',encode($UDUMP_DIR),'%BR%'
+write $TOP
+
+var $dir = catDir($ORACLE_HOME,'rdbms','trace')
+write '---+ RDBMS Trace Destination'
+if !statDir('at',$dir)
+ write 'Could not list files in ',encode($dir),'%BR%'
+write $TOP
+
+toc '2:[[',getFile(),'][rda_report][Trace/Log Directory Listings]]'
+
+=head2 Most recent trace files
+
+Collects the most recent trace files for each type of background process.
+Older files are not considered.
+
+When requested, RDA can collect the most recent user dumps.
+
+=cut
+
+var @tbl = ()
+if and($UDUMP_DIR,$UDUMP_AGE)
+ var @tbl = grepDir($UDUMP_DIR,concat('^',quote($ORACLE_SID),'_.*\.trc$'),\
+                    concat('iptm',$UDUMP_AGE))
+if and($TRACE_DIR,$BDUMP_MAX)
+{var %ref = ()
+ loop $fil (grepDir($TRACE_DIR,\
+                    concat('^',quote($ORACLE_SID),'_[^_\.]+_.*\.trc$'),'it'))
+ {var $typ = field('_',1,$fil)
+  var $fil = catFile($TRACE_DIR,$fil)
+  next !isNewer($fil,$LOG_AGE)
+  incr $ref{$typ}
+  next expr('>',$ref{$typ},$BDUMP_MAX)
+  var @tbl = (@tbl,$fil)
+ }
+}
+call sort_files(3,0,@tbl)
+
+=head2 asmcmd - ASM Command Line Utility
+
+Collects information using F<asmcmd> utility. This report applies to Oracle
+Database 11g Release 2 or later.
+
+=cut
+
+var $cmd = catFile($ORACLE_HOME,'bin','asmcmd')
+if grepCommand(concat($cmd,' -V'),'11.2','f')
+{debug ' Inside ASM module, getting information from asmcmd'
+ report asmcmd
+
+ macro dsp_title
+ {var ($ttl,$cmd) = @arg
+  
+  if !isCreated()
+  {write '---+!! ASM Command Line Utility Information'
+   import $TOC
+   write $TOC
+  }
+  write '---+ ',$ttl
+  write '---## Using: ',$cmd
+ }
+
+ prefix
+  call dsp_title('ASM SPFILE Location from Grid Plug and Play (GPnP) Profile',\
+                 'asmcmd spget')
+ call writeCommand(concat($cmd,' spget'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  call dsp_title('Discovery Diskstring Value','asmcmd dsget')
+ call writeCommand(concat($cmd,' dsget'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  call dsp_title('Open Files of Local Clients','asmcmd lsof')
+ call writeCommand(concat($cmd,' lsof'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  call dsp_title('ASM Users in a Disk Group','asmcmd lsusr')
+ call writeCommand(concat($cmd,' lsusr'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  call dsp_title('ASM User Groups','asmcmd lsgrp')
+ call writeCommand(concat($cmd,' lsgrp'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  call dsp_title('Current Operations on a Disk Group or ASM Instance',\
+                 'asmcmd lsop')
+ call writeCommand(concat($cmd,' lsop'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  call dsp_title('ASM Dynamic Volume Manager (ADVM) Volumes',\
+                 'asmcmd volinfo -a')
+ call writeCommand(concat($cmd,' volinfo -a'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  call dsp_title('I/O Statistics for ASM Dynamic Volume Manager Volumes',\
+                 'asmcmd volstat')
+ call writeCommand(concat($cmd,' volstat'))
+ if hasOutput(true)
+  write $TOP
+
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][ASM Command Line Utility]]'
+}
+
+# Restore the previous context
+call setSqlSid($sid)
+call setSqlLogin($old)
+call setSqlFailure($try)
+
+=head1 SEE ALSO
+
+L<ASMinit.def|modules::ASMinit>, L<CRSinit.def|modules::CRSinit>,
+L<DBinfo.def|modules::DBinfo>, L<INSTinfo.def|modules::INSTinfo>,
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.2:  Michael Ferrante, Noriyuki Kamei, Roger Snowden.
+
+=item RDA 4.4:  Bane Radulovic, Guttula Srinivas.
+
+=item RDA 4.5:  Bob Caldwell, Jaime Figueroa, Guttula Srinivas, Jens Voigt.
+
+=item RDA 4.7:  Weifeng Xie.
+
+=item RDA 4.13: Jean-Marc Gaudron.
+
+=item RDA 4.14: Jean-Marc Gaudron.
+
+=item RDA 4.15: Jean-Marc Gaudron.
+
+=item RDA 4.16: Jean-Marc Gaudron.
+
+=item RDA 4.17: Jean-Marc Gaudron, Scott Jesse.
+
+=item RDA 4.18: Jaime Alcoreza.
+
+=item RDA 4.19: Jaime Alcoreza.
+
+=item RDA 4.20: Jean-Marc Gaudron.
+
+=item RDA 4.22: Jean-Marc Gaudron, Ionut Utescu.
+
+=item RDA 4.23: Jaime Alcoreza.
+
+=item RDA 4.25: Jean-Marc Gaudron.
+
+=item RDA 4.26: Masato Kataoka.
+
+=item RDA 4.28: Adam Nunes.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut
+

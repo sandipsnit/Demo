@@ -1,0 +1,349 @@
+# S244OCAL.def: Collects Oracle Calendar Information
+# $Id: S244OCAL.def,v 2.6 2012/01/03 13:34:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S244OCAL.def,v 2.6 2012/01/03 13:34:45 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S244OCAL - Collects Oracle Calendar Information
+
+=head1 DESCRIPTION
+
+The following reports can be generated and are regrouped under C<Oracle
+Calendar>:
+
+=cut
+
+echo tput('bold'),'Processing Oracle Calendar module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $AGE         = getSetting('OCS_AGE',    15)
+var $TAIL        = getSetting('OCS_TAIL1',  5000)
+var $OCAL_HOME   = catDir($ORACLE_HOME,'ocal')
+var $OCAS_HOME   = catDir($ORACLE_HOME,'ocas')
+var $OCAD_HOME   = catDir($ORACLE_HOME,'ocad')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '^1:Oracle Collaboration Suite'
+pretoc '1+:Oracle Calendar'
+
+# Load the common macros
+run library()
+
+# Collect Calender Server Information
+if testDir('dr',$OCAL_HOME)
+{pretoc '2:Calendar Server'
+ var $bin = catDir($OCAL_HOME,'bin')
+
+=head2 version - Calendar Server / Version
+
+Gets Oracle Calendar version.
+
+=cut
+
+ debug ' Inside OCAL module, get Calendar server version'
+ report ocal_version
+ var $cmd = catCommand($bin,'universion')
+ prefix
+ {write '---+ Oracle Calendar Server Version'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Version]]'
+
+=head2 status - Calendar Server / Status
+
+Gets Oracle Calendar status.
+
+=cut
+
+ debug ' Inside OCAL module, get Calendar server status'
+ report ocal_status
+ var $cmd = catCommand($bin,'unistatus')
+ prefix
+ {write '---+ Oracle Calendar Status'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Status]]'
+
+=head2 uninode_cws - Calendar Server / uninode -cws
+
+Executes C<uninode -cws>.
+
+=cut
+
+ debug ' Inside OCAL module, execute uninode -cws'
+ report uninode_cws
+ var $pgm = catCommand($bin,'uninode')
+ var $cmd = concat($pgm,' -cws')
+ prefix
+ {write '---+ uninode -cws'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][uninode -cws]]'
+
+=head2 uninode_snc - Calendar Server / uninode -snc
+
+Executes C<uninode -snc>.
+
+=cut
+
+ debug ' Inside OCAL module, execute uninode -snc'
+ report uninode_snc
+ var $cmd = concat($pgm,' -snc')
+ prefix
+ {write '---+ uninode -snc'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][uninode -snc]]'
+
+=head2 uninode_test - Calendar Server / uninode -test
+
+Executes C<uninode -test>.
+
+=cut
+
+ debug ' Inside OCAL module, execute uninode -test'
+ report uninode_test
+ var $cmd = concat($pgm,' -test')
+ prefix
+ {write '---+ uninode -test'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][uninode -test]]'
+
+=head2 Calendar Server / Parameters
+
+Collects all .ini files for the Oracle Calendar server.
+
+=cut
+
+ debug ' Inside OCAL module, get Calendar server parameters'
+ pretoc '3: Parameters'
+ call sort_files(4,0,grepDir(catDir($OCAL_HOME,'misc'),'\.ini$','dir'))
+ unpretoc
+
+ # Close the table of content section
+ unpretoc
+
+=head2 Calendar Server Log Files
+
+Takes a log snapshot and collects the most recent Oracle Calendar server log
+files.
+
+=cut
+
+ pretoc '2:Log Files'
+
+ debug ' Inside OCAL module, take a log snapshot'
+ if loadCommand(catCommand($bin,'unisnapshot'))
+ {report ocal_unishapshot
+  prefix
+   write '---+ Log Snapshot'
+  call writeFile(catFile($OCAL_HOME,'log','unisnapshot.log'))
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][Log Snapshot]]'
+ }
+
+ debug ' Inside OCAL module, get Calendar server log files'
+ var %log
+ var $dir = catDir($OCAL_HOME,'log','attic')
+ var $cnt = 0
+ loop $fil (grepDir($dir,'\.log\.\d+$',concat('itm',$AGE)))
+ {var ($typ) = match($fil,'^(.*)\.log\.\d+$',true)
+  next exists($log{$typ})
+  var $log{$typ} = catFile($dir,$fil)
+  incr $cnt
+ }
+ if $cnt
+ {report ocal_recent_logs
+  write '---+ Recent Calendar Server Log Files'
+  var @dir = grepDir($dir,'\.log\.\d+$',concat('ipnm',$AGE))
+  write 'In ',encode($dir),'%BR%Limited to ',$AGE,' last days'
+  call statFile('b',@dir)
+  toc '3:[[',getFile(),'][rda_report][Recent Log Files]]'
+  call sort_files(4,$TAIL,values(%log))
+ }
+
+ # Close the table of content section
+ unpretoc
+}
+
+# Collect Calender Server Information
+if testDir('dr',$OCAL_HOME)
+{pretoc '2:Calendar Application Server'
+
+=head2 ocas_status - Calendar Application Server / Status
+
+Collects the Oracle Calendar Application server status.
+
+=cut
+
+ debug ' Inside OCAL module, get application server status'
+ report ocas_status
+ var $cmd = concat(catCommand($OCAS_HOME,'bin','ocasctl'),' -status')
+ prefix
+ {write '---+ Oracle Calendar Application Server Status'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Status]]'
+
+=head2 ocas_sys - Calendar Application Server / Overview
+
+Collects the Oracle Calendar Application server overview.
+
+=cut
+
+ debug ' Inside OCAL module, get application server overview'
+ var ($url) = grepFile(catFile($OCAL_HOME,'misc','unison.ini'),\
+                       '^url\s+=\s+http\://[^/]+/ocas-bin/ocas\.fcgi','f')
+ if $url
+ {var ($tgt) = match($url,'http://([^/]+)/')
+  var $url = concat('http://',$tgt,'/ocst-bin/ocas.fcgi?sub=sys')
+  var $req = createRequest('GET',$url)
+  var $rsp = submitRequest($req)
+  if isSuccess($rsp)
+  {report ocas_sys
+   prefix
+   {write '---+!! Oracle Calendar Application Server'
+    write '---## Using: ',$url
+    write $TOC
+   }
+   var $htm = htmlLoadResponse($rsp,htmlFilter(htmlDisable(htmlParser(),'DR'),\
+                                               'TR','TD','B'))
+   var $cnt = 0
+   loop $lin (htmlTable($htm))
+   {if match($lin,'---+')
+    {next match($lin,'(&lt;img src=|All rights reserved.)',true)
+     if $cnt
+      write $TOP
+     incr $cnt
+    }
+    write $lin
+   }
+   if isCreated(true)
+   {write $TOP
+    toc '3:[[',getFile(),'][rda_report][Overview]]'
+   }
+  }
+ }
+
+=head2 Calendar Application Server / Configuration files
+
+Collects the Oracle Calendar Application server configuration files.
+
+=cut
+
+ debug ' Inside OCAL module, get application server configuration files'
+ pretoc '3:Configuration Files'
+ call sort_files(4,0,grepDir(catDir($OCAS_HOME,'conf'),'\.conf$','dir'))
+ unpretoc
+
+=head2 Calendar Application Server / Log Files
+
+Collects the Oracle Calendar Application server log files.
+
+=cut
+
+ debug ' Inside OCAL module, get application server log files'
+ pretoc '3:Log Files'
+ call sort_files(4,$TAIL,grepDir(catDir($OCAS_HOME,'logs'),'\.log$','dir'))
+ unpretoc
+
+ # Close the table of content section
+ unpretoc
+}
+
+# Collect Calender Directory Server Information
+if testDir('dr',catDir($OCAL_HOME,'conf'))
+{pretoc '2:Calendar Directory Server'
+
+=head2 Calendar Directory Server / Configuration files
+
+Collects all .conf files for the Oracle Calendar Directory server.
+
+=cut
+
+ debug ' Inside OCAL module, get directory server configuration files'
+ pretoc '3:Configuration Files'
+ call sort_files(4,0,grepDir(lastDir(),'\.conf$','dir'))
+ unpretoc
+
+ # Close the table of content section
+ unpretoc
+}
+
+# Collect Calender Administration information
+if testDir('d',$OCAD_HOME)
+{pretoc '2:Oracle Calendar Administration'
+
+=head2 ocad_log - ocad.log
+
+Collects the Oracle Calendar Administration log file.
+
+=cut
+
+ debug ' Inside OCAL module, get administration log file'
+ call sort_files(3,0,catFile($OCAD_HOME,'bin','ocad.log'))
+ unpretoc
+}
+
+=head2 not_found - Not found
+
+Used as a warning when none of the Oracle Calendar files are found.
+
+=cut
+
+if !isTocCreated()
+{debug ' Inside OCAL module, no file found'
+ report not_found
+ write 'No Oracle Calendar log files were found and all files were optional. \
+        This does not mean there was necessarily a problem with RDA, but it \
+        should be investigated.'
+ toc '2:[[',getFile(),'][rda_report][Not found]]'
+}
+
+# Disable the group title in next index
+toc '-:Oracle Collaboration Suite'
+
+=head1 SEE ALSO
+
+L<S240OCS.def|modules::S240OCS>, L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.2:  Frederic Daurelle.
+
+=item RDA 4.6:  Takayuki Hamaguchi.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

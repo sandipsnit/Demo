@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+    <!-- ADF web facet -->
+    <extension point="org.eclipse.wst.common.project.facet.core.facets">
+
+        <!-- Description -->
+        <project-facet id="oracle.adf.web">
+            <label>%oracleAdfWebFacetLabel</label>
+            <description>%oracleAdfWebFacetDescription</description>
+        </project-facet>
+
+        <!-- Version 11.1.1 -->
+        <project-facet-version facet="oracle.adf.web" version="11.1.1">
+            <constraint>
+                <and>
+                    <requires facet="wls.web" version="[10.3.4" /> <!-- WebLogic Web App extensions, PS3 and above only -->
+                    <requires facet="jst.web" version="[2.5" />
+                    <requires facet="jst.jsf" version="1.2" />
+                    <requires facet="jst.jstl" version="1.2" />
+                </and>
+            </constraint>
+            <group-member id="core.wls.extension.facets" />
+        </project-facet-version>
+
+        <!-- Install action -->
+        <action type="INSTALL" facet="oracle.adf.web" version="11.1.1" id="oracle.adf.web.install">
+            <config-factory class="oracle.eclipse.tools.webtier.adf.internal.ADFWebFacetInstallConfig$Factory" />
+            <delegate class="oracle.eclipse.tools.webtier.adf.internal.ADFWebFacetInstallDelegate" />
+        </action>
+
+        <!-- Uninstall action -->
+        <action type="UNINSTALL" facet="oracle.adf.web" version="11.1.1" id="oracle.adf.web.uninstall">
+            <config-factory class="org.eclipse.jst.common.project.facet.core.libprov.LibraryFacetUninstallConfig$Factory"/>
+            <delegate class="oracle.eclipse.tools.webtier.adf.internal.ADFWebFacetUninstallDelegate"/>
+        </action>
+
+    </extension>
+
+    <!-- ADF ear facet -->
+    <extension point="org.eclipse.wst.common.project.facet.core.facets">
+
+        <!-- Description -->
+        <project-facet id="oracle.adf.ear">
+            <label>%oracleAdfEarFacetLabel</label>
+            <description>%oracleAdfEarFacetDescription</description>
+        </project-facet>
+
+        <!-- Version 11.1.1 -->
+        <project-facet-version facet="oracle.adf.ear" version="11.1.1">
+            <constraint>
+                <and>
+                    <requires facet="jst.ear" version="5.0" /> 
+                    <requires facet="wls.ear" version="10.3.4" /> 
+                </and>
+            </constraint>
+            <group-member id="core.wls.extension.facets" />
+        </project-facet-version>
+
+        <!-- Install action -->
+        <action type="INSTALL" facet="oracle.adf.ear" version="11.1.1" id="oracle.adf.ear.install">
+            <config-factory class="oracle.eclipse.tools.webtier.adf.internal.ADFEarFacetInstallConfig$Factory" />
+            <delegate class="oracle.eclipse.tools.webtier.adf.internal.ADFEarFacetInstallDelegate" />
+        </action>
+
+        <!-- Uninstall action -->
+        <action type="UNINSTALL" facet="oracle.adf.ear" version="11.1.1" id="oracle.adf.ear.uninstall">
+            <config-factory class="org.eclipse.jst.common.project.facet.core.libprov.LibraryFacetUninstallConfig$Factory"/>
+            <delegate class="oracle.eclipse.tools.webtier.adf.internal.ADFEarFacetUninstallDelegate"/>
+        </action>
+
+    </extension>
+    
+    <!-- ADF web facet Runtime Components -->
+    <extension point="org.eclipse.wst.common.project.facet.core.runtimes">
+        <runtime-component-type id="oracle.weblogic.adf"/>
+        <runtime-component-version type="oracle.weblogic.adf" version="11.1.1" />
+        <supported>
+            <runtime-component id="oracle.weblogic.adf" version="11.1.1"/>
+            <facet id="oracle.adf.web" version="11.1.1"/>
+            <facet id="oracle.adf.ear" version="11.1.1"/>
+        </supported>
+    </extension>
+
+    <extension point="oracle.eclipse.tools.weblogic.runtimeComponentProviders">
+        <runtime-component-provider class="oracle.eclipse.tools.webtier.adf.internal.ADFRuntimeComponentProvider">
+        </runtime-component-provider>
+    </extension>
+	
+    <!-- ADF web facet: WLS shared library provider for ADF 11.1.1 -->
+    <extension point="org.eclipse.jst.common.project.facet.core.libraryProviders"> 
+        <provider id="wls-shared-library-provider-adf-web-11.1.1" extends="wls-shared-library-provider">
+            <label>ADF Web Shared Library</label>
+            <priority>1100</priority>
+            <enablement>
+                <with variable="requestingProjectFacet">
+                    <test property="org.eclipse.wst.common.project.facet.core.projectFacet" value="oracle.adf.web:11.1.1" forcePluginActivation="true"/>
+                </with>
+                <with variable="projectFacets">
+                    <count value="+"/>
+                    <iterate operator="or">
+                        <!-- WebLogic Web App Extensions -->
+                        <test property="org.eclipse.wst.common.project.facet.core.projectFacet" value="wls.web" forcePluginActivation="true"/>
+                    </iterate>
+                </with>
+            </enablement>
+            <param name="library.name" value="adf.oracle.domain.webapp"/>
+            <param name="library.allow.newer" value="true"/>
+		    <param name="library.spec.version" value="1.0"/>
+        </provider>
+    </extension>
+
+
+    <!-- ADF EAR facet: No-op library provider -->
+    <extension point="org.eclipse.jst.common.project.facet.core.libraryProviders">
+        <provider id="no-op-library-provider-adf-ear-11.1.1" extends="no-op-library-provider">
+            <enablement>
+                <with variable="requestingProjectFacet">
+                    <test property="org.eclipse.wst.common.project.facet.core.projectFacet" value="oracle.adf.ear" forcePluginActivation="true"/>
+                </with>
+            </enablement>
+        </provider>
+    </extension>
+
+
+    <!-- Preset: Oracle ADF 11.1.1 Web Project -->
+    <extension point="org.eclipse.wst.common.project.facet.core.presets">
+        <static-preset id="preset.oracle.adf.web.11.1.1" extends="default.configuration">
+            <facet id="jst.jsf" version="1.2" />
+            <facet id="jst.jstl" version="1.2" />
+            <facet id="oracle.adf.web" version="11.1.1" />
+            <label>%oracle_adf_11_1_web_facet_preset_name</label>
+            <description>%oracle_adf_11_1_web_facet_preset_description</description>
+        </static-preset>
+    </extension>
+
+  <extension point="oracle.eclipse.tools.weblogic.wlsRuntimeLifecycleListener">
+    <listener class="oracle.eclipse.tools.webtier.adf.internal.ADFWlsRuntimeLifecycleListener" eventTypes="ADDED,CHANGED"/>
+  </extension>
+  <extension point="oracle.eclipse.tools.weblogic.wlsRuntimeLifecycleListener">
+    <listener class="oracle.eclipse.tools.webtier.adf.internal.ADFWlsRuntimeLifecycleListener" eventTypes="ADDED,CHANGED"/>
+  </extension>
+  <extension
+        point="org.eclipse.jst.jsf.common.standardMetaDataFiles">
+     <standardMetaDataFile
+           location="$nl$/metadata/afu.xml"
+           uri="http://xmlns.oracle.com/adf/faces/rich">
+     </standardMetaDataFile>
+     <standardMetaDataFile
+           location="$nl$/metadata/bi.xml"
+           uri="http://xmlns.oracle.com/dss/adf/faces">
+     </standardMetaDataFile>  
+     <standardMetaDataFile
+           location="$nl$/metadata/bi-tr.xml"
+           uri="http://xmlns.oracle.com/dss/trinidad/faces">
+     </standardMetaDataFile>        
+  </extension>
+
+    <extension point="org.eclipse.jst.jsf.common.contextSymbolFactory">
+        <contextSymbolFactory
+                factory="oracle.eclipse.tools.webtier.adf.tagsupport.ADFSymbolFactory"
+                factoryId="oracle.eclipse.tools.webtier.adf.symbolFactory">
+        </contextSymbolFactory>
+    </extension>
+   <extension point="oracle.eclipse.tools.weblogic.wlsRuntimeLifecycleListener">
+      <listener class="oracle.eclipse.tools.webtier.adf.internal.ADFWlsRuntimeLifecycleListener" eventTypes="ADDED,CHANGED"/>
+   </extension>
+
+   <!-- OEPE Technology Extension for ADF Faces -->
+   
+      <extension
+            point="oracle.eclipse.tools.common.services.TechnologyExtension">
+      
+      <technologyExtension
+            displayName="%technologyExtension.displayName"
+            id="adf.web"
+            implementationClassname="oracle.eclipse.tools.webtier.adf.ADFWebTechnologyExtension"
+            version="11.1.1">
+      </technologyExtension>
+    </extension>
+      <extension
+            point="oracle.eclipse.tools.common.services.TechnologyToFacetMap">
+      <map>
+         <technology
+               id="adf.web"
+               version="11.1.1">
+         </technology>
+         <facet
+               id="oracle.adf.web"
+               version="11.1.1">
+         </facet>
+      </map>
+      </extension>
+   
+   <extension
+         name="ADF Faces DVT tag model"
+         point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="http://xmlns.oracle.com/dss/adf/faces"
+            class="oracle.eclipse.tools.webtier.adf.model.faces.DvtPackage"
+            genModel="model/bi.genmodel"/>
+   </extension>
+
+   <extension
+         name="ADF Faces Rich tag model"
+         point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="http://xmlns.oracle.com/adf/faces/rich"
+            class="oracle.eclipse.tools.webtier.adf.model.rich.RichPackage"
+            genModel="model/afu.genmodel"/>
+   </extension>
+   
+    <!--Configuration Templates -->
+    <extension
+        id="codeTemplates"
+        name="%codeTemplates.name"
+        point="oracle.eclipse.tools.common.templating.CodeTemplate">
+        <engineconfig id="oracle.eclipse.tools.webtier.adf.template.engineconfig.basic">
+            <varprop name="file">
+                <resource>
+                    <loader>
+                        <path>
+                            <pcdata value="templates"/>
+                        </path>
+                    </loader>
+                </resource>
+            </varprop>
+        </engineconfig>
+        <template
+            file="web.vm"
+            engineConfigID="oracle.eclipse.tools.webtier.adf.template.engineconfig.basic"
+            name="%extension.CodeTemplate.template.web"
+            id="oracle.eclipse.tools.webtier.adf.template.web"/>
+        <template
+            file="faces.config.vm"
+            engineConfigID="oracle.eclipse.tools.webtier.adf.template.engineconfig.basic"
+            name="%extension.CodeTemplate.template.faces.config"
+            id="oracle.eclipse.tools.webtier.adf.template.faces.config"/>
+		<template
+            file="weblogic.vm"
+            engineConfigID="oracle.eclipse.tools.webtier.adf.template.engineconfig.basic"
+            name="%extension.CodeTemplate.template.weblogic"
+            id="oracle.eclipse.tools.webtier.adf.template.weblogic"/>
+		<template
+            file="weblogic-application.vm"
+            engineConfigID="oracle.eclipse.tools.webtier.adf.template.engineconfig.basic"
+            name="%extension.CodeTemplate.template.weblogic.application"
+            id="oracle.eclipse.tools.webtier.adf.template.weblogic.application"/>
+            
+    </extension>
+    <extension
+          point="oracle.eclipse.tools.common.services.validationDelegate">
+       <delegate
+             class="oracle.eclipse.tools.webtier.adf.configuration.validator.WebXmlValidationDelegate"
+             problemFactory="oracle.eclipse.tools.webtier.adf.configuration.validator.ProblemFactory">
+       </delegate>
+    </extension>
+   
+   <extension
+         point="oracle.eclipse.tools.webtier.common.services.modelVisitor">
+      <model-visitor-participant>
+         <enablement>
+            <test property="oracle.eclipse.tools.common.services.technologyExtension" value="adf.web" forcePluginActivation="true"/>    
+         </enablement>
+         <model-visitor-class
+               class-name="oracle.eclipse.tools.webtier.adf.dependency.collection.ADFRichFacesJSPTagCollector">
+         </model-visitor-class>
+         <dependent-technologies
+               value="adf.web">
+         </dependent-technologies>
+      </model-visitor-participant>
+   </extension>
+   <extension
+         point="oracle.eclipse.tools.common.services.validationDelegate">
+      <delegate
+            class="oracle.eclipse.tools.webtier.adf.configuration.validator.FacesConfigValidationDelegate"
+            problemFactory="oracle.eclipse.tools.webtier.adf.configuration.validator.FacesConfigProblemFactory">
+      </delegate>
+   </extension>
+   <extension
+         point="oracle.eclipse.tools.common.services.validationDelegate">
+      <delegate
+            class="oracle.eclipse.tools.webtier.adf.configuration.validator.WeblogicConfigValidationDelegate"
+            problemFactory="oracle.eclipse.tools.webtier.adf.configuration.validator.WeblogicConfigProblemFactory">
+      </delegate>
+   </extension>
+   <extension
+         point="oracle.eclipse.tools.common.services.validationDelegate">
+      <delegate
+            class="oracle.eclipse.tools.webtier.adf.configuration.validator.WeblogicApplicationValidationDelegate"
+            problemFactory="oracle.eclipse.tools.webtier.adf.configuration.validator.WeblogicApplicationConfigProblemFactory">
+      </delegate>
+   </extension>
+   <extension
+         point="oracle.eclipse.tools.weblogic.serverModuleHelper">
+      <serverModuleHelper
+            class="oracle.eclipse.tools.webtier.adf.internal.ServerModuleHelper">
+      </serverModuleHelper>
+   </extension>
+   
+  <extension point="org.eclipse.wst.server.core.publishTasks">
+    <publishTask
+      class="oracle.eclipse.tools.webtier.adf.server.internal.AdfDomainCheckTask"
+      id="oracle.eclipse.tools.webtier.adf.server.publishTask1034"
+      typeIds="com.bea.weblogic1034.server"/>
+  </extension>
+   
+</plugin>

@@ -1,0 +1,227 @@
+# EPMcfg.def: Assists Fusion Middleware Installation Types Collection Setup
+# $Id: EPMcfg.def,v 1.11 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/EPMcfg.def,v 1.11 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+EPMcfg - Assists Fusion Middleware Installation Types Collection Setup
+
+=head1 DESCRIPTION
+
+This module provides associated logic for the setup of the Fusion Middleware
+installation types collections.
+
+=cut
+
+#------------------------------------------------------------------------------
+# Section init: Module initialization
+#------------------------------------------------------------------------------
+section init
+
+#------------------------------------------------------------------------------
+# Section init: Module initialization
+#------------------------------------------------------------------------------
+section init_dom
+
+keep %dom
+
+# Load the associated domains
+eval
+ var %dom = split('\|',${EPM_DOMAINS})
+
+# Clear the ID list
+call setTempSetting('TMP_REQUESTS',undef)
+
+#------------------------------------------------------------------------------
+# Section init: Module initialization
+#------------------------------------------------------------------------------
+section init_ess
+
+keep %dom,%ess
+
+# Load the previous setup
+var %ess = ()
+loop $uid (split('\|',${ESS_REQUESTS}))
+{next !?$ins = getSetting(concat('ESS_INSTANCE',$uid))
+ loop $key ('ARBORPATH','HOST','USER','APPNAME','DBNAME')
+  var $ess{$ins,$key} = getSetting(concat('ESS_',$key,$uid))
+ var $ess{$ins,'SERVERS'} = getSetting(concat('ESS_DOM',$uid,'_WLS_SERVERS'))
+}
+
+# Load the associated domains
+eval
+ var %dom = split('\|',${EPM_DOMAINS})
+
+# Clear the ID list
+call setTempSetting('TMP_REQUESTS',undef)
+
+#------------------------------------------------------------------------------
+# Section chk_instances: Check which EPM instances are present
+#------------------------------------------------------------------------------
+section chk_instances
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Detect the instances
+var ($cnt,$top,@ins,@itm) = (0,getSetting(concat($pre,'_INSTANCE_ROOT')))
+loop $ins (grepDir($top,'^[^\.]+$','n'))
+{if testFile('f',catFile($top,$ins,'bin',${AS.BAT:'epmsys_registry'}))
+ {call push(@ins,$ins)
+  call push(@itm,incr($cnt),$ins)
+ }
+}
+
+# Treat the associated domains
+keep %dom
+if ?getSetting(concat($pre,'_DOMAINS'))
+{eval
+  var %dom = split('\|', last)
+}
+call setTempSetting('TMP_HASH',undef)
+
+# Customize the setup
+if @ins
+{var ${AUX.dft} = 1
+ call setTempSetting('TMP_ALL_INSTANCES',join('|',@ins))
+ call setTempSetting('TMP_ITM_INSTANCES',join('|',@itm))
+}
+
+#------------------------------------------------------------------------------
+# Section chk_servers: Check which servers are present
+#------------------------------------------------------------------------------
+section chk_servers
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Detect the server name from the startup script
+var $dft = undef
+if compare('eq',$pre,'HSS')
+{var $ins = ${TMP_HOME}
+ if isUnix()
+  var $pat = '^INIT_PARAM=".*\.properties"$'
+ else
+  var $pat = '^[^#].*?\s+.*?\.properties$'
+ if grepFile(catFile($ins,'bin',${AS.BAT:'startFoundationServices'}),$pat)
+ {var ($lin) = last
+  if isUnix()
+  {if match($lin,'^INIT_PARAM="(.*\.properties)"$')
+    var ($prp) = last
+  }
+  else
+   var (undef,undef,$prp) = split('\s+',$lin,3)
+  var $dft = value(grepFile(catFile($ins,'config','starter',$prp),\
+                            '^server\.name','f'))
+ }
+}
+
+# Detect the servers
+var @srv = ()
+var $top = catDir(${TMP_DOMAIN})
+call setTempSetting(concat('TMP_',$pre,'_SERVER'),undef)
+loop $srv (findDir(catDir($top,'servers'),'^[^\.]+$','n'))
+{if testDir('d',catDir($top,'servers',$srv,'logs'))
+ {if compare('eq',$srv,$dft)
+   call setTempSetting(concat('TMP_',$pre,'_SERVER'),$dft)
+  else
+   call push(@srv,$srv)
+ }
+}
+
+# Customize the setup
+if @srv
+{var ${AUX.dft} = 1
+ var ($cnt,$flg,@all,@dft,@itm,@rsp,%sel) = (0,true)
+
+ # Analyze the previous requests
+ var $val = ${TMP_SERVERS}
+ if compare('eq',$val,'*')
+  var $flg = false
+ else
+ {loop $srv (split('\|',$val))
+   var $sel{$srv} = 1
+ }
+
+ # Generate temporary setting
+ loop $srv (@srv)
+ {call push(@all,$srv)
+  call push(@itm,incr($cnt),$srv)
+  if and($flg,exists($sel{$srv}))
+   call push(@dft,$srv)
+ }
+ call setTempSetting('TMP_DOMAIN_NAME',basename($top))
+ call setTempSetting('TMP_ALL_SERVERS',join('|',@all))
+ call setTempSetting('TMP_DFT_SERVERS',cond($flg,join('|',@dft),'*'))
+ call setTempSetting('TMP_ITM_SERVERS',join('|',@itm))
+}
+
+#------------------------------------------------------------------------------
+# Section find_dom_details: Get the Domain details for the current instance
+#------------------------------------------------------------------------------
+section find_dom_details
+
+var $ins = ${TMP_INSTANCE}
+call setTempSetting('TMP_DOMAIN',$dom{$ins})
+call setTempSetting('TMP_HOME',catDir(${EPM_INSTANCE_ROOT},$ins))
+
+#------------------------------------------------------------------------------
+# Section find_ess_details: Get the ESS details for the current instance
+#------------------------------------------------------------------------------
+section find_ess_details
+
+var $ins = ${TMP_INSTANCE}
+call setTempSetting('TMP_DOMAIN',$dom{$ins})
+call setTempSetting('TMP_HOME',catDir(${EPM_INSTANCE_ROOT},$ins))
+loop $key ('APPNAME','ARBORPATH','DBNAME','HOST','SERVERS','USER')
+ call setTempSetting(concat('TMP_',$key),$ess{$ins,$key})
+
+# Determine the associate setup prefix
+#------------------------------------------------------------------------------
+# Section get_domain_home: Get the Oracle WebLogic Server domain home
+#------------------------------------------------------------------------------
+section get_domain_home
+
+var $dom = undef
+var $ins = ${TMP_INSTANCE}
+var $top = catDir(${EPM_INSTANCE_ROOT},$ins)
+if grepCommand(concat(catCommand($top,'bin',${AS.BAT:'epmsys_registry'}),\
+  ' view app_server'),'^\s*domainLocation\s*=\s*','f')
+ var $dom = value(last)
+var ${AUX.dft} = nvl($dom,'')
+
+# Get the previous answer
+call setTempSetting('LAST_DOMAIN',$dom{$ins})
+
+#------------------------------------------------------------------------------
+# Section get_was_type: Get the Web application server type domain
+#------------------------------------------------------------------------------
+section get_was_type
+
+var $dom = undef
+var $top = catFile(${EPM_HOME},'common','config','9.5.0.0')
+call loadCommand(concat(\
+  catCommand($top,'bin',${AS.BAT:'epmsys_registry'}),\
+  ' view app_server'))
+if grepLastFile('^\s*appServerName\s*=\s*','f')
+ var $nam = value(last)
+if match($nam,'WebLogic')
+{if grepLastFile('^\s*domainLocation\s*=\s*','f')
+  var $dom = value(last)
+}
+call setTempSetting('TMP_DOMAIN',$dom)
+var ${AUX.dft} = nvl($nam,'')
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

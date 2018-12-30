@@ -1,0 +1,86 @@
+# M254EMC.def: Collects EMC Powerpath Information
+# $Id: M254EMC.def,v 1.2 2012/05/24 17:10:08 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M254EMC.def,v 1.2 2012/05/24 17:10:08 mschenke Exp $
+#
+# Change History
+# 20120524  PRO  Check if base installation directory is found.
+
+=head1 NAME
+
+M254EMC - Collects EMC Powerpath Information
+
+=head1 DESCRIPTION
+
+Collects EMC Powerpath information.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('emc')
+
+# -----------------------------------------------------------------------------
+# XPLR_emc section
+# -----------------------------------------------------------------------------
+
+section XPLR_emc
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing EMC sections ...')
+
+if !is_pkg_installed('EMCpower')
+ return log_info('EMCpower not installed')
+
+=head2 emc_cmd - EMC Powerpath
+
+Collects EMC Powerpath information using the C<powermt display dev=all>
+command.
+
+=cut
+
+debug ' Inside EMC collection, gathering EMC commands'
+
+# Determine the command to collect
+var $dir = get_pkg_base('EMCpower')
+
+if !and(defined($dir),\
+        testFile('f',$pgm = catFile($dir,'EMCpower','bin','powermt')))
+ var $pgm = '/etc/powermt'
+
+# Generate the report
+report emc_cmd
+call do_exec(['emc/powermt_display_dev=all',\
+              $pgm,'display dev=all',\
+              '---+!! EMC Powerpath Information'])
+
+# Add the report in the table of contents
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][EMC Powerpath]]'
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

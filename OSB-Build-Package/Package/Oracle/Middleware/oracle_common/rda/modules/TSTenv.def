@@ -1,0 +1,151 @@
+# TSTenv.def: Tests the Environment
+# $Id: TSTenv.def,v 2.8 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TSTenv.def,v 2.8 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+TSTenv - Tests the Environment
+
+=head1 DESCRIPTION
+
+=cut
+
+echo tput('bold'),'Processing environment test module ...',tput('off')
+var $lin = repeat('-',78)
+
+=pod
+
+This test module lists all defined environment variables seen by RDA.
+
+=cut
+
+dump $lin
+dump 'Environment variables'
+dump $lin
+loop $key (grepEnv('.'))
+ dump "  ",$key,"='",getEnv($key),"'"
+dump
+
+=pod
+
+Compares the environment with the RDA context.
+
+=cut
+
+dump $lin
+dump 'RDA Context'
+dump $lin
+
+macro cmp_env
+{var ($key) = @arg
+ var @dsc = (' not used',' removed',' added',' modified',' unchanged')
+ var $env = getEnv($key,undef,false)
+ var $rda = getEnv($key,undef,true)
+
+ if compare('eq',$env,$rda)
+ {var $sta = 4
+  var $env
+  var $rda
+ }
+ else
+ {var $sta = 0
+  if defined($env)
+   incr $sta
+  if defined($rda)
+   incr $sta,2
+ }
+
+ echo "  ",$key,$dsc[$sta]
+ if defined($env)
+  dump "    ENV:'",$env,"'"
+ if defined($rda)
+  dump "    RDA:'",$rda,"'"
+}
+
+loop $key ('LANG',@{CUR.SHLIB},'NLS_LANG','ORACLE_HOME','ORACLE_SID','PATH',\
+           'SQLPATH','TNS_ADMIN','TWO_TASK')
+ call cmp_env($key)
+dump
+
+=pod
+
+Reports default target details.
+
+=cut
+
+dump $lin
+dump 'Default Target'
+dump $lin
+var $tgt = ${CUR.TARGET}
+dump 'Target Identifier: ',$tgt->get_info('oid')
+dump 'Environment Alterations:'
+var ($cnt,$env) = (0,$tgt->get_env)
+loop $key (keys($env))
+{if ?$env->{$key}
+  dump "  ",$key,"='",last,"'"
+ else
+  dump "  ",$key," is deleted"
+ incr $cnt
+}
+if !$cnt
+ dump "  None"
+dump
+
+=pod
+
+Reports details about the default SQL*Plus execution context.
+
+=cut
+
+dump $lin
+dump 'Default SQL*Plus Execution Context'
+dump $lin
+var ($cnt,$cmd,$env) = (0,$[TGT]->get_sqlplus)
+dump 'Sql*Plus Command: ',$cmd
+dump 'Environment Alterations:'
+loop $key (keys($env))
+{if ?$env->{$key}
+  dump "  ",$key,"='",last,"'"
+ else
+  dump "  ",$key," is deleted"
+ incr $cnt
+}
+if !$cnt
+ dump "  None"
+dump
+
+=pod
+
+Reports details about the current SQL*Plus execution context.
+
+=cut
+
+dump $lin
+dump 'Current SQL*Plus Execution Context'
+dump $lin
+var ($cnt,$cmd,$env) = (0,${CUR.TARGET}->get_sqlplus)
+dump 'Current Sql*Plus Command: ',$cmd
+dump 'Environment Alterations:'
+loop $key (keys($env))
+{if ?$env->{$key}
+  dump "  ",$key,"='",last,"'"
+ else
+  dump "  ",$key," is deleted"
+ incr $cnt
+}
+if !$cnt
+ dump "  None"
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

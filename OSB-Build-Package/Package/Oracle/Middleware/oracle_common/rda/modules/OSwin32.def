@@ -1,0 +1,791 @@
+# OSwin32.def: Windows Specific Code
+# $Id: OSwin32.def,v 2.17 2012/07/30 20:53:54 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OSwin32.def,v 2.17 2012/07/30 20:53:54 mschenke Exp $
+#
+# Change History
+# 20120730  MSC  Improve the service pack detection.
+
+=head1 NAME
+
+OSwin32 - Submodule Specific to the Windows Operating System
+
+=cut
+
+use Buffer
+use Windows
+
+# Make the module persistent
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('ping_command')
+
+# Get the calling module
+var $MODULE = $arg[0]
+import $TOC,$TOP
+
+=head1 DESCRIPTION
+
+This module exports Windows version registry settings.
+
+=cut
+
+if !$OSN
+{debug ' Export Windows version registry settings'
+ var $reg = 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+ var $OSC = getCodePage()
+ var $OSN = getRegValue($reg,'ProductName')
+ var $OSV = getRegValue($reg,'CurrentVersion')
+ var $OSP = getReg64Value($reg,'CSDVersion','No Service Packs installed')
+ keep $OSC,$OSN,$OSV,$OSP
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE INI MODULE
+
+Nothing required yet.
+
+=cut
+
+if compare('eq',$MODULE,'INI')
+{# Nothing required yet
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE END MODULE
+
+=head2 report - Report Settings
+
+Determines the operating system version and its bit size. Identifies the
+Windows system directory and the user domain also.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_report')
+{# Determine the operating system version and its bit size.
+ if getEnv('SYSTEMROOT')
+  var $sys = last
+ else
+  var ($sys) = command('echo %SystemRoot%')
+ if testDir('d',catDir($sys,'SysWOW64'))
+  var $bit = 64
+ else
+  var $bit = 32
+
+ # Load the system settings
+ write '|Platform|',$bit,'-bit ', $OSN,' |'
+ write '|O/S Version|',           $OSV,' |'
+ write '|Service Pack|',          $OSP,' |'
+ write '|Windows Directory|',     $sys,' |'
+ write '|Domain|',                getEnv('USERDOMAIN'),' |'
+
+ # Detect virtualization technology
+ var ($lin) = grepFile($arg[1],'^\|System Manufacturer','fi')
+ if match($lin,'^\|[^\|]*\|\s*(Microsoft|VMware|XEN)',true)
+  write '|Virtualization technology detected?|',last,' |'
+}
+
+=head2 system - System Information
+
+Gets the system information. It first attempts to use F<systeminfo>, and when
+that is not available, it uses F<winmsd> for Windows NT, and F<msinfo32>
+otherwise.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_system')
+{debug ' Inside END module, trying first systeminfo'
+ prefix
+  write '|*Item*|*Value*|'
+ call writeSysinfo()
+ if hasOutput(true)
+  write '<? CodePage:',$OSC,' ?>'
+ else
+ {if match($OSN,'Microsoft Windows NT')
+  {# Winmsd should be used for Windows NT
+   debug ' Inside END module, trying winmsd for Windows NT'
+   call writeWinmsd()
+  }
+  else
+  {# MSInfo32 is replacing Winmsd in more recent environments
+   debug ' Inside END module, using msinfo32(Summary)'
+   call writeMsinfo('System Summary','SystemSummary')
+  }
+ }
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE OS MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'OS')
+{# Check how to workaround 32-bit access limitations for 64-bits Windows
+ if getEnv('SYSTEMROOT')
+  var $dir = last
+ else
+  var ($dir) = command('echo %SystemRoot%')
+
+ if or(testFile('r',catFile(catDir($dir,'system32'),'mode.com')),\
+       testFile('r',catFile(catDir($dir,'Sysnative'),'mode.com')))
+  var ($flg,$sys,$mod,$CMD) = (false,lastDir(),lastFile(),'cmd')
+ else
+ {var ($flg,$sys,$mod,$CMD) = (false,catDir($dir,'system32'))
+  if grepDir(getSetting('RDA_CWD','.'),'^cmd\.exe$','fp')
+  {var $CMD = quote(last,'x')
+   var $mod = catFile($sys,'mode.com')
+   var $flg = grepCommand(concat($CMD,' /c if exist "',$mod,'" echo 32to64'),\
+                          '^32to64')
+   if !$flg
+    var ($CMD,$mod) = ()
+  }
+ }
+
+=head2 sys_config - Machine Configuration
+
+Displays the configuration information for Windows NT.
+
+=head2 cpu_info - CPUs
+
+Displays the CPU information.
+
+=head2 memory_info - Memory
+
+Displays the memory configuration.
+
+=head2 display_info - Display
+
+Displays the display configuration.
+
+=head2 disk_info - Disk Drives
+
+Displays the disk drive configuration.
+
+=head2 protocol - Protocol
+
+Displays the protocol information.
+
+=head2 services - Services
+
+Displays the defined services.
+
+=head2 wintime - Windows Time Service
+
+Collects Windows time service information.
+
+=head2 drivers - Drivers
+
+Displays the driver information.
+
+=head2 odbc_info - ODBC
+
+Displays the ODBC driver information for Windows 2000, Windows XP, and
+Windows 2003.
+
+=cut
+
+ if match($OSN,'Microsoft Windows NT')
+ {# Winmsd should be used for Windows NT
+  debug ' Inside OS module, trying winmsd for Windows NT'
+  report sys_config
+  call writeWinmsd()
+  toc '2:[[',getFile(),'][rda_report][Machine Configuration]]'
+ }
+ else
+ {# MSInfo32 is replacing Winmsd in more recent environments
+  debug ' Inside OS module, getting CPU information'
+  report cpu_info
+  prefix
+   write '---+ CPU Information'
+  call writeRegistry('HKLM\HARDWARE\Description\System\CentralProcessor')
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][CPUs]]'
+
+  # MSInfo32 is replacing Winmsd in more recent environments
+  debug ' Inside OS module, using msinfo32(ResourcesMemory)'
+  report memory_info
+  if writeMsinfo('Memory','ResourcesMemory')
+   toc '2:[[',getFile(),'][rda_report][Memory]]'
+
+  debug ' Inside OS module, using msinfo32(ComponentsDisplay)'
+  report display_info
+  if writeMsinfo('Display','ComponentsDisplay')
+   toc '2:[[',getFile(),'][rda_report][Display]]'
+
+  debug ' Inside OS module, using msinfo32(ComponentsStorageDrives/Disks)'
+  report disk_info
+  if writeMsinfo('Disk Drives','ComponentsStorageDrives',\
+                               'ComponentsStorageDisks')
+   toc '2:[[',getFile(),'][rda_report][Disk Drives]]'
+
+  debug ' Inside OS module, using msinfo32(ComponentsNetworkProtocol)'
+  report protocol
+  if writeMsinfo('Protocol','ComponentsNetworkProtocol')
+   toc '2:[[',getFile(),'][rda_report][Protocol]]'
+
+  debug ' Inside OS module, using msinfo32(SWEnvServices)'
+  report services
+  if writeMsinfo('Services','SWEnvServices')
+   toc '2:[[',getFile(),'][rda_report][Services]]'
+
+  debug ' Inside OS module, getting Windows time services registry entries'
+  report wintime
+  prefix
+  {write '---+!! Windows Time Service'
+   write $TOC
+   write '---+ Registry Settings'
+  }
+  call writeRegistry(\
+    'HKLM\SYSTEM\CurrentControlSet\Services\W32Time\Config')
+  call writeRegistry(\
+    'HKLM\SYSTEM\CurrentControlSet\Services\W32Time\Parameters')
+  call writeRegistry(\
+    'HKLM\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient')
+  if hasOutput(true)
+   write $TOP
+  if findCommand('w32tm')
+  {var $pgm = last
+   debug ' Inside OS module, getting time zone details'
+   prefix
+   {if !isCreated()
+     write '---+!! Windows Time Service'
+    write '---+ Time Zone Details'
+    write '---## Using: w32tm /tz'
+   }
+   call writeCommand(concat($pgm,' /tz'))
+   if hasOutput(true)
+    write $TOP
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Windows Time Service]]'
+
+  debug ' Inside OS module, using msinfo32(SWEnvDrivers)'
+  report drivers
+  if writeMsinfo('Drivers','SWEnvDrivers')
+   toc '2:[[',getFile(),'][rda_report][Drivers]]'
+
+  debug ' Inside OS module, using msinfo32(Odbc)'
+  report odbc_info
+  if writeMsinfo('ODBC','Odbc')
+   toc '2:[[',getFile(),'][rda_report][ODBC]]'
+ }
+
+=head2 patches - Operating System Patches
+
+Lists the installed hot fixes using the C<wmic qfe list full> command.
+
+=cut
+
+ debug ' Inside OS module, getting operating system patches'
+ var $cmd = "wmic qfe list full 2>&1"
+ if $buf = $[WIN]->load_command($cmd)
+ {# Get the hot fixes
+  var ($pat,%key,%rec,%tbl) = \
+    ('^((Caption|Description|FixComments|HotFixID)=\S|ServicePackInEffect=)',\
+     Caption => 'url',Description => 'dsc',FixComments => 'com')
+  while $buf->grep($pat,'fr')
+  {var ($key,$val) = (key(last),value(last))
+   if compare('eq',$key,'ServicePackInEffect')
+   {if exists($rec{'fix'})
+     var $val = $rec{'fix'}
+    elsif exists($tbl{$val})
+     var $val = undef
+    if length($val)
+     var $tbl{$val} = concat('|',\
+       cond(exists($rec{'url'}),\
+            concat('[[',$rec{'url'},'][_blank][',$val,']]'),\
+            $val),\
+       ' |',$rec{'com'},' |',$rec{'dsc'},' |')
+    var %rec = ()
+   }
+   elsif compare('eq',$key,'HotFixID')
+   {next compare('eq',$val,'File 1')
+    var $rec{'fix'} = $val
+   }
+   else
+    var $rec{$key{$key}} = $val
+  }
+
+  # Produce the report
+  report patches
+  prefix
+  {write '---+ Operating System Patches Information'
+   write '---## Using: ',encode($cmd)
+   write '|*Hot Fix*|*Comments*|*Description*|'
+  }
+  loop $key (keys(%tbl))
+   write $tbl{$key}
+  if hasOutput(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][Operating System Patches]]'
+  }
+ }
+
+=head2 systempolicy - System Policy
+
+Collects the system policy from the registry entry
+C<HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\system>.
+
+=cut
+
+ debug ' Inside OS module, getting system policy'
+ report systempolicy
+ prefix 
+  write '---+ System Policy Registry Settings'
+ call writeRegistry(\
+    'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\system')
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][System Policy]]'
+
+=head2 appevtxlog - Application Event Log
+
+Displays the application event log information for Windows Vista, Windows
+Server 2008, and Windows 7 using the command F<wevtutil>.
+
+=cut
+
+ pretoc '2:Event Logs'
+ var $age = getSetting('OS_EVENT_AGE',7)
+ if compare('ge',$OSV,'6')
+ {debug ' Inside OS module, getting application event log information'
+  if findCommand('wevtutil')
+  {var $evt = last
+   var $msc = expr('*',$age,86400000)
+
+   report appevtxlog
+   write '---+!! Application Event Log Information'
+   write '   * Events from ',$age,' last days%BR%'
+   if !writeCommand(concat($evt,' qe Application ',\
+         '"/q:*[System[TimeCreated[timediff(@SystemTime) <= ',$msc,\
+         ']]]" /f:xml'))
+    write '**No events found**'
+   toc '3:[[',getFile(),'][rda_report][Application]]'
+
+=head2 secevtxlog - Security Event Log
+
+Displays the security event log information for Windows Vista, Windows Server
+2008, and Windows 7 using the command F<wevtutil>.
+
+=cut
+
+   report secevtxlog
+   write '---+!! Security Event Log Information'
+   write '   * Events from ',$age,' last days%BR%'
+   if !writeCommand(concat($evt,' qe Security ',\
+         '"/q:*[System[TimeCreated[timediff(@SystemTime) <= ',$msc,\
+         ']]]" /f:xml'))
+    write '**No events found**'
+   toc '3:[[',getFile(),'][rda_report][Security]]'
+
+=head2 sysevtxlog - System Event Log
+
+Displays the system event log information for Windows Vista, Windows Server
+2008, and Windows 7 using the command F<wevtutil>.
+
+=cut
+
+   report sysevtxlog
+   write '---+!! System Event Log Information'
+   write '   * Events from ',$age,' last days%BR%'
+   if !writeCommand(concat($evt,' qe System ',\
+         '"/q:*[System[TimeCreated[timediff(@SystemTime) <= ',$msc,\
+         ']]]" /f:xml'))
+    write '**No events found**'
+   toc '3:[[',getFile(),'][rda_report][System]]'
+  }
+ }
+
+=head2 appevtlog - Application Event Log
+
+Displays the application event log information for Windows NT, Windows 2000,
+Windows XP, and Windows 2003. For 64-bit systems, RDA collects this information
+only when it can access the event log file.
+
+=cut
+
+ else
+ {debug ' Inside OS module, getting application event log information'
+
+  macro get_evt
+  {var ($flg,$cmd,$evt) = @arg
+   if testFile('r',$evt)
+    return $evt
+   var $tmp = getTemp('evt','.evt')
+   if $flg
+    call system(concat($cmd,' /c copy ',\
+                       $evt,' ',\
+                       quote($tmp,'x'),' >NUL 2>NUL'))
+   return cond(testFile('r',$tmp),$tmp)
+  } 
+
+  var $evt = replaceEnv(getRegValue(\
+                'HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application',\
+                'File'))
+  if get_evt($flg,$CMD,$evt)
+  {var $fil = last
+   report appevtlog
+   write '---+!! Application Event Log Information'
+   write '   * Events from ',$age,' last days%BR%'
+   if !writeEvents($fil,'.',$age)
+    write '**No events found**'
+   toc '3:[[',getFile(),'][rda_report][Application]]'
+  }
+  if $flg
+   call unlinkTemp('evt')
+
+=head2 secevtlog - Security Event Log
+
+Displays the security event log information for Windows NT, Windows 2000,
+Windows XP, and Windows 2003. For 64-bit systems, RDA collects this information
+only when it can access the event log file.
+
+=cut
+
+  debug ' Inside OS module, getting security event log information'
+  var $evt = replaceEnv(getRegValue(\
+                'HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Security',\
+                'File'))
+  if get_evt($flg,$CMD,$evt)
+  {var $fil = last
+   report secevtlog
+   write '---+!! Security Event Log Information'
+   write '   * Events from ',$age,' last days%BR%'
+   if !writeEvents($fil,'.',$age)
+    write '**No events found**'
+   toc '3:[[',getFile(),'][rda_report][Security]]'
+  }
+  if $flg
+   call unlinkTemp('evt')
+
+=head2 sysevtlog - System Event Log
+
+Displays the system event log information for Windows NT, Windows 2000, Windows
+XP, and Windows 2003. For 64-bit systems, RDA collects this information only
+when it can access the event log file.
+
+=cut
+
+  debug ' Inside OS module, getting system event log information'
+  var $evt = replaceEnv(getRegValue(\
+                'HKLM\SYSTEM\CurrentControlSet\Services\EventLog\System',\
+                'File'))
+  if get_evt($flg,$CMD,$evt)
+  {var $fil = last
+   report sysevtlog
+   write '---+!! System Event Log Information'
+   write '   * Events from ',$age,' last days%BR%'
+   if !writeEvents($fil,'.',$age)
+    write '**No events found**'
+   toc '3:[[',getFile(),'][rda_report][System]]'
+  }
+  if $flg
+   call unlinkTemp('evt')
+  unpretoc
+ }
+
+=head2 firewall - Firewall
+
+Collects the firewall settings.
+
+=cut
+
+ debug ' Inside OS module, getting firewall settings'
+ if and(compare('eq',$OSN,'Microsoft Windows XP'),\
+        compare('eq',$OSP,'Service Pack 2'))
+ {report firewall
+  write '---+!! Firewall Settings'
+  write $TOC
+  call writeFirewall()
+  toc '2:[[',getFile(),'][rda_report][Firewall]]'
+ }
+
+=head2 mode_info - Mode
+
+Collects the modes. For 64-bit systems, RDA collects this information only when
+it can access C<mode.com>.
+
+=cut
+
+ if $mod
+ {debug ' Inside OS module, getting mode settings'
+  report mode_info
+  prefix
+  {if $OSC
+    write '<? CodePage:',$OSC,' ?>'
+   write '---+!! Mode'
+  }
+  call writeCommand(concat($CMD,' /c "',$mod,'"'))
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Mode]]'
+ }
+
+=head2 misc_win_info - Miscellaneous Windows Information
+
+Collects the F<boot.ini> file and the registry key value from
+C<HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\SubSystems\Windows>.
+
+=cut
+
+ debug ' Inside OS module, getting miscellaneous Windows information'
+ report misc_win_info
+ write '---+!! Miscellaneous Windows Information'
+ write $TOC
+
+ var $fil = catFile(getEnv('SystemDrive','C:'),'boot.ini')
+ write '---+ Boot Information'
+ write '---## From ',encode($fil)
+ call writeFile($fil)
+ write $TOP
+
+ var $key = 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\SubSystems'
+ write '---+ Windows Startup Control Entries'
+ write '---## From ',$key,'\Windows'
+ write "``",getRegValue($key,'Windows'),"``"
+ write
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Miscellaneous Windows Information]]'
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE PERF MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'PERF')
+{
+
+=head2 overview - Overview
+
+Under cygwin, it indicates the system uptime.
+
+Displays an overview of started services.
+
+Lists the running databases.
+
+=cut
+
+ report overview
+ write '---+!! Performance Overview'
+ write $TOC
+ toc '2:[[',getFile(),'][rda_report][Overview]]'
+
+ debug ' Inside PERF module, about to execute uptime command'
+ prefix
+  write '---+ Uptime'
+ call writeCommand('uptime')
+ if hasOutput(true)
+  write $TOP
+
+ if loadCommand('net start 2>&1')
+ {debug ' Inside PERF module, about to gather services counts'
+  write '---+ Started Services Overview'
+  var $cnt = grepLastFile('^\s+Oracle','i')
+  write '|*Oracle Services*| ',$cnt,'|'
+  var $cnt = grepLastFile('TNSListener','i')
+  write '|*Listeners Services*| ',$cnt,'|'
+  var $cnt = grepLastFile('^\s+OracleService','i')
+  write '|*Database Services*| ',$cnt,'|'
+  var $cnt = getLastLength()
+  write '|*Total Services*| ',$cnt,'|'
+  write $TOP
+
+  debug ' Inside PERF module, about to determine running databases'
+  prefix
+  {write '---+ Running Databases List'
+   write '<verbatim>'
+  }
+  var $pat = '^\s+OracleService'
+  loop $svc (grepLastFile($pat,'i'))
+  {write replace($svc,$pat)
+  }
+  if hasOutput(true)
+  {write '</verbatim>'
+   write $TOP
+  }
+ }
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE NET MODULE
+
+Determines the F<ping> command format.
+
+=cut
+
+elsif compare('eq',$MODULE,'NET')
+{# usage: ping [-t] [-a] [-n count] [-l size] [-f] [-i TTL] [-v TOS]
+ #             [-r count] [-s count] [[-j host-list] | [-k host-list]]
+ #             [-w timeout] target_name
+ var (undef,\$PING,\$NETSTAT) = @arg
+ var $PING = 'ping -l %d -n 10 %s'
+ var $NETSTAT = 'netstat'
+
+=head2 ifconfig - Interface Configuration
+
+Gets the network interface configuration.
+
+=cut
+
+ debug ' Inside NET module, getting network interface configuration'
+ report ifconfig
+ var $cmd = 'ipconfig /all'
+ write '---+ Interface Configuration'
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Interface Configuration]]'
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE RAC MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'RAC')
+{import $ORA_CRS_HOME
+ var $EVM_KEY = 'HKLM\SYSTEM\CurrentControlSet\Services\OracleEVMService'
+ var $CRS_KEY = 'HKLM\SYSTEM\CurrentControlSet\Services\OracleCRService'
+ var $CSS_KEY = 'HKLM\SYSTEM\CurrentControlSet\Services\OracleCSService'
+ var $CRS_DETECTED = defined($ORA_CRS_HOME)
+
+=head2 cluster_status_file - Cluster Status
+
+Detects the status of the cluster and verifies that it is ready for RAC.
+
+=cut
+
+
+ debug ' Inside RAC module, processing Cluster status (windows)'
+ report cluster_status_file
+ write '---+ Status of the Cluster'
+
+ prefix
+  write '---++ Verify cluster exists'
+ if and($ORA_CRS_HOME,\
+        testFile('f',catFile($ORA_CRS_HOME,'bin','olsnodes.exe')))
+  write 'Cluster Ready Services installed.%BR%'
+ if and(getRegValue($CRS_KEY,'ImagePath'),\
+        getRegValue($CSS_KEY,'ImagePath'),\
+        getRegValue($EVM_KEY,'ImagePath'))
+  write 'A cluster has been detected.'
+ else
+  write 'A cluster was not detected.'
+
+ toc '2:[[',getFile(),'][rda_report][Cluster Status]]'
+
+=head2 symlinks - Raw Device Symbolic Links
+
+Exports all of the symbolic links to raw devices.
+
+=cut
+
+ debug ' Inside RAC module, exporting raw device symbolic links (windows)'
+ report symlinks
+ prefix
+ {write '---+ Raw Device Symbolic Links'
+  write '---## Using: ExportSYMLinks'
+  write '|*Name*|*Raw Device*| *Size*|'
+ }
+ var $out = getTemp('symlinks','.tbl')
+ call loadCommand(concat(catCommand($ORA_CRS_HOME,'bin','ExportSYMLinks.exe'),\
+                         ' /f:',$out))
+ loop $lin (grepFile($out,'\S'))
+ {if match($lin,'^(\S*)\s+(.*?)\s+(\S*)$')
+  {var @tbl = last
+   write '|',$tbl[0],' |',$tbl[1],' | ',$tbl[2],'|'
+  }
+ }
+ call unlinkTemp('symlinks')
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Raw Device Symbolic Links]]'
+
+=head2 windriver - Windows Driver Information
+
+Lists the file details about the F<orafencedrv.sys> and F<orafenceservice.sys>
+drivers.
+
+=cut
+
+ debug ' Inside RAC module, getting driver information (windows)'
+ report windriver
+ prefix
+ {write '---+!! Windows Driver Information'
+  write $TOC
+ }
+ if getEnv('SYSTEMROOT')
+  var $sys = last
+ else
+  var ($sys) = command('echo %SystemRoot%')
+ if testFile('f',catFile($sys,'system32','drivers','orafencedrv.sys'))
+ {write '---+ orafencedrv.sys Driver Information'
+  call statFile('p',lastFile())
+ }
+ if testFile('f',catFile($sys,'system32','drivers','orafenceservice.sys'))
+ {write '---+ orafenceservice.sys Driver Information'
+  call statFile('p',lastFile())
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Windows Driver Information]]'
+
+=head2 orafence - OraFenceServices Registry Information
+
+Collects the OraFenceServices registry information.
+
+=cut
+
+ report orafence
+ debug ' Inside RAC module, gathering OraFenceServices registry information'
+ prefix
+ {write '---+!! OraFenceServices Registry Information'
+  write $TOC
+ }
+ call writeRegistry('HKLM\SYSTEM\CurrentControlSet\Services\OraFenceService')
+ if isCreated(true)
+ {write $TOP
+  toc '2:[[',getFile(),\
+      '][rda_report][OraFenceServices Registry Information]]'
+ }
+}
+
+#------------------------------------------------------------------------------
+
+# Return a ping command
+macro ping_command
+ return concat('ping -l ',nvl($arg[1],56),' -n 10 ',$arg[0])
+
+=head1 SEE ALSO
+
+L<CRSinit.def|modules::CRSinit>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.1:  Yoshimasa Watanabe.
+
+=item RDA 4.11: Kanti Jadia, Guido Tijskens.
+
+=item RDA 4.15: Jesse Scott.
+
+=item RDA 4.20: Jaime Alcoreza.
+
+=item RDA 4.26: Taylor Schock.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prov:AgentDeploy version="1"
+                   xmlns:prov="http://www.oracle.com/sysman/prov/deployment"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.oracle.com/sysman/prov/deployment deploy_product.xsd" >
+<!--
+    <prov:DeploymentProduct name="predeploy" handler="oracle.sysman.core.agentdeploy.deploy.deployer.PrePreDeployScriptDeployer" id="predeploy" mustDeploy="false" >
+    </prov:DeploymentProduct> 
+-->
+
+    <prov:DeploymentProduct name="localprereq" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedLocalPrereqChecker" handler="oracle.sysman.core.agentdeploy.deploy.deployer.LocalPrereqChecker" id="localprereq" mustDeploy="false" >
+    <!--      <prov:ProductSequence priority="0" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.PrePreDeployScriptDeployer" handler="oracle.sysman.core.agentdeploy.deploy.deployer.PrePreDeployScriptDeployer" id="predeploy" name="predeploy" scope="HOST"/>-->
+         <prov:ProductSequence priority="1" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedLocalPrereqChecker" handler="oracle.sysman.core.agentdeploy.deploy.deployer.LocalPrereqChecker" id="PerHostLocalPrereqPartOne" name="PerHostLocalPrereqPartOne" scope="HOST"/>
+         <prov:ProductSequence priority="1" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedLocalPrereqChecker" handler="oracle.sysman.core.agentdeploy.deploy.deployer.LocalPrereqChecker" id="PerRowLocalPrereq" name="PerRowLocalPrereq" scope="ROW"/>
+	 <prov:ProductSequence priority="1" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedLocalPrereqChecker" handler="oracle.sysman.core.agentdeploy.deploy.deployer.LocalPrereqChecker" id="PerHostLocalPrereqPartTwo" name="PerHostLocalPrereqPartTwo" scope="HOST"/>
+         <prov:ProductSequence priority="1" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedLocalPrereqChecker" handler="oracle.sysman.core.agentdeploy.deploy.deployer.LocalPrereqChecker" id="PerRowLocalPrereqPartTwo" name="PerRowLocalPrereqPartTwo" scope="ROW"/>
+        <prov:ProductSequence priority="1" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedRemotePrereqChecker" handler="oracle.sysman.core.agentdeploy.deploy.deployer.RemotePrereqChecker" id="remoteprereq" name="Remote Prereqs" scope="HOST"/>
+        <prov:ProductSequence priority="1" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.LocalPrereqChecker" handler="oracle.sysman.core.agentdeploy.deploy.deployer.LocalPrereqChecker" id="CopyShiphome_perRow" name="CopyShiphome_perRow" scope="ROW"/>
+    </prov:DeploymentProduct>
+    
+    <prov:DeploymentProduct id="FreshInstall" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedNewAgentDeployer" handler="oracle.sysman.core.agentdeploy.deploy.deployer.NewAgentDeployer" mustDeploy="false" name="Remote Prereqs">        
+    </prov:DeploymentProduct>
+    <prov:DeploymentProduct id="AgentUpgrade" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedUpgradeAgentDeployer" handler="oracle.sysman.core.agentdeploy.deploy.deployer.UpgradeAgentDeployer" mustDeploy="false" name="Remote Prereqs">
+    </prov:DeploymentProduct>
+    <prov:DeploymentProduct id="NFSInstall" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.NFSAgentDeployer" handler="oracle.sysman.core.agentdeploy.deploy.deployer.NFSAgentDeployer" mustDeploy="false" name="NFS install">
+    </prov:DeploymentProduct>
+    <prov:DeploymentProduct id="CloneInstall" sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.CloneAgentDeployer" handler="oracle.sysman.core.agentdeploy.deploy.deployer.CloneAgentDeployer" mustDeploy="false" name="Clone install">
+    </prov:DeploymentProduct>
+    <prov:DeploymentProduct id="JunitProd"  sharedhandler="oracle.sysman.core.agentdeploy.deployfwk.product.plugin.JunitDeployer" handler="oracle.sysman.core.agentdeploy.deployfwk.product.plugin.JunitDeployer" mustDeploy="false" name="Junit Product">
+    </prov:DeploymentProduct>
+    <prov:DeploymentProduct id="CleanUp"  sharedhandler="oracle.sysman.core.agentdeploy.deploy.deployer.SharedCleanupDeployer" handler="oracle.sysman.core.agentdeploy.deploy.deployer.CleanupDeployer" mustDeploy="true" name="Cleanup Product">
+    </prov:DeploymentProduct>
+</prov:AgentDeploy>

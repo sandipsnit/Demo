@@ -1,0 +1,171 @@
+# S403ACFS.def: Collects ASM Cluster File System Information
+# $Id: S403ACFS.def,v 2.10 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S403ACFS.def,v 2.10 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S403ACFS - Collects ASM Cluster File System Information
+
+=head1 DESCRIPTION
+
+This module collects ASM Cluster File System-related information.
+
+The following reports can be generated and are regrouped under C<ASM Cluster
+File System>:
+
+=cut
+
+echo tput('bold'),'Processing ACFS module ...',tput('off')
+
+# Initialisation
+var $ORACLE_HOME = getSetting('ASM_ORACLE_HOME','')
+var $ORACLE_SID  = getSetting('ASM_ORACLE_SID','+ASM')
+var $AGE         = getSetting('ACFS_AGE',15)
+var $TAIL        = getSetting('ACFS_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:ASM Cluster File System'
+
+# Load the common macros
+run library()
+
+# Auto detect the ASM_ORACLE_HOME in a cluster
+if compare('eq',$ORACLE_SID,'*')
+ run ASMinit(\$ORACLE_HOME,\$ORACLE_SID)
+
+=head2 acfsutil - acfsutil Output
+
+Collects F<acfsutil> command output.
+
+=cut
+
+if !isUnix()
+ var $cmd = findCommand('acfsutil.exe')
+elsif testFile('fx',catFile('/sbin','acfsutil'))
+ var $cmd = lastCommand()
+else
+ var $cmd = undef
+if ?$cmd
+{debug ' Inside ACFS module, gathering acfsutil information'
+ report acfsutil
+ var $cmd = concat($cmd,' info fs')
+ prefix
+ {write '---+!! acfsutil Command Output'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][acfsutil Output]]'
+}
+
+=head2 crsctl - crsctl Output
+
+Collects F<crsctl> command output.
+
+=cut
+
+if isUnix()
+ var ($mod,$pgm) = ('fx',catFile($ORACLE_HOME,'bin','crsctl'))
+else
+ var ($mod,$pgm) = ('f', catFile($ORACLE_HOME,'bin','crsctl.exe'))
+else
+ var ($mod,$pgm) = ('fx')
+if testFile($mod,$pgm)
+{debug ' Inside ACFS module, gathering crsctl information'
+ report crsctl
+ var $pgm = lastCommand()
+ loop $arg (' stat res',' stat res -init',' stat res -p',' stat res -p -init')
+ {prefix
+  {if !isCreated()
+   {write '---+!! crsctl Command Output'
+    write $TOC
+   }
+   write '---+ ',encode($cmd)
+  }
+  var $cmd = concat($pgm,$arg)
+  call writeCommand($cmd)
+  if hasOutput(true)
+   write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][crsctl Output]]'
+}
+
+=head2 modinfo - Module Information
+
+For Linux, it reports ACFS, ADVM, and OKS module information.
+
+=cut
+
+if ${OS.linux}
+{debug ' Inside ACFS module, gathering modinfo information'
+ report modinfo
+ loop $lin (grepFile('/proc/modules','^(oracle)?(acfs|advm|oks)\s','i'))
+ {var $mod = field('\s',0,$lin)
+  prefix
+  {if !isCreated()
+   {write '---+!! Module Information'
+    write $TOC
+   }
+   write '---+ Module ',uc($mod)
+  }
+  call writeCommand(concat('/sbin/modinfo ',$mod,' 2>&1'))
+  if hasOutput(true)
+   write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Module Information]]'
+}
+
+=head2 OKS Log Files
+
+Collects Oracle Kernel Service (OKS) log files.
+
+=cut
+
+pretoc '2:OKS Log Files'
+debug ' Inside ACFS module, gathering log files'
+if isUnix()
+ call sort_files(3,$TAIL,'/proc/oks/log',\
+                grepDir('/var/log','^[FV]oks\.log\.\d+$',concat('ipm',$AGE)))
+elsif or(isWindows(),isCygwin())
+{if getEnv('SYSTEMROOT')
+  var $sys = last
+ else
+  var ($sys) = command('echo %SystemRoot%')
+ call sort_files(3,$TAIL,\
+   grepDir(catDir($sys,'system32','drivers','acfs'),'okslog',\
+           concat('ipm',$AGE)))
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>, L<ASMinit.def|modules::ASMinit>,
+L<CRSinit.def|modules::CRSinit>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.17: Jean-Marc Gaudron.
+
+=item RDA 4.21: Jaime Alcoreza.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

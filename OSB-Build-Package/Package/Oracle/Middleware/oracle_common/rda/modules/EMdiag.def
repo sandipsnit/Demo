@@ -1,0 +1,903 @@
+# EMdiag.def: Common Macros for Enterprise Manager Collection
+# $Id: EMdiag.def,v 2.21 2012/05/21 21:34:17 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/EMdiag.def,v 2.21 2012/05/21 21:34:17 mschenke Exp $
+#
+# Change History
+# 20120521  KRA  Use addSymbol.
+
+=head1 NAME
+
+EMdiag - Common Macros Related to Oracle Enterprise Manager
+
+=head1 DESCRIPTION
+
+This module contains common macros used by the AGT, DBC, and EM modules.
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS,%TEST_DESC
+var @SHARE_MACROS = ('call_emdiag_kit',\
+                     'check_emdiag_kit',\
+                     'check_permissions',\
+                     'display_agent_config',\
+                     'display_dbc_config',\
+                     'display_oms_config',\
+                     'display_targets',\
+                     'dump_oms_threads',\
+                     'exec_emctl',\
+                     'extract_errors',\
+                     'get_agent_name',\
+                     'get_agent_version',\
+                     'get_config',\
+                     'get_em_conn',\
+                     'get_em_login',\
+                     'get_oms_version',\
+                     'get_repository_host',\
+                     'ping_host')
+
+# Define module data
+var %TEST_DESC = (\
+  'e','exists',\
+  'r','is readable by the user who ran RDA',\
+  'w','is writable by the user who ran RDA scripts',\
+  'x','is executable by the user who ran RDA scripts',\
+  'o','is owned by the user who ran RDA scripts',\
+  'z','has zero size (is empty)',\
+  's','has nonzero size',\
+  'l','is a symbolic link',\
+  'B','is binary',\
+  'T','is an ASCII text file')
+
+=head2 S<call_emdiag_kit($violation,$audit)>
+
+This macro collects EMDIAG kit information.
+
+=cut
+
+macro call_emdiag_kit
+{var ($vio,$aud) = @arg
+ import $TOP
+
+ set $job
+ {# PLSQL
+ "DECLARE
+ " CURSOR C1 IS
+ "  SELECT DISTINCT module
+ "   FROM sysman.mgmt_rep_diag
+ "   WHERE enabled = 1
+ "     AND mgmt_diag.RepType = NVL(reptype,mgmt_diag.RepType)
+ "     AND mgmt_diag.RepVersion BETWEEN 
+ "           NVL(min_version,mgmt_diag.RepVersion) AND
+ "           NVL(max_version,mgmt_diag.RepVersion);
+ "BEGIN
+ " FOR r1 in c1 LOOP
+ "  sysman.mgmt_diag.VerifyModule(r1.module,0,1,FALSE);
+ " END LOOP;
+ "END;
+ "/
+ }
+
+ # Detect all the violations
+ call loadDb($job)
+
+ # Report violations
+ write '---+ Violations Information'
+ write '---## Violations Detected during Last ',$vio,' Days'
+ prefix
+  write '|*Module*|*Identifier*|*Label*|*Last Verified*| *Verified Count*|\
+          *Last Fix*| *Fix Count*|'
+ set $job
+ {# SQL
+ "SELECT '|' ||
+ "       module || '|' ||
+ "       id || '|' ||
+ "       label || '|' ||
+ "       TO_CHAR(vfy_tstamp,'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+ "       vfy_cnt || '|' ||
+ "       TO_CHAR(fix_tstamp,'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+ "       fix_cnt || '|'
+ " FROM sysman.mgmt$diag_results
+ " WHERE vfy_tstamp > (SYSTIMESTAMP - :1)
+ " ORDER BY module,label
+ "/
+ }          
+ call writeDb(bind($job,$vio))
+ if !hasOutput(true)
+  write 'No violations found','%BR%'
+ write $TOP
+
+ # Report audit information
+ write '---+ Audit Log'
+ write '---## Actions Taken during Last ',$aud,' Days'
+ prefix
+  write '|*Module*|*Identifier*|*Label*|*Time Run*| *Count*|*Key*|*Data*|'
+ set $job
+ {# SQL
+ "SELECT '|' ||
+ "       module || '|' ||
+ "       id || '|' ||
+ "       label || '|' ||
+ "       TO_CHAR(tstamp,'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+ "       cnt || '|' ||
+ "       key || ' |' ||
+ "       data || ' |'
+ " FROM sysman.mgmt$diag_log
+ " WHERE tstamp > (SYSTIMESTAMP - :1)
+ " ORDER BY module,label
+ "/
+ }
+ call writeDb(bind($job,$aud))
+ if !hasOutput(true)
+  write 'No audit information found','%BR%'
+ write $TOP
+}
+
+=head2 S<check_emdiag_kit()>
+
+This macro indicates whether the EMDIAG kit is installed.
+
+=cut
+
+macro check_emdiag_kit
+{var () = @arg
+ import $TOC,$TOP
+
+ # Verify the kit existence
+ var ($hdr,$col) = getDbColumns('RDA','SYSMAN.MGMT$DIAG_INFO','CATEGORY','INFO')
+ call clearDbColumns('RDA')
+ if !$col
+ {report not_found
+  write 'The EMDIAG kit is not installed'
+  toc '2:[[',getFile(),'][rda_report][No EMDIAG Kit]]'
+  return 0
+ }
+
+ # Report kit information
+ report diagkit
+ write '---+!! EMDIAG Kit'
+ write $TOC
+ write '---+!! Kit Information'
+ write $hdr
+ set $job
+ {# SQL
+ "SELECT :1
+ " FROM sysman.mgmt$diag_info
+ "/
+ }
+ if !writeDb(bind($job,$col))
+  write getDbMessage()
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][EMDIAG Kit]]'
+ return 1
+}
+
+=head2 S<check_permissions($ttl,\@own,\%dir,\%fil)>
+
+This module performs ownership and permission checks on files and
+directories. It reports noncompliances.
+
+=cut
+
+macro check_permissions
+{var ($ttl,\@own,\%dir,\%fil) = @arg
+ import $ERR,$TOC,$TOP,%TEST_DESC
+
+ report file_permissions
+ var $flg = false
+ var $err = 0
+ write '---+!! ',$ttl
+ write $TOC
+
+ # Test file ownership
+ if and(isUnix(),@own)
+ {write '---+ Root Owner Test'
+  incr $err,test_owner(0,'root',@own)
+  write $TOP
+ }
+
+ # Get file details
+ if %fil
+ {write '---+ File Tests/Details'
+  loop $fil (keys(%fil))
+  {write "---++ File '",encode(addSymbol($fil)),"'"
+   prefix
+    write '---+++!! File Details'
+   if statFile('b',$fil)
+   {prefix
+    {write $TOP
+     write '---+++!! File Tests'
+    }
+    loop $tst (split('',$fil{$fil}))
+    {var $dsc = $TEST_DESC{$tst}
+     if testFile($tst,$fil)
+      write '   * Test whether the file ',$dsc,': %BLUE%PASSED%ENDCOLOR%'
+     else
+     {write '   * Test whether the file ',$dsc,': %RED%FAILED%ENDCOLOR%'
+      incr $err
+     }
+    }
+    unprefix
+   }
+   else
+   {unprefix
+    write '---+++!! File Tests'
+    write '   * %RED%Unable to access this file%ENDCOLOR%'
+    incr $err
+   }
+   write $TOP
+  }
+ }
+
+ # Get directory details
+ if %dir
+ {write '---+ Directory Tests/Details'
+  loop $dir (keys(%dir))
+  {write "---++ Directory '",encode(addSymbol($dir)),"'"
+   prefix
+    write '---+++!! Directory Details (Sorted by Last Modification Time)'
+   if statDir('t',$dir)
+   {var $cnt = last
+    if expr('<',$cnt,'0')
+     write 'No files found%BR%'
+    else
+     write 'Total file count: ',$cnt,'%BR%'
+    prefix
+    {write $TOP
+     write '---+++!! Directory Tests'
+    }
+    loop $tst (split('', $dir{$dir}))
+    {var $dsc = $TEST_DESC{$tst}
+     if testDir($tst,$dir)
+      write '   * Test whether the directory ',$dsc,': %BLUE%PASSED%ENDCOLOR%'
+     else
+     {write '   * Test whether the directory ',$dsc,': %RED%FAILED%ENDCOLOR%'
+      incr $err
+     }
+    }
+   }
+   else
+   {unprefix
+    write '---+++!! Directory Tests'
+    write '   * %RED%Unable to open this directory%ENDCOLOR%'
+    incr $err
+   }
+   write $TOP
+  }
+ }
+ toc '2:[[',getFile(),'][rda_report][',$ttl,cond($err,$ERR),']]'
+}
+
+=head2 S<display_agent_config($dir,\@cfg,\@log)>
+
+This macro collects the agent configuration and performs specified tests on
+F<emd.properties> and F<emagentlogging.properties>.
+
+=cut
+
+macro display_agent_config
+{var ($dir,\@cfg,\@log) = @arg
+ import $ERR,$TOC,$TOP
+
+ report agent_config
+ var $err = 0
+ write '---+!! Agent Configuration'
+ write $TOC
+ if testFile('fr',catFile($dir,'sysman','config','emd.properties'))
+  incr $err,display_config(lastFile(),@cfg)
+ if testFile('fr',catFile($dir,'sysman','config','emagentlogging.properties'))
+  incr $err,display_config(lastFile(),@log)
+ toc '2:[[',getFile(),'][rda_report][Agent Configuration',cond($err,$ERR),']]'
+}
+
+=head2 C<display_dbc_config($dbc,\@cfg,\@log)>
+
+This macro collects Database Control configuration and performs specified tests
+on F<emoms.properties>, F<emomslogging.properties>, F<emd.properties> and
+F<emagentlogging.properties>.
+
+=cut
+
+macro display_dbc_config
+{var ($hom,\@cfg,\@log) = @arg
+ import $ERR,$TOC,$TOP
+
+ report dbc_config
+ var $err = 0
+ write '---+!! Database Control Configuration'
+ write $TOC
+ incr $err,display_config(\
+   catFile($hom,'sysman','config','emoms.properties'))
+ incr $err,display_config(\
+   catFile($hom,'sysman','config','emomslogging.properties'),@log)
+ incr $err,display_config(\
+   catFile($hom,'sysman','config','emd.properties'),@cfg)
+ incr $err,display_config(\
+   catFile($hom,'sysman','config','emagentlogging.properties'),@log)
+ toc '2:[[',getFile(),'][rda_report][Database Control Configuration',\
+     cond($err,$ERR),']]'
+}
+
+=head2 C<display_oms_config($emh,\@cfg,\@log)>
+
+This macro collects OMS configuration and performs specified tests on
+F<emoms.properties> and F<emomslogging.properties>.
+
+=cut
+
+macro display_oms_config
+{var ($hom,\@cfg,\@log) = @arg
+ import $ERR,$TOC,$TOP
+
+ report oms_config
+ var $err = 0
+ write '---+!! OMS Configuration'
+ write $TOC
+ incr $err,display_config(\
+   catFile($hom,'sysman','config','emoms.properties'),@cfg)
+ incr $err,display_config(\
+   catFile($hom,'sysman','config','emomslogging.properties'),@log)
+ toc '2:[[',getFile(),'][rda_report][OMS Configuration',cond($err,$ERR),']]'
+}
+
+=head2 S<display_targets($cmd,$dir,$flg,@tst)>
+
+This macro lists targets and their properties. It performs some property tests
+also. When the flag is set, it performs an agent target state test.
+
+=cut
+
+macro display_targets
+{var ($cmd,$dir,$flg,@rul) = @arg
+ import $ERR,$TOC,$TOP
+
+ var $err = 0
+ report monitored_targets
+ var $ttl = '---+!! Monitored Targets'
+ if !$cmd
+ {write $ttl
+  write $TOC
+  write '%RED%**Note**: Tests using ``emctl`` are disabled.%ENDCOLOR%'
+  incr $err
+ }
+ var $xml = xmlLoadFile(catFile($dir,'sysman','emd','targets.xml'))
+ loop $obj (xmlFind($xml,'Targets/Target'))
+ {var $nam = xmlValue($obj,'NAME')
+  var $typ = xmlValue($obj,'TYPE')
+  if !isCreated()
+  {write $ttl
+   write $TOC
+  }
+  write "---+ Target '",$nam,"' (",$typ,")"
+
+  # Get the target properties
+  prefix
+  {write '---++!! Properties'
+   write '|*Property*|*Value*|*Encrypted?*|'
+  }
+  loop $prp (xmlFind($obj,'Property'))
+   write '|',xmlValue($prp,'NAME'),' |',xmlValue($prp,'VALUE'),' | ',\
+         cond(match(xmlValue($prp,'ENCRYPTED'),'TRUE',true),'Y','N'),' |'
+  unprefix
+
+  # Perform the tests
+  prefix
+   write '---++!! Property Tests'
+  loop $rul (@rul)
+  {var ($tst,$ref,$prp,$pat) = split(',',$rul)
+   next !compare('eq',$typ,$ref)
+   if compare('eq',$tst,'tn')
+   {if !match($nam,$pat)
+    {write '   * %RED%Target Name Error: ',$prp,' "',$pat,'"%ENDCOLOR%'
+     incr $err
+    }
+   }
+   elsif xmlFind($obj,concat('Property NAME="',$prp,'"'))
+   {var ($val) = last
+    incr $err,test_value($tst,$prp,xmlValue($val,'VALUE'),$pat)
+   }
+   else
+   {write '   * %RED%Property ',$prp,' should be set for target type ',\
+          $typ,'%ENDCOLOR%'
+    incr $err
+   }
+  }
+  unprefix
+
+  if $cmd
+  {if $flg
+   {write '---++!! Target State'
+    var $opt = concat(' status agent target ',concat(quote($nam,'x'),',',\
+                                                     quote($typ,'x')))
+    write '---### Using: emctl',$opt
+    call writeCommand(concat($cmd,$opt,' 2>&1'))
+   }
+   write '---++!! Blackouts'
+   var $opt = concat(' status blackout ',$nam,':',$typ)
+   write '---### Using: emctl',$opt
+   call writeCommand(concat($cmd,$opt,' 2>&1'))
+  }
+  write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Monitored Targets',cond($err,$ERR),']]'
+}
+
+=head2 S<dump_oms_threads($cmd,$log)>
+
+This macro dumps the OMS threads.
+
+=cut
+
+macro dump_oms_threads
+{var ($cmd,$log) = @arg
+ import $TOC,$TOP
+
+ echo 'Taking thread dump it will take around 3 mins ...'
+ report thread_dump
+ write '---+!! Memory Dump'
+ write '%BLUE% Two memory dumps are taken at an interval of 3 mins \
+        %ENDCOLOR%%BR%'
+ write $TOC
+ write '---+ Memory Dump 1'
+ call writeCommand($cmd)
+ write '%BLUE% Following are the last 500 line of the "',encode($log),\
+       '" log file search for "Full thread dump" string to get the \
+        starting of the thread dump%ENDCOLOR%%BR%'
+ call writeTail($log,500)
+ write $TOP
+ sleep 150
+ write '---+ Memory Dump 2'
+ call writeCommand($cmd)
+ write '%BLUE% Following are the last 500 line of the "',encode($log),\
+       '" log file search for "Full thread dump" string to get the \
+        starting of the thread dump%ENDCOLOR%%BR%'
+ call writeTail($log,500)
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Memory Dump]]'
+}
+
+=head2 S<exec_emctl($pgm,$hom,\@opt,\@dsc[,$pwd])>
+
+This macro generates a report with the output of a list of specified F<emctl>
+command options. It accepts the password as last argument.
+
+=cut
+
+macro exec_emctl
+{var ($pgm,$hom,\@opt,\@dsc,$pwd) = @arg
+ import $TOC,$TOP
+
+ report emctl
+ toc '2:[[',getFile(),'][rda_report][emctl Command Output]]'
+
+ write '---+!! emctl Command'
+ write $TOC
+ var $off = 0
+ var $flg = true
+ loop $opt (@opt)
+ {if ref($opt)
+  {var $opt = $opt->[0]
+   if $flg
+    var ($flg,$pwd) = (false,eval($pwd))
+   write '---+ emctl ',$opt
+   write $dsc[$off],'%BR%'
+   suspend report
+   var $out = getTemp('out')
+   var $cmd = concat($pgm,' ',$opt,' >',quote($out,'x'),' 2>&1')
+   output | $cmd
+   write $pwd
+   close
+   resume report
+   call writeFilter(quote($out,'x'),'^().*\010','',['C',concat('emctl ',$opt)])
+   call unlinkTemp('out')
+  }
+  else
+  {write '---+ emctl ',$opt
+   write $dsc[$off],'%BR%'
+   if compare('eq',$opt,'dump omsthread')
+   {if loadCommand(concat($pgm,' ',$opt,' 2>&1'))
+    {call writeLastFile()
+     var $pat = 'Thread dumped successfully for process .* to log file (.*)'
+     if grepLastFile($pat,'f')
+     {var ($fil) = match(last,$pat)
+      var $siz = getSize($fil)
+      if $siz
+      {output d,basename($fil)
+       var $lnk = encode($fil)
+       if ${CUR.LAST}->write_file($fil)
+        var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+       call $[OUT]->end_report(${CUR.LAST})
+       write '|*File Name*| *Size*|*Last Modified Date*|'
+       write '|',$lnk,' | ',$siz,'|',\
+             getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+      }
+     }
+    }
+   }
+   elsif compare('eq',$opt,'status agent')
+   {if loadCommand(concat($pgm,' ',$opt,' 2>&1'))
+    {call writeLastFile()
+     var $pat = '^Agent Process ID\s+:\s+(\d+)'
+     if grepLastFile($pat,'f')
+     {var ($pid) = match(last,$pat)
+      if or(isWindows(),isCygwin())
+      {if testFile('f',catFile($hom,'bin','nmupm.exe'))
+       {var $cmd = concat(lastCommand(),' procinfo ',$pid)
+        prefix
+        {write $TOP
+         write '---++ Number of Open Files'
+         write '---## Extracting Sixth Field from ',$cmd
+        }
+        if grepCommand($cmd,'^em_result','f')
+         write field('\|',6,last),'%BR%'
+        unprefix
+       }
+      }
+      elsif isUnix()
+      {if testDir('d',catDir('/proc',$pid,'fd'))
+       {var $dir = lastDir()
+        write $TOP
+        write '---++ Number of Open Files'
+        write '---## Counting entries in ',$dir
+        call beginBlock(true)
+        write scalar(grepDir($dir,'^[^\.]'))
+        call endBlock()
+       }
+       elsif findCommand('lsof')
+       {var $cmd = concat(last,' -S 2 -p ',$pid)
+        write $TOP
+        write '---++ Number of Open Files'
+        write '---## Counting lines in ',$cmd
+        call beginBlock(true)
+        write countCommand($cmd)
+        call endBlock()
+       }
+      }
+     }
+    }
+   }
+   elsif !or(writeCommand(concat($pgm,' ',$opt,' 2>&1')),$off)
+   {write $TOP,'%BR%%BR%**Note**: ``emctl`` is not available for the \
+          current user and will no longer be used in this module.'
+    return undef
+   }
+  }
+  write $TOP
+  incr $off
+ }
+ return $pgm
+}
+
+=head2 S<extract_errors($rpt,$lvl,$ttl,$lim,@fil)>
+
+This macro extracts C<ERROR> records from the specified log files. It limits
+the record extraction to the last occurrences.
+
+=cut
+
+macro extract_errors
+{var ($rpt,$lvl,$ttl,$lim,@fil) = @arg
+ import $TOC,$TOP
+
+ call $[OUT]->add_report('C',$rpt,0)
+ prefix
+ {write '---+!! Last ',$lim,' Records with ERROR in ',$ttl
+  write $TOC
+ }
+ var $max = expr('-',0,$lim)
+ loop $fil (@fil)
+ {if testFile('fT',$fil)
+  {if grepFile($fil,'ERROR','n',$max)
+   {var @err = last
+    write '---+ ',encode(basename($fil))
+    write '---## Extracted from ',encode($fil)
+    write '<verbatim>'
+    loop $lin (@err)
+     write $lin
+    write '</verbatim>'
+    write $TOP
+   }
+  }
+ }
+ if isCreated(true)
+  toc $lvl,':[[',getFile(),'][rda_report][',$ttl,']]'
+}
+
+=head2 S<get_agent_name($hom)>
+
+This macro returns the name of the agent. It parses the F<target.xml> file from
+the specified context to get the name of the agent.
+
+=cut
+
+macro get_agent_name
+{var ($hom) = @arg
+ var $xml = xmlLoadFile(catFile($hom,'sysman','emd','targets.xml'))
+ loop $obj (xmlFind($xml,'Targets/Target TYPE="oracle_emd"'))
+  var $emd = xmlValue($obj,'NAME')
+ return $emd
+}
+
+=head2 S<get_agent_version($cmd,$dbc)>
+
+This macro returns the agent version.
+
+=cut
+
+macro get_agent_version
+{var ($cmd,$dbc) = @arg
+ var $opt = cond($dbc,'getversion','getversion agent')
+ var ($str) = grepCommand(concat($cmd,' ',$opt),'Agent','f')
+ return field(' ',-1,$str)
+}
+
+=head2 S<get_config($cmd)>
+
+This macro returns the value of C<CONSOLE_CFG> from the F<emctl> file.
+
+=cut
+
+macro get_config
+{var ($cmd) = @arg
+ var $typ = get_config_value($cmd,'(set\s+)?CONSOLE_CFG=')
+ if !$typ
+  var $typ = get_config_value(\
+    catFile(dirname($cmd),replace(basename($cmd),'emctl','emctl_local')),\
+    '(set\s+)?CONSOLE_CFG=')
+ return $typ
+}
+
+=head2 S<get_em_conn($hom)>
+
+This macro returns the database connection string for the EM repository.
+
+=cut
+
+macro get_em_conn
+{var ($hom) = @arg
+ var $con = get_config_value(\
+   catFile($hom,'sysman','config','emoms.properties'),\
+   'oracle.sysman.eml.mntr.emdRepConnectDescriptor=')
+ var $con = replace($con,'\\=','=',true)
+ return $con
+}
+
+=head2 S<get_em_login($hom)>
+
+This macro returns the database user name for the EM repository.
+
+=cut
+
+macro get_em_login
+{var ($hom) = @arg
+ var $log = get_config_value(\
+   catFile($hom,'sysman','config','emoms.properties'),\
+   'oracle.sysman.eml.mntr.emdRepUser=')
+ return $log
+}
+
+=head2 S<get_oms_version($cmd,$dbc)>
+
+This macro returns the OMS version.
+
+=cut
+
+macro get_oms_version
+{var ($cmd,$dbc) = @arg
+ if $dbc
+  var ($opt,$grp) = ('getversion','DB Control')
+ else
+  var ($opt,$grp) = ('getversion oms','OMS')
+ var ($str) = grepCommand(concat($cmd,' ',$opt),$grp,'f')
+ return field(' ',-1,$str)
+}
+
+=head2 S<get_repository_host($hom)>
+
+This macro returns the OMS host name. It parses the F<emd.properties> file from
+the specified context to get the OMS host name.
+
+=cut
+
+macro get_repository_host
+{var ($hom) = @arg
+ var $fil = catFile($hom,'sysman','config','emd.properties')
+ var $url = get_config_value($fil,'REPOSITORY_URL=')
+ var $tmp = field('/',2,$url)
+ var $hst = field(':',0,$tmp)
+ return $hst
+}
+
+=head2 S<ping_host($ttl,@hst)>
+
+This macro performs ping tests.
+
+=cut
+
+macro ping_host
+{var ($ttl,@hst) = @arg
+ import $ERR,$TOC,$TOP
+
+ if @hst
+ {run &{check(getOsName(),'aix',            'OSaix',\
+                          'darwin',         'OSdarwin',\
+                          'dec_osf',        'OSosf',\
+                          'dynixptx',       'OSptx',\
+                          'hpux',           'OShpux',\
+                          'linux',          'OSlinux',\
+                          'solaris',        'OSsunos',\
+                          cond(isCygwin(),  'OSwin32',\
+                               isUnix(),    'OSunix',\
+                               isVms(),     'OSvms',\
+                               isWindows(), 'OSwin32'))}('EM')
+  report ping_test
+  prefix
+  {write '---+!! ',$ttl
+   write $TOC
+  }
+  var $err = 0
+  loop $hst (@hst)
+  {next !$hst
+   write '---+ Ping ',$hst
+   var $cmd = ping_command($hst)
+   write '---## Using: ',encode($cmd)
+   if !writeCommand($cmd)
+   {write '%BR%%RED%Ping failed.%ENDCOLOR%%BR%\
+           Tip: It is not necessary a problem because the ping mechanism \
+           could be blocked.%BR%'
+    incr $err
+   }
+   write $TOP
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][',$ttl,cond($err,$ERR),']]'
+ }
+}
+
+# --- Internal macros ---------------------------------------------------------
+
+# Display a property file and perform tests on properties
+macro display_config
+{var ($fil,@tst) = @arg
+ import $TOP
+
+ # Initialisation
+ var ($err,@lin,%ref) = (0)
+ loop $tst (@tst)
+  var $ref{field(',',1,$tst)} = 1
+
+ # Display the file and extract the properties to test
+ write '---+ ',encode(addSymbol($fil))
+ write '---++ File Content'
+ call beginBlock(true)
+ loop $lin (grepFile($fil,'^#','v'))
+ {next !$lin
+  write $lin
+  next !key($lin)
+  if exists($ref{last})
+   var @lin = (@lin,$lin)
+ }
+ call endBlock(['F',$fil,'P','T'])
+ write $TOP
+
+ # Perform the tests
+ prefix
+  write '---++ Property Tests'
+ loop $lin (@lin)
+ {write '---+++!! ``',$lin,'``'
+  var $key = key($lin)
+  delete($ref{$key})
+  loop $tst (@tst)
+  {var ($typ,$nam,$pat) = split(',',$tst,3)
+   if compare('eq',$key,$nam)
+    incr $err,test_value($typ,$nam,value($lin),$pat)
+  }
+ }
+
+ # Report missing properties
+ loop $nam (keys(%ref))
+ {write '   * %RED% Property ',$nam,' has not been configured%ENDCOLOR%'
+  incr $err
+ }
+ if hasOutput(true)
+  write $TOP
+
+ # Return the number of errors
+ return $err
+}
+
+# Extract the property value from property file (in key=value format)
+macro get_config_value
+{var ($fil,$re) = @arg
+ return value(grepFile($fil,concat('^\s*',$re),'f'))
+}
+
+# Test file ownership
+macro test_owner
+{var ($uid,$nam,@fil) = @arg
+
+ var $err = 0
+ loop $fil (@fil)
+ {var $own = getOwner($fil)
+  if !defined($own)
+  {incr $err
+   write '   * %RED%File "',encode(basename($fil)),'" is not accessible.\
+               %ENDCOLOR%'
+  }
+  elsif !expr('==',$own,$uid)
+  {incr $err
+   write '   * %RED%File "',encode(basename($fil)),'" should have ',$nam,\
+         ' as owner:%ENDCOLOR%'
+   call statFile('p',$fil)
+  }
+ }
+ if !$err
+  write '%BLUE%No ',$nam,' ownership problems found%ENDCOLOR%%BR%'
+ return $err
+}
+
+# Perform the specified test on the give value
+macro test_value
+{var ($typ,$nam,$val,$pat) = @arg
+ var $err = 0
+
+ if compare('eq',$typ,'v')
+ {if !match($val,$pat)
+  {write '   * %RED%Property ',$nam,' should match regular expression "',$pat,\
+         '" %ENDCOLOR%'
+   incr $err
+  }
+ }
+ elsif compare('eq',$typ,'d')
+ {write '%BR%'
+  var $cnt = statDir('t',$val)
+  if expr('==',$cnt,'0')
+  {write "   * %RED%Unable to open the '",encode($val),"' directory%ENDCOLOR%"
+   incr $err
+  }
+  elsif expr('<',$cnt,'0')
+   write 'No Files found%BR%'
+  else
+   write 'Total File count: ',$cnt,'%BR%'
+ }
+ elsif compare('eq',$typ,'f')
+ {if !statFile('b',$val)
+  {write "   * %RED%Unable to access the '",encode($val),\
+         "' file or directory%ENDCOLOR%"
+   incr $err
+  }
+ }
+ elsif compare('eq',$typ,'h')
+ {var $req = createRequest('GET',$val)
+  var $rsp = submitRequest($req)
+  if isSuccess($rsp)
+   write '   * HTTP connection to ',$val,' has been successful'
+  else
+  {write '   * %RED%','Unable to make HTTP request to ',$val,'%BR%',\
+         getRspCode($rsp),' ',getRspMessage($rsp),'%ENDCOLOR%'
+   incr $err
+  }
+ }
+ elsif compare('eq',$typ,'cp')
+ {var @fil = ()
+  loop $fil (split(':',$val))
+  {if !statFile('b',$fil)
+    var @fil = (@fil,$fil)
+  }
+  loop $fil (@fil)
+   write "   * %RED%Unable to access the '",encode($fil),"' file%ENDCOLOR%"
+ }
+ return $err
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

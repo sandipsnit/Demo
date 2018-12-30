@@ -1,0 +1,277 @@
+# S350WEBC.def: Collects Oracle Web Cache Information
+# $Id: S350WEBC.def,v 2.12 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S350WEBC.def,v 2.12 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S350WEBC - Collects Oracle Web Cache Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Web Cache information (for example, configuration,
+DTD, and log files).
+
+The following reports can be generated and are regrouped under
+C<Oracle Web Cache>:
+
+=cut
+
+echo tput('bold'),'Processing Web Cache module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+
+var $MNU = '1:Oracle Web Cache'
+
+# Collect the Oracle Web Cache information
+if !?getSetting('WEBC_PRIMARY')
+{# Initialization
+ var $WEBC_TAIL = getSetting('WEBCACHE_TAIL',5000)
+
+ var $WEBCACHE_HOME = catDir($ORACLE_HOME,'webcache')
+
+ var $TOC = '%TOC%'
+ var $TOP = '[[#Top][Back to top]]'
+ pretoc $MNU
+
+ # Load the common macros
+ run library()
+
+ # Collect configuration files related to Oracle Web Cache
+ debug ' Inside WEBC module, gathering Oracle Web Cache configuration files'
+ pretoc '2:Config Files'
+ var $dir = $WEBCACHE_HOME
+ if testFile('r',catFile($dir,'webcache.xml'))
+ {debug ' Inside WEBC module, extract main webcache.xml tags'
+
+  macro get_data
+  {var ($xml,$c_p,$c_s,$pre) = @arg
+
+   $n_p = concat($c_p,'&nbsp;&nbsp;|')
+   $n_s = substr($c_s,1)
+   loop $nod (xmlContent($xml))
+   {var $tag = xmlName($nod)
+    var $pth = join('/',$pre,$tag)
+
+    if match($tag,'^(ACCESSLOG(DIR)?|BUFFERING|CACHE(ABILITY(RULE)?)?|CLUSTER|\
+                     DEBUGVERBOSITY|DIAGNOSTICS|EVENTLOG(DIR)?|\
+                     EXPIRATION(REF|RULE)?|GLOBALCACHINGRULES|HOST(REF)?|\
+                     HTTPMETHODS|IDENTITY|IOLOGGER|LISTEN|\
+                     MAXCACHEABLECONTENTLENGTH|MULTIPORT|RESOURCELIMITS|\
+                     ROLLOVER|SEARCHKEYOPTIONS|SELECTORS|SITE|TRACEDUMP|\
+                     URLEXP|VERBOSITY|VIRTUALHOSTMAP|WATCHDOG)$',true)
+    {# Treat the node
+     var @tbl
+     loop $key (xmlAttributes($nod))
+      push(@tbl,concat('``',$key,'``%NEXT%``',\
+                       replace(xmlValue($nod,$key),'\|','&#124;',true),'``'))
+     if @tbl
+      write $c_p,'``',$pth,'``',$c_s,\
+            '%TBL%%ID:Key:Value%',join('%BR%',@tbl),'%ENDTBL%|'
+     else
+      write $c_p,'``',$pth,'``',$c_s,' |'
+    }
+
+    # Treat the child nodes
+    call get_data($nod,$n_p,$n_s,$pth)
+   }
+  }
+
+  macro get_depth
+  {var ($xml) = @arg
+
+   var $max = 0
+   if xmlContent($xml)
+   {loop $nod (last)
+     var $max = max($max,get_depth($nod))
+    incr $max,1
+   }
+   return $max
+  }
+
+  # Detect the depth
+  var $xml = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'DR'))
+  var $max = get_depth($xml)
+
+  # Produce the report
+  report webcachedet
+  var $pre = '|'
+  var $spn = repeat('|',$max)
+  prefix
+  {write '---+ Main webcache.xml Tags'
+   write '---## Information Extracted from ',encode(lastFile())
+   write $pre,'*Tag Path*',$spn,'*Attributes*|'
+  }
+  loop $nod (xmlContent($xml))
+   call get_data($nod,$pre,$spn,xmlName($nod))
+  if isCreated(true)
+  {write $TOP
+   toc '3:[[',getFile(),'][rda_report][Main webcache.xml Tags]]'
+  }
+ }
+ call cat_report($dir,'webcache.xml')
+ call cat_report($dir,'internal.xml')
+ call cat_report($dir,'webcachetargets.xml')
+ unpretoc
+
+ # Collect DTD files related to Oracle Web Cache
+ debug ' Inside WEBC module, gathering Oracle Web Cache DTD files'
+ pretoc '2:DTD Files'
+ var $dir = catDir($WEBCACHE_HOME,'dtds')
+ call cat_report($dir,'wcstats.dtd')
+ call cat_report($dir,'webcache.dtd')
+ call cat_report($dir,'webcache20.dtd')
+ unpretoc
+
+=pod
+
+Log files can be relocated. Because of this, RDA parses a few xml files to get
+their location, and then dumps them.
+
+=cut
+
+ # Collect log files related to Web Cache
+ debug ' Inside WEBC module, gathering Web Cache log files'
+ pretoc '2:Log Files'
+
+ macro get_param
+ {var ($fil,$re1,$re2,$val) = @arg
+  import $ORACLE_HOME
+  if testFile('r',$fil)
+  {if grepFile($fil,$re1)
+   {var ($val) = (last)
+    var $val = replace($val,$re2)
+    var $val = field('"',0,$val)
+    var $val = replace($val,'\?',$ORACLE_HOME)
+   }
+  }
+  return $val
+ }
+
+ # Let's do the web cache access_log
+ var $dir = catDir($WEBCACHE_HOME,'logs')
+ var $fil = catFile($WEBCACHE_HOME,'webcache.xml')
+ var $log = get_param($fil,'ACCESSLOG.*LOGDIR','^.*LOGDIR="',$dir)
+ call tail_report($log,'access_log',$WEBC_TAIL)
+
+ # Now let's do the web cache tracedump file
+ var $log = get_param($fil,'TRACEDUMP.*FILENAME','^.*FILENAME="')
+ if $log
+  call head_report(dirname($log),basename($log),$WEBC_TAIL)
+ else
+  call head_report($dir,'tracedump',$WEBC_TAIL)
+
+ # Now let's do the web cache IOLOGGER file
+ var $log = get_param($fil,'IOLOGGER.*FILENAME','^.*FILENAME="')
+ if $log
+  call tail_report(dirname($log),basename($log),$WEBC_TAIL)
+ else
+  call tail_report($dir,'io_log',$WEBC_TAIL)
+
+ # Let's do the web cache event_log.
+ var $log = get_param($fil,'EVENTLOGDIR.*LOGDIR','^.*LOGDIR="',$dir)
+ var $nam = get_param($fil,'EVENTLOG.*FILENAME','^.*FILENAME="','event_log')
+ call tail_report($log,$nam,$WEBC_TAIL)
+
+ unpretoc
+
+=head2 perms - File Permissions
+
+Collects the owner and group permissions of the files used by Oracle Web Cache.
+
+=cut
+
+ debug ' Inside WEBC module, gathering Web Cache File Permissions'
+ var $dir = $WEBCACHE_HOME
+ if testDir('d',$dir)
+ {report perms
+  write '---+ Web Cache File Permissions'
+  loop $fil ($dir,grepDir($dir,'^[\.]+$','vr'))
+  {next !testDir('d',$fil)
+   call statDir('an',$fil)
+  }
+  if isCreated(true)
+  {toc '2:[[',getFile(),'][rda_report][File Permissions]]'
+  }
+ }
+
+=head2 not_found - Not found
+
+Used as a warning when none of the Oracle Web Cache files are found.
+
+=cut
+
+ if !isTocCreated(true)
+ {debug ' Inside WEBC module, no file found'
+  report not_found
+  write 'No Web Cache files were found. This does not mean there was \
+         necessarily a problem with RDA, but it should be investigated.'
+  toc $MNU
+  toc '2:[[',getFile(),'][rda_report][Not found]]'
+ }
+}
+
+=head1 WEBCACHE INFORMATION FOR ORACLE FUSION MIDDLEWARE
+
+Includes the reports generated by the IREQ module about the Oracle instances
+and their associated Oracle homes.
+
+=cut
+
+elsif getSetting('WEBC_REQ_IREQ')
+{# Collect the WEBC 11g information
+ toc '%PUSH("0:   * Oracle Web Cache")%'
+ toc '%PUSH("1+:Common Product Home")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_IREQ_WEBC_CH.toc")%'
+ toc '%POP%'
+ loop $key (grepSetting('^WEBC_OI\d+_REQ_INSTANCE$'))
+ {var $tid = substr($key,0,-13)
+  var $ins = basename(getSetting($key,''))
+  toc '%PUSH("0:      * ',"'",$ins,"'",' Instance")%'
+  toc '%PUSH("%SPLIT%")%'
+  toc '%PUSH("1++:Associated Oracle Home")%'
+  toc '%INCLUDE("',${CUR.GROUP},'_IREQ_',replace($tid,'_OI','_OH'),'.toc",1)%'
+  toc '%POP2%'
+  toc '%PUSH("%SPLIT%")%'
+  toc '%PUSH("1++:Instance Home")%'
+  toc '%INCLUDE("',${CUR.GROUP},'_IREQ_',$tid,'.toc")%'
+  toc '%POP3%'
+ }
+ toc '%POP%'
+}
+
+=head1 SEE ALSO
+
+L<S313IREQ.def|modules::S313IREQ>,
+L<library.def|modules::library>,
+L<WEBCr11.def|modules::WEBCr11>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.9:  Marcus Lachmanez, Mark Templeton.
+
+=item RDA 4.19: Daniel Mortimer.
+
+=item RDA 4.22: Daniel Mortimer.
+
+=item RDA 4.24: Greg Cook, Andrew Salt.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

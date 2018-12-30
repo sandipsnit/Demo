@@ -1,0 +1,67 @@
+# S400RACD.def: Performs an Oracle Database Hang Analysis
+# $Id: S400RACD.def,v 2.6 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S400RACD.def,v 2.6 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S400RACD - Performs an Oracle Database Hang Analysis
+
+=head1 DESCRIPTION
+
+This module performs an Oracle database hang analysis.
+
+The following reports can be generated and are regrouped under C<Hang Analysis>
+in C<Cluster>:
+
+=cut
+
+echo tput('bold'),'Performing a hang analysis ...',tput('off')
+
+# Initialization
+var $DATABASE_INSTALLED = getSetting('DATABASE_INSTALLED')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '^1:Cluster'
+toc '1+:Hang Analysis'
+
+=head2 diag - Diagnostics
+
+Runs diagnostic scripts in the database.
+
+=cut
+
+debug ' Inside RACD module, running diagnostic scripts in the database'
+if $DATABASE_INSTALLED
+ run RACdiag()
+
+# Disable the group title in next index
+toc '-:Cluster'
+
+=head1 SEE ALSO
+
+L<RACdiag.def|modules::RACdiag>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.6:  Bob Caldwell.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

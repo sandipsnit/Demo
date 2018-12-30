@@ -1,0 +1,796 @@
+<sdp_diaglet product="WLS" set="P301WLS12_gen" title="Oracle WebLogic Server 12 Post Installation (generic)" type="P">
+<sdp_meta id="$Id: P301WLS12_gen.xml,v 1.1 2012/07/30 11:35:18 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Initial Development" date="20120529" type="history"/>
+<sdp_content set="P301WLS12_gen" id="WLS_RULE" title="Oracle WebLogic Server 12 Post Installation (generic)" type="check">
+
+<sdp_messages>
+<sdp_message id="SKIP00"><![CDATA[Your Oracle WebLogic Server Version ${DOMAIN_VERSION} is not actionable for this issue.]]></sdp_message>
+<sdp_message id="PATCH0"><![CDATA[Oracle recommends upgrading your Oracle WebLogic Server version ${DOMAIN_VERSION}.%BR%Whenever possible, you should bring your environment(s) to a level where the issue has been addressed.%BR%However, if you feel that is not feasible, then contact Support for patch ID ${PATCH_ID}. Reference: Article ID 1302053.1 - ''How to Locate and Download Patches for WebLogic Server Using My Oracle Support'']]></sdp_message>
+</sdp_messages>
+
+<sdp_facts>
+<sdp_fact id="F00001">
+<sdp_description><![CDATA[This fact collection gets configuration parameters from the domain config.xml file.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.CONFIG"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[use Xml
+import $DOMAIN_HOME
+var $cfg = xmlLoadFile(catFile($DOMAIN_HOME,'config','config.xml'))
+
+# Get server information
+var $srv = {}
+loop $xml (xmlFind($cfg,'domain/server|name'))
+{var $srv->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('native-io-enabled')->get_data)
+  var $rec->{'NATIVE_IO_ENABLED'} = $val
+ if length($val = $xml->find('max-open-sock-count')->get_data)
+  var $rec->{'MAX_OPEN_SOCK_COUNT'} = $val
+ if length($val = $xml->find('web-server/max-post-size')->get_data)
+  var $rec->{'MAX_POST_SIZE'} = $val
+ if length($val = $xml->find('ssl/hostname-verification-ignored')->get_data)
+  var $rec->{'SSL_HOSTNAME_VERIFICATION_IGNORED'} = $val
+}
+
+# Get cluster information
+var $cls = {}
+loop $xml (xmlFind($cfg,'domain/cluster|name'))
+{var $cls->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('frontend-host')->get_data)
+  var $rec->{'FRONTEND_HOST'} = $val
+}
+
+# Get virtual host information
+var $vir = {}
+loop $xml (xmlFind($cfg,'domain/virtual-host|name'))
+{var $vir->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('max-post-size')->get_data)
+  var $rec->{'MAX_POST_SIZE'} = $val
+}
+
+# Get domain information
+loop $xml (xmlFind($cfg,'domain/admin-server-name'))
+ break $adm = xmlData($xml)
+loop $xml (xmlFind($cfg,'domain/domain-version'))
+ break $ver = xmlData($xml)
+var $mod = 'false'
+loop $xml (xmlFind($cfg,'domain/production-mode-enabled'))
+{var $mod = xmlData($xml)
+ break
+}
+
+# Get JMS information
+var $jms = {}
+loop $xml (xmlFind($cfg,'domain/jms-server|name'))
+{var $jms->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('bytes-maximum')->get_data)
+  var $rec->{'BYTES_MAXIMUM'} = $val
+ if length($val = $xml->find('messages-maximum')->get_data)
+  var $rec->{'MESSAGES_MAXIMUM'} = $val
+}
+
+# Define the parameters
+call setHcveParameter('XML.CONFIG',$cfg)
+call setHcveParameter('DOMAIN.CONFIG',\
+  {'ADMIN_SERVER'            => {NAME => $adm},\
+   'CLUSTERS'                => $cls,\
+   'DOMAIN_VERSION'          => $ver,\
+   'JMS'                     => $jms,\
+   'PRODUCTION_MODE_ENABLED' => $mod,\
+   'SERVERS'                 => $srv,\
+   'VIRTUAL_HOSTS'           => $vir})
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00002">
+<sdp_description><![CDATA[This fact finds the patches installed on WebLogic Server using ``java weblogic.version -verbose``.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.PATCH"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+call source(catFile($DOMAIN_HOME,'bin',${AS.CMD:'setDomainEnv'}),true)
+var $cmd = 'java weblogic.version -verbose'
+var $tbl = {}
+loop $itm (grepCommand($cmd,'^WebLogic.*Temporary Patch for (.+)','1'))
+{loop $val (split(',',uc($itm)))
+ {var $val = replace(field('\s+',0,$val),'^BUG','')
+  var $tbl->{$val} = true
+ }
+}
+call setHcveParameter('DOMAIN.PATCH',$tbl)
+if statCommand()
+ setHcveParameter('DOMAIN.PATCH.FAILED','true')
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00010">
+<sdp_description><![CDATA[This fact finds parameter settings within the domain/config/jdbc .xml files.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.JDBC"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[use Xml
+import $DOMAIN_HOME
+var $tbl = {}
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jdbc'),'.xml$','i'))
+{var $cfg = xmlLoadFile(catFile($DOMAIN_HOME,'config','jdbc',$fil))
+ var $tbl->{$fil} = $rec = {}
+ var $val = $cfg->find(\
+   'jdbc-data-source/jdbc-connection-pool-params/pinned-to-thread')->get_data
+ if match($val,'true')
+  var $rec->{'PINNED_TO_THREAD'} = true
+ if $cfg->find(\
+   'jdbc-data-source/jdbc-connection-pool-params/statement-cache-type')
+  var $rec->{'STATEMENT_CACHE_TYPE'} = last->get_data
+ if $cfg->find(\
+   'jdbc-data-source/jdbc-connection-pool-params/statement-cache-size')
+  var $rec->{'STATEMENT_CACHE_SIZE'} = last->get_data
+}
+call setHcveParameter('DOMAIN.JDBC.FILES',$tbl)
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00011">
+<sdp_description><![CDATA[This fact finds parameter settings within the domain/config/jms .xml files.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.JMS"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[use Xml
+import $DOMAIN_HOME
+var $tbl = {}
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jms'),'\.xml$','i'))
+{var $cfg = xmlLoadFile(catFile($DOMAIN_HOME,'config','jms',$fil))
+ var $tbl->{$fil} = $rec = {}
+ if $cfg->find('weblogic-jms/bytes-maximum')
+  var $rec->{'BYTES_MAXIMUM'} = last->get_data
+ if $cfg->find('weblogic-jms/messages-maximum')
+  var $rec->{'MESSAGES_MAXIMUM'} = last->get_data
+}
+call setHcveParameter('DOMAIN.JMS.FILES',$tbl)
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00030">
+<sdp_description><![CDATA[This fact finds information using WLST on running servers.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.WLST"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[
+use Output
+import $DOMAIN_HOME,$DOMAIN_URL,$DOMAIN_USR
+call setCurrent($tgt = addTarget('DOM_Req$$',{DOMAIN_HOME=>$DOMAIN_HOME}))
+call setWasType('WLS',\
+  catCommand($tgt->get_wlst(true),'common','bin',${AS.CMD:'wlst'}))
+
+# Get heap size for servers
+set $cod
+{domainConfig()
+"serverNames = cmo.getServers()
+"domainRuntime()
+"for name in serverNames:
+" try:
+"  cd("/ServerRuntimes/" + name.getName() + "/JVMRuntime/" +name.getName())
+"  heapSizeCur = cmo.getHeapSizeCurrent()
+"  heapSizeMax = cmo.getHeapSizeMax()
+"  print "HEAP SIZE = ", name.getName(), heapSizeCur, heapSizeMax
+" except WLSTException,e:
+"  # Ignore an inactive server
+"  pass
+"cd("/")
+"for name in serverNames:
+" serverName = name.getName()
+" print "JDBC Server = ", serverName
+" try:
+"  cd("/ServerRuntimes/" + name.getName() + "/JDBCServiceRuntime/" + \
+      name.getName() + "/JDBCDataSourceRuntimeMBeans/")
+"  dataSourceList = ls(returnMap='true')
+"  for dataSource in dataSourceList:
+"   try:
+"    cd("/ServerRuntimes/" + name.getName() + "/JDBCServiceRuntime/" + \
+        name.getName() + "/JDBCDataSourceRuntimeMBeans/" + dataSource)
+"    print 'JDBC Source = ', dataSource
+"    dataSourceContent = ls(returnMap='true')
+"    cd("..")
+"   except WLSTException,e:
+"    pass
+" except WLSTException,e:
+"  # Ignore an inactive server
+"  pass
+"cd("/")
+}
+var $fil = getTemp('WLS')
+call sharePassword('wls',basename($DOMAIN_HOME),'wls',$DOMAIN_URL)
+call setWasLogin($DOMAIN_USR,undef,$DOMAIN_URL)
+call requestWas($cod,undef,quote($fil,'x'))
+var ($jdb,$src,$srv,@siz) = ({},{})
+loop $lin (grepFile($fil,'\w'))
+{if match($lin,'^HEAP ')
+  call push(@siz,[split('\s+',value($lin))])
+ elsif match($lin,'^JDBC Server =')
+  var ($src,$srv) = ('?',value($lin))
+ elsif ?$srv
+ {if match($lin,'^-r--')
+  {var @val = split('\s+',$lin,3)
+   var $jdb{$srv,$src,$val[1]} = $val[2]
+  }
+  elsif match($lin,'^JDBC Source =')
+   var $src = value($lin)
+ }
+}
+call unlinkTemp('WLS')
+
+# Create facts
+call setHcveParameter('DOMAIN.WLST',\
+  {HEAPSIZE    => [@siz],\
+   JDBCCONNECT => $jdb})
+]]></sdp_command>
+</sdp_fact>
+
+</sdp_facts>
+
+<sdp_group>
+
+<sdp_rule id="A10010" mode="RECORD" name="Domain directory">
+<sdp_command default="$DOMAIN_HOME" type="PROMPT" variable="$DOMAIN_HOME"><![CDATA[Domain directory]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the domain directory.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10011" mode="VERIFY" name="Domain valid?">
+<sdp_dependencies>
+<sdp_dependency id="A10010" condition="IS" minimum="RECORD" result="SKIPPED"><![CDATA[Requires a domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+var $fil = catFile($DOMAIN_HOME,'config','config.xml')
+call setHcveResult(cond(testFile('f',$fil),\
+  'isValid',\
+  concat($DOMAIN_HOME,' invalid')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the domain directory contains a ``config.xml`` file in its ``config`` subdirectory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="invalid" result="FAILED"><![CDATA[The directory location given for the domain is not a valid domain home.]]></sdp_action>
+<sdp_action result="PASSED"><![CDATA[The directory location given for the domain is a valid domain home.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10015" mode="RECORD" name="Domain URL">
+<sdp_command type="PROMPT" default="localhost:7001" variable="$DOMAIN_URL"><![CDATA[Domain URL:port]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the domain URL and port.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10016" mode="RECORD" name="Domain User Name and Password">
+<sdp_command type="PROMPT" default="${RDA.USER}" variable="$DOMAIN_USR">
+<![CDATA[What is the user name for accessing the domain?]]></sdp_command>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_URL,$DOMAIN_USR
+call setHcveVariable('$DOMAIN_PWD')
+if !hasPassword('wls',$DOMAIN_URL,$DOMAIN_USR)
+ call setPassword('wls',$DOMAIN_URL,$DOMAIN_USR,\
+   askPassword('What is the password for accessing the domain?'))
+call setHcveResult(concat($DOMAIN_USR,'/***'))]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the user name and the password to use to access the domain.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10020" mode="RECORD" name="WLS Version">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED" value="Version unknown"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('$DOMAIN_VERSION')
+var @ver = split('\.',getHcveFact('DOMAIN.CONFIG.DOMAIN_VERSION'))
+call setHcveResult($DOMAIN_VERSION = \
+  sprintf('%d.%d.%d',nvl($ver[0],0),nvl($ver[1],0),nvl($ver[2],0)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule determines the three element version of the domain.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10021" mode="VERIFY" name="Version 12?">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED" value="noDomain"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+<sdp_dependency id="A10020" condition="=~" minimum="^12\." result="FAILED" value="notVersion12"><![CDATA[The domain is not version 12. No further checks will be performed.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_VERSION
+call setHcveParameter('RUN.FIRST',true)
+if match($DOMAIN_VERSION,'^12\.')
+{call setHcveParameter('RUN.REL12',true)
+ if match($DOMAIN_VERSION,'^12\.1\.')
+  call setHcveParameter('RUN.REL12_1',true)
+}
+call setHcveResult('VersionIsGood')
+]]></sdp_command>
+<sdp_command type="GROUP" exec="RUN.FIRST">FIRST</sdp_command>
+<sdp_command type="GROUP" exec="RUN.REL12">REL12</sdp_command>
+<sdp_description><![CDATA[This rule determines if the domain is version 12.]]></sdp_description>
+<sdp_actions>
+<sdp_action result="PASSED"><![CDATA[The domain is version 12.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="FIRST" name="Always do before minors">
+
+<sdp_rule id="A10100" mode="VERIFY" name="Admin server name?">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $nam = getHcveFact('DOMAIN.CONFIG.ADMIN_SERVER.NAME')
+call setHcveResult(nvl($nam,'notDiscovered'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the admin server name.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDiscovered" result="FAILED"><![CDATA[The admin server name was not found in the domain directory's ``config.xml`` file. This implies a bad domain installation.]]></sdp_action>
+<sdp_action result="PASSED"><![CDATA[The admin server name was found.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10110" mode="VERIFY" name="Server names?">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $srv = getHcveFact('DOMAIN.CONFIG.SERVERS',{})
+var @srv = keys($srv)
+call setHcveResult(cond(scalar(@srv),join("\012",@srv),'notDiscovered'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the names of the servers in the domain.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDiscovered" result="FAILED"><![CDATA[No servers were found in the domain directory's ``config.xml`` file. This implies a bad domain installation.]]></sdp_action>
+<sdp_action result="PASSED"><![CDATA[The names of the servers in the domain were found.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10120" mode="RECORD" name="Installed Patch List">
+<sdp_command type="RDA"><![CDATA[
+call setHcveVariable('$PATCH_ID')
+if getHcveFact('DOMAIN.PATCH.FAILED')
+ return setHcveResult('PatchesNotDiscovered')
+var @tbl = keys(getHcveFact('DOMAIN.PATCH',{}))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'no patches installed'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays the patches found.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10130" mode="RECORD" opt_out="1" name="config.xml Data">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+var $cfg = getHcveParameter('XML.CONFIG')
+var @tbl = ()
+
+# Post General Server Information
+call push(@tbl,\
+  'General Server Configurations, value in config.xml under <server>')
+loop $det (xmlFind($cfg,'domain/server'))
+{call push(@tbl,concat('Server Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'listen-port')
+  call push(@tbl,concat('- Listen Port = ',xmlData(last)))
+ if xmlFind($det,'native-io-enabled')
+  call push(@tbl,concat('- Native IO Enbabled = ',xmlData(last)))
+ if xmlFind($det,'max-open-sock-count')
+  call push(@tbl,concat('- Maximum Open Sockets = ',xmlData(last)))
+ if xmlFind($det,'stuck-thread-max-time')
+  call push(@tbl,concat('- Stuck Thread Maximum Time = ',xmlData(last)))
+ if xmlFind($det,'stuck-thread-timer-interval')
+  call push(@tbl,concat('- Stuck Thread Timer Interval = ',xmlData(last)))
+ if xmlFind($det,'accept-backlog')
+  call push(@tbl,concat('- Accept Backlog = ',xmlData(last)))
+ if xmlFind($det,'login-timeout-millis')
+  call push(@tbl,concat('- Login Timeout = ',xmlData(last)))
+ if xmlFind($det,'managed-server-independence-enabled')
+  call push(@tbl,concat('- Managed Server Independence Enabled = ',\
+                        xmlData(last)))
+ if xmlFind($det,'low-memory-gc-threshold')
+  call push(@tbl,concat('- Low Memory GC Threshold = ',xmlData(last)))
+ if xmlFind($det,'low-memory-granularity-level')
+  call push(@tbl,concat('- Low Memory Granularity Level = ',xmlData(last)))
+ if xmlFind($det,'low-memory-sample-size')
+  call push(@tbl,concat('- Low Memory Sample Size = ',xmlData(last)))
+ if xmlFind($det,'low-memory-time-interval')
+  call push(@tbl,concat('- Low Memory Time Interval = ',xmlData(last)))
+ if xmlFind($det,'ssl/listen-port')
+  call push(@tbl,concat('- SSL Listen Port = ',xmlData(last)))
+ if xmlFind($det,'ssl/login-timeout')
+  call push(@tbl,concat('- SSL Login Timeout = ',xmlData(last)))
+}
+
+# Post Cluster Information
+call push(@tbl,'','Cluster Configurations, value in config.xml under <cluster>')
+loop $det (xmlFind($cfg,'domain/cluster'))
+{call push(@tbl,concat('Cluster Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'weight')
+  call push(@tbl,concat('- Cluster Weight = ',xmlData(last)))
+}
+
+# Post Machine Information
+call push(@tbl,'','Machine Configurations, value in config.xml under <machine>')
+loop $det (xmlFind($cfg,'domain/machine'))
+ call push(@tbl,concat('Machine Name = ',xmlData(xmlFind($det,'name'))))
+
+# Post Virtual Host Information
+call push(@tbl,'',\
+  'Virtual Host Configuration, value in config.xml under <virtual-host>')
+loop $det (xmlFind($cfg,'domain/virtual-host'))
+{call push(@tbl,concat('Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'virtual-host-name')
+  call push(@tbl,concat('- Virtual Host Name = ',xmlData(last)))
+ if xmlFind($det,'network-access-point')
+  call push(@tbl,concat('- Network Access Point = ',xmlData(last)))
+ if xmlFind($det,'/web-server-log/file-name')
+  call push(@tbl,concat('- Log File Name = ',xmlData(last)))
+ if xmlFind($det,'web-server-log/logging-enabled')
+  call push(@tbl,concat('- Logging Enabled = ',xmlData(last)))
+ if xmlFind($det,'max-post-size')
+  call push(@tbl,concat('- Maximum Post Size = ',xmlData(last)))
+}
+
+# Post Work Manager Information
+call push(@tbl,'','Work Manager Configuration, value in config.xml under \
+  <self-tuning><work-manager>')
+loop $lin (xmlFind('domain/self-tuning/work-manager'))
+{call push(@tbl,concat('Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'ignore-stuck-threads')
+  call push(@tbl,concat('- Ignore Stuck Threads = ',xmlData(last)))
+ if xmlFind($det,'min-threads-constraint')
+  call push(@tbl,concat('- Minimum Threads = ',xmlData(last)))
+ if xmlFind($det,'max-threads-constraint')
+  call push(@tbl,concat('- Maximum Threads = ',xmlData(last)))
+}
+
+# Assemble the results
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays values found in the ``config.xml`` file.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10140" mode="RECORD" opt_out="1" name="JDBC Configuration">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+call setHcveVariable('@JDBC_NAMES')
+var (@sep,@tbl,@JDBC_NAMES) = ()
+
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jdbc'),'.xml$','in'))
+{var $xml = xmlLoadFile(catDir($DOMAIN_HOME,'config','jdbc',$fil))
+ call push(@tbl,@sep,concat('Data from ',$fil))
+ loop $det (xmlFind($xml,'jdbc-data-source'))
+ {var $nam = xmlData(xmlFind($det,'name'))
+  call push(@tbl,concat('Name = ',$nam))
+  call push(@JDBC_NAMES,$nam)
+
+  loop $itm (xmlFind($det,'jdbc-driver-params'))
+  {if xmlFind($itm,'url')
+    call push(@tbl,concat('- URL = ',xmlData(last)))
+   if xmlFind($itm,'driver-name')
+    call push(@tbl,concat('- Driver Name = ',xmlData(last)))
+  }
+
+  loop $itm (xmlFind($det,'jdbc-connection-pool-params'))
+  {if xmlFind($itm,'capacity-increment')
+    call push(@tbl,concat('- Capacity Increment = ',xmlData(last)))
+   if xmlFind($itm,'initial-capacity')
+    call push(@tbl,concat('- Initial Capacity = ',xmlData(last)))
+   if xmlFind($itm,'max-capacity')
+    call push(@tbl,concat('- Maximum Capacity = ',xmlData(last)))
+   if xmlFind($itm,'connection-reserve-timeout-seconds')
+    call push(@tbl,concat('- Connection Reserve Timeout = ',xmlData(last)))
+  }
+
+  loop $itm (xmlFind($det,'jdbc-data-source-params'))
+  {if xmlFind($itm,'algorithm-type')
+    call push(@tbl,concat('- Algorithm Type = ',xmlData(last)))
+   if xmlFind($itm,'data-source-list')
+    call push(@tbl,concat('- Datasource List = ',xmlData(last)))
+  }
+ }
+ var @sep = ('____________________')
+}
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays values found in the JDBC configuration files.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10150" mode="RECORD" opt_out="1" name="JMS Configuration">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+call setHcveVariable('@JMS_CONNNECTIONFACTORY','@JMS_QUEUE','@JMS_TOPIC')
+var (@sep,@tbl,@JMS_CONNECTIONFACTORY,@JMS_QUEUE,@JMS_TOPIC) = ()
+
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jms'),'.xml$','in'))
+{var $xml = xmlLoadFile(catDir($DOMAIN_HOME,'config','jms',$fil))
+ call push(@tbl,@sep,concat('Data from ',$fil))
+
+ call push(@tbl,'JMS Connection Factory Configuration')
+ loop $det (xmlFind($xml,'weblogic-jms/connection-factory'))
+ {var $nam = xmlValue($det,'name')
+  call push(@JMS_CONNECTIONFACTORY,$nam)
+  call push(@tbl,concat('Connection Factory Name = ',$nam))
+  if xmlFind($det,'sub-deployment-name')
+   call push(@tbl,concat('- Sub-deployment Name = ',xmlData(last)))
+  if xmlFind($det,'jndi-name')
+   call push(@tbl,concat('- JNDI Name = ',xmlData(last)))
+ }
+ call push(@tbl,'','JMS Topic Configuration')
+ loop $det (xmlFind($xml,'weblogic-jms/topic'))
+ {var $nam = xmlData($det,'name')
+  call push(@JMS_TOPIC,$nam)
+  call push(@tbl,concat('Name = ',$nam))
+  if xmlFind($det,'sub-deployment-name')
+   call push(@tbl,concat('- Sub-deployment Name = ',xmlData(last)))
+  if xmlFind($det,'jndi-name')
+   call push(@tbl,concat('- JNDI Name = ',xmlData(last)))
+ }
+ call push(@tbl,'','JMS Queue Configuration')
+ loop $det (xmlFind($xml,'weblogic-jms/queue'))
+ {var $nam = xmlValue($det,'name')
+  call push(@JMS_QUEUE,$nam)
+  call push(@tbl,concat('Name = ',$nam))
+  if xmlFind($det,'sub-deployment-name')
+   call push(@tbl,concat('- Sub-deployment Name = ',xmlData(last)))
+  if xmlFind($det,'jndi-name')
+   call push(@tbl,concat('- JNDI Name = ',xmlData(last)))
+ }
+ var @sep = ('____________________')
+}
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays values found in the JDBC configuration files.]]></sdp_description>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="REL12" opt_out="1" name="Checks for 12.x">
+
+<sdp_rule id="A05000" mode="VERIFY" name="JMS bytes-maximum">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.JMS',{}))
+loop $nam (keys($tbl))
+{if missing($tbl->{$nam,'BYTES_MAXIMUM'})
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have bytes-maximum set:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the bytes-maximum setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``help avoid the out-of-memory errors that can occur when Oracle WebLogic JMS Quotas are not defined.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a JMS Quota not being defined thus large message backlogs could cause out-of-memory errors.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05001" mode="Verify" name="JMS messages-maximum">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.JMS',{}))
+loop $nam (keys($tbl))
+{if missing($tbl->{$nam,'MESSAGES_MAXIMUM'})
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have message-maximum set:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the JMS messages-maximum setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``help avoid the out-of-memory errors that can occur when Oracle WebLogic JMS Quotas are not defined.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a JMS Quota not being defined thus large message backlogs could cause out-of-memory errors.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05002" mode="Verify" name="JDBC pinned-to-thread">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.JDBC.FILES',{}))
+loop $fil (keys($tbl))
+{if missing($tbl->{$fil,'PINNED_TO_THREAD'})
+  call push(@tbl,$fil)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have pinned-to-thread set to TRUE:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks to see if the pinned-to-thread setting is set to true.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``database contention``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``minimizing the time it takes for an application to reserve a database connection from a data source and to eliminate contention between threads for a database connection, you can add the Pinned-To-Thread property in the connection Properties list for the data source, and set its value to true.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05003" mode="Verify" name="JDBC statement-cache-type">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.JDBC.FILES',{}))
+loop $fil (keys($tbl))
+{if missing($tbl->{$fil,'STATEMENT_CACHE_TYPE'})
+  call push(@tbl,$fil)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have statement-cache-type:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the statement-cache-type setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``database contention``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``database connection and Oracle recommends setting the JDBC options Statement Cache Type for each Data Source thus in our documentation at: %BR%http://download.oracle.com/docs/cd/E14571_01/web.1111/e13814/topten.htm#i1145700 %BR%To configure the JDBC Connection Pool using the WebLogic Administrator Console: %BR%http://download.oracle.com/docs/cd/E14571_01/apirefs.1111/e13952/taskhelp/jdbc/jdbc_datasources/ConfigureTheStatementCacheForADataSource.html``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05004" mode="Verify" name="JDBC statement-cache-size">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.JDBC.FILES',{}))
+loop $fil (keys($tbl))
+{if missing($tbl->{$fil,'STATEMENT_CACHE_SIZE'})
+  call push(@tbl,$fil)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have statement-cache-size:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the statement-cache-size setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``database contention``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``database connection and Oracle recommends setting the JDBC options Statement Cache Size for each Data Source thus in our documentation at: %BR%http://download.oracle.com/docs/cd/E14571_01/web.1111/e13814/topten.htm#i1145700 %BR%To configure the JDBC Connection Pool using the WebLogic Administrator Console: %BR%http://download.oracle.com/docs/cd/E14571_01/apirefs.1111/e13952/taskhelp/jdbc/jdbc_datasources/ConfigureTheStatementCacheForADataSource.html``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05005" mode="Verify" name="Server native-io-enabled">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.SERVERS',{}))
+loop $nam (keys($tbl))
+{var $val = $tbl->{$nam,'NATIVE_IO_ENABLED'}
+ if match($val,'false',true)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following have native-io-enabled set to FALSE:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the native-io-enabled setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``performance issues``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``Performance issues if native IO is not set. Set the NativeIOEnabled attribute of the Server element to "true" by using the Administrator Console (tuning tab from server configuration).%BR%http://docs.oracle.com/cd/E24329_01/web.1211/e24390/appb_queues.htm#PERFM425``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05006" mode="Verify" name="Cluster frontend-host">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.CLUSTERS',{}))
+loop $nam (keys($tbl))
+{if missing($tbl->{$nam,'FRONTEND_HOST'})
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have cluster frontend-host set to:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the cluster names and their settings for frontend-host.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``performance issues``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``Cluster has no FrontEndHost server specified``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05007" mode="Verify" name="Virtual-host max-post-size">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.VIRTUAL_HOSTS',{}))
+loop $nam (keys($tbl))
+{if !expr('>',$tbl->{$nam,'MAX_POST_SIZE'},0)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have virtual host names for max-post-size \
+               set to greater than zero:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the virtual host max-post-size setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``denial-of-service attacks which is a malicious attempt to overload the server``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a Denial-of-Service attack as a malicious attempt to overload a server with phony requests. One common type of attack is to send huge amounts of data in an HTTP POST method. To help prevent this type of attack set the Maximum Post Size greater than zero in the Oracle WebLogic Server. This attribute is set in the Console, under Servers or Virtual Hosts. If this attribute is defined for a virtual host, the values set for the virtual host override those set under Servers.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05008" mode="Verify" name="Server max-post-size">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.SERVERS',{}))
+loop $nam (keys($tbl))
+{if !expr('>',$tbl->{$nam,'MAX_POST_SIZE'},0)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have max-post-size set to greater than \
+               zero:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule collects the max-post-size setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``denial-of-service attacks which is a malicious attempt to overload the server``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a Denial-of-Service attack as a malicious attempt to overload a server with phony requests. One common type of attack is to send huge amounts of data in an HTTP POST method. To help prevent this type of attack set the Maximum Post Size greater than zero in the Oracle WebLogic Server. This attribute is set in the Console, under Servers or Virtual Hosts. If this attribute is defined for a virtual host, the values set for the virtual host override those set under Servers.%BR%http://docs.oracle.com/cd/E24329_01/web.1211/e24432/web_server.htm#i1059782``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05009" mode="Verify" name="Server max-open-sock-count">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.SERVERS',{}))
+loop $nam (keys($tbl))
+{if !expr('>',$tbl->{$nam,'MAX_OPEN_SOCK_COUNT'},0)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have max-open-sock-count set:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the max-open-sock-count setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``Too Many Open Files Error.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``Too Many Files Error when max-open-sock-count attribute is not set. %BR%Oracle Weblogic Server 10.3.6 Tuning Maximum Open Sockets%BR%http://docs.oracle.com/cd/E28271_01/apirefs.1111/e13952/pagehelp/Corecoreserverserverconfigtuningtitle.html#MaxOpenSockCount``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05010" mode="Verify" name="Config server ssl host-name-verification-ignored">
+<sdp_command type="RDA"><![CDATA[
+var @tbl =()
+var $mod = getHcveFact('DOMAIN.CONFIG.PRODUCTION_MODE_ENABLED')
+if match($mod,'true')
+{var $tbl = getHcveFact('DOMAIN.CONFIG.SERVERS',{})
+ loop $nam (keys($tbl))
+ {if match($tbl->{$nam,'SSL_HOSTNAME_VERIFICATION_IGNORED'},'true')
+   call push(@tbl,$nam)
+ }
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following have host-name-verification-ignored set to true:',\
+              @tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the ssl host-name-verification-ignored setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``A Man in the Middle Attack.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[``This domain is running in production mode, but the HostnameVerification property has been disabled. When the HostnameVerification attribute has been disabled, Oracle WebLogic Server no longer ensures that the certificate received from a remote site matches the DNS name when making a remote SSL connection. This leaves the connection vulnerable to a man in the middle attack.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05011" mode="Verify" name="JVM heapsize">
+<sdp_command type="RDA"><![CDATA[
+var @tbl =()
+loop $rec (@{getHcveFact('DOMAIN.WLST.HEAPSIZE',[])})
+{if !expr('==',$rec->[1],$rec->[2])
+  call push(@tbl,$rec->[0])
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have ``JVM parameters -Xms and -Xmx`` set \
+               equally:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule collects JVM Parameters and verifies they are set equal to each other.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``a Performance issue.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[``This domain Assess the heap capacity necessary for the application and specify equal and fixed start and maximum heap size. Use the JVM parameters "-Xms" and "-Xmx" to specify these values. This best practice may improve the performance of the system under heavy load. Please see the JVM tuning documentation for details:%BR%http://download.oracle.com/docs/cd/E13188_01/jrockit/docs50/tuning/intro.html%BR%http://download.oracle.com/docs/cd/E13222_01/wls/docs92/perform/JVMTuning.html``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05012" mode="Verify" name="JDBC WaitingForConnectionHighCount">
+<sdp_command type="RDA"><![CDATA[
+var @tbl =()
+var $tbl = getHcveFact('DOMAIN.WLST.JDBCCONNECT',{})
+loop $srv (keys($tbl))
+{loop $src (keys($tbl->{$srv}))
+ {if expr('>',$tbl->{$srv,$src,'WaitingForConnectionHighCount'},0)
+   call push(@tbl,concat($srv,'/',$src))
+ }
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following have ``WaitingForConnectionHighCount`` recording \
+              a value greater than zero:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule Performance may be impacted by requests waiting for a connection.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``to a performance impacted by requests waiting for a connection``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[``This domain is subject to a performance impact of waiting threads, the number of connections available in these connection pools should be increased.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+</sdp_content>
+</sdp_diaglet>
+

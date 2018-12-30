@@ -1,0 +1,78 @@
+# M251UFS.def: Collects Extended UNIX file System (UFS) Information
+# $Id: M251UFS.def,v 1.3 2012/05/08 04:36:04 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M251UFS.def,v 1.3 2012/05/08 04:36:04 mschenke Exp $
+#
+# Change History
+# 20120507  MSC  Apply naming conventions.
+
+=head1 NAME
+
+M251UFS - Collects Extended UNIX File System (UFS) Information
+
+=head1 DESCRIPTION
+
+This module collects information about extended UNIX file system (UFS).
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('ufsextended')
+
+# -----------------------------------------------------------------------------
+# XPLR_ufs section
+# -----------------------------------------------------------------------------
+
+section XPLR_ufs
+
+call log_run('Processing UFS sections ...')
+
+=head2 ufs - Extended UNIX file system information
+
+Gathers the extended UNIX file system information using the
+C</usr/sbin/fstyp -v ${DEVICE}> command on each corresponding device.
+
+=cut
+
+debug ' Inside UFS collection, gathering UFS data information'
+report ufs
+title '---+!! Extended UNIX File System (UFS)'
+title $TOC
+var @cmd = ()
+loop $lin (grepCommand('/usr/sbin/df -lFufs','\(.*\)'))
+{var ($dir,$dev) = match($lin,'^(.*?)\s*\(\s*(.*?)\s*\)')
+ var $dev = replace($dev,'[\(\)]','',true)
+ call push(@cmd,\
+       [concat('disks/ufs/fstyp_-v=',replace($dir,'\/','_',true)),\
+        '/usr/sbin/fstyp',concat('-v ',$dev),\
+        concat('---+ File System Information (',$dev,')')])
+}
+do_exec(@cmd)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Extended UNIX File System (UFS)]]'
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

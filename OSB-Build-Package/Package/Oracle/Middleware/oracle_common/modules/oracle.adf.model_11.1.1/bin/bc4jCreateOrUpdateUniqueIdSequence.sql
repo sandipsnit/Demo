@@ -1,0 +1,14 @@
+-- ** THIS SCRIPT HAS BEEN PURPOSEFULLY EMPTIED OUT. **
+-- 
+-- This script will no longer be required. The new Fusion Database Installs
+-- will have the S_ROW_ID_SEQ database sequence created automatically during
+-- installation. The S_ROW_ID_SEQ will also be periodically be monitored by
+-- a scheduled job and will be updated with new keys when it runs low on keys
+-- 
+-- In addition, the procedure UNIQUE_ID_MGT.cre_or_upd_uid_seq can be used to
+-- manually create the S_ROW_ID_SEQ if it does not exist. The UNIQUE_ID_MGT
+-- package will also be available as part of the Fusion Database Installation
+--
+-- The S_ROW_SEQ is only intended to be used by PL/SQL Application code and is
+-- not expected to be used by Middle Tier Application Developers. 
+

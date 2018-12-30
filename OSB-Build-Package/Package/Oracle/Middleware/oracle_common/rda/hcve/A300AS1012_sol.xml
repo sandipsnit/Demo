@@ -1,0 +1,1268 @@
+<sdp_diaglet platform="solaris" product="AS1012" set="A300AS1012_sol" title="Oracle Application Server 10g R2 (10.1.2) Preinstall (Solaris)" type="A">
+<sdp_meta id="$Id: A300AS1012_sol.xml,v 1.17 2012/04/18 16:22:38 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve Space in tmp check" date="20120405" type="history"/>
+<sdp_content set="A300AS1012_sol" title="Oracle Application Server 10g R2 (10.1.2) Preinstall (Solaris)" type="check">
+<sdp_group>
+
+<sdp_rule id="A00000" mode="RECORD" name="OS">
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$OS_NAM,$OS_VER,$OS_BIT
+call setHcveResult(concat($OS_ARC,' ',$OS_NAM,' ',$OS_VER,' ',$OS_BIT,'-bit'))]]>
+</sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system (OS) description.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00001" mode="VERIFY" name="Processor Type OK?">
+<sdp_command type="RDA"><![CDATA[var $BOOK_S = "Oracle Application Server Installation Guide 10g Release 2 \
+              (10.1.2) for Solaris Operating System (SPARC)"
+var $BOOK_X = "Oracle Application Server Installation Guide 10g Release 2 \
+              (10.1.2.0.2) for Solaris Operating System (x86 and x86-64)"
+if not(loadCommand('/usr/sbin/psrinfo -v'))
+{var $PRC = "Unidentified"
+ call setHcveResult('Cannot access /usr/sbin/psrinfo')
+}
+elsif grepLastFile('sparcv9','if')
+{var $BOOK = $BOOK_S
+ var $PRC = "SPARCv9"
+ call setHcveResult('SPARC v9')
+}
+elsif grepLastFile('i386','if')
+{var $BOOK = $BOOK_X
+ var $PRC = "i386"
+ call setHcveResult('i386')
+}
+else
+{var $BOOK = $BOOK_S
+ var $PRC = "Unidentified"
+ call setHcveResult('Not an acceptable processor')
+}
+call setHcveVariable('$PRC','$BOOK')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor type. The processor type must be either x86, x86-64, or SPARC v9. For SPARC, the processor must have a SPARC v9 architecture because Oracle Application Server 10g Release 2 (10.1.2) uses the Sun Java 1.4.1 HotSpot Server VM, which no longer supports SPARC v8 and older processors.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="SPARC v9|i386" result="PASSED"><![CDATA[The processor is certified.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The processor must have a SPARC v9 or x86 or x86-64 architecture.
+|*Return Value*|*Action*|
+|Not an acceptable processor|Use a certified processor type.|
+|Cannot access /usr/sbin/psrinfo|Grant execute permissions on ``/usr/sbin/psrinfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00002" mode="VERIFY" name="Processor Speed OK?">
+<sdp_command type="RDA"><![CDATA[if !testFile('x','/usr/sbin/psrinfo')
+ return setHcveResult('Cannot access /usr/sbin/psrinfo')
+var ($lin) = grepCommand('/usr/sbin/psrinfo -v','processor operates at','f')
+var $mhz = field('\s+',5,$lin)
+call setHcveResult(cond(\
+ expr('>=',$mhz,450),\
+   'The minimum requirement for the processor speed has been met.',\
+   concat('Processor speed [',$mhz,'MHZ] does not meet minimum requirement')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor speed. The minimum requirement is 450 MHz or faster.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="The minimum requirement for the processor speed has been met." result="PASSED"><![CDATA[The minimum requirement for the processor speed is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Processor speed ... does not meet minimum requirement|Use a processor with a speed of 450 MHz or faster.|
+|Cannot access /usr/sbin/psrinfo|Make sure that the user has access to the ``psrinfo`` command.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00003" mode="VERIFY" name="32 and 64-bit Support?">
+<sdp_command type="RDA"><![CDATA[import $PRC,$OS_BIT
+if match($PRC,'sparcv9',true)
+{var $pth = findCommand('isainfo')
+ if !$pth
+  return setHcveResult('Cannot access isainfo commmand')
+ call loadCommand(concat($pth,' -v'))
+ call setHcveResult(cond(\
+   and(grepLastFile('64\-bit','f'),grepLastFile('32\-bit','f')),\
+     'System supports 32-bit and 64-bit applications',\
+     'System does not support both 32-bit and 64-bit applications'))
+}
+elsif match($PRC,'i386')
+{if !defined($OS_BIT)
+  return setHcveResult('Cannot access isainfo commmand')
+ call setHcveResult(check(\
+   $OS_BIT,'^64$','System supports 32-bit and 64-bit applications',\
+                  'System does not support both 32-bit and 64-bit \
+                    applications'))
+}
+else
+ call setHcveResult('Processor unidentified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the operating system is configured to support 32-bit and 64-bit applications.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="System supports 32-bit and 64-bit applications" result="PASSED"><![CDATA[No action required. The system supports 32-bit and 64-bit applications]]></sdp_action>
+<sdp_action condition="==" minimum="Processor unidentified" result="SKIPPED"><![CDATA[The processor must be identified and of a certified type to determine 32-bit and 64-bit support.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|System does not support both 32-bit and 64-bit applications|Configure the system to support both 32-bit and 64-bit applications|
+|Cannot access isainfo command|Make sure that the ``isainfo`` executable is accessible to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00004" mode="VERIFY" name="Memory (in MB)?">
+<sdp_command type="RDA"><![CDATA[var $MEM = undef
+call setHcveVariable('$MEM')
+if !testFile('x','/usr/sbin/prtconf')
+ return setHcveResult('Cannot access /usr/sbin/prtconf')
+var $MEM = field('\s+',2,grepCommand('/usr/sbin/prtconf','Memory','f'))
+call setHcveResult(concat($MEM,' MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the available physical memory in MB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum=" MB$" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00005" mode="VERIFY" name="Memory for MDR and OIM OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00004" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available physical memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),   'Cannot access /usr/sbin/prtconf',\
+  expr('>=',$MEM,1024), 'Available',\
+                        'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Metadata Repository (MDR) and Oracle Identity Management (OIM) install type. The minimum requirement is 1GB. For x86-based and x86-64-based systems, MDR and OIM 10.1.2.0.2 must be used.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Metadata Repository and Oracle Identity Management install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Metadata Repository and Identity Management install type.|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00006" mode="VERIFY" name="Memory for OIM Only OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00004" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available physical memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),   'Cannot access /usr/sbin/prtconf',\
+  expr('>=',$MEM,1024), 'Available',\
+                        'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Oracle Identity Management (OIM) only install type. The minimum requirement is 1 GB. For x86-based and x86-64 based systems, OIM must be 10.1.2.0.2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Oracle Identity Management only install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Oracle Identity Management only install type.|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00007" mode="VERIFY" name="Memory for MDR Only OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00004" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available physical memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),   'Cannot access /usr/sbin/prtconf',\
+  expr('>=',$MEM,1024), 'Available',\
+                        'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Metadata Repository (MDR) only install type. The minimum requirement is 1 GB. For x86-based and x86-64-based systems, MDR must be 10.1.2.0.2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Metadata Repository only install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Metadata Repository only install type.|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00008" mode="VERIFY" name="Memory for J2EE OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00004" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available physical memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),  'Cannot access /usr/sbin/prtconf',\
+  expr('>=',$MEM,512), 'Available',\
+                       'Need at least 512 MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the J2EE and Web Cache install type. The minimum requirement is 512 MB. For x86-based and x86-64-based systems, J2EE and Web Cache must be 10.1.2.0.2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the J2EE and Web Cache install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 512|Increase the memory to 512 MB or more to install the J2EE and Web Cache install type.|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00009" mode="VERIFY" name="Memory for Portal OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00004" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available physical memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),   'Cannot access /usr/sbin/prtconf',\
+  expr('>=',$MEM,1024), 'Available',\
+                        'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Portal and Wireless install type. The minimum requirement is 1 GB. For x86-based and x86-64-based systems, Portal and Wireless must be 10.1.2.0.2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Portal and Wireless install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Portal and Wireless install type.|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00010" mode="VERIFY" name="Memory for BI (10.1.2.0.2) OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00004" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available physical memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),   'Cannot access /usr/sbin/prtconf',\
+  expr('>=',$MEM,1024), 'Available',\
+                        'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the 10.1.2.0.2 Business Intelligence (BI) and Forms install type. The minimum requirement is 1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Business Intelligence and Forms install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Business Intelligence and Forms install type.|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00011" mode="VERIFY" name="Memory for Dev Kit OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00004" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available physical memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),  'Cannot access /usr/sbin/prtconf',\
+  expr('>=',$MEM,256), 'Available',\
+                       'Need at least 256 MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Developer Kit install type. The minimum requirement is 256 MB. For x86-based and x86-64-based systems, the Developer Kit must be 10.1.2.0.2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Developer Kit install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 256 MB|Increase the memory to 256 MB or more to install the Developer Kit install type.|
+|Cannot access /usr/sbin/prtconf|Grant execute permissions on ``/usr/sbin/prtconf`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00012" mode="VERIFY" name="Disk Space (in KB)?">
+<sdp_command type="RDA"><![CDATA[var $ORACLE_HOME = getEnv('ORACLE_HOME')
+var $DF = cond(\
+  not($ORACLE_HOME),              'ORACLE_HOME is not set',\
+  not(testDir('d',$ORACLE_HOME)), 'Cannot access ORACLE_HOME',\
+                                  get_df($ORACLE_HOME))
+call setHcveVariable('$DF')
+call setHcveResult(cond(isNumber($DF),concat($DF,' KB'),$DF))
+]]></sdp_command>
+<sdp_description><![CDATA[The rule retrieves the available disk space.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum=" KB$" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00013" mode="VERIFY" name="Space for Infra OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{call setHcveResult(cond(\
+   not(isNumber($DF)),     $DF,\
+   expr('>=',$DF,4120904), 'Available',\
+                           'Need at least 3.93 GB'))
+}
+else
+ call setHcveResult('Skip')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Infrastructure install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Infrastructure install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule only applies to SPARC v9-based systems.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 3.93 GB|Increase the available space to 3.93 GB or more to install the Infrastructure install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00014" mode="VERIFY" name="Space for Infra (10.1.2.0.2) OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{var $min = 4016046
+ var $RQD = "3.83 GB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 4351590
+ var $RQD = "4.15 GB"
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  not(isNumber($DF)),  $DF,\
+  expr('>=',$DF,$min), 'Available',\
+                       'Inadequate'))
+call setHcveVariable('$RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the 10.1.2.0.2 Infrastructure install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Infrastructure install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available space to ${RQD} or more to install the Infrastructure install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00015" mode="VERIFY" name="Space for OIM Only OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{call setHcveResult(cond(\
+   not(isNumber($DF)),     $DF,\
+   expr('>=',$DF,1614807), 'Available',\
+                           'Need at least 1.54 GB'))
+}
+else
+ return setHcveResult('Skip')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install Oracle Identity Management only install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Oracle Identity Management only install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule only applies to SPARC v9-based systems.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1.54 GB|Increase the available space to 1.54 GB or more to install the Oracle Identity Management only install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00016" mode="VERIFY" name="Space for OIM Only (10.1.2.0.2) OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{var $min = 2380268
+ var $RQD = "2.27 GB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 1646264
+ var $RQD = "1.57 GB"
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  not(isNumber($DF)),  $DF,\
+  expr('>=',$DF,$min), 'Available',\
+                       'Inadequate'))
+call setHcveVariable('$RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install 10.1.2.0.2 Oracle Identity Management only install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Oracle Identity Management only install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available space to ${RQD} or more to install the Oracle Identity Management 10.1.2.0.2 only install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00017" mode="VERIFY" name="Space for MDR Only OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{call setHcveResult(cond(\
+   not(isNumber($DF)),     $DF,\
+   expr('>=',$DF,4120904), 'Available',\
+                           'Need at least 3.93 GB'))
+}
+else
+ call setHcveResult('Skip')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Metadata Repository (MDR) only install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Metadata Repository only install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule only applies to SPARC v9-based systems.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 3.93 GB|Increase the available space to 3.93 GB or more to install the Metadata Repository only install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00018" mode="VERIFY" name="Space for MDR Only (10.1.2.0.2) OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{var $min = 4016046
+ var $RQD = "3.83 GB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 4320133
+ var $RQD = "4.12 GB"
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  not(isNumber($DF)),  $DF,\
+  expr('>=',$DF,$min), 'Available',\
+                       'Inadequate'))
+call setHcveVariable('$RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the 10.1.2.0.2 Metadata Repository (MDR) only install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Metadata Repository only install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available space to ${RQD} or more to install the Metadata Repository only install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00019" mode="VERIFY" name="Space for J2EE OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{var $min = 768000
+ var $RQD = "750 MB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 729088
+ var $RQD = "712 MB"
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  not(isNumber($DF)),  $DF,\
+  expr('>=',$DF,$min), 'Available',\
+                       'Inadequate'))
+call setHcveVariable('$RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the J2EE and Web Cache install type. For x86-based or x86-64-based systems, J2EE and Web Cache 10.1.2.0.2 is required.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the J2EE and Web Cache install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available space to ${RQD} or more to install the J2EE and Web Cache install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00020" mode="VERIFY" name="Space for Portal OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{call setHcveResult(cond(\
+   not(isNumber($DF)),     $DF,\
+   expr('>=',$DF,1258291), 'Available',\
+                           'Need at least 1.2 GB'))
+}
+else
+ call setHcveResult('Skip')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Portal and Wireless install type. ]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Portal and Wireless install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule only applies to SPARC v9-based systems.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1.2 GB|Increase the available space to 1.2 GB or more to install the Portal and Wireless install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00021" mode="VERIFY" name="Space for Portal (10.1.2.0.2)">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{var $min = 1184891
+ var $RQD = "1.13 GB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 1321206
+ var $RQD = "1.26 GB"
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  not(isNumber($DF)),  $DF,\
+  expr('>=',$DF,$min), 'Available',\
+                       'Inadequate'))
+call setHcveVariable('$RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the 10.1.2.0.2 Portal and Wireless install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Portal and Wireless install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available space to ${RQD} or more to install the Portal and Wireless install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00022" mode="VERIFY" name="Space for BI (10.1.2.0.2) OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{var $min = 1530921
+ var $RQD = "1.46 GB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 1918894
+ var $RQD = "1.83 GB"
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  not(isNumber($DF)),  $DF,\
+  expr('>=',$DF,$min), 'Available',\
+                       'Inadequate'))
+call setHcveVariable('$RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the 10.1.2.0.2 Business Intelligence (BI) and Forms install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Business Intelligence and Forms install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available space to ${RQD} or more to install the Business Intelligence and Forms install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00023" mode="VERIFY" name="Space for Dev Kit OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{call setHcveResult(cond(\
+   not(isNumber($DF)),    $DF,\
+   expr('>=',$DF,532480), 'Available',\
+                          'Need at least 520 MB'))
+}
+else
+ return setHcveResult('Skip')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Developer Kit install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Developer Kit install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule only applies to SPARC v9-based systems.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 520 MB|Increase the available space to 520 MB or more to install the Developer Kit install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00024" mode="VERIFY" name="Space for Dev Kit (10.1.2.0.2) OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+<sdp_dependency id="A00012" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the amount of available disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DF,$PRC
+if match($PRC,'sparcv9',true)
+{var $min = 896000
+ var $RQD = "875 MB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 839680
+ var $RQD = "820 MB"
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  not(isNumber($DF)),  $DF,\
+  expr('>=',$DF,$min), 'Available',\
+                       'Inadequate'))
+call setHcveVariable('$RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the 10.1.2.0.2 Developer Kit install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Developer Kit install type.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available space to ${RQD} or more to install the Developer Kit install type.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|
+|Cannot access ORACLE_HOME|Set ``ORACLE_HOME`` to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00025" mode="VERIFY" name="Space in tmp OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PRC
+if match($PRC,'sparcv9',true)
+{var ($flg,$tmp,@tbl) = (true,{'/tmp','/tmp'})
+ if getEnv('TMP')
+  var $tmp->{'TMP'} = last
+ loop $key (keys(%tmp))
+ {if !testDir('d',$tmp->{$key})
+   call push(@tbl,concat($key,' invalidDir'))
+  else
+  {if !testDir('w',$tmp->{$key})
+    call push(@tbl,concat($key,' NoWrite'))
+   if and($flg,expr('>=',get_df($tmp->{$key}),256000))
+    var $flg = false
+  }
+ }
+ if $flg
+ {loop $key (keys(%tmp))
+   call push(@tbl,concat($key,' tooSmall'))
+ }
+ call setHcveParameter('RULE.A00025',$tmp)
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'TempSpaceOK'))
+}
+else
+ call setHcveResult('Skip')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough temporary space. Initially Oracle Universal Installer (OUI) checks the ``TMP`` and ``TMPDIR`` environment variables to locate the temporary directory. If these environment variables do not exist, then OUI uses ``/tmp``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="TempSpaceOK" result="PASSED"><![CDATA[The system has enough temporary space.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule only applies to SPARC v9-based systems.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The temporary space is not configured correctly.
+|*Return Value*|*Action*|
+|/tmp invalidDir|ALERT - ``/tmp`` is not a valid directory. ``/tmp`` needs to be a directory.|
+|/tmp NoWrite|ALERT - The user does not have write permissions to the ``/tmp`` directory.|
+|/tmp tooSmall|ALERT - There is less than the needed 250 MB of free space in the ``/tmp`` directory.|
+|TMP invalidDir|ALERT - ``TMP`` is set to ${`RULE.A00025.TMP} in the environment; however, ${`RULE.A00025.TMP} is an invalid directory. Take appropriate action.|
+|TMP NoWrite|ALERT - ``TMP`` is set to ${`RULE.A00025.TMP} in the environment; however, the user does not have write permissions to ${`RULE.A00025.TMP}.|
+|TMP tooSmall|ALERT - ``TMP`` is set to ${`RULE.A00025.TMP} in the environment; however, ${`RULE.A00025.TMP} has less than the required 250 MB of free space. Make sure your temporary space has at least 250 MB of free space.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00026" mode="VERIFY" name="Space in tmp (10.1.2.0.2) OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PRC
+if match($PRC,'sparcv9',true)
+{var $min = 262144
+ var $RQD = "256 MB"
+}
+elsif match($PRC,'i386',true)
+{var $min = 409600
+ var $RQD = "400 MB"
+}
+else
+ return setHcveResult('Skip')
+var $TMP = nvl(getEnv('TMP'),getEnv('TMPDIR'),'/tmp')
+call setHcveResult(cond(\
+  not(testDir('d',$TMP)),       'Cannot access tmp directory',\
+  expr('>=',get_df($TMP),$min), 'Available',\
+                                'Inadequate'))
+call setHcveVariable('RQD')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough temporary space for installing 10.1.2.0.2. Oracle Universal Installer (OUI) initially checks the ``TMP`` and ``TMPDIR`` environment variables to locate the temporary directory. If these environment variables do not exist, then OUI uses ``/tmp``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough temporary space.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the amount of space required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Inadequate|Increase the available temporary space to ${RQD} or more. You can define ``TMP`` or ``TMPDIR`` to point to a directory with ${RQD} of available space.|
+|Cannot access tmp directory|Grant read and write permissions on ``/tmp`` or directories in ``TMP`` or ``TMPDIR`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00027" mode="VERIFY" name="Swap Space OK?">
+<sdp_command type="RDA"><![CDATA[if !testFile('x','/usr/sbin/swap')
+ return setHcveResult('Cannot access /usr/sbin/swap')
+var $siz = field('\s+',10,grepCommand('/usr/sbin/swap -s','.','f'))
+call setHcveResult(cond(\
+    expr('>=',field('\s+',0,replace($siz,'k',' k ')),1572864),\
+      'Available',\
+      'Need at least 1.5 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough swap space. The minimum requirement is 1.5 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough swap space.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1.5 GB|Increase the swap space to 1.5 GB or more.|
+|Cannot access /usr/sbin/swap|Grant execute permissions on ``/usr/sbin/swap`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00028" mode="VERIFY" name="Monitor Colors">
+<sdp_command type="RDA"><![CDATA[call loadCommand('/usr/X11R6/bin/xdpyinfo -root 2>&1')
+var @dpt = grepLastFile('depth')
+call setHcveResult(cond(\
+  grep(@dpt,'8','f'),              'Adequate',\
+  not(defined(getEnv('DISPLAY'))), 'DISPLAY is not set',\
+  grepLastFile('unable','f'),      'Cannot open DISPLAY',\
+                                   'Need at least 256 colors'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the monitor has a minimum of 256 colors.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The monitor has enough colors.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least|Use a display with 256 colors.|
+|DISPLAY is not set|Set the ``DISPLAY`` environment variable to a valid display.|
+|Cannot open DISPLAY|Set the ``DISPLAY`` environment variable to a correct display.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00029" mode="VERIFY" name="Operating System Certified?">
+<sdp_dependencies>
+<sdp_dependency id="A00001" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the processor be a certified type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$PRC
+if match($PRC,'sparcv9',true)
+{call setHcveResult(check(\
+   $OS_VER,'^2\.([89]|10)$','Certified',\
+                            'Not Certified SPARC OS'))
+}
+elsif match($PRC,'i386',true)
+{call setHcveResult(check(\
+   $OS_VER,'^2\.9$', check($OS_BIT,'^32$','Certified',\
+                                          'Not Certified x86/x86-64 OS'),\
+           '^2\.10$','Certified',\
+                     'Not Certified x86/x86-64 OS'))
+}
+else
+ call setHcveResult('Skip')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the operating system is certified.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Certified" result="PASSED"><![CDATA[You are using a certified operating system.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the certified operating systems.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not Certified SPARC OS|For SPARC v9, you must use Solaris 8, 9, or 10.|
+|Not Certified x86/x86-64 OS|For x86 or x86-64, you must use Solaris 9 32-bit or Solaris 10.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00030" mode="VERIFY" name="Patches OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00029" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the operating system be certified.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$PRC
+var @tbl = ()
+if !loadCommand('/usr/bin/showrev -p')
+ return setHcveResult('NoAccess')
+macro check_patch
+{var (\@tbl,@pch) = @arg
+ loop $pch (@pch)
+ {var ($flg,$err) = (true)
+  var ($pch_num,$pch_lvl) = split('\-',$pch)
+  if grepLastFile($pch_num,'f')
+  {var %srt = ()
+   if grepLastFile(concat('Patch: ',$pch_num,'\-'))
+   {loop $key (last)
+     var $srt{$key} = true
+    var $pch_rev = field('\s+',1,keys(%srt,'KD'))
+    next compare('ge',replace($pch_rev,'\-'),replace($pch,'\-'))
+    var $err = concat('Patch [',$pch_rev,'] must be at level [',$pch,']')
+   }
+   loop $lin (grepLastFile(concat('Obsoletes:.*',$pch_num,'.*Requires:')))
+   {var ($lvl) = match($lin,concat('.*Obsoletes:.*?',$pch_num,'\-(\d+)'))
+    if compare('ge',$lvl,$pch_lvl)
+    {var $flg = false
+     break
+    }
+   }
+   if $flg
+    call push(@tbl,nvl($err,concat('Patch [',$pch_num,'] is not installed')))
+  }
+  else
+   call push(@tbl,concat('Patch [',$pch_num,'] is not installed'))
+ }
+}
+call loadCommand('/usr/bin/showrev -p')
+if match($PRC,'sparcv9',true)
+{if match($OS_VER,'^2\.8$')
+  call check_patch(\@tbl,'108652-82','108921-21','108940-62','108773-18',\
+                         '111310-01','109147-28','111308-04','112438-03',\
+                         '108434-17','108435-17','111111-04','112396-02',\
+                         '110386-03','111023-03','111317-05','113648-03',\
+                         '115827-01','116602-01','108987-13','108528-29',\
+                         '108989-02','108993-36','109326-14','110615-11')
+ elsif match($OS_VER,'^2\.9$')
+  call check_patch(\@tbl,'113096-03','112785-35')
+ elsif match($OS_VER,'^2\.10$')
+  return setHcveResult('No OS patches required')
+ else
+  return setHcveResult('Not Certified OS')
+}
+elsif match($PRC,'i386',true)
+{if match($OS_VER,'^2\.9$')
+  call check_patch(\@tbl,'111713-06','111728-03','112234-12','113986-10',\
+                         '115114-02','116013-02')
+ elsif match($OS_VER,'^2\.10$')
+  call check_patch(\@tbl,'118345-03','119961-02')
+ else
+  return setHcveResult('Not Certified OS')
+}
+else
+ return setHcveResult('Skip')
+call setHcveResult(cond(\
+  scalar(@tbl),concat('Patches [',join(' ',@tbl),'] are missing'),\
+               'All patches exist'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the necessary operating system patches (or later) are installed. The required patches are:%BR%
+For Solaris 8 on SPARC v9: 108652-82 108921-21 108940-62 108773-18 111310-01 109147-28 111308-04 112438-03 108434-17 108435-17 111111-04 112396-02 110386-03 111023-03 111317-05 113648-03 115827-01 116602-01 108987-13 108528-29 108989-02 108993-36 109326-14 110615-11.%BR%
+For Solaris 9 on SPARC v9: 113096-03 112785-35.%BR%
+For Solaris 9 on x86 or x86-64: 111713-06 111728-03 112234-12 113986-10 115114-02 116013-02.%BR%
+For Solaris 10 on SPARC v9: No patches have been specified.%BR%
+For Solaris 10 on x86 or x86-64: 118345-03 119961-02.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="All patches exist|No OS patches required" result="PASSED"><![CDATA[All operating system patches are installed.]]></sdp_action>
+<sdp_action condition="==" minimum="Skip" result="SKIPPED"><![CDATA[This rule requires the procesor type to determine the required patches.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not Certified OS|You must use one of the listed certified operating systems.|
+|Patches ... are missing|Install the listed missing patches.|
+|NoAccess|You do not have access to ``/usr/bin/showrev``|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00031" mode="VERIFY" name="Packages OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00029" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the operating system be certified.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$PRC
+var @tbl = ()
+if !loadCommand(findCommand('pkginfo'))
+ return setHcveResult('NoAccess')
+var @pkg = ('arc','btool','hea','libm','libms','sprot','too','xwfnt','i1cs',\
+            'i15cs','i1of')
+if and(match($PRC,'sparcv9',true),match($OS_VER,'2\.(8|9)$'))
+ call push(@pkg,'sprox')
+loop $pkg (split('\s',concat('SUNW',join(' SUNW',@pkg))))
+{if not(grepLastFile($pkg,'f'))
+  call push(@tbl,$pkg)
+}
+call setHcveResult(cond(\
+  scalar(@tbl),concat('Packages [',join(' ',@tbl),'] are missing'),\
+               'All packages exist'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the necessary operating system packages are installed. The required packages are: ``SUNWarc``, ``SUNWbtool``, ``SUNWhea``, ``SUNWlibm``, ``SUNWlibms``, ``SUNWsprot``, ``SUNWtoo``, ``SUNWi1of``, ``SUNWxwfnt``, ``SUNWi1cs``, ``SUNWi15cs``. For Solaris 8 or 9 on SPARC v9, ``SUNWsprox`` is also required.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="All packages exist" result="PASSED"><![CDATA[All operating system packages are installed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not Certified OS|You must use one of the listed certified operating systems.|
+|Packages ... are missing|Install the listed missing packages.|
+|NoAccess|You do not have access to the ``pkginfo`` command.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00032" mode="VERIFY" name="FD Hard Limit OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00029" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the operating system be certified.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER
+if match($OS_VER,'^2\.10$')
+ return setHcveResult('Not required')
+var ($lmt) = command('ulimit "-Hn"')
+if !defined($lmt)
+ return setHcveResult('Not found')
+call setHcveResult(\
+ cond(or(compare('eq',$lmt,'unlimited'),expr('>=',$lmt,65536)),\
+      'File descriptors hard limit is greater than 65535',\
+      'File descriptors hard limit is lesser than 65536'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the hard limit on file descriptors that a single process can have open. It must be greater than 65535. This setting does not apply to Solaris 10.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="File descriptors hard limit is greater than 65535" result="PASSED"><![CDATA[No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not required" result="SKIPPED"><![CDATA[This setting does not apply to Solaris 10.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Set ``rlim_fd_max`` to 65536 or higher. ``ulimit -Hn`` must return a value of 65536 or higher.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00033" mode="VERIFY" name="Kernel Parameters OK?">
+<sdp_dependencies>
+<sdp_dependency id="A00029" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[This rule requires the operating system be certified.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$PRC
+macro chk_min
+{var (\@tbl,$nam,$ref,$val) = @arg
+ if !defined($val)
+ {call push(@tbl,concat($nam,'Undef'))
+  return
+ }
+ if expr('<',$val,$ref)
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+macro chk_param
+{var ($cmd,$prj) = @arg
+ var ($lin) = grepCommand(concat($cmd,' -n ',$prj,' ',${RDA.PID}),\
+                          '(basic|privileged|system)','if')
+ if match($lin,'\b(\d+(\.\d*)?)(\w*)\b')
+  var ($siz,undef,$typ) = (last)
+ return check(uc($typ),'^KB?$',expr('*',$siz,1024),\
+                       '^MB?$',expr('*',$siz,1048576),\
+                       '^GB?$',expr('*',$siz,1073741824),\
+                       '^TB?$',expr('*',$siz,1099511627776),\
+                       '^PB?$',expr('*',$siz,1125899906842624),\
+                       '^EB?$',expr('*',$siz,1152921504606846976),\
+                               $siz)
+}
+var @tbl = ()
+var $SEMMNI_REQD  = 100
+if match($PRC,'sparcv9',true)
+ var $SEMMNS_REQD = 256
+else
+ var $SEMMNS_REQD = 1024
+var $SEMMSL_REQD  = 256
+var $SHMMAX_REQD  = 4294967295
+var $SHMMIN_REQD  = 1
+var $SHMMNI_REQD  = 100
+var $SHMSEG_REQD  = 10
+
+if not(and(match($PRC,'i386',true),match($OS_VER,'^2\.10$')))
+{if !loadCommand('/etc/sysdef')
+  return setHcveResult('NoAccess-sysdef')
+}
+var $SEMMNI = field('\s+',0,grepLastFile('SEMMNI','f'))
+var $SEMMNS = field('\s+',0,grepLastFile('SEMMNS','f'))
+var $SEMMSL = field('\s+',0,grepLastFile('SEMMSL','f'))
+var $SHMMAX = field('\s+',0,grepLastFile('SHMMAX','f'))
+var $SHMMIN = field('\s+',0,grepLastFile('SHMMIN','f'))
+var $SHMMNI = field('\s+',0,grepLastFile('SHMMNI','f'))
+var $SHMSEG = field('\s+',0,grepLastFile('SHMSEG','f'))
+
+if match($PRC,'sparcv9',true)
+{if match($OS_VER,'^2\.8$')
+ {call chk_min(\@tbl,'SEMMNI',$SEMMNI_REQD,$SEMMNI)
+  call chk_min(\@tbl,'SEMMNS',$SEMMNS_REQD,$SEMMNS)
+  call chk_min(\@tbl,'SEMMSL',$SEMMSL_REQD,$SEMMSL)
+  call chk_min(\@tbl,'SHMMAX',$SHMMAX_REQD,$SHMMAX)
+  call chk_min(\@tbl,'SHMMIN',$SHMMIN_REQD,$SHMMIN)
+  call chk_min(\@tbl,'SHMMNI',$SHMMNI_REQD,$SHMMNI)
+  call chk_min(\@tbl,'SHMSEG',$SHMSEG_REQD,$SHMSEG)
+ }
+ elsif match($OS_VER,'^2\.9$')
+ {call chk_min(\@tbl,'SEMMNI',$SEMMNI_REQD,$SEMMNI)
+  call chk_min(\@tbl,'SEMMNS',$SEMMNS_REQD,$SEMMNS)
+  call chk_min(\@tbl,'SEMMSL',$SEMMSL_REQD,$SEMMSL)
+  call chk_min(\@tbl,'SHMMAX',$SHMMAX_REQD,$SHMMAX)
+  call chk_min(\@tbl,'SHMMNI',$SHMMNI_REQD,$SHMMNI)
+ }
+ elsif match($OS_VER,'^2\.10$')
+  call push(@tbl,'Not Required')
+ else
+  call push(@tbl,'Uncertified SunOS')
+}
+elsif match($PRC,'i386')
+{if match($OS_VER,'^2\.9$')
+ {call chk_min(\@tbl,'SEMMNI',$SEMMNI_REQD,$SEMMNI)
+  call chk_min(\@tbl,'SEMMNS',$SEMMNS_REQD,$SEMMNS)
+  call chk_min(\@tbl,'SEMMSL',$SEMMSL_REQD,$SEMMSL)
+  call chk_min(\@tbl,'SHMMAX',$SHMMAX_REQD,$SHMMAX)
+  call chk_min(\@tbl,'SHMMNI',$SHMMNI_REQD,$SHMMNI)
+ }
+ elsif match($OS_VER,'^2\.10$')
+ {var $cmd = findCommand('prctl')
+  if !defined($cmd)
+   return setHcveResult('NoAccess-prctl')
+  call chk_min(\@tbl,'SEMMNI',$SEMMNI_REQD,\
+                              chk_param($cmd,'project.max-sem-ids'))
+  call chk_min(\@tbl,'SEMMSL',$SEMMSL_REQD,\
+                              chk_param($cmd,'process.max-sem-nsems'))
+  call chk_min(\@tbl,'SHMMAX',$SHMMAX_REQD,\
+                              chk_param($cmd,'project.max-shm-memory'))
+  call chk_min(\@tbl,'SHMMNI',$SHMMNI_REQD,\
+                              chk_param($cmd,'project.max-shm-ids'))
+ }
+ else
+  call push(@tbl,'Uncertified SunOS')
+}
+else
+ return setHcveResult('Uncertified SunOS')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'KernelOK'))
+call setHcveVariable('$SEMMNI_REQD','$SEMMNS_REQD','$SEMMSL_REQD','$SHMMAX_REQD','$SHMMIN_REQD','$SHMMNI_REQD','$SHMSEG_REQD')]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the kernel parameters are set according to the applicable installation guide.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="KernelOK|Not Required" result="PASSED"><![CDATA[No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The kernel parameters are not set according to the ${'BOOK}. For the recommended values, see the ${'BOOK}. If they have been set in the ``/etc/system`` file, then you may have to add the following to set the parameters at boot time:%BR%
+``forceload: sys/semsys%BR%``
+``forceload: sys/shmsys%BR%``
+When you make the changes in the ``/etc/system`` file, save the file and reboot to take effect.
+|*Return Value*|*Action*|
+|SEMMNITooSmall|Increase the kernel parameter ``SEMMNI`` to ${SEMMNI_REQD}.|
+|SEMMNIUndef|``SEMMNI`` is not defined and must be set to ${SEMMNI_REQD}.|
+|SEMMNSTooSmall|Increase the kernel parameter ``SEMMNS`` to at least ${SEMMNS_REQD}. Not required for Solaris 10.|
+|SEMMNSUndef|``SEMMNS`` is not defined and must be set to ${SEMMNS_REQD}. Not required for Solaris 10.|
+|SEMMSLTooSmall|Increase the kernel parameter ``SEMMSL`` to at least ${SEMMSL_REQD}.|
+|SEMMSLUndef|``SEMMSL`` is not defined and must be set to ${SEMMSL_REQD}.|
+|SHMMAXTooSmall|Increase the kernel parameter ``SHMMAX`` to ${SHMMAX_REQD}.|
+|SHMMAXUndef|``SHMMAX`` is not defined and must be set to ${SHMMAX_REQD}.|
+|SHMMINTooSmall|Increase the kernel parameter ``SHMMIN`` to at least ${SHMMIN}. Only required for Solaris 8 on SPARC v9.|
+|SHMMINUndef|``SHMMIN`` is not defined and must be set to ${SHMMIN} or more. Only required for Solaris 8 on SPARC v9.|
+|SHMMNITooSmall|Increase the kernel parameter ``SHMMNI`` to at least ${SHMMNI_REQD}.|
+|SHMMNIUndef|``SHMMNI`` is not defined and must be set to ${SHMMNI_REQD} or more|
+|SHMSEGTooSmall|Increase the kernel parameter ``SHMSEG`` to at least ${SHMSEG}. Only required for Solaris 8 on SPARC v9.|
+|SHMSEGUndef|``SHMSEG`` is not defined and must be set to ${SHMSEG} or more. Only required for Solaris 8 on SPARC v9.|
+|NoAccess-sysdef|You do not have access to ``/etc/sysdef``. Does not apply to Solaris 10 on x86 or x86-64.|
+|NoAccess-prtcl|You do not have access to the ``prtcl`` command. Only applies to Solaris 10 on x86 or x86-64.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00034" mode="VERIFY" name="Port 1521">
+<sdp_command type="RDA"><![CDATA[var @lst = grepCommand('/bin/netstat -an','LISTEN')
+if !grep(@lst,'1521','f')
+ return setHcveResult('Free')
+if testFile('x','/usr/sbin/lsof')
+ var ($prc) = grepCommand('/usr/sbin/lsof -i TCP:1521','LIST','f')
+elsif testFile('x','/usr/bin/lsof')
+ var ($prc) = grepCommand('/usr/bin/lsof -i TCP:1521','LIST','f')
+elsif testFile('x','/usr/local/bin/lsof')
+ var ($prc) = grepCommand('/usr/local/bin/lsof -i TCP:1521','LIST','f')
+else
+ return setHcveResult('Cannot use lsof')
+if !length($prc)
+ return setHcveResult('Cannot use lsof')
+macro chk_tns
+{var ($prc) = @arg
+ var @cmd = grepCommand('ps -ef',field('\s+',1,$prc))
+ var @ver = command(replace(field(\
+    '\s+',8,grep(@cmd,'tnslsnr','f')),'tnslsnr','lsnrctl version'))
+ var $ver = field('\s+',4,grep(@ver,'LSNRCTL','f'))
+ return cond(compare('older',$ver,'10.1.0.2.0'),\
+             concat('TNS Listener version [',$ver,'] is running'),\
+             'TNS Listener 10.1.0.2 or later is running')
+}
+call setHcveResult(cond(not(match(field('\s+',0,$prc),'tnslsnr',true)),\
+                        'Port is used by non-Oracle program',\
+                        chk_tns($prc)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that port 1521 is free. If an Oracle listener version 10.1.0.2 or later uses port 1521, then the existing database and the Oracle Application Server 10g Metadata Repository will use the existing listener. The installer performs this configuration automatically. If an Oracle listener version earlier than 10.1.0.2 uses port 1521, then the existing listener must be stopped. After the installation is complete, you can configure the new 10.1.0.2 listener to listen to the existing (pre 10.1.0.2) databases. If non-Oracle programs use port 1521, then this program must be configured to listen to ports other than 1521. For more information, see the "If Port 1521 is in Use" section of the applicable installation guide.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="TNS Listener 10.1.0.2 or later is running|Free" result="PASSED"><![CDATA[Port 1521 is not used or is used by TNS Listener version 10.1.0.2 or later.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|TNS Listener version ... is running|Stop the existing listener. Refer to the ${'BOOK}.|
+|Port is used by non-Oracle program|Reconfigure the program to use a different port to 1521. Refer to the ${'BOOK}.|
+|Cannot use lsof|Check port 1521 manually. Refer to the ${'BOOK}.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00035" mode="VERIFY" name="Environment Variables OK?">
+<sdp_command type="RDA"><![CDATA[if grepEnv('^(TNS_ADMIN|ORA_NLS|ORA_NLS32|ORA_NLS33|ORACLE_SID)$')
+ return setHcveResult('Some variables are set')
+loop $fil ('/etc/oratab','/var/opt/oracle/oratab')
+{if testFile('e',$fil)
+ {if !testFile('r',$fil)
+   return setHcveResult('Cannot access oratab')
+  var @pth = (split(':',join(':',getEnv('PATH'),\
+                                 getEnv('CLASSPATH'),\
+                                 getEnv('LD_LIBRARY_PATH'))))
+  loop $lin (grepFile($fil,'#|^$','v'))
+  {var $pat = concat('^',quote(replace(field(':',1,$lin),'\/+$')),'(\/.*)?$')
+   if grep(@pth,$pat)
+    return setHcveResult('Variables containing reference to existing \
+                          Oracle homes')
+  }
+ }
+}
+return setHcveResult('Properly defined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the following environment variables are not set: ``ORACLE_SID``, ``TNS_ADMIN``, and all ``ORA_NLS``  related environment variables such as ``ORA_NLS``, ``ORA_NLS33``, and so on. In addition, the following environment variables must not reference to any existing Oracle home, ``PATH``, ``CLASSPATH``, and ``LD_LIBRARY_PATH``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Properly defined" result="PASSED"><![CDATA[Environment variables do not have any reference to existing Oracle home directories.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Variables containing reference to existing Oracle homes|Remove any reference to existing Oracle home directories from ``PATH``, ``CLASSPATH``, and ``LD_LIBRARY_PATH``.|
+|Some variables are set|Unset ``ORACLE_SID``, ``TNS_ADMIN``, ``ORA_NLS``, ``ORA_NLS32``, and ``ORA_NLS33``.|
+|Cannot access oratab|Grant read permissions on ``oratab`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00036" mode="RECORD" name="Domain Name">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var ($nam,$dom) = split('\.',$hst,2)
+if testFile('x','/bin/domainname')
+ var ($nis) = command('/bin/domainname')
+if testFile('r','/etc/resolv.conf')
+ var $dns = field('\s+',1,grepFile('/etc/resolv.conf','domain'))
+if testFile('x','/usr/sbin/nslookup')
+{if $nam
+ {var $nsl = field(concat(quote($nam),'\.'),1,\
+                  grepCommand(concat('/usr/sbin/nslookup ',$hst),'Name','f'))
+ }
+ else
+ {var $nsl = field(concat(quote($hst),'\.'),1,\
+                  grepCommand(concat('/usr/sbin/nslookup ',$hst),'Name','f'))
+ }
+}
+call setHcveResult(cond($dom,$dom,\
+                        $nis,$nis,\
+                        $dns,$dns,\
+                        $nsl,$nsl,\
+                             'NotFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host domain name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00037" mode="VERIFY" name="Host Name Length OK?">
+<sdp_command type="RDA"><![CDATA[var $hst = uname('n')
+call setHcveResult(cond(\
+  expr('>',length($hst),255),'Host name is greater than 255 characters',\
+                             'Host name is less than 255 characters'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that your fully qualified host name is not longer than 255 characters.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Host name is less than 255 characters" result="PASSED"><![CDATA[The host name is less than 255 characters. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Modify your fully qualified host name to less than 255 characters.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00038" mode="RECORD" name="IP address">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var $ip = field('\s+',1,grepCommand(concat('/usr/sbin/ping -a ',$hst),'.','f'))
+call setHcveResult(substr($ip,1,expr('-',length($ip),2)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host IP address.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00039" mode="VERIFY" name="DNS Lookup OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00038" minimum="RECORD" result="FAILED"><![CDATA[Requires IP address.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var $ip  = "%A00038%"
+var $hst = field('\.',0,command('hostname'))
+call setHcveResult(cond(\
+  not(length($ip)),\
+    'Cannot determine IP address',\
+  not(testFile('x','/usr/sbin/nslookup')),\
+    'Cannot access /usr/sbin/nslookup',\
+  and(grepCommand(concat('/usr/sbin/nslookup ',$hst),quote($ip),'f'),\
+      grepCommand(concat('/usr/sbin/nslookup ',$ip),quote($hst),'f')),\
+    'Host correctly registered in DNS',\
+    'Host not correctly registered in DNS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the host is registered correctly in the DNS.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Host correctly registered in DNS" result="PASSED"><![CDATA[The host is registered correctly in the DNS.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Host not correctly registered in DNS|Register the host.domain in the DNS.|
+|Cannot determine IP address|Fix any problem with the host IP address.|
+|Cannot access /usr/sbin/nslookup|Grant execute permissions on ``/usr/sbin/nslookup`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00040" mode="VERIFY" name="/etc/hosts Format OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00036" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires domain name.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if !testFile('r','/etc/hosts')
+ return setHcveResult('Cannot access /etc/hosts')
+if !@tbl = grepFile('/etc/hosts',\
+  concat('^([^\s\#]+\s+)+',quote(${RDA.HOST}),\
+         '\s+([^\s\#]+\s+)*',quote(${RDA.NODE}),'(\s|\z|\#)'))
+ return setHcveResult('no entry found')
+
+# Test that line begins with IPv4 IP address
+if grep(@tbl,'^(\d{1,3}\.){3}\d{1,3}\s','f')
+ return setHcveResult('Adequate IPv4 entry')
+
+# Tests that line begins with IPv6 IP address, first that all eight groups are populated, then situations where groups that are all zero are omitted (two colons together).
+if grep(@tbl,'^([A-F\d]{1,4}(:[A-F\d]{1,4}){7}\s|\
+                :(:[A-F\d]{1,4}){1,6}\s|\
+                ([A-F\d]{1,4}:){1,5}(:[A-F\d]{1,4}){1,5}\s|\
+                ([A-F\d]{1,4}:){1,6}:\s)','f')
+ return setHcveResult('Adequate IPv6 entry')
+return setHcveResult('no correct entry found')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``/etc/hosts`` file contains a line with ``ip_address fully_qualified_domainname short_hostname``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^Adequate" result="PASSED"><![CDATA[The ``/etc/hosts`` entry for the fully qualified domain name and host name is adequate.]]></sdp_action>
+<sdp_action condition="==" minimum="Cannot access /etc/hosts" result="FAILED"><![CDATA[Grant read permissions on ``/etc/hosts`` to the current user.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The fully qualified host name and host name are not configured correctly. Ensure that there is an IP address entry for the fully qualified domain name with the host name as one of the aliases.
+|*Return Value*|*Action"|
+|no entry found|No entry with the fully qualified domain name followed by the host name was found.|
+|no correct entry found|No entry beginning with an IP address with the fully qualified domain name followed by the host name was found.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00041" mode="VERIFY" name="DHCP Client OK?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+ grepCommand('ps -leaf','dhcpagent','f'),'Possible dhcpagent daemon running',\
+                                         'dhcpagent daemon not running'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the server is running DHCP client (dhcpagent daemon). DHCP clients are not supported.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="dhcpagent daemon not running" result="PASSED"><![CDATA[This server is not using a DHCP client. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[DHCP clients are not supported. You must use a static IP address and host name.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00042" mode="VERIFY" name="Oracle Home Length OK?">
+<sdp_command type="RDA"><![CDATA[var $ORACLE_HOME = getEnv('ORACLE_HOME')
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),\
+    'ORACLE_HOME is not set',\
+  expr('<=',length($ORACLE_HOME),127),\
+    'Less than 127 char',\
+    'Longer than 127 characters'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the path to the Oracle home directory is not longer than 127 characters.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Less than 127 char" result="PASSED"><![CDATA[The Oracle home directory is not longer than 127 characters.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Longer than 127 characters|Change ``ORACLE_HOME`` to a directory with a path not longer than 127 characters.|
+|ORACLE_HOME is not set|Set the ``ORACLE_HOME`` environment variable.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00043" mode="VERIFY" name="NLS_LANG Defined?">
+<sdp_command type="RDA"><![CDATA[var $env = getEnv('NLS_LANG')
+call setHcveResult(cond(\
+  not(defined($env)),\
+    'Not set',\
+  match($env,'american_america',true),\
+    'Set properly',\
+    'Not set properly'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``NLS_LANG`` environment variable is defined. If it is defined, then it must be set to ``American_America``, otherwise the Oracle Internet Directory (OID) Configuration Assistant will fail.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Not set|Set properly" result="PASSED"><![CDATA[The ``NLS_LANG`` environment variable is set properly or else is not set.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not set properly|Set the ``NLS_LANG`` environment variable to ``AMERICAN_AMERICA.&lt;characterset&gt;``|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>
+
+

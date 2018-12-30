@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean
+            name="SimpleForm"
+            type="com.bea.alsb.console.forms.SimpleForm"/>
+
+        <form-bean name="AlertRuleDetailsForm"
+                   type="com.bea.alsb.console.alertrules.forms.AlertRuleDetailsForm"/>
+
+        <form-bean name="AlertRuleConditionForm"
+                   type="com.bea.alsb.console.alertrules.forms.AlertRuleConditionForm"/>
+
+        <form-bean name="MonitoringConfigForm"
+                   type="com.bea.alsb.console.alertrules.forms.MonitoringConfigForm"/>
+
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+    <action-mappings>
+        <action
+            path="/CreateNewAlertRule"
+            type="com.bea.alsb.console.alertrules.actions.CreateNewAlertRuleAction">
+            <forward
+                name="error"
+                path="/ViewAlertRules.do"/>
+            <forward
+                name="success"
+                contextRelative="true"
+                path="jsp/alertrules/EditAlertRuleDetails.jsp"/>
+        </action>
+
+        <action path="/CancelEditAlertRule"
+                type="com.bea.alsb.console.alertrules.actions.CancelEditAlertRuleAction">
+            <forward name="success"
+                     path="/ViewAlertRules.do"/>
+        </action>
+
+        <action path="/EditAlertRuleDetails"
+                type="com.bea.alsb.console.alertrules.actions.EditAlertRuleDetailsAction"
+                name="AlertRuleDetailsForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     path="/CancelEditAlertRule.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleDetails.jsp"/>
+            <forward name="rule_conditions"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleConditions.jsp"/>
+            <forward name="rule_summary"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleSummary.jsp"/>
+        </action>
+
+        <action path="/EditAlertRuleConditions"
+                type="com.bea.alsb.console.alertrules.actions.EditAlertRuleConditionsAction"
+                name="AlertRuleConditionForm"
+                scope="request"
+                attribute="actionform">
+            <forward name="cancel"
+                     path="/CancelEditAlertRule.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleConditions.jsp"/>
+            <forward name="rule_conditions"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleConditions.jsp"/>
+            <forward name="rule_details"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleDetails.jsp"/>
+            <forward name="rule_actions"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleActions.jsp"/>
+            <forward name="rule_summary"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleSummary.jsp"/>
+        </action>
+
+        <action
+            path="/EditAlertRule"
+            type="com.bea.alsb.console.alertrules.actions.EditAlertRuleAction" >
+            <forward
+                name="success"
+                contextRelative="true"
+                path="jsp/alertrules/ViewAlertRuleSummary.jsp"/>
+            <forward
+                name="warning"
+                contextRelative="true"
+                path="jsp/main/WarningPage.jsp"/>
+        </action>
+
+        <action path="/ShowRenamePage"
+                type="com.bea.alsb.console.alertrules.actions.ShowRenamePageAction">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/alertrules/RenameAlertRule.jsp"/>
+        </action>
+
+        <action
+            path="/RenameAlertRule"
+            type="com.bea.alsb.console.alertrules.actions.RenameAlertRuleAction" >
+            <forward
+                name="success"
+                contextRelative="true"
+                path="jsp/alertrules/RenameAlertRule.jsp"/>
+
+            <forward
+                name="error"
+                contextRelative="true"
+                path="jsp/alertrules/RenameAlertRule.jsp"/>
+        </action>
+
+        <action
+            path="/ViewAlertRules"
+            type="com.bea.alsb.console.alertrules.actions.ViewAlertRulesAction"
+            name="MonitoringConfigForm"
+            attribute="monitoring_config_form"
+            scope="session"
+            validate="false">
+            <forward
+                name="success"
+                contextRelative="true"
+                path="jsp/alertrules/ViewAlertRules.jsp"/>
+            <forward
+                name="warning"
+                contextRelative="true"
+                path="jsp/main/WarningPage.jsp"/>            
+        </action>
+
+        <action
+            path="/SortAlertRules"
+            type="org.apache.struts.actions.ForwardAction"
+            parameter="jsp/alertrules/ViewAlertRules.jsp"/>
+
+        <action
+            path="/DeleteAlertRule"
+            type="com.bea.alsb.console.alertrules.actions.DeleteAlertRuleAction"
+            name="SimpleForm"
+            attribute="object"
+            scope="request"
+            validate="false"
+            input="success">
+            <forward
+                name="success"
+                path="/ViewAlertRules.do"/>
+        </action>
+
+        <action
+            path="/ViewAlertRule"
+            type="com.bea.alsb.console.alertrules.actions.EditAlertRuleAction">
+            <forward
+                name="success"
+                contextRelative="true"
+                path="jsp/alertrules/ViewAlertRuleSummary.jsp"/>
+            <forward
+                name="warning"
+                contextRelative="true"
+                path="jsp/main/WarningPage.jsp"/>
+        </action>
+
+        <action path="/EditAlertRuleSummary"
+                type="com.bea.alsb.console.alertrules.actions.EditAlertRuleSummaryAction">
+            <forward name="cancel"
+                     path="/CancelEditAlertRule.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleSummary.jsp"/>
+            <forward name="rule_details"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleDetails.jsp"/>
+            <forward name="rule_conditions"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleConditions.jsp"/>
+            <forward name="rule_actions"
+                     contextRelative="true"
+                     path="jsp/alertrules/EditAlertRuleActions.jsp"/>
+            <forward name="success"
+                     path="/ViewAlertRules.do"/>
+        </action>
+
+        <action
+            path="/ReorderAlertRules"
+            type="com.bea.alsb.console.alertrules.actions.ReorderAlertRulesAction">
+            <forward
+                name="success"
+                path="/ViewAlertRules.do"/>
+        </action>
+
+        <action
+            path="/ManageAlertRules"
+            type="com.bea.alsb.console.alertrules.actions.ManageAlertRulesAction"
+            name="MonitoringConfigForm"
+            attribute="MonitoringConfigForm"
+            scope="session"
+            validate="false">
+            <forward
+                name="success"
+                path="/ViewAlertRules.do" />
+
+        </action>
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

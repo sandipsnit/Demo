@@ -1,0 +1,99 @@
+# CRSsetup.def: Assists Cluster Ready Services Setup
+# $Id: CRSsetup.def,v 1.5 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/CRSsetup.def,v 1.5 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+CRSsetup - Assists Cluster Ready Services Collection Setup
+
+=head1 DESCRIPTION
+
+This module provided associated logic for the setup of the Cluster Ready
+Services collections.
+
+=cut
+
+#------------------------------------------------------------------------------
+# Section init: Module initialization
+#------------------------------------------------------------------------------
+section init
+
+#------------------------------------------------------------------------------
+# Section get_crs_home: Get the location of the CRS home
+#------------------------------------------------------------------------------
+section get_crs_home
+
+var $ORACLE_HOME = ${ORACLE_HOME:''}
+var $crs = ${CLUSTER_CRS_HOME}
+if !?$crs
+ run CRSinit(\$crs)
+if ?$crs
+ var ${AUX.dft} = $crs
+
+#------------------------------------------------------------------------------
+# Section get_node_list: Get the list of cluster nodes
+#------------------------------------------------------------------------------
+section get_node_list
+
+if testDir('d',$crs = ${CLUSTER_CRS_HOME})
+{if or(testFile('f',catFile($crs,'bin','olsnodes')),\
+       testFile('f',catFile($crs,'bin','olsnodes.exe')))
+ {var ($cmd,%tbl) = (lastCommand())
+
+  macro extract_hosts
+  {var (\%tbl,@cmd) = @arg
+
+   loop $cmd (@cmd)
+   {if loadCommand($cmd)
+    {loop $lin (getLines())
+     {loop $nam (split('\s+',$lin))
+      {next match($nam,'^\d+(\.\d+){3}$')
+       var $tbl{$nam} = 1
+      }
+     }
+     break
+    }
+   }
+  }
+
+  if isVms()
+  {call extract_hosts(\%tbl,concat('RUN ',$cmd,' -i'))
+   call extract_hosts(\%tbl,concat('RUN ',$cmd,' -i -l -p'),\
+                            concat('RUN ',$cmd,' -i -p'))
+  }
+  else
+  {call extract_hosts(\%tbl,concat($cmd,' -i 2>&1'))
+   call extract_hosts(\%tbl,concat($cmd,' -i -l -p 2>&1'),\
+                            concat($cmd,' -i -p 2>&1'))
+  }
+  var ${AUX.dft} = join('|',keys(%tbl))
+ }
+}
+
+=head1 SEE ALSO
+
+L<CRSinit.def|modules::CRSinit>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.21: Jaime Alcoreza.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

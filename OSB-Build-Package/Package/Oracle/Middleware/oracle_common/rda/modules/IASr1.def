@@ -1,0 +1,584 @@
+# IASr1.def: Collects Web Server Information (9iAS 1.x)
+# $Id: IASr1.def,v 2.6 2012/01/03 13:34:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/IASr1.def,v 2.6 2012/01/03 13:34:42 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+IASr1 - Collects Web Server Information (9iAS 1.x)
+
+=head1 DESCRIPTION
+
+This module collects Web Server-related information.
+
+There are two functions in this script: one that gathers information for Apache
+in a hard-coded manner and one that gathers information dynamically.
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing Web Server (9iAS 1.x) module ...',tput('off')
+
+# Initialization
+import $APACHE_TOP,$ORACLE_HOME
+var $APACHE_PAR   = dirname($APACHE_TOP)
+var $ORAWEB_HOME  = getSetting('ORAWEB_HOME','X')
+var $ORAWEB_ADMIN = getSetting('ORAWEB_ADMIN','X')
+
+var $OH  = quote($ORACLE_HOME)
+var $OH1 = concat('^',$OH,'[\\\/]')
+var $OH2 = concat('^',$OH,'\b')
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Web Server (old)'
+
+# Load the common macros
+run library()
+run IAS()
+
+# Get the ps command format
+var $PS_EF
+var $osn = getOsName()
+if match($osn,'solaris')
+{run OSsunos('PS')
+}
+elsif match($osn,'hpux')
+{run OShpux('PS')
+}
+elsif match($osn,'aix')
+{run OSaix('PS')
+}
+elsif match($osn,'dec_osf')
+{run OSosf('PS')
+}
+elsif match($osn,'linux')
+{run OSlinux('PS')
+}
+elsif match($osn,'dynixptx')
+{run OSptx('PS')
+}
+elsif match($osn,'darwin')
+{run OSdarwin('PS')
+}
+elsif isUnix()
+{run OSunix('PS')
+}
+elsif isVms()
+{run OSvms('PS')
+}
+
+# Getting Web Server Version: 3.x.x or 4.x.x
+debug ' Inside IASr1 module, getting Web Server Version: 3.x.x or 4.x.x'
+
+if loadCommand(concat(catCommand($ORAWEB_HOME,'bin','oraweb'),' -version'))
+{var $ver = field('/s+',3,grepLastFile('List'))
+ var $chk = substr($ver,0,1)
+}
+else
+{var $OAS = 'NOT INSTALLED'
+ var ($ver,$chk) = ()
+}
+
+=head2 web_env - Web Environment
+
+Collects the Web environment.
+
+=cut
+
+debug ' Inside IASr1 module, getting web environment'
+report web_env
+toc '2:[[',getFile(),'][rda_report][Web Environment]]'
+
+if compare('eq',$chk,'3')
+{write '---+!! Web Environment'
+ write $TOC
+
+ # Specific treatment for OAS 3.0
+ write '---+ Web Server Version: ',$ver
+ call writeLastFile()
+ write $TOP
+
+ write '---+ Count and Amounts'
+ var ($cnt,$cnt_ora,$cnt_lsn,$cnt_pls,$cnt_jav,$cnt_frm) = \
+  countCommand($PS_EF,'oraweb','httpd\-','wrbc.*PLSQL','wrbc.*JAVA','f45srv')
+ if $cnt
+ {write '|Number of listeners running| ',       $cnt_ora,'|'
+  write '|Number of Netscape listeners| ',      $cnt_lsn,'|'
+  write '|Number of PLSQL cartridges running| ',$cnt_pls,'|'
+  write '|Number of JAVA cartridges running| ', $cnt_jav,'|'
+  write '|Number of Forms Servers running| ',   $cnt_frm,'|'
+ }
+
+ var ($cnt,$cn200,$cnt400,$cnt500) = \
+  countFile(catFile($ORAWEB_ADMIN,'ows,','website30,','wrb,','log,','xlf.log'),\
+            ' 200 ',' 400 ',' 500 ')
+ if $cnt
+ {write '|Number of Records in xlf.log| ',$cnt,'|'
+  write '|Number STATUS 200 Records in xlf.log| ',$cnt200,'|'
+  write '|Number STATUS 400 Records in xlf.log| ',$cnt400,'|'
+  write '|Number STATUS 500 Records in xlf.log| ',$cnt500,'|'
+ }
+
+ write '|Number of errors in syserr.log| ',\
+       countFile(catFile($ORAWEB_HOME,'log','syserr.log')),'|'
+ write $TOP
+
+ # Status of WRB
+ write '---+ Status of WRB'
+ call writeCommand('owsctl status wrb')
+ write $TOP
+}
+elsif compare('eq',$chk,'4')
+{write '---+!! Web Environment'
+ write $TOC
+
+ # Specific treatment for OAS 4.0
+ write '---+ Web Server Version: ',$ver
+ call writeCommand(concat(catCommand($ORAWEB_HOME,'bin','owsctl'),' -v'))
+ write $TOP
+
+ write '---+ Count and Amounts'
+ var ($cnt,$cnt_ora,$cnt_lsn,$cnt_fac,$cnt_frm) = \
+  countCommand($PS_EF,'oraweb','httpd\-','wrksf','f45srv')
+ if $cnt
+ {write '|Number of listeners running| ',    $cnt_ora,'|'
+  write '|Number of Netscape listeners| ',   $cnt_lsn,'|'
+  write '|Number of factories running| ',    $cnt_fac,'|'
+  write '|Number of Forms Servers running| ',$cnt_frm,'|'
+ }
+ write '|Number of errors in syserr.log| ',\
+       countFile(catFile($ORAWEB_HOME,'log','syserr.log')),'|'
+ write $TOP
+
+ # Status of WRB
+ write '---+ Status of WRB'
+ call writeCommand('owsctl status -w all')
+ write $TOP
+}
+
+# Common to WAS 3.X and 4.X
+if $chk
+{write '---+ OAS Web Environment Variables'
+ write 'Checking for OFA setup: Is ORAWEB_HOME set?'
+ write
+ loop $key (grepEnv('ORAWEB'))
+  write '|',$key,' |',getEnv($key),' |'
+ write $TOP
+
+ var $dir = catDir($ORAWEB_HOME,'bin')
+ prefix
+  write '---+ ',encode($dir),' File Listing'
+ call statDir('nr',$dir)
+ if hasOutput(true)
+  write $TOP
+
+ write '---++ Last 10 errors from file:'
+ var $log = catFile($ORAWEB_HOME,'log','syserr.log')
+ if !writeTail($fil,10)
+  write '**Cannot Read: $ORAWEB_HOME/log/syserr.log**%BR%'
+ write $TOP
+
+ var $dir = catDir($ORACLE_HOME,'ows','admin','ows','website30')
+ if testDir('r',$dir)
+ {write '---++ Glance at 10 errors from all .err files'
+  loop $fil (grepDir($dir,'\.err$','ir'))
+  {prefix
+    write '---+++ Tail of ',encode($fil),' File'
+   call writeTail($fil,10)
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+
+ # Successfull http transaction and http errors - NON-ORACLE
+ prefix
+  write '---+++ Tail of xlf.log File'
+ call writeTail(catFile($ORACLE_HOME,'ows','admin','ows','website30','wrb',\
+                'log','xlf.log'),10)
+ if hasOutput(true)
+  write $TOP
+}
+elsif testDir('r',$APACHE_TOP)
+{write '---+!! Web Environment for APACHE'
+ write $TOC
+
+ write '---+ Web Related Environment Parameters'
+ write '|*Variable*|*Value*|'
+ write '|APACHE_TOP|', $APACHE_TOP,' |'
+ write '|ORACLE_HOME|',$ORACLE_HOME,' |'
+ write '|Connections||'
+ write '|ORACLE_SID|', getEnv('ORACLE_SID'),' |'
+ write '|TNS_ADMIN|',  getEnv('TNS_ADMIN'),' |'
+ write '| ||'
+
+ loop $key (grepEnv('(WEB|FORM|REPORT|JAVA|HTML|JDK|CGI|LD_LIB)'))
+  write '|',$key,'|',getEnv($key),' |'
+ write $TOP
+
+ loop $fil (grepDir($APACHE_PAR,'^wdb.*app$','ir'))
+ {prefix
+  {write '---+ Viewing ',encode(basename($fil))
+   write '---## ',encode($fil)
+  }
+  if !writeFilter($fil,'^(\s*password\s*=\s*).*$')
+   write '**Cannot read: ',encode($fil),'**%BR%'
+  write $TOP
+ }
+
+ # Currently checks for either httpds.pid or httpd.pid but they could be in a
+ # different location than the default. Probably should add logic to get the
+ # correct "pid" file name from http(s).conf or get the processes directly from
+ # ps.
+ var $dir = catFile($APACHE_TOP,'logs')
+ if testFile('r',catFile($dir,'httpds.pid'))
+ {call loadFile(lastFile())
+  var ($pid) = getLines(0,0)
+  var $pat = concat(' ',$pid,' ')
+  var $own = field('\s+',0,grepCommand($PS_EF,$pat,'f'))
+  var $usr = user()
+  var $loc = 'httpds.pid'
+ }
+ elsif testFile('r',catFile($dir,'httpd.pid'))
+ {call loadFile(lastFile())
+  var ($pid) = getLines(0,0)
+  var $pat = concat(' ',$pid,' ')
+  var $own = field('\s+',0,grepCommand($PS_EF,$pat,'f'))
+  var $usr = user()
+  var $loc = 'httpd.pid'
+ }
+ else
+  write 'Could not find the httpd.pid or httpds.pid in the ',encode($dir),\
+        ' directory.'
+}
+else
+{write '---+ Web Server Version'
+ write 'OAS apparently not installed.'
+ var $OAS = 'NOT_INSTALLED'
+}
+
+=head2 cfg_files - Configuration Files
+
+Reports information about configuration files.
+
+=cut
+
+debug ' Inside IASr1 module, getting configuration files'
+report cfg_files
+if $chk
+{if testDir('r',$ORAWEB_ADMIN)
+ {write '---+!! Web Configuration files ending in .cfg'
+  write $TOC
+
+  var $cnt = 0
+  loop $fil (grepDir($ORACLE_HOME,'\.cfg$','ir'))
+  {next match($fil,'lynx')
+   next grepFile($fil,'lyn','f')
+   prefix
+    write '---+ Viewing ',encode($fil)
+   call writeFile($fil)
+   if hasOutput(true)
+   {incr $cnt
+    write $TOP
+   }
+  }
+  if !$cnt
+   write '**Apparently could not find any cfg files under ORACLE_HOME.**'
+ }
+}
+elsif testDir('r',$APACHE_TOP)
+{loop $dir ($APACHE_TOP,$APACHE_PAR,catDir($APACHE_PAR,'modplsql','cfg'),\
+            catDir($APACHE_PAR,'Jserv','etc'))
+ {write '---+ Currently Showing: ',encode($dir)
+  call statDir('n',$dir)
+ }
+
+ if getEnv('FORMS60_WEB_CONFIG_FILE')
+ {var $fil = key(last)
+  if testFile('r',$fil)
+  {write '---+ Viewing FORMS60_WEB_CONFIG_FILE:',encode($fil)
+   call writeFile($fil)
+  }
+  else
+   write '**Cannot read: ',encode($fil),'**%BR%'
+ }
+ else
+  write '---+ FORMS60_WEB_CONFIG_FILE variable not setup.'
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Configuration Files]]'
+
+=head2 web_processes - Web Processes
+
+Gathers Web processes.
+
+=cut
+
+debug ' Inside IASr1 module, getting web processes'
+report web_processes
+if $chk
+{call loadCommand($PS_EF)
+ prefix
+ {write '---+ Web Related Processes: wrbs and orbs'
+  write '<verbatim>'
+  write getHeader()
+ }
+ loop $lin (grepLastFile('wrb'))
+  write $lin
+ loop $lin (grepLastFile('orb'))
+  write $lin
+ if hasOutput(true)
+  write '</verbatim>'
+}
+elsif isVms()
+{prefix
+ {write '---+ Apache Processes'
+  write '<verbatim>'
+ }
+ loop $lin (grepCommand('show system','APACHE$WWW','i'))
+  write $lin
+ if hasOutput(true)
+ {write '</verbatim>'
+  if !writeCommand('show process APACHE$WWW')
+   write 'Apache process found, but could not issue the SHOW PROCESS command \
+          due to lack of privileges.'
+ }
+}
+elsif testDir('r',$APACHE_TOP)
+{prefix
+ {write '---+ Apache Web Processes based on PID: ',$pid
+  write '<verbatim>'
+  write getHeader()
+ }
+ loop $lin (grepCommand($PS_EF,$pat))
+ {write $lin
+ }
+ if hasOutput(true)
+  write '</verbatim>'
+}
+else
+{write 'No configuration information for OAS'
+ write 'Not looking for wrb and orb processes, prob. not an OAS installation'
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Web Processes]]'
+
+=head2 apache_over - Apache Overview
+
+Provides Apache configuration and overview.
+
+=cut
+
+debug ' Inside IASr1 module, getting Apache overview'
+report apache_over
+if !testDir('r',$APACHE_TOP)
+{toc '2:[[',getFile(),'][rda_report][Apache Overview]]'
+ write '---+!! Main Apache Configuration Files'
+ write 'Could not read APACHE_TOP directory: ',encode($APACHE_TOP),'%BR%\
+        Check Permissions and/or re-run setup to correct path.%BR%'
+}
+else
+{toc '2:[[',getFile(),'][rda_report][Apache Overview]]'
+ write '---+!! Main Apache Configuration Files'
+ write $TOC
+
+ write '---+ List of Apache Configuration Files in ',encode($APACHE_TOP)
+ var $dir = catDir($APACHE_TOP,'conf')
+ if !statDir('t',$dir)
+  write encode($dir),' either not readable or does not exist'
+ write $TOP
+
+ loop $fil (grepDir($dir,'\.conf$','inp'))
+ {prefix
+   write '---+ Display of ',encode($fil),' File'
+  call writeFile($fil)
+  if hasOutput(true)
+   write $TOP
+ }
+
+=head2 apache_logs - Apache Log Files
+
+Gathers Apache log files.
+
+=cut
+
+ debug ' Inside IASr1 module, gathering Apache log files'
+ report apache_logs
+ write '---+!! Apache Log Files'
+ write $TOC
+ toc '2:[[',getFile(),'][rda_report][Apache Log Files]]'
+
+ # Display log files
+ var $dir = catDir($APACHE_TOP,'logs')
+ write '---+ List Files in ',encode($dir)
+ call statDir('t',$dir)
+ write $TOP
+
+ # Last 100 Lines of $APACHE_TOP/logs/*error_log
+ loop $nam (grepDir($dir,'error_log$','in'))
+ {call tail_file($dir,$nam,100)
+  write $TOP
+ }
+
+ # Last 100 Lines of $APACHE_TOP/logs/*access_log
+ loop $nam (grepDir($dir,'access_log$','in'))
+ {call tail_file($dir,$nam,100)
+  write $TOP
+ }
+
+=head2 jserv_conf - Jserv Overview
+
+Collects Jserv files and configuration information.
+
+=cut
+
+ debug ' Inside IASr1 module, gathering JServ files and configuration'
+ report jserv_conf
+ toc '2:[[',getFile(),'][rda_report][Jserv Overview]]'
+ write '---+!! Jserv Overview'
+ write $TOC
+
+ var $dir1 = catDir($APACHE_PAR,'Jserv','etc')
+ var $dir2 = catDir($APACHE_PAR,'Jserv','conf')
+ write '---+ Main JServ Configuration Files'
+ call statDir('t',$dir1)
+ call statDir('t',$dir2)
+ write $TOP
+
+ loop $fil (grepDir($dir1,'\.(conf|properties)$','inp'),\
+            grepDir($dir2,'\.(conf|properties)$','inp'))
+ {write '---++ Display of ',encode($fil)
+  if !writeFile($fil)
+   write 'Could not read or find file: ',encode($fil)
+  write $TOP
+ }
+
+ write '---+ JServ Log Files'
+ var $dir = catDir($APACHE_PAR,'Jserv','logs')
+ call statDir('t',$dir)
+
+ loop $nam (grepDir($dir,'\.log$','it'))
+ {write '---++ Display Last 100 Lines of ',encode($nam)
+  var $fil = catFile($dir,$nam)
+  if !writeTail($fil,100)
+   write 'Could not read or find file: ',encode($fil)
+  write $TOP
+ }
+
+ write '---+ JServ Processes'
+ prefix
+ {write '<verbatim>'
+  write getHeader()
+ }
+ loop $lin (grepCommand($PS_EF,'JServ'))
+  write $lin
+ if hasOutput(true)
+  write '</verbatim>'
+ else
+  write 'No JServ processes found.%BR%\
+         Could be not running or not installed on this machine.%BR%'
+ write $TOP
+}
+
+=head2 signon - Main URL / signonp - owa_util.print_cgi_env
+
+Performs Web server checks through SQL*Plus. For Web server checks, you must
+set up the base URL and PL/SQL as follows:
+
+=over 2
+
+=item o C<WEB_BASE="http://E<lt>hostE<gt>:E<lt>portE<gt>">
+
+=item o C<WEB_DCD="http://E<lt>hostE<gt>:E<lt>portE<gt>/VIS/plsql">
+
+=back
+
+=cut
+
+if and(getSetting('DATABASE_INSTALLED'),getSetting('WEB_APPS_INSTALLED'))
+{debug ' Inside IASr1 module, web checks via SQLPLUS'
+ set $req
+ {SELECT utl_http.request('_URL_')
+ " FROM dual;
+ }
+
+ report signon
+ var $url = concat(getSetting('WEB_BASE'),'/')
+ var $sql = replace($req,'_URL_',$url)
+ prefix
+ {write '---+ Main URL: ',$url
+  write '<verbatim>'
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+ {write '</verbatim>'
+  toc '2:[[',getFile(),'][rda_report][Main URL]]'
+ }
+
+ report signonp
+ var $url = concat(getSetting('WEB_DCD'),'/owa_util.print_cgi_env')
+ var $sql = replace($req,'_URL_',$url)
+ prefix
+ {write '---+ URL: ',$url
+  write '<verbatim>'
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+ {write '</verbatim>'
+  toc '2:[[',getFile(),'][rda_report][owa_util.print_cgi_env]]'
+ }
+}
+
+=head1 HTTP Server (new)
+
+Collects all files that are directly related to Oracle HTTP Server Powered by
+Apache, by scanning configuration files dynamically and identifying relevant
+files.
+
+=cut
+
+echo tput('bold'),'Processing HTTP Server ...',tput('off')
+toc '%SPLIT%'
+toc '1:HTTP Server (new)'
+
+report apache_bin
+var $dir = catDir($APACHE_TOP,'bin')
+prefix
+ write '---+ List of Files in ',encode($dir)
+call statDir('an',$dir)
+if isCreated(true)
+{toc '2:Generic'
+ toc '3:[[',getFile(),'][rda_report][',replace($dir,$OH2,'$OH'),']]'
+}
+
+debug ' Inside IASr1 module, getting Apache configuration'
+call httpServer_getListenerConf()
+debug ' Inside IASr1 module, getting Apache log files'
+call httpServer_getListenerLogs()
+debug ' Inside IASr1 module, getting start scripts'
+call httpServer_getStartScripts()
+debug ' Inside IASr1 module, getting mod_plsql configuration'
+call httpServer_getModplsqlConf()
+debug ' Inside IASr1 module, getting JServ configuration'
+call httpServer_getJServConf()
+debug ' Inside IASr1 module, getting JServ log files'
+call httpServer_getJServLogs()
+debug ' Inside IASr1 module, getting JServ Java version'
+call httpServer_getJServJavaVersions()
+
+=head1 SEE ALSO
+
+L<IAS.def|modules::IAS>, L<library.def|modules::library>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

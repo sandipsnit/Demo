@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Copyright (c) 2001, 2008, Oracle. All rights reserved.  
+ *
+ *      NAME
+ *      Deployer.xml 
+ *
+ *      NOTES
+ *      List of action steps for local/remoteprereq and installation listed here.
+ *
+ *    MODIFIED     (MM/DD/YY)  VERSION
+ *    supchoud     04/11/08 - 
+ *    spramani     02/20/08 - multi start up optimization
+ *    pjaganat     01/10/08 - 
+ *    spramani     11/19/07 -  
+ *    supchoud     10/15/07  - 
+ *    lihliu       10/04/07 -  uncomment out SecureAgent
+ *    spramani     09/26/07 - 
+ *    supchoud     09/06/07 - 
+ *    spramani     08/22/07 - 
+ *    supchoud     06/28/07 - 
+ *    spramani     05/17/07 - 
+ *    supchoud     05/02/07  - 
+ *    spramani     11/29/06 -  re-shuffled from Deployment.xml
+ *
+-->
+<prov:agentDeployment id = "NewAgentDeployment" version="1.0.0" xmlns:prov="http://www.oracle.com/sysman/prov/deployment">
+    <!-- 
+         1. This is the third step of agent push installation. The deployer class will get the deploymentment with id
+            "install" and will pick up all the actions under it to be executed according to the 'order' attribute 
+            of action tag. 
+         2. criticality 2 is the action with highest priority; critcality with 0 is the action with lowest priority 
+         3. An action with  jndiUpdateRequired= true will update the action status to jndi , otherwise not
+         4. order determines in what order the actions in a deployment will be executed
+         5. scope tells on what all nodes we need the action to be executed
+         6. Cleanup is a deployment (defined in PrereqChecker.xml )that is called at the end of anyother deployment. 
+         7. toRetry=true means this action will be re-tried regardless of what happend on last try
+    -->
+    <prov:deployment id="install" shared="false">
+            <prov:action id="InitSetup" critical="1" jndiUpdateRequired="false" order="0" scope="allNode" hidden="true" resourceID=""/>
+            <prov:action id="PreInstallScript" critical="0" jndiUpdateRequired="true" order="100" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_PRE_INSTALL_SCRIPT" 
+                  problemResId="PRE_INSTALL_PROBLEM" recomResId="PRE_INSTALL_RECO"/>
+            <prov:action id="Install" critical="1" jndiUpdateRequired="true" order="200" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_INSTALL"
+                  problemResId="INSTALL_PROBLEM" recomResId="INSTALL_RECO"/>
+            <prov:action id="optionalCommand"  type="Command" critical="0" jndiUpdateRequired="false" order="300" scope="allNode" hidden="true" resourceID="ACTION_DISPLAY_NAME_OPTIONAL_COMMAND"
+                  problemResId="OPTIONAL_CMD_PROBLEM" recomResId="OPTIONAL_CMD_RECO">
+                <prov:command type="unix" cmd="" args=""/>
+                <prov:command type="nt" cmd="" args=""/>
+            </prov:action>
+            <prov:action id="PreConfigScript" critical="0" jndiUpdateRequired="true"  order="400" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_PRE_CONFIG_SCRIPT" 
+                  problemResId="PRE_CONFIG_PROBLEM" recomResId="PRE_CONFIG_RECO"/>
+            <prov:action id="Config" critical="1" jndiUpdateRequired="true"  order="500" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_CONFIG" 
+                  problemResId="CONFIG_PROBLEM" recomResId="CONFIG_RECO"/>
+            <prov:action id="SecureAgent" critical="1" jndiUpdateRequired="true" order="550" scope ="allNode" hidden="false" resourceID="ACTION_DISPLAY_SECURE_AGENT"
+                  problemResId="SEC_AGENT_PROBLEM" recomResId="SEC_AGENT_RECO"/> 
+            <prov:action id="RunRootSH" critical="0" jndiUpdateRequired="true" order="600" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_ROOT_SH"
+                  problemResId="RUN_ROOTSH_PROBLEM" recomResId="RUN_ROOTSH_RECO"/>
+            <prov:action id="FetchAgentTargetInfo" critical ="0" 
+                  jndiUpdateRequired="true" order="625" scope="allNode"  hidden="true" resourceID=""/> 
+            <prov:action id="AgentStatus" critical ="0" jndiUpdateRequired="true" order="650" scope="allNode"  hidden="true" resourceID=""/> 
+            <prov:action id="RunAddons" critical="0" jndiUpdateRequired="true" order="700" scope="allNode" hidden="true" resourceID="ACTION_DISPLAY_NAME_ADDONS"  />
+            <prov:action id="PostInstallScript" critical="0" jndiUpdateRequired="true" order="800" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_POST_INSTALL_SCRIPT"
+                  problemResId="POST_INSTALL_PROBLEM" recomResId="POST_INSTALL_RECO"/>
+            <prov:action id="RunCRSRACPrereqSetup" critical="0" jndiUpdateRequired="true" order="900" scope="allNode" hidden="true" resourceID="ACTION_DISPLAY_NAME_CRS_RAC_PREREQ_SETUP"/>
+            <prov:action id="CollectLog" critical="2" jndiUpdateRequired="true" order="1000" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_COLLECT_LOG"
+                  problemResId="COLLECT_LOG_PROBLEM" recomResId="COLLECT_LOG_RECO"/>
+    </prov:deployment>
+    <prov:deployment id="install" shared="true">
+            <prov:action id="InitSetup" critical="1" jndiUpdateRequired="false" order="0" scope="masterNode" hidden="true" resourceID=""/>
+            <prov:action id="FindJREVersion" critical="1" jndiUpdateRequired="false" order="50" scope="restNode" hidden="true" resourceID=""/>
+            <prov:action id="PreInstallScript" critical="0" jndiUpdateRequired="true" order="100" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_PRE_INSTALL_SCRIPT"
+                  problemResId="PRE_INSTALL_PROBLEM" recomResId="PRE_INSTALL_RECO"/>
+            <prov:action id="Install" toStartDeployOnRestOnSuccess="true" critical="1" jndiUpdateRequired="true" order="200" scope="masterNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_INSTALL"
+                  problemResId="INSTALL_PROBLEM" recomResId="INSTALL_RECO"/>
+            <prov:action id="PreConfigScript" critical="0" jndiUpdateRequired="true"  order="400" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_PRE_CONFIG_SCRIPT" 
+                  problemResId="PRE_CONFIG_PROBLEM" recomResId="PRE_CONFIG_RECO"/>
+            <prov:action id="Config" critical="1" jndiUpdateRequired="true"  order="500" scope="masterNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_CONFIG"
+                  problemResId="CONFIG_PROBLEM" recomResId="CONFIG_RECO"/>
+            <prov:action id="AttachHome" critical="1" jndiUpdateRequired="true"  order="515" scope="restNode" hidden="true" resourceID=""/>
+            <prov:action id="ReConfig" critical="1" jndiUpdateRequired="true"  order="525" scope="restNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_RECONFIG" 
+                  problemResId="CONFIG_PROBLEM" recomResId="CONFIG_RECO"/>
+            <prov:action id="SecureAgent" critical="1" jndiUpdateRequired="true" order="550" scope ="allNode" hidden="false" resourceID="ACTION_DISPLAY_SECURE_AGENT"/> 
+            <prov:action id="RunRootSH" critical="0" jndiUpdateRequired="true" order="600" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_ROOT_SH"
+                  problemResId="RUN_ROOTSH_PROBLEM" recomResId="RUN_ROOTSH_RECO"/>
+            <prov:action id="FetchAgentTargetInfo" critical ="0" 
+                  jndiUpdateRequired="true" order="625" scope="allNode"  hidden="true" resourceID=""/> 
+            <prov:action id="AgentStatus" critical ="0" jndiUpdateRequired="true" order="650" scope="allNode"  hidden="false" resourceID=""/> 
+            <prov:action id="RunAddons" critical="0" jndiUpdateRequired="true" order="700" scope="masterNode" hidden="true" resourceID="ACTION_DISPLAY_NAME_ADDONS"/>
+            <prov:action id="PostInstallScript" critical="0" jndiUpdateRequired="true" order="800" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_POST_INSTALL_SCRIPT"
+                  problemResId="POST_INSTALL_PROBLEM" recomResId="POST_INSTALL_RECO"/>
+            <prov:action id="RunCRSRACPrereqSetup" critical="0" jndiUpdateRequired="true" order="900" scope="masterNode" hidden="true" resourceID="ACTION_DISPLAY_NAME_CRS_RAC_PREREQ_SETUP"/>
+            <prov:action id="CollectLog" critical="2" jndiUpdateRequired="true" order="1000" scope="allNode" hidden="false" toRetry="true" resourceID="ACTION_DIAPLSY_NAME_COLLECT_LOG"
+                  problemResId="COLLECT_LOG_PROBLEM" recomResId="COLLECT_LOG_RECO"/>
+    </prov:deployment>
+</prov:agentDeployment>

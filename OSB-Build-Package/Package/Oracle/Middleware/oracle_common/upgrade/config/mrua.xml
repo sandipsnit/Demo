@@ -1,0 +1,223 @@
+<?xml version="1.0" standalone='yes'?>
+<!DOCTYPE UpgradeCfg [
+<!ELEMENT UpgradeCfg (MRC,Database,Infrastructure)>
+<!ATTLIST UpgradeCfg MinimumVersion CDATA #REQUIRED>
+<!ATTLIST UpgradeCfg MaximumVersion CDATA #REQUIRED>
+<!ELEMENT Infrastructure (Plugin)*>
+<!ELEMENT Plugin EMPTY>
+<!ATTLIST Plugin PluginType CDATA #REQUIRED>
+<!ATTLIST Plugin Class CDATA #REQUIRED>
+<!ATTLIST Plugin DisplayName CDATA #REQUIRED>
+<!ATTLIST Plugin ShortName CDATA #REQUIRED>
+<!ELEMENT MRC (MRCVersion)*>
+<!ELEMENT MRCVersion EMPTY>
+<!ATTLIST MRCVersion DisplayName CDATA #REQUIRED>
+<!ATTLIST MRCVersion ReleaseNumber CDATA #REQUIRED>
+<!ELEMENT Database (Version)*>
+<!ELEMENT Version EMPTY>
+<!ATTLIST Version DisplayName CDATA #REQUIRED>
+<!ATTLIST Version ReleaseNumber CDATA #REQUIRED>
+]>
+
+
+<UpgradeCfg MinimumVersion="10"
+            MaximumVersion="12">
+
+<!-- List of all Metadata Repository  versions supported for upgrade --> 
+<!-- to view the current MRC version run the following SQL query -->
+<!-- SELECT version from app_registry WHERE comp_id='MRC'; -->
+<MRC>
+
+<MRCVersion         ReleaseNumber="10.1"
+        DisplayName="supported MRC version">
+</MRCVersion>
+
+<MRCVersion         ReleaseNumber="11.1.1.0.0"
+        DisplayName="supported MRC version">
+</MRCVersion>
+
+<MRCVersion         ReleaseNumber="11"
+        DisplayName="supported MRC version">
+</MRCVersion>
+
+
+<!-- Add new entries for supported MRC versions above this line -->
+</MRC>
+
+<!-- List of all RDBMS releases  supported by MRUA during MR upgrade --> 
+<!-- 'seed' database is the release that installs with OracleAS      --> 
+<!-- 'supported' databases are other RDBMS releases  also permitted  --> 
+<!-- 'unsupported' databases are specifically excluded               -->
+<!-- this is done by pattern match with trailing wildcard i.e. "10.0" -->
+<!-- unsupported means all release numbers that start with with "10.0" -->
+<!-- are unsupported -->
+<Database>
+
+<Version         ReleaseNumber="9"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="10.0"
+        DisplayName="unsupported database">
+</Version>
+
+
+<Version         ReleaseNumber="10.1"
+        DisplayName="unsupported database">
+</Version>
+
+
+<Version         ReleaseNumber="10.2.0.0"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="10.2.0.1"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="10.2.0.2"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="10.2.0.3"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="11.0"
+        DisplayName="unsupported database">
+</Version>
+
+
+<Version         ReleaseNumber="11.1.0.0"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="11.1.0.1"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="11.1.0.2"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="11.1.0.3"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="11.1.0.4"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="11.1.0.5"
+        DisplayName="unsupported database">
+</Version>
+
+<Version         ReleaseNumber="11.1.0.6"
+        DisplayName="unsupported database">
+</Version>
+
+
+
+
+<!-- Add new entries for unsupported Oracle RDBMS versions above this line -->
+
+
+<Version         ReleaseNumber="10.2"
+        DisplayName="Oracle FMW supported database">
+</Version>
+
+<Version          ReleaseNumber="11.1"
+        DisplayName="Oracle FMW supported database">
+</Version>
+
+<Version          ReleaseNumber="11.2"
+        DisplayName="Oracle FMW supported database">
+</Version>
+
+<!-- Add new entries for supported Oracle RDBMS versions above this line -->
+</Database>
+
+<!-- Plug-ins for Infrastructure install type -->
+<Infrastructure>
+
+<!-- Required RUU plug-in must run before all others -->
+<Plugin DisplayName="Schema Version Registry"
+        ShortName="RUU"
+        PluginType="ANY"
+        Class="oracle.ias.mrua.plugin.MRUAPlugin">
+</Plugin>
+ 
+<!-- Add entries for component plugins below this line -->
+
+<Plugin DisplayName="Oracle Business Intelligence Discoverer"
+        ShortName="DISCOVERER"
+        PluginType="MR"
+        Class="oracle.ias.mrua.plugin.discoverer.DiscovererPlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle Portal"
+        ShortName="PORTAL"
+        PluginType="MR"
+        Class="oracle.ias.mrua.plugin.portal.PortalPlugin">
+</Plugin>
+ 
+<Plugin DisplayName="Oracle Internet Directory"
+        ShortName="OID"
+        PluginType="IM"
+        Class="oracle.ias.mrua.plugin.oid.OIDPlugin">
+</Plugin>
+ 
+<Plugin DisplayName="Oracle Adaptive Access Manager"
+        ShortName="OAAM"
+        PluginType="OAAM"
+        Class="oracle.ias.mrua.plugin.oaam.OAAMPlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle Identity Manager"
+        ShortName="OIM"
+        PluginType="OIM"
+        Class="oracle.iam.mrua.plugin.oim.OIMSchemaUpgradePlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle Data Integrator"
+        ShortName="ODI"
+        PluginType="ODI"
+        Class="oracle.ias.mrua.plugin.odi.ODIPlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle B2B"
+        ShortName="B2B"
+        PluginType="B2B"
+        Class="oracle.ias.mrua.plugin.pc.B2BPlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle Application Server Business Activity Monitoring"
+        ShortName="BAM"
+        PluginType="BAM"
+        Class="oracle.ias.mrua.plugin.pc.BAMPlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle BI Platform"
+        ShortName="BIPLATFORM"
+        PluginType="BIPLATFORM"
+        Class="oracle.ias.mrua.plugin.biplatform.BIPlatformPlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle WebCenter Content"
+        ShortName="UCM"
+        PluginType="UCM"
+        Class="oracle.ias.mrua.plugin.ucm.UCMPlugin">
+</Plugin>
+
+<Plugin DisplayName="Oracle WebCenter Content: Records"
+        ShortName="URM"
+        PluginType="URM"
+        Class="oracle.ias.mrua.plugin.urm.URMPlugin">
+</Plugin>
+
+<!-- Add entries for additional plugins above this line -->
+ 
+
+</Infrastructure>
+
+</UpgradeCfg>

@@ -1,0 +1,1281 @@
+<sdp_diaglet platform="linux" product="AS0904" set="A300AS0904_lin" title="Oracle Application Server 10g (9.0.4) Preinstall (Linux)" type="A">
+<sdp_meta id="$Id: A300AS0904_lin.xml,v 2.7 2012/04/18 16:21:17 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve Temp Space and Swap Space Checks" date="20120405" type="history"/>
+<sdp_content set="A300AS0904_lin" title="Oracle Application Server 10g (9.0.4) Preinstall (Linux)" type="check">
+<sdp_group>
+<sdp_rule id="A00000" mode="RECORD" name="OS">
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$OS_TYP,$OS_NAM,$OS_BIT
+call setHcveResult(concat($OS_ARC,' ',$OS_NAM,' ',$OS_BIT,'-bit',' (',$OS_TYP,')'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system (OS) description.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00001" mode="VERIFY" name="Processor Type">
+<sdp_command type="RDA"><![CDATA[var @CPU = ()
+call setHcveVariable('@CPU')
+if !testFile('r','/proc/cpuinfo')
+ return setHcveResult('Cannot access /proc/cpuinfo')
+var @CPU = grepFile('/proc/cpuinfo','.')
+var @lst = grep(@CPU,'model name')
+call setHcveResult(cond(\
+  grep(@lst,'Pentium','if'), 'Pentium',\
+                             'Not a Pentium processor'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor type. The minimum requirement for the processor type is Pentium (32-bit).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Pentium" result="PASSED"><![CDATA[The minimum requirement for the processor type has been met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The minimum requirement for the processor type is Pentium (32-bit).
+|*Return Value*|*Action*|
+|Not a Pentium processor|Use a certified processor type.|
+|Cannot access /proc/cpuinfo|Grant read permissions on ``/proc/cpuinfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00002" mode="VERIFY" name="Processor Speed">
+<sdp_command type="RDA"><![CDATA[import @CPU
+if !defined($CPU[0])
+ return setHcveResult('Cannot access /proc/cpuinfo')
+call setHcveResult(field('\s+:\s+',1,grep(@CPU,'cpu MHz','f')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor speed. The minimum requirement for the processor speed is 450 MHz or faster.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" maximum="N" minimum="450" result="PASSED"><![CDATA[The minimum requirement for the processor speed is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The minimum requirement for the processor speed is 450 MHz or faster.
+|*Return Value*|*Action*|
+|Processor speed|Use a processor with a speed of 450 MHz or faster.|
+|Cannot access /proc/cpuinfo|Grant read permissions on ``/proc/cpuinfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00003" mode="VERIFY" name="Network">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  not(testFile('x','/sbin/ifconfig')),     'Cannot access /sbin/ifconfig',\
+  grepCommand('/sbin/ifconfig','eth','f'), 'Connected',\
+                                           'Not connected. Check log.'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system is connected to a network. You can install Oracle Application Server 10g on a standalone system that is not connected to a network or on a system that is connected to a network. Although both cases are supported, when the system is not connected to a network, you must configure the system to resolve the host name of the system to either a static IP address or a loopback IP address. To access Oracle Application Server, you must use a local browser. For more information, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Connected|Not connected. Check log." result="PASSED"><![CDATA[The system is connected to a network.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Cannot access /sbin/ifconfig|Grant execute permissions on ``/sbin/ifconfig`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00004" mode="VERIFY" name="Memory">
+<sdp_command type="RDA"><![CDATA[var $MEM = undef
+call setHcveVariable('$MEM')
+var $MEM = field('\s+',1,grepFile('/proc/meminfo','MemTotal','f'))
+call setHcveResult(cond(\
+  not(testFile('r','/proc/meminfo')), 'Cannot access /proc/meminfo',\
+                                      concat($MEM,' KB')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the available physical memory in KB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum=" KB$" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00005" mode="VERIFY" name="Memory for MDR and OIM">
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),      'Cannot access /proc/meminfo',\
+  expr('>=',$MEM,1000000), 'Available',\
+                           'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Metadata Repository (MDR) and Oracle Identity Management (OIM) install type. The minimum requirement is 1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Metadata Repository and Oracle Identity Management install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Metadata Repository and Oracle Identity Management install type.|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00006" mode="VERIFY" name="Memory for OIM Only">
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),     'Cannot access /proc/meminfo',\
+  expr('>=',$MEM,512000), 'Available',\
+                          'Need at least 512 MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Identity Management only install type. The minimum requirement is 512 MB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Identity Management only install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 512 MB|Increase the memory to 512 MB or more to install the Identity Management only install type.|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00007" mode="VERIFY" name="Memory for MDR only">
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),     'Cannot access /proc/meminfo',\
+  expr('>=',$MEM,750000), 'Available',\
+                          'Need at least 750 MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Metadata Repository (MDR) only install type. The minimum requirement is 750 MB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Metadata Repository only install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 750 MB|Increase the memory to 750 MB or more to install the Metadata Repository only install type.|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00008" mode="VERIFY" name="Memory for J2EE">
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),     'Cannot access /proc/meminfo',\
+  expr('>=',$MEM,512000), 'Available',\
+                          'Need at least 512 MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the J2EE and Web Cache install type. The minimum requirement is 512 MB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the J2EE and Web Cache install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 512 MB|Increase the memory to 512 MB or more to install the J2EE and Web Cache install type.|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00009" mode="VERIFY" name="Memory for Portal">
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),      'Cannot access /proc/meminfo',\
+  expr('>=',$MEM,1000000), 'Available',\
+                           'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Portal and Wireless install type. The minimum requirement is 1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Portal and Wireless install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Portal and Wireless install type.|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00010" mode="VERIFY" name="Memory for BI and Forms">
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  not(defined($MEM)),      'Cannot access /proc/meminfo',\
+  expr('>=',$MEM,1000000), 'Available',\
+                           'Need at least 1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough memory to install the Business Intelligence (BI) and Forms install type. The minimum requirement is 1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install the Business Intelligence and Forms install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the memory to 1 GB or more to install the Business Intelligence and Forms install type.|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00011" mode="VERIFY" name="Disk Space">
+<sdp_command type="RDA"><![CDATA[var $ORACLE_HOME = getEnv('ORACLE_HOME')
+var $DF = cond(\
+  not($ORACLE_HOME),             'ORACLE_HOME is not set',\
+  not(testDir('d',$ORACLE_HOME)),'Cannot access ORACLE_HOME',\
+                                 get_df($ORACLE_HOME))
+call setHcveVariable('$DF')
+call setHcveResult(cond(isNumber($DF),concat($DF,' KB'),$DF))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the available disk space.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum=" KB$" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|ORACLE_HOME is not set|Set ORACLE_HOME environment variable.|
+|Cannot access ORACLE_HOME|Set ORACLE_HOME to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00012" mode="VERIFY" name="Space for Infra">
+<sdp_command type="RDA"><![CDATA[import $DF
+call setHcveResult(cond(\
+  not(isNumber($DF)),    $DF,\
+  expr('>=',$DF,2500000),'Available',\
+                         'Need at least 2.5 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Infrastructure install type. The minimum requirement is 2.5 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Infrastructure install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 2.5 GB|Increase the available space to 2.5 GB or more to install the Infrastructure install type.|
+|ORACLE_HOME is not set|Set the ORACLE_HOME environment variable.|
+|Cannot access ORACLE_HOME|Set ORACLE_HOME to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00013" mode="VERIFY" name="Space for J2EE">
+<sdp_command type="RDA"><![CDATA[import $DF
+call setHcveResult(cond(\
+  not(isNumber($DF)),   $DF,\
+  expr('>=',$DF,520000),'Available',\
+                        'Need at least 520 MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the J2EE and Web Cache install type. The minimum requirement is 520 MB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the J2EE and Web Cache install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 520 MB|Increase the available space to 520 MB or more to install the J2EE and Web Cache install type.|
+|ORACLE_HOME is not set|Set the ORACLE_HOME environment variable.|
+|Cannot access ORACLE_HOME|Set ORACLE_HOME to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00014" mode="VERIFY" name="Space for Portal">
+<sdp_command type="RDA"><![CDATA[import $DF
+call setHcveResult(cond(\
+  not(isNumber($DF)),    $DF,\
+  expr('>=',$DF,1100000),'Available',\
+                         'Need at least 1.1 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Portal and Wireless install type. The minimum requirement is 1.1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Portal and Wireless install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1.1 GB|Increase the available space to 1.1 GB or more to install the Portal and Wireless install type.|
+|ORACLE_HOME is not set|Set the ORACLE_HOME environment variable.|
+|Cannot access ORACLE_HOME|Set ORACLE_HOME to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00015" mode="VERIFY" name="Space for BI and Forms">
+<sdp_command type="RDA"><![CDATA[import $DF
+call setHcveResult(cond(\
+  not(isNumber($DF)),    $DF,\
+  expr('>=',$DF,1650000),'Available',\
+                         'Need at least 1.65 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Business Intelligence (BI) and Forms install type. The minimum requirement is 1.65 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Business Intelligence and Forms install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1.65GB|Increase the available space to 1.1 GB or more to install the Business Intelligence and Forms install type.|
+|ORACLE_HOME is not set|Set the ORACLE_HOME environment variable.|
+|Cannot access ORACLE_HOME|Set ORACLE_HOME to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00016" mode="VERIFY" name="Space for Developer Kit">
+<sdp_command type="RDA"><![CDATA[import $DF
+call setHcveResult(cond(\
+  not(isNumber($DF)),   $DF,\
+  expr('>=',$DF,600000),'Available',\
+                        'Need at least 600 MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough disk space to install the Developer Kit install type. The minimum requirement is 600 MB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough disk space to install the Developer Kit install type.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Valuei*|*Action*|
+|Need at least 600 MB|Increase the available space to 600 MB or more to install the Developer Kit install type.|
+|ORACLE_HOME is not set|Set the ORACLE_HOME environment variable.|
+|Cannot access ORACLE_HOME|Set ORACLE_HOME to a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00017" mode="VERIFY" name="Temp Space">
+<sdp_command type="RDA"><![CDATA[
+var ($flg,$tmp,@tbl) = (true,{'/tmp','/tmp'})
+if getEnv('TMP')
+ var $tmp->{'TMP'} = last
+loop $key (keys(%tmp))
+{if !testDir('d',$tmp->{$key})
+  call push(@tbl,concat($key,' invalidDir'))
+ else
+ {if !testDir('w',$tmp->{$key})
+   call push(@tbl,concat($key,' NoWrite'))
+  if and($flg,expr('>=',get_df($tmp->{$key}),256000))
+   var $flg = false
+ }
+}
+if $flg
+{loop $key (keys(%tmp))
+  call push(@tbl,concat($key,' tooSmall'))
+}
+call setHcveParameter('RULE.A00017',$tmp)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'TempSpaceOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough temporary space. Initially, Oracle Universal Installer (OUI) checks the ``TMP`` and ``TMPDIR`` environment variables to locate the temporary directory. If these environment variables do not exist, then OUI uses ``/tmp``. The minimum requirement is 250 MB.]]></sdp_description>
+<<sdp_actions>
+<sdp_action condition="==" minimum="TempSpaceOK" result="PASSED"><![CDATA[There is sufficient temporary disk space available for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The temporary space is not configured correctly.
+|*Return Value*|*Action*|
+|/tmp invalidDir|ALERT - ``/tmp`` is not a valid directory. ``/tmp`` needs to be a directory.|
+|/tmp NoWrite|ALERT - The user does not have write permissions to the ``/tmp`` directory.|
+|/tmp tooSmall|ALERT - There is less than the needed 250 MB of free space in the ``/tmp`` directory.|
+|TMP invalidDir|ALERT - ``TMP`` is set to ${`RULE.A00017.TMP} in the environment; however, ${`RULE.A00017.TMP} is an invalid directory. Take appropriate action.|
+|TMP NoWrite|ALERT - ``TMP`` is set to ${`RULE.A00017.TMP} in the environment; however, the user does not have write permissions to ${`RULE.A00017.TMP}.|
+|TMP tooSmall|ALERT - ``TMP`` is set to ${`RULE.A00017.TMP} in the environment; however, ${`RULE.A00017.TMP} has less than the required 250 MB of free space. Make sure your temporary space has at least 250 MB of free space.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00018" mode="VERIFY" name="Swap Space">
+<sdp_command type="RDA"><![CDATA[var $SWAP = undef
+if !testFile('r','/proc/meminfo')
+ return setHcveResult('Cannot access /proc/meminfo')
+var $SWAP = field('\s+',1,grepFile('/proc/meminfo','SwapTotal','f'))
+call setHcveResult(cond(expr('>=',$SWAP,1572864),'Available',\
+                                                 'Need at least 1.5 GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough swap space. The minimum requirement is 1.5 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Available" result="PASSED"><![CDATA[The system has enough swap space.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1.5 GB|Increase the swap space to 1.5 GB or more.|
+|Cannot access /proc/meminfo|Grant read permissions on ``/proc/meminfo`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00019" mode="VERIFY" name="Monitor Colors">
+<sdp_command type="RDA"><![CDATA[call loadCommand('/usr/X11R6/bin/xdpyinfo 2>&1')
+var @dpt = grepLastFile('depths')
+call setHcveResult(cond(\
+  grep(@dpt,'8','f'),              'Adequate',\
+  not(defined(getEnv('DISPLAY'))), 'DISPLAY is not set',\
+  grepLastFile('unable','f'),      'Cannot open DISPLAY',\
+                                   'Need at least 256 colors'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the monitor has a minimum of 256 colors.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The monitor has enough colors.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 256 colors|Use a display with 256 colors.|
+|DISPLAY is not set|Set the DISPLAY environment variable to a valid display.|
+|Cannot open DISPLAY|Set the DISPLAY environment variable to a correct display.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00020" mode="VERIFY" name="OS Certified?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP
+var $UNT_LVL = field('\s+',2,\
+  grepFile('/etc/UnitedLinux-release','PATCHLEVEL','f'))
+call setHcveVariable('$UNT_LVL')
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    '(pensacola|panama|shrike|taroon)', 'Certified',\
+                                        'Not Certified'),\
+  'UnitedLinux',check(\
+     $UNT_LVL,'^(3|2a)$', 'Certified',\
+                          'Need SP2a or SP3 for United Linux 1.0'),\
+  'Not Certified'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the operating system is certified. The following operating systems are certified for Oracle Application Server 10g: Red Hat Enterprise Linux AS/ES 2.1, Red Hat Enterprise Linux AS/ES 3.0, and United Linux 1.0 SP2a and SP3.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Certified" result="PASSED"><![CDATA[The operating system is certified.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not Certified|You must use one of the listed certified operating systems.|
+|Need SP2a or SP3 for United Linux 1.0|Apply SP2a or SP3 on United Linux 1.0|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00021" mode="VERIFY" name="Errata for RH 2.1">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_VER
+var $VER = uname('r')
+call setHcveVariable('$VER')
+call setHcveResult(check(lc($OS_NAM),\
+    '(pensacola|panama|shrike)',cond(\
+       not(compare('same',$OS_VER,'2.4.9')),\
+         'Need kernel 2.4.9',\
+       expr('>=',replace(field('\.',3,$VER),'[^\d]','',true),'25'),\
+         'Adequate',\
+         'Need at least Errata 25'),\
+    'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the Errata 25 or later are installed for Red Hat Application Server (AS) 2.1.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct Errata or later are installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least Errata 25|Install Errata 25 or later.|
+|Need kernel 2.4.9|Use Red Hat AS 2.1 with 2.4.9 kernel.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00022" mode="VERIFY" name="Kernel Version">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM,$OS_VER,$VER,$UNT_LVL
+macro chk_version
+{var ($ver,$ref) = @arg
+ return compare('older',$ver,$ref)
+}
+var $ver = replace($VER,'\-','.')
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    '(pensacola|panama|shrike)',cond(\
+       chk_version($OS_VER,'2.4.9'), 'Need 2.4.9 for Red Hat 2.1',\
+                                     'Adequate'),\
+    'taroon',cond(\
+       chk_version($ver,'1.4.21.4'), 'Need 2.4.21-4+ for Red Hat 3.0',\
+                                     'Adequate'),\
+                                     'Not certified OS'),\
+  'UnitedLinux',check($UNT_LVL,\
+       '^2a$',cond(chk_version($ver,'2.4.19'),\
+                                     'Need 2.4.19+ for United Linux with SP2a',\
+                                     'Adequate'),\
+       '^3$', cond(chk_version($ver,'2.4.21'),\
+                                     'Need 2.4.21+ for United Linux with SP3',\
+                                     'Adequate'),\
+                                     'Need SP2a or SP3 for United Linux 1.0'),\
+  'Not certified OS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the minimum supported kernel. The kernel version depends on the distribution:
+For Red Hat AS/ES2.1: 2.4.9.
+For Red Hat AS/ES 3.0: 2.4.21-4-EL.
+For United Linux 1.0-SP2a: 2.4.19.
+For United Linux 1.0-SP3: 2.4.21.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The correct kernel or later is installed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need 2.4.9 for Red Hat 2.1|Use Red Hat 2.1 with 2.4.9 kernel.|
+|Need 2.4.21-4+ for Red Hat 3.0|Use Red Hat 3.0 with 2.4.21-4 kernel|
+|Need 2.4.19+ for United Linux with SP2a|Use United Linux 1.0 + SP2a with 2.4.19 kernel or later.|
+|Need 2.4.21+ for United Linux with SP3|Use United Linux 1.0 + SP3 with 2.4.21 kernel or later.|
+|Need SP2a or SP3 for United Linux 1.0|Use United Linux 1.0 with SP2a or SP3.|
+|Not certified OS|Use a certified operating system.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00023" mode="VERIFY" name="glibc Version">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM,$UNT_LVL
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    '(pensacola|panama|shrike)', tst_os_pkg('glibc','2.2.4-32'),\
+    'taroon',                    tst_os_pkg('glibc','2.3.2-95.3'),\
+                                 'Not certified OS'),\
+  'UnitedLinux',check($UNT_LVL,\
+    '^2a$', tst_os_pkg('glibc','2.2.5-179'),\
+    '^3$',  tst_os_pkg('glibc','2.2.5-213'),\
+            'Need SP2a or SP3 for United Linux 1.0'),\
+  'Not certified OS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the minimum supported ``glibc``. The ``glibc`` version depends on the distribution:
+For Red Hat 2.1: ``glibc-2.2.4-32`` or later.
+For Red Hat 3.0: ``glibc-2.3.2-95.3`` or later.
+For United Linux 1.0-SP2a: ``glibc-2.2.5-179`` or later.
+For United Linux 1.0-SP3: ``glibc-2.2.5-213`` or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The correct ``glibc`` version or later is installed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least glibc-2.2.4-32|Use Red Hat 2.1 with glibc-2.2.4-32 or later.|
+|Need at least glibc-2.3.2-95.3|Use Red Hat 3.0 with glibc-2.3.2-95.3 or later.|
+|Need at least glibc-2.2.5-179|Use United Linux 1.0 + SP2a with glibc-2.2.5-179 or later.|
+|Need at least glibc-2.2.5-213|Use United Linux 1.0 + SP3 with glibc-2.2.5-213 or later.|
+|Need SP2a or SP3 for United Linux 1.0|Use United Linux 1.0 with SP2a or SP3.|
+|... not installed|Install glibc.|
+|Not certified OS|Use a certified operating system.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00024" mode="VERIFY" name="gcc Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  '(pensacola|panama|shrike)', tst_os_pkg('gcc','2.96-108.1'),\
+  'taroon',                    tst_os_pkg('gcc','3.2.3-20'),\
+                               'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the minimum supported ``gcc`` version. This is applicable to Red Hat only.
+For Red Hat AS 2.1: ``gcc-2.96-108.1`` or later.
+For Red Hat 3.0: ``gcc-3.2.3-20`` or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct ``gcc`` package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least gcc-2.96-108.1|Install ``gcc-2.96-108.1`` or later.|
+|Need at least gcc-3.2.3-20|Install ``gcc-3.2.3-20 ``or later.|
+|... not installed|Install ``gcc-2.96-108.1 ``or later for Pensacola, Panama, Shrike.|
+|... not installed|Install ``gcc-3.2.3-20 ``or later for Taroon.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00025" mode="VERIFY" name="pdksh Version">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    '(pensacola|panama|shrike)', tst_os_pkg('pdksh','5.2.14-13'),\
+    'taroon',                    tst_os_pkg('pdksh','5.2.14'),\
+                                 'Not certified OS'),\
+  'UnitedLinux',tst_os_pkg('pdksh','5.2.14'),\
+  'Not certified OS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the minimum required pdksh package version.
+For Red Hat AS 2.1: pdksh-5.2.14-13 or later.
+For Red Hat AS 3.0 and United Linux 1.0: pdksh-5.2.14 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The correct pdksh package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least pdksh-5.2.14-13|Install pdksh-5.2.14-13 or later.|
+|Need at least pdksh-5.2.14|Install pdksh-5.2.14 or later.|
+|... not installed|Install pdksh-5.2.14-13 or later for Pensacola, Panama, Shrike.|
+|... not installed|Install pdksh-5.2.14 or later for Taroon, United Linux 1.0.|
+|Not certified OS|Use a certified operating system.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00026" mode="VERIFY" name="openmotif Version">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    '(pensacola|panama|shrike)', tst_os_pkg('openmotif','2.1.30'),\
+    'taroon',                    tst_os_pkg('openmotif','2.1.30-8'),\
+                                 'Not certified OS'),\
+  'UnitedLinux',tst_os_pkg('openmotif','2.1.30MLI4'),\
+  'Not certified OS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the minimum required openmotif package version.
+For Red Hat AS 2.1: openmotif-2.1.30 or later.
+For Red Hat AS 3.0: openmotif21-2.1.30-8 or later.
+For United Linux 1.0: openmotif-2.1.30MLI4 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The correct openmotif package version or later is installed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least openmotif-2.1.30|Install openmotif-2.1.30 or later.|
+|Need at least openmotif-2.1.30-8|Install openmotif21-2.1.30-8 or later.|
+|Need at least openmotif(MLI4)-2.1.30|Install openmotif-2.1.30MLI4 or later.|
+|... not installed|Install openmotif-2.1.30 or later for Pensacola, Panama, Shrike.|
+|... not installed|Install openmotif21-2.1.30-8 or later for Taroon.|
+|... not installed|Install openmotif-2.1.30MLI4 or later for United Linux 1.0.|
+|Not certified OS|Use a certified operating system.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00027" mode="VERIFY" name="sysstat Version">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    '(pensacola|panama|shrike)', tst_os_pkg('sysstat','4.0.1'),\
+    'taroon',                    tst_os_pkg('sysstat','4.0.7'),\
+                                 'Not certified OS'),\
+  'UnitedLinux',tst_os_pkg('sysstat','4.0.3'),\
+  'Not certified OS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the minimum required sysstat package version.
+For Red Hat AS/ES 2.1: sysstat-4.0.1 or later.
+For Red Hat AS/ES 3.0: sysstat-4.0.7 or later.
+For United Linux 1.0: sysstat-4.0.3 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The correct sysstat package version or later is installed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least sysstat-4.0.1|Install sysstat-4.0.1 or later.|
+|Need at least sysstat-4.0.3|Install sysstat-4.0.3 or later.|
+|Need at least sysstat-4.0.7|Install sysstat-4.0.7 or later.|
+|... not installed|Install sysstat-4.0.1 or later for Pensacola, Panama, Shrike.|
+|... not installed|Install sysstat-4.0.3 or later for Taroon.|
+|... not installed|Install sysstat-4.0.7 or later for United Linux 1.0.|
+|Not certified OS|Use a certified operating system.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00028" mode="VERIFY" name="compat-glibc Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  '(pensacola|panama|shrike)', tst_os_pkg('compat-glibc','6.2-2.1.3.2'),\
+  'taroon',                    tst_os_pkg('compat-glibc','7.x-2.2.4.32.5'),\
+                               'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the minimum required compat-glibc package version.
+For Red Hat AS/ES 2.1: compat-glibc-6.2-2.1.3.2 or later.
+For Red Hat AS/ES 3.0: compat-glibc-7.x-2.2.4.32.5 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct compat-glibc package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least compat-glibc-6.2-2.1.3.2|Install compat-glibc-6.2-2.1.3.2 or later.|
+|Need at least compat-glibc-7.x-2.2.4.32.5|Install compat-glibc-7.x-2.2.4.32.5 or later.|
+|... not installed|Install compat-glibc-6.2-2.1.3.2 or later for Pensacola, Panama, Shrike.|
+|... not installed|Install compat-glibc-7.x-2.2.4.32.5 or later for Taroon.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00029" mode="VERIFY" name="libstdc++ Version">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    '(pensacola|panama|shrike)', tst_os_pkg('libstdc++','2.96-108.1'),\
+                                 'Not required'),\
+  'UnitedLinux',tst_os_pkg('libstdc++','3.2.2-38'),\
+  'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required libstdc++ package version is installed.
+For Red Hat AS/ES 2.1: libstdc++-2.96-108.1 or later.
+For United Linux 1.0: libstdc++-3.2.2-38 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct libstdc++ package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least libstdc++-2.96-108.1|Install libstdc++-2.96-108.1 or later.|
+|Need at least libstdc++-3.2.2-38|Install libstdc++-3.2.2-38 or later.|
+|... not installed|Install libstdc++-2.96-108.1 or later for Pensacola, Panama, Shrike.|
+|... not installed|Install libstdc++-3.2.2-38 or later for United Linux 1.0.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00030" mode="VERIFY" name="setarch Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon', tst_os_pkg('setarch','1.3-1'),\
+            'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required setarch package version is installed. This is required for Red Hat AS/ES 3.0 only. The minimum required version is setarch-1.3-1 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct setarch package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least setarch-1.3-1|Install setarch-1.3-1 or later.|
+|... not installed|Install setarch-1.3-1 or later.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00031" mode="VERIFY" name="gnome-libs Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon', tst_os_pkg('gnome-libs','1.4.1.2.90-34.1'),\
+            'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required gnome-libs package version is installed. This is required for Red Hat AS/ES 3.0 only. The minimum required version is gnome-libs-1.4.1.2.90-34.1 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct gnome-libs package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least gnome-libs-1.4.1.2.90-34.1|Install gnome-libs-1.4.1.2.90-34.1 or later.|
+|... not installed|Install gnome-libs-1.4.1.2.90-34.1 or later.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00032" mode="VERIFY" name="compat-gcc Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon', tst_os_pkg('compat-gcc','7.3-2.96.122'),\
+            'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required compat-gcc package version is installed. This is required for Red Hat AS/ES 3.0 only. The minimum required version is compat-gcc-7.3-2.96.122 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct compat-gcc package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least compat-gcc-7.3-2.96.122|Install compat-gcc-7.3-2.96.122 or later.|
+|... not installed|Install compat-gcc-7.3-2.96.122 or later.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00033" mode="VERIFY" name="compat-libstdc++ Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon', tst_os_pkg('compat-libstdc++','7.3-2.96.122'),\
+            'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required compat-libstdc++ package version is installed. This is required for Red Hat AS/ES 3.0 only. The minimum required version is compat-libstdc++-7.3-2.96.122 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct compat-libstdc++ package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least compat-libstdc++-7.3-2.96.122|Install compat-libstdc++-7.3-2.96.122 or later.|
+|... not installed|Install compat-libstdc++-7.3-2.96.122 or later.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00034" mode="VERIFY" name="compat-libstdc++-devel Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon', tst_os_pkg('compat-libstdc++-devel','7.3-2.96.122'),\
+            'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required compat-libstdc++-devel package version is installed. This is required for Red Hat AS/ES 3.0 only. The minimum required version is compat-libstdc++-devel-7.3-2.96.122 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct compat-libstdc++ package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least compat-libstdc++-devel-7.3-2.96.122|Install compat-libstdc++-devel-7.3-2.96.122 or later.|
+|... not installed|Install compat-libstdc++-devel-7.3-2.96.122 or later.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00035" mode="VERIFY" name="compat-gcc-c++ Version">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon', tst_os_pkg('compat-gcc-c++','7.3-2.96.122'),\
+            'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required ccompat-gcc-c++ package version is installed. This is required for Red Hat AS/ES 3.0 only. The minimum required version is compat-gcc-c++-7.3-2.96.122 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct compat-gcc-c++ package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least compat-gcc-c++-7.3-2.96.122|Install compat-gcc-c++-7.3-2.96.122 or later.|
+|... not installed|Install compat-gcc-c++-7.3-2.96.122 or later.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00036" mode="VERIFY" name="gcc_old Version">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP
+call setHcveResult(check($OS_TYP,\
+  'UnitedLinux', tst_os_pkg('gcc_old','2.95.3'),\
+                 'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the minimum required gcc_old package version is installed. This is required for United Linux 1.0 only. The minimum required version is gcc_old-2.95.3 or later.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[The correct gcc_old package version or later is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least gcc_old-2.95.3|Install gcc_old-2.95.3 or later.|
+|... not installed|Install gcc_old-2.95.3 or later.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00037" mode="VERIFY" name="gcc and gcc++ Links">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM
+var $LS = findCommand('ls')
+call setHcveVariable('$LS')
+call setHcveResult(check($OS_TYP,\
+  'Red Hat',check(lc($OS_NAM),\
+    'taroon',cond(and(grepCommand(concat($LS,' -l /usr/bin/gcc'),\
+                                  quote('/usr/bin/gcc296'),\
+                                  'f'),\
+                      grepCommand(concat($LS,' -l /usr/bin/g++'),\
+                                  quote('/usr/bin/g++296'),\
+                                  'f')),\
+                    'Exist',\
+                  and(grepCommand(concat($LS,' -l /usr/bin/gcc'),\
+                                  quote('./gcc296'),\
+                                  'f'),\
+                      grepCommand(concat($LS,' -l /usr/bin/g++'),\
+                                  quote('./g++296'),\
+                                  'f')),\
+                    'Exist',\
+                    'Missing'),\
+                    'Not required'),\
+  'UnitedLinux',cond(and(grepCommand(concat($LS,' -l /usr/bin/cc'),\
+                                     quote('/opt/gcc295/bin/gcc'),\
+                                     'f'),\
+                         grepCommand(concat($LS,' -l /lib/libgcc.a'),\
+                                     quote('/opt/gcc295/lib/gcc-lib/\
+                                     i486-suse-linux/2.95.3/libgcc.a'),\
+                                     'f')),\
+                    'Exist',\
+                    'Missing'),\
+  'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the gcc++ links are created. This is required for Red Hat AS/ES 3.0 and United Linux 1.0.
+For Red Hat AS/ES 3.0, the following links must exist:
+``/usr/bin/gcc`` -> ``/usr/bin/gcc296`` and ``/usr/bin/g++`` -> ``/usr/bin/g++296``.
+For United Linux, 1.0 the following must exist and the gcc_package is installed (should find ``/opt/gcc295``):
+``/usr/bin/gcc`` -> ``/opt/gcc295/bin/gcc``
+``/usr/bin/cc`` -> ``/opt/gcc295/bin/gcc``
+``/lib/libgcc.a`` -> ``/opt/opt/gcc295/lib/gcc-lib/i486-suse-linux/2.95.3/libgcc.a``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Exist|Not required" result="PASSED"><![CDATA[The correct required gcc and gcc++ links are created or are not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Missing|Create gc and gcc++ links.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00038" mode="VERIFY" name="hugemem Kernel">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$VER
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon',cond(\
+     and(match($VER,'hugemem',true),not(match(uname('m'),'i386',true))),\
+     'hugemem kernel is used',\
+     'Adequate'),\
+     'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the hugemem kernel is used. This is required for Red Hat AS/ES 3.0 only. If the hugemem kernel is used, then you must run the setarch i386 command.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Adequate|Not required" result="PASSED"><![CDATA[Either the hugemem kernel is not used or it is used and the setarch i386 command is run.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|hugemem kernel is used|Run the setarch i386 command.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00039" mode="VERIFY" name="Patch 3006854">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$LS
+call setHcveResult(check(lc($OS_NAM),\
+  'taroon',cond(\
+     and(grepCommand(concat($LS,' -l /etc/libcwait.so'),'.','f'),\
+         grepFile('/etc/ld.so.preload',quote('/etc/libcwait.so'),'f')),\
+     'Installed',\
+     'Not Installed'),\
+     'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that patch 3006854 is applied. This is required for Red Hat AS/ES 3.0 only.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Installed|Not required" result="PASSED"><![CDATA[Patch 3006854 is installed or not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not Installed|Install patch 3006854.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00040" mode="VERIFY" name="Perl Link">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$LS
+call setHcveResult(check($OS_TYP,\
+  'UnitedLinux',cond(\
+     grepCommand(concat($LS,' -l /usr/local/bin/perl'),\
+                 quote('/usr/bin/perl'),\
+                 'f'),\
+     'Exists',\
+     'Missing'),\
+     'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the following symbolic link exists. This is required for United Linux 1.0. /usr/local/bin/perl -> /usr/bin/perl.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Exists|Not required" result="PASSED"><![CDATA[The Perl link exists or is not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Missing|Create the Perl symbolic link.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00041" mode="VERIFY" name="fuser Link">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$LS
+call setHcveResult(check($OS_TYP,\
+  'UnitedLinux',cond(\
+     grepCommand(concat($LS,' -l /sbin/fuser'),quote('/bin/fuser'),'f'),\
+     'Exists',\
+     'Missing'),\
+     'Not required'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the fuser symbolic link exists. This is required for United Linux 1.0.
+/sbin/fuser -> /bin/fuser]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Exists|Not required" result="PASSED"><![CDATA[The fuser link exists or is not required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Missing|Create the fuser symbolic link.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00042" mode="VERIFY" name="orarun Package">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP
+call setHcveResult(check($OS_TYP,\
+  'UnitedLinux',cond(\
+     not(chk_os_pkg('orarun')),\
+       'Not installed',\
+     and(not(grepFile('/etc/profile.d',\
+                      '(oracle\.csh|oracle\.sh|alljava\.sh|alljava\.csh)',\
+                      'if')),\
+         not(grepFile(catFile(getEnv('HOME'),'.profile'),\
+                      quote('. ./.oracle'),\
+                      'if'))),\
+       'Installed correctly',\
+       'Clear profile.d and .profile'),\
+       'Not applicable'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the orarun package is installed on the system. This is required for United Linux 1.0. If orarun is installed, then the following must be run:
+(1) oracle.csh, oracle.sh, alljava.sh and alljava.csh do not exist under /etc/profile.d.
+(2) $HOME/.profile does not include ". ./.oracle".]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Not installed|Installed correctly|Not applicable" result="PASSED"><![CDATA[orarun is not installed or installed correctly.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Clear profile.d and .profile|Clear profile.d and .profile from reference to orarun package.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00043" mode="VERIFY" name="Patch 3167528">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP
+if !match($OS_TYP,'UnitedLinux')
+ return setHcveResult('Not required')
+macro chk_pch
+{var ($prt,$ref,$val) = @arg
+ import $err
+ while expr('<=',$prt,$ref)
+ {if and(grepLastFile($prt,'f'),not(match(\
+           substr(field('\s+',0,grepLastFile($prt,'f')),0,1),'#')))
+  {var $err = true
+   var $prt = $val
+  }
+  incr $prt
+ }
+}
+var $err = false
+call loadFile('/etc/services')
+call chk_pch(3060,3199,3200)
+call chk_pch(1812,1869,1870)
+call setHcveResult(cond($err,'Not installed','Installed'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the patch 3167528 has been applied. This is required for United Linux 1.0.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="Not required|Installed" result="PASSED"><![CDATA[Patch 3167528 is not installed or is not required]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not installed|Install patch 3167528.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00044" mode="VERIFY" name="semmsl">
+<sdp_command type="RDA"><![CDATA[var ($KER,@KER) = (undef)
+call setHcveVariable('$KER','@KER')
+if !testFile('x','/sbin/sysctl')
+ return setHcveResult('Cannot access /sbin/sysctl')
+var @KER = command('/sbin/sysctl -a')
+var ($KER) = grep(@KER,'sem','f')
+call setHcveResult(cond(\
+  expr('>=',field('\s+',2,$KER),256), 'Adequate',\
+                                      'Less than 256'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the semmsl kernel parameter is 256 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The semmsl kernel parameter is 256 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 256|Increase semmsl to 256 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00045" mode="VERIFY" name="semmns">
+<sdp_command type="RDA"><![CDATA[import $KER
+call setHcveResult(cond(\
+  not(defined($KER)),                   'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',3,$KER),32000), 'Adequate',\
+                                        'Less than 32000'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the semmns kernel parameter is 32000 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The semmns kernel parameter is 32000 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 32000|Increase semmns to 32000 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00046" mode="VERIFY" name="semopm">
+<sdp_command type="RDA"><![CDATA[import $KER
+call setHcveResult(cond(\
+  not(defined($KER)),                 'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',4,$KER),100), 'Adequate',\
+                                      'Less than 100'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the semopm kernel parameter is 100 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The semopm kernel parameter is 100 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 100|Increase semopm to 100 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00047" mode="VERIFY" name="semmni">
+<sdp_command type="RDA"><![CDATA[import $KER
+call setHcveResult(cond(\
+  not(defined($KER)),                 'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',5,$KER),142), 'Adequate',\
+                                      'Less than 142'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the semmni kernel parameter is 142 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The semmni kernel parameter is 142 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 142|Increase semmni to 142 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00048" mode="VERIFY" name="shmall">
+<sdp_command type="RDA"><![CDATA[import @KER
+call setHcveResult(cond(\
+  not(defined($KER[0])),\
+    'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',2,grep(@KER,'kernel\.shmall','f')),2097152),\
+    'Adequate',\
+    'Less than 2097152'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the shmall kernel parameter is 2097152 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The shmall kernel parameter is 2097152 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 2097152|Increase shmall to 2097152 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00049" mode="VERIFY" name="shmmax">
+<sdp_command type="RDA"><![CDATA[import @KER
+call setHcveResult(cond(\
+  not(defined($KER[0])),\
+    'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',2,grep(@KER,'kernel\.shmmax','f')),2147483648),\
+    'Adequate',\
+    'Less than 2147483648'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the shmmax kernel parameter is 2147483648 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The shmmax kernel parameter is 2147483648 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 2147483648|Increase shmmax to 2147483648 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00050" mode="VERIFY" name="shmmni">
+<sdp_command type="RDA"><![CDATA[import @KER
+call setHcveResult(cond(\
+  not(defined($KER[0])),\
+    'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',2,grep(@KER,'kernel\.shmmni','f')),142),\
+    'Adequate',\
+    'Less than 142'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the shmmni kernel parameter is 142 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The shmmni kernel parameter is 142 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 142|Increase shmmni to 142 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00051" mode="VERIFY" name="msgmax">
+<sdp_command type="RDA"><![CDATA[import @KER
+call setHcveResult(cond(\
+  not(defined($KER[0])),\
+    'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',2,grep(@KER,'kernel\.msgmax','f')),8192),\
+    'Adequate',\
+    'Less than 8192'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the msgmax kernel parameter is 8192 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The msgmax kernel parameter is 8192 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 8192|Increase msgmax to 8192 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00052" mode="VERIFY" name="msgmnb">
+<sdp_command type="RDA"><![CDATA[import @KER
+call setHcveResult(cond(\
+  not(defined($KER[0])),\
+    'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',2,grep(@KER,'kernel\.msgmnb','f')),65535),\
+    'Adequate',\
+    'Less than 65535'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the msgmnb kernel parameter is 65535 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The msgmnb kernel parameter is 65535 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 65535|Increase msgmnb to 65535 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00053" mode="VERIFY" name="msgmni">
+<sdp_command type="RDA"><![CDATA[import @KER
+call setHcveResult(cond(\
+  not(defined($KER[0])),\
+    'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',2,grep(@KER,'kernel\.msgmni','f')),2878),\
+    'Adequate',\
+    'Less than 2878'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the msgmni kernel parameter is 2878 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The msgmni kernel parameter is 2878 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 2878|Increase msgmni to 2878 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00054" mode="VERIFY" name="file-max">
+<sdp_command type="RDA"><![CDATA[import @KER
+call setHcveResult(cond(\
+  not(defined($KER[0])),\
+    'Cannot access /sbin/sysctl',\
+  expr('>=',field('\s+',2,grep(@KER,'file\-max','f')),131072),\
+    'Adequate',\
+    'Less than 131072'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the file-max kernel parameter is 131072 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The file-max kernel parameter is 131072 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 131072|Increase file-max to 131072 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00055" mode="VERIFY" name="ip_local_port_range">
+<sdp_command type="RDA"><![CDATA[import @KER
+if !defined($KER[0])
+ return setHcveResult('Cannot access /sbin/sysctl')
+var ($lin) = grep(@KER,'ip_local_port_range','f')
+var (undef,undef,$low,$hig) = split('\s+',$lin,4)
+call setHcveResult(cond(and(expr('<=',$low,20000),expr('>=',$hig,65000)),\
+                        'Adequate',\
+                        'Less than 20000 and 65000'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``ip_local_port_range`` kernel parameter is between 20000 and 65000 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The ``ip_local_port_range`` kernel parameter is between 20000 and 65000 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 20000 and 65000|Increase ``ip_local_port_range`` to 20000 and 65000 or higher.|
+|Cannot access /sbin/sysctl|Grant execute permissions on ``/sbin/sysctl`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00056" mode="VERIFY" name="Limit Processes">
+<sdp_command type="RDA"><![CDATA[var $shl = getEnv('SHELL')
+macro proc_lmt
+{var ($cmd,$flg) = @arg
+ var ($val) = command($cmd)
+ if $flg
+  var $val = field('\s+',1,$val)
+ if compare('eq',$val,'unlimited')
+  return 'Adequate'
+ return cond(and(isNumber($val),expr('>=',$val,16384)),\
+             'Adequate',\
+             'Less than 16384')
+}
+macro proc_lmt_ksh
+{var ($cmd) = @arg
+ var $val = field('\s',-1,\
+   grepCommand($cmd,'^(max user processes|processes|nproc)','if'))
+ if compare('eq',$val,'unlimited')
+  return 'Adequate'
+ return cond(and(isNumber($val),expr('>=',$val,16384)),\
+             'Adequate',\
+             'Less than 16384')
+}
+call setHcveResult(check(\
+  $shl,'csh',proc_lmt(concat($shl,' -f -c "limit maxproc"'),true),\
+       'ksh',proc_lmt_ksh(concat($shl,' -c "ulimit -a"')),\
+             proc_lmt(concat($shl,' -c "ulimit -u"'),false)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the limit of maximum processes is set to 16384 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The limit of maximum processes is set to 16384 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 16384|Increase the limit for maximum processes to 16384 or higher.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00057" mode="VERIFY" name="Limit Descriptors">
+<sdp_command type="RDA"><![CDATA[var $shl = getEnv('SHELL')
+macro proc_lmt
+{var ($cmd,$flg) = @arg
+ var ($val) = command($cmd)
+ if $flg
+  var $val = field('\s+',1,$val)
+ if compare('eq',$val,'unlimited')
+  return 'Adequate'
+ return cond(and(isNumber($val),expr('>=',$val,16384)),\
+             'Adequate',\
+             'Less than 16384')
+}
+call setHcveResult(check(\
+  $shl,'csh',proc_lmt(concat($shl,' -f -c "limit descriptors"'),true),\
+             proc_lmt(concat($shl,' -c "ulimit -n"'),false)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the limit of descriptors is set to 16384 or higher. For information about configuring this parameter, see the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Adequate" result="PASSED"><![CDATA[The limit of descriptors is set to 16384 or higher.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Less than 16384|Increase the limit for descriptors to 16384 or higher.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00058" mode="VERIFY" name="Port 1521">
+<sdp_command type="RDA"><![CDATA[var @lst = grepCommand('/bin/netstat -an','LISTEN')
+if !grep(@lst,'1521','f')
+ return setHcveResult('Free')
+if testFile('x','/usr/sbin/lsof')
+ var ($prc) = grepCommand('/usr/sbin/lsof -i TCP:1521','LIST','f')
+elsif testFile('x','/usr/bin/lsof')
+ var ($prc) = grepCommand('/usr/bin/lsof -i TCP:1521','LIST','f')
+else
+ return setHcveResult('Cannot use lsof')
+if !length($prc)
+ return setHcveResult('Cannot use lsof')
+macro chk_tns
+{var ($prc) = @arg
+ var @cmd = grepCommand('ps auxww',field('\s+',1,$prc))
+ var @ver = command(replace(field(\
+    '\s+',10,grep(@cmd,'tnslsnr','f')),'tnslsnr','lsnrctl version'))
+ var $ver = field('\s+',4,grep(@ver,'LSNRCTL','f'))
+ return cond(compare('older',$ver,'9.0.1'),\
+             concat('TNS Listener version [',$ver,'] is running'),\
+             'TNS Listener 9.0.1 or later is running')
+}
+call setHcveResult(cond(not(match(field('\s+',0,$prc),'tnslsnr',true)),\
+                        'Port is used by non-Oracle program',\
+                        chk_tns($prc)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that port 1521 is free. If an Oracle listener version 9.0.1 or later uses port 1521, then the existing database and the Oracle Application Server 10g Metadata Repository will use the existing listener. The installer performs this configuration automatically. If an Oracle listener version earlier than 9.0.1 uses port 1521, then the existing listener must be stopped. After the installation is complete, you can configure the new 9.0.1 listener to listen to the existing (pre 9.0.1) databases. If non-Oracle programs use port 1521, then this program must be configured to listen to ports other than 1521. For more information, see the "If Port 1521 is in Use" section of the ''Oracle Application Server 10g Installation Guide''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" maximum="N" minimum="TNS Listener 9.0.1 or later is running|Free" result="PASSED"><![CDATA[Port 1521 is not used or is used by TNS Listener version 9.0.1 or later.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|TNS Listener version ... is running|Stop the existing listener.|
+|Port is used by non-Oracle program|Reconfigure the program to use a different port than 1521.|
+|Cannot use lsof|Check port 1521 manually.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00059" mode="VERIFY" name="Environment Variables">
+<sdp_command type="RDA"><![CDATA[
+if grepEnv('^(TNS_ADMIN|ORA_NLS|ORA_NLS32|ORA_NLS33|LD_BIND_NOW)$')
+ return setHcveResult('Some variables are set')
+if testFile('e','/etc/oratab')
+{if !testFile('r','/etc/oratab')
+  return setHcveResult('Cannot access /etc/oratab')
+ var @pth = (split(':',join(':',getEnv('PATH'),\
+                                getEnv('CLASSPATH'),\
+                                getEnv('LD_LIBRARY_PATH'))))
+ loop $lin (grepFile('/etc/oratab','#|^$','v'))
+ {var $pat = concat('^',quote(replace(field(':',1,$lin),'\/+$')),'(\/.*)?$')
+  if grep(@pth,$pat)
+   return setHcveResult('Variables containing reference to existing \
+                         Oracle homes')
+ }
+}
+return setHcveResult('Properly defined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the following environment variables are not set: ``TNS_ADMIN``, ``ORA_NLS``, ``ORA_NLS32``, ``ORA_NLS33``, and ``LD_BIND_NOW``. In addition, the following environment variables must not reference to any existing Oracle home, ``PATH``, ``CLASSPATH``, and ``LD_LIBRARY_PATH``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Properly defined" result="PASSED"><![CDATA[Environment variables do not have a reference to any existing Oracle home directories.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Variables containing reference to existing Oracle homes|Remove any reference to existing Oracle home directories from PATH, CLASSPATH, and LD_LIBRARY_PATH.|
+|Some variables are set|Unset ``TNS_ADMIN``, ``ORA_NLS``, ``ORA_NLS32``, ``ORA_NLS33``, and ``LD_BIND_NOW``.|
+|Cannot access /etc/oratab|Grant read permissions on ``/etc/oratab`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00060" mode="RECORD" name="Domain Name">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var ($nam,$dom) = split('\.',$hst,2)
+if testFile('x','/bin/domainname')
+ var ($nis) = command('/bin/domainname')
+if testFile('r','/etc/resolv.conf')
+ var $dns = field('\s+',1,grepFile('/etc/resolv.conf','domain'))
+if testFile('x','/usr/bin/nslookup')
+{if $nam
+ {var $nsl = field(concat(quote($nam),'\.'),1,\
+                  grepCommand(concat('/usr/bin/nslookup ',$hst),'Name','f'))
+ }
+ else
+ {var $nsl = field(concat(quote($hst),'\.'),1,\
+                  grepCommand(concat('/usr/bin/nslookup ',$hst),'Name','f'))
+ }
+}
+call setHcveResult(cond($dom,$dom,\
+                        and(length($nis),compare('ne',$nis,'(none)')),$nis,\
+                        $dns,$dns,\
+                        $nsl,$nsl,\
+                             'Not configured'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host domain name.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00061" mode="RECORD" name="IP Address">
+<sdp_command type="RDA"><![CDATA[var $hst = field('\.',0,command('hostname'))
+var ($lin) = grepFile('/etc/hosts',\
+ concat('^[^#]+\s\<?',quote($hst),'\>?($|\.|\s)'),'f')
+call setHcveResult(field('\s+',0,$lin))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host IP address.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00062" mode="VERIFY" name="DNS Lookup">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00061" minimum="RECORD" result="FAILED"><![CDATA[Requires rule A00061.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var $ip  = "%A00061%"
+var $hst = field('\.',0,command('hostname'))
+call setHcveResult(cond(\
+  not(length($ip)),\
+    'Cannot determine IP address',\
+  not(testFile('x','/usr/bin/nslookup')),\
+    'Cannot access /usr/bin/nslookup',\
+  and(grepCommand(concat('/usr/bin/nslookup ',$hst),quote($ip),'f'),\
+      grepCommand(concat('/usr/bin/nslookup ',$ip),quote($hst),'f')),\
+    'Host correctly registered in DNS',\
+    'Host not correctly registered in DNS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the host is registered correctly in the DNS.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Host correctly registered in DNS" result="PASSED"><![CDATA[The host is registered correctly in the DNS.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Host not correctly registered in DNS|Register the host.domain in the DNS.|
+|Cannot determine IP address|Fix any problem with the host IP address.|
+|Cannot access /usr/bin/nslookup|Grant execute permissions on ``/usr/bin/nslookup`` to the user, who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00063" mode="VERIFY" name="/etc/hosts Format">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00060" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires domain name.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if !testFile('r','/etc/hosts')
+ return setHcveResult('Cannot access /etc/hosts')
+if !@tbl = grepFile('/etc/hosts',\
+  concat('^([^\s\#]+\s+)+',quote(${RDA.HOST}),\
+         '\s+([^\s\#]+\s+)*',quote(${RDA.NODE}),'(\s|\z|\#)'))
+ return setHcveResult('no entry found')
+
+# Test that line begins with IPv4 IP address
+if grep(@tbl,'^(\d{1,3}\.){3}\d{1,3}\s','f')
+ return setHcveResult('Adequate IPv4 entry')
+
+# Tests that line begins with IPv6 IP address, first that all eight groups are populated, then situations where groups that are all zero are omitted (two colons together).
+if grep(@tbl,'^([A-F\d]{1,4}(:[A-F\d]{1,4}){7}\s|\
+                :(:[A-F\d]{1,4}){1,6}\s|\
+                ([A-F\d]{1,4}:){1,5}(:[A-F\d]{1,4}){1,5}\s|\
+                ([A-F\d]{1,4}:){1,6}:\s)','f')
+ return setHcveResult('Adequate IPv6 entry')
+return setHcveResult('no correct entry found')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``/etc/hosts`` file contains a line with ``ip_address fully_qualified_domainname short_hostname``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^Adequate" result="PASSED"><![CDATA[The ``/etc/hosts`` entry for the fully qualified domain name and host name is adequate.]]></sdp_action>
+<sdp_action condition="==" minimum="Cannot access /etc/hosts" result="FAILED"><![CDATA[Grant read permissions on ``/etc/hosts`` to the current user.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The fully qualified host name and host name are not configured correctly. Ensure that there is an IP address entry for the fully qualified domain name with the host name as one of the aliases.
+|*Return Value*|*Action"|
+|no entry found|No entry with the fully qualified domain name followed by the host name was found.|
+|no correct entry found|No entry beginning with an IP address with the fully qualified domain name followed by the host name was found.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00064" mode="VERIFY" name="Oracle Home Length">
+<sdp_command type="RDA"><![CDATA[var $ORACLE_HOME = getEnv('ORACLE_HOME')
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),\
+    'ORACLE_HOME is not set',\
+  expr('<=',length($ORACLE_HOME),127),\
+    'Less than 127 char',\
+    'Longer than 127 char'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the path to the Oracle home directory is not longer than 127 characters.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Less than 127 char" result="PASSED"><![CDATA[The Oracle home directory is not longer than 127 characters.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Longer than 127 char|Change ORACLE_HOME to a directory not longer than 127 characters.|
+|ORACLE_HOME is not set|Set the ORACLE_HOME environment variable.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

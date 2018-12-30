@@ -1,0 +1,148 @@
+# ASITlib.def: Defines Common Macros for Oracle Fusion Middleware 11g
+# $Id: ASITlib.def,v 2.7 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/ASITlib.def,v 2.7 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+ASITlib - Defines Common Macros for Oracle Fusion Middleware 11g
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to several Oracle
+Fusion Middleware 11g related-modules.
+
+The following macros are available:
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('get_components','get_home','get_instances')
+
+=head2 S<get_components(\%cmp,$dir,$ins,$pat)>
+
+This macro retrieves the instance components that have a type matching the
+specified pattern and returns the instance name.
+
+=cut
+
+macro get_components
+{var (\%cmp,$dir,$ins,$pat) = @arg
+ var %cmp = ()
+
+ var ($opmnctl) = grepDir(catDir($dir,'bin'),'^opmnctl(\.(bat|exe))?$','fip')
+ if loadCommand(concat(quote($opmnctl,'x'),' status -fmt %cmp%prt%uid 2>&1'))
+ {loop $lin (getLines())
+  {next match($lin,'^(-+|\s*$|ias-component)',true)
+   if match($lin,'Processes in Instance:\s*(.*?)$',true)
+    var ($dsc) = (last)
+   else
+   {var ($cmp,$typ,$uid) = split('\s*\|\s*',$lin,3)
+    if and($cmp,$typ,match($typ,$pat,true))
+     var $cmp{join('|',$typ,$cmp)} = check($uid,'^\d+$',$uid,0)
+   }
+  }
+ }
+
+ if !?$dsc
+ {var ($fil) = grepDir(catDir($dir,'config','OPMN'),'^opmn\.xml$','fr')
+  if testFile('r',$fil)
+  {var $top = xmlLoadFile($fil,xmlDisable(xmlParser(),'DR'))
+   if xmlFind($top,'opmn/process-manager/ias-instance')
+   {var ($obj) = last
+    var $dsc = xmlValue($obj,'name')
+    loop $xml (xmlFind($obj,'ias-component'))
+    {var $nam = xmlValue($xml,'id')
+     var $typ = xmlValue($xml,'type')
+     if $typ
+     {if match($typ,$pat,true)
+       var $cmp{join('|',$typ,$nam)} = 0
+     }
+     else
+     {loop $prc (xmlFind($xml,'process-type'))
+      {var $typ = xmlValue($prc,'id')
+       if match($typ,$pat,true)
+        var $cmp{join('|',$typ,$nam)} = 0
+      }
+     }
+    }
+   }
+  }
+ }
+
+ return nvl($dsc,$ins)
+}
+
+=head2 S<get_home($top)>
+
+This macro returns the directory of the Oracle home associated to the
+specified instance home directory.
+
+=cut
+
+macro get_home
+{var ($top) = @arg
+
+ if or(testFile('f',catFile($top,'bin','opmnctl')),\
+       testFile('f',catFile($top,'bin','opmnctl.bat')),\
+       testFile('f',catFile($top,'bin','opmnctl.exe')))
+ {var $fil = lastFile()
+  if match($fil,'\.bat',true)
+  {if grepFile($fil,'^\s*set\s+ORACLE_HOME\s*=','fi')
+   {if testDir('d',catDir(value(last)))
+     return lastDir()
+   }
+  }
+  else
+  {if grepFile($fil,'^\s*\$OracleHome\s*=','f')
+   {var (undef,$hom) = match(value(last),'([\042\047])(.*?)\1')
+    if testDir('d',catDir($hom))
+     return lastDir()
+   }
+  }
+ }
+ return undef
+}
+
+=head2 S<get_instances($hom,$key)>
+
+This macro returns the list of valid instances found, derived from the
+specified setting.
+
+=cut
+
+macro get_instances
+{var ($hom,$key) = @arg
+ var @ins = ()
+
+ # Identify the type of collection
+ var $val = getSetting($key,'')
+ if match($val,'\*All\*')
+  var @tbl = grepDir($hom,'^[^\.]','n')
+ else
+  var @tbl = split('\|',$val)
+
+ # Validate the instances
+ loop $ins (@tbl)
+ {var $dir = catDir($hom,$ins)
+  next !or(testFile('f',catFile($dir,'bin','opmnctl')),\
+           testFile('f',catFile($dir,'bin','opmnctl.bat')),\
+           testFile('f',catFile($dir,'bin','opmnctl.exe')))
+  var @ins = (@ins,$ins)
+ }
+ return @ins
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

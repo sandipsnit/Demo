@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="Purchase" targetNamespace="http://wli.bpm.ide.org/Purchase/" xmlns:plnk="http://docs.oasis-open.org/wsbpel/2.0/plnktype" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://wli.bpm.ide.org/Purchase/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<wsdl:types>
+	<xsd:schema targetNamespace="http://wli.bpm.ide.org/Purchase/">
+	<xsd:element name="NewOperationResponse" type="xsd:string"/>
+	<xsd:element name="NewOperationRequest" type="xsd:string"/>
+	<xsd:element name="OrderFault" type="xsd:string"/>
+	<xsd:element name="customerInfo" type="xsd:string"/>
+	<xsd:element name="shippingInfo" type="xsd:string"/>
+	<xsd:element name="scheduleInfo" type="xsd:string"/>
+	<xsd:complexType name="customerInfo">
+	  <xsd:sequence>
+    	<xsd:element name="firstname" type="xsd:string"/>
+    	<xsd:element name="lastname" type="xsd:string"/>
+	  	</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="purchaseOrder">
+	  <xsd:sequence>
+    	<xsd:element name="itemName" type="xsd:string"/>
+    	<xsd:element name="quantity" type="xsd:int"/>
+	  	</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="Invoice">
+	  <xsd:sequence>
+    	<xsd:element name="itemName" type="xsd:string"/>
+    	<xsd:element name="price" type="xsd:int"/>
+	  	</xsd:sequence>
+	</xsd:complexType>
+</xsd:schema>
+</wsdl:types>
+
+<!-- messages -->
+<wsdl:message name="NewOperationResponse">
+	<wsdl:part element="tns:NewOperationResponse" name="NewOperationResponse"/>
+</wsdl:message>
+<wsdl:message name="NewOperationRequest">
+	<wsdl:part element="tns:NewOperationRequest" name="NewOperationRequest"/>
+</wsdl:message>
+
+<wsdl:message name="POMessage">
+    <wsdl:part name="customerInfo" type="tns:customerInfo"/>
+    <wsdl:part name="purchaseOrder" type="tns:purchaseOrder"/>
+</wsdl:message>
+<wsdl:message name="InvMessage">
+    <wsdl:part name="IVC" type="tns:Invoice"/>
+</wsdl:message>
+<wsdl:message name="orderFaultType">
+     <wsdl:part name="problemInfo" element="tns:OrderFault"/>
+</wsdl:message>
+<wsdl:message name="shippingRequestMessage">
+   <wsdl:part name="customerInfo" element="tns:customerInfo"/>
+</wsdl:message>
+<message name="shippingInfoMessage">
+   <part name="shippingInfo" element="tns:shippingInfo"/>
+</message>
+<message name="scheduleMessage">
+   <part name="schedule" element="tns:scheduleInfo"/>
+</message>
+
+
+<!--  port types -->
+<wsdl:portType name="Purchase">
+	<wsdl:operation name="NewOperation">
+		<wsdl:input message="tns:NewOperationRequest"/>
+		<wsdl:output message="tns:NewOperationResponse"/>
+	</wsdl:operation>
+</wsdl:portType>
+
+<portType name="computePricePT">
+    <operation name="initiatePriceCalculation">
+       <input message="tns:POMessage"/>
+    </operation>
+    <operation name="sendShippingPrice">
+       <input message="tns:shippingInfoMessage"/>
+    </operation>
+</portType>
+       
+<portType name="invoiceCallbackPT">
+	<operation name="sendInvoice">
+    	<input message="tns:InvMessage"/>
+    </operation>
+</portType>
+
+<portType name="shippingPT">
+   	<operation name="requestShipping">
+   		<input message="tns:shippingRequestMessage" />
+   		<output message="tns:shippingInfoMessage" />
+   		<fault name="cannotCompleteOrder"
+   			message="tns:orderFaultType" />
+   	</operation>
+</portType>
+
+<portType name="shippingCallbackPT">
+    <operation name="sendSchedule">
+       <input message="tns:scheduleMessage"/>
+    </operation>
+</portType>
+
+<portType name="purchaseOrderPT">
+    <operation name="sendPurchaseOrder">
+       <input message="tns:POMessage"/>
+       <output message="tns:InvMessage"/>
+    </operation>
+</portType>
+
+<!-- PARTNER LINK TYPES -->
+<plnk:partnerLinkType name="purchasingLT">
+     <plnk:role name="purchaseService" portType ="tns:purchaseOrderPT"/>
+</plnk:partnerLinkType>
+
+<plnk:partnerLinkType name="invoicingLT">
+     <plnk:role name="invoiceService" portType ="tns:computePricePT"/>
+     <plnk:role name="invoiceRequester" portType ="tns:invoiceCallbackPT"/>
+</plnk:partnerLinkType>
+
+<plnk:partnerLinkType name="shippingLT">
+     <plnk:role name="shippingService" portType ="tns:shippingPT"/>
+     <plnk:role name="shippingRequester" portType ="tns:shippingCallbackPT"/>
+</plnk:partnerLinkType>
+
+
+<wsdl:binding name="PurchaseSOAP" type="tns:Purchase">
+<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+<wsdl:operation name="NewOperation">
+<soap:operation soapAction="http://wli.bpm.ide.org/Purchase/NewOperation"/>
+<wsdl:input>
+<soap:body use="literal"/>
+</wsdl:input>
+<wsdl:output>
+<soap:body use="literal"/>
+</wsdl:output>
+</wsdl:operation>
+</wsdl:binding>
+<wsdl:service name="Purchase">
+<wsdl:port binding="tns:PurchaseSOAP" name="PurchaseSOAP">
+<soap:address location="http://wli.bpm.ide.org"/>
+</wsdl:port>
+</wsdl:service>
+</wsdl:definitions>

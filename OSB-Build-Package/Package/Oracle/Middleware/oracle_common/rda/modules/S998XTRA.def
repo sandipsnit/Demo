@@ -1,0 +1,188 @@
+# S998XTRA.def: Collects User Defined Data
+# $Id: S998XTRA.def,v 2.6 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S998XTRA.def,v 2.6 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S998XTRA - Collects User Defined Data
+
+=head1 DESCRIPTION
+
+Adds extra commands for collecting data. The report title is specified as the
+first argument.
+
+  <rda> -X Extra add_cmd <title> <command> ...
+
+Adds extra files to a standard RDA data collection.
+
+You can specify additional files explicitly or search in directories by
+patterns. RDA sorts resulting files and discards duplicates. It collects the
+last lines of log files only. The C<EXTRA_TAIL> setting controls the number of
+log lines.
+
+  <rda> -X Extra add_files <file> ...
+
+  <rda> -X Extra add_dir <dir> <pattern> <options>
+
+Files and directories can contain references to other settings, such as
+C<${name}> or C<${name:default}>. Such values should be quoted to avoid shell
+substitutions. Relative paths are evaluated from the RDA top directory. Regular
+expressions are used in patterns. The valid search options are as follows:
+
+=over 6
+
+=item B<  'i'>
+
+Ignores case distinctions in both the pattern and the results.
+
+=item B<  'r'>
+
+Searches files recursively under each subdirectory. To avoid loops in the
+directory structure, the recursion level is limited to 8.
+
+=item B<  'v'>
+
+Inverts the sense of matching to select nonmatching files.
+
+=back
+
+For instance,
+
+  <rda> -X Extra add_dir '${GRP.D_RDA}' '\.p[lm]' ir
+
+This collects all Perl scripts and packages used by RDA.
+
+It is possible to collect binary files as follows:
+
+  <rda> -X Extra add_data <file> ...
+
+It is possible to import temporary environment variables (for example, HOME) as
+settings. For example:
+
+  <rda> -X Extra add_env <name> ...
+
+The list of extra collection requests can be obtained as follows:
+
+  <rda> -X Extra list
+
+Environment variable names can be removed from the import list as follows:
+
+  <rda> -X Extra del_env <name> ...
+
+Extra elements can be removed selectively from the list as follows:
+
+  <rda> -X Extra del_extra <pos> ...
+
+E<lt>posE<gt> represents the position of the element in the
+list. Alternatively, the list can be cleared completely by running the
+setup again for the corresponding module. For example:
+
+  <rda> -S XTRA
+
+Collected information is regrouped under C<Extra Commands> and C<Extra Files>.
+
+=cut
+
+echo tput('bold'),'Processing XTRA module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME')
+var $TAIL        = getSetting('EXTRA_TAIL',1000)
+
+var $OH  = quote($ORACLE_HOME)
+var $OH1 = concat('^',$OH,'[\\\/]')
+
+# Load the common macros
+run library()
+
+# Import specified environment variables into temporary settings
+loop $key (split(',',getSetting('EXTRA_ENV')))
+ call setTempSetting($key,getEnv($key))
+
+# Collect the extra commands
+pretoc '1:Extra Commands'
+var $cnt = 0
+loop $key (grepSetting('^EXTRA_CMD'))
+{if getSetting($key,undef,true)
+ {var ($ttl,@cmd) = split('\n',last)
+  var $cmd = join(' ',@cmd)
+  report concat('cmd',$cnt)
+  prefix
+  {write '---+ ',$ttl
+   write '---## Using: ',encode($cmd)
+  }
+  call writeCommand($cmd)
+  if isCreated(true)
+  {toc '2:[[',getFile(),'][rda_report][',$ttl,']]'
+   incr $cnt
+  }
+ }
+}
+if isTocCreated(true)
+ pretoc '%SPLIT%'
+
+# Get the file list
+loop $key (grepSetting('^EXTRA_FILE'))
+{if getSetting($key,undef,true)
+  var @list = (@list,catFile(last))
+}
+loop $key (grepSetting('^EXTRA_DIR'))
+{if getSetting($key,undef,true)
+ {var ($dir,@arg) = split('\n',last)
+  var @list = (@list,grepDir(catDir($dir),@arg))
+ }
+}
+
+# Collect the extra elements
+pretoc '1:Extra Files'
+call sort_files(2,$TAIL,@list)
+if isTocCreated(true)
+ pretoc '%SPLIT%'
+
+# Collect the binary files
+pretoc '1:Extra Binary Files'
+loop $key (grepSetting('^EXTRA_DATA'))
+{if getSetting($key,undef,true)
+  var $dat{catFile(last)} = 0
+}
+var ($cnt,$lst,$pre) = (0,'',concat('^',quote($ORACLE_HOME),'\b'))
+loop $dat (keys(%dat))
+{if testFile('r',$dat)
+ {var ($grp,$nam) = (dirname($dat),basename($dat))
+  if compare('ne',$grp,$lst)
+  {var $lst = $grp
+   toc '2:',encode(replace($grp,$pre,'$OH')),' '
+  }
+  incr $cnt
+  data concat('data',$cnt,'_',$nam,'.dat')
+  if writeData($dat)
+   toc '3:[[',getFile(),'][rda_report][',encode($nam),']]'
+ }
+}
+
+# Clear the temporary settings
+loop $key (split(',',getSetting('EXTRA_ENV')))
+ call setTempSetting($key)
+
+=head1 NOTE
+
+Any delete operation causes the removal of the data previously collected by
+the XTRA module.
+
+=head1 SEE ALSO
+
+L<S898XSMP.def|modules::S898XSMP>, L<library.def|modules::library>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

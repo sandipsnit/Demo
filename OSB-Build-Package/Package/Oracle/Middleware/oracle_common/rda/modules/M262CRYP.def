@@ -1,0 +1,127 @@
+# M262CRYP.def: Collects Cryptographic Framework Information
+# $Id: M262CRYP.def,v 1.6 2012/05/29 05:28:06 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M262CRYP.def,v 1.6 2012/05/29 05:28:06 mschenke Exp $
+#
+# Change History
+# 20120528  PRO  Improve the verification of kernel signed objects.
+
+=head1 NAME
+
+M262CRYP - Collects Cryptographic Framework Information
+
+=head1 DESCRIPTION
+
+This module collects information about the cryptographic framework.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('crypto')
+
+# -----------------------------------------------------------------------------
+# XPLR_crypto section
+# -----------------------------------------------------------------------------
+
+section XPLR_crypto
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing CRYP sections ...')
+
+=head2 cryp - Cryptographic Framework
+
+Gathers cryptographic framework information using the following commands:
+
+=over 2
+
+=item o C</usr/bin/elfsign verify -e>
+
+=item o C</usr/sbin/cryptoadm list -p>
+
+=item o C</usr/sbin/cryptoadm list -vm>
+
+=item o C</usr/sbin/cryptoadm list metaslot>
+
+=back
+
+Collects the following configuration files:
+
+=over 2
+
+=item o F</etc/crypto/kcf.conf>
+
+=item o F</etc/crypto/pkcs11.conf>
+
+=back
+
+=cut
+
+debug ' Inside CRYP collection, gathering cryptographic framework information'
+report cryp
+title '---+!! Cryptographic Framework'
+title $TOC
+
+# Collect command outputs
+var @cmd = ()
+if testFile('x','/usr/bin/elfsign')
+ call push(@cmd,\
+   ['crypto/elfsign_verify',\
+    '/usr/bin/find',\
+    concat('/kernel/crypto /platform/',uname('m'),'/kernel/crypto -type f \
+           -exec /usr/bin/elfsign verify -e {} \; 2>/dev/null'),\
+    '---+ Kernel Signed Objects'])
+if testFile('x',$pgm = '/usr/sbin/cryptoadm')
+ call push(@cmd,\
+   ['crypto/cryptoadm_list_-p',\
+    $pgm,'list -p',\
+    '---+ Mechanism Policy'],\
+   ['crypto/cryptoadm_list_-vm',\
+    $pgm,'list -vm',\
+    '---+ Mechanisms for Providers'],\
+   ['crypto/cryptoadm_list_metaslot',\
+    $pgm,'list metaslot',\
+    '---+ Metaslots'])
+do_exec(@cmd)
+
+# Collect files
+debug ' Inside CRYP collection, gathering cryptographic framework files'
+prefix
+{write '---+ Configuration Files'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present \
+             risks. To prevent them, access the file outside the browser or \
+             use the link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_fil(\
+  ['crypto/kcf.conf',   '/etc/crypto/kcf.conf'],\
+  ['crypto/pkcs11.conf','/etc/crypto/pkcs11.conf'])
+if hasOutput(true)
+ write $TOP
+
+# Add the report in the table of content
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Cryptographic Framework]]'
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

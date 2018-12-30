@@ -1,0 +1,186 @@
+<!--
+/*******************************************************************************
+ * Copyright (c) 2007-2010 Oracle and/or its affiliates.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Oracle IDE Developers - initial API and implementation
+ *******************************************************************************/
+ -->
+
+<project name="deployextension"  default="deploy.j2ee.web"  basedir=".">
+
+	<!-- NOTE: v3 deployment is now done via code, not the targets below.  However, if -->
+	<!-- we go back to using the targets below, space in project name support must be  -->
+	<!-- added - see module.name.nospace in the sunappsrv-ant.xml file for details.    -->
+
+	<target name="tools" >
+		<!--echo message="${sunappserver.rootdirectory}" />
+        <echo message="${sunappserver.serveraddress}" />
+        <echo message="${sunappserver.serverportnumber}" />
+        <echo message="${sunappserver.adminserverportnumber}" />
+        <echo message="${sunappserver.adminname}" />
+        <echo message="${sunappserver.adminpassword}" />
+        <echo message="${sunappserver.domainname}" /-->
+
+		<condition property="sunappserver-script-suffix" value=".bat">
+			<os family="windows"/>
+		</condition>
+		<condition property="sunappserver-script-suffix" value="">
+			<not>
+				<os family="windows"/>
+			</not>
+		</condition>
+		<condition property="path.separator" value=";">
+			<os family="windows"/>
+		</condition>
+		<condition property="path.separator" value=":">
+			<not>
+				<os family="windows"/>
+			</not>
+		</condition>
+		<!-- setup properties for various Java EE tools -->
+		<property name="asadmin" value="${sunappserver.rootdirectory}/bin/asadmin${sunappserver-script-suffix}"/>
+		<property name="appclient" value="${sunappserver.rootdirectory}/bin/appclient${sunappserver-script-suffix}"/>
+		<echo file ="passw"  message="AS_ADMIN_PASSWORD=${sunappserver.adminpassword}"/>
+	</target>
+	<target name="undeploy" depends="tools">
+		<echo message="Undeploying ${module.name}." />
+		<exec executable="${asadmin}">
+			<arg line="undeploy"/>
+			<arg line=" --host ${sunappserver.serveraddress}" />
+			<arg line=" --port ${sunappserver.adminserverportnumber}" />
+			<arg line=" --user ${sunappserver.adminname}" />
+			<arg line=" --passwordfile passw" />
+			<arg line="'${module.name}'" />
+		</exec>
+	</target>
+
+
+
+	<target name="deploy-url-message" if="app.url">
+		<echo message="Application Deployed at: ${app.url}"/>
+	</target>
+	<target name="deploydir" depends="tools">
+		<fail unless="app.module" message="app.module must be set before invoking this target. Otherwise there is no application to deploy."/>
+		<fail unless="module.name" message="app.name must be set before invoking this target. Otherwise there is no application to deploy."/>
+		<condition property="app.url" value="http://${sunappserver.serveraddress}:${sunappserver.serverportnumber}/${module.name}">
+			<not>
+				<isset property="app.endpointuri"/>
+			</not>
+		</condition>
+		<property name="failonerror" value="true"/>
+		<exec executable="${asadmin}" failonerror="${failonerror}">
+			<arg line=" deploydir "/>
+			<arg line=" --port ${sunappserver.adminserverportnumber}" />
+			<arg line=" --user ${sunappserver.adminname}" />
+			<arg line=" --passwordfile passw" />
+
+			<arg line=" --name ${module.name}"/>
+			<arg line=" --force=true "/>
+
+			<arg line="'${project.working.dir}/${module.name}'" />
+		</exec>
+		<echo message="Application dir Deployed at: ${app.url}"/>
+	</target>
+
+
+	<target name="undeploy.j2ee.web">
+		<antcall target="get.if.else">
+			<param name="srcUrl" value="http://${sunappserver.serveraddress}:${sunappserver.adminserverportnumber}/__asadmin/undeploy?name=${module.name}" />
+			<param name="destFileName" value="result.html"/>
+		</antcall>
+		<concat>
+			<fileset dir="." includes="result.html"/>
+		</concat>
+	</target>
+
+	<target name="resourcesfile.check">
+		<!--echo message="subdirectory=${subdirectory}"/-->
+		<condition property="resourcesfile.run">
+			<and>
+				<available file="${module.dir}/${subdirectory}/sun-resources.xml"/>
+				<not>
+					<available file="result1.html"/>
+				</not>
+			</and>
+		</condition>
+	</target>
+
+	<target name="addresources" depends="resourcesfile.check" if="resourcesfile.run">
+		<!--echo message="subdirectory=${subdirectory}"/-->
+		<concat destfile="fooFile1.properties">resourcesfile=${module.dir}/${subdirectory}/sun-resources.xml</concat>
+		<replace file="fooFile1.properties" token=" " value="%20" />
+		<property file="fooFile1.properties" />
+		<antcall target="get.if.else">
+			<param name="srcUrl" value="http://${sunappserver.serveraddress}:${sunappserver.adminserverportnumber}/__asadmin/add-resources?xml_file_name=${resourcesfile}" />
+			<param name="destFileName" value="result1.html"/>
+		</antcall>
+		<concat>
+			<fileset dir="." includes="result1.html" />
+		</concat>
+	</target>
+
+	<target name="get.without.password" if="useAnonymous">
+		<get src="${srcUrl}" dest="${destFileName}" />
+	</target>
+	
+	<target name="get.with.password" unless="useAnonymous">
+		<get src="${srcUrl}" dest="${destFileName}" username="${sunappserver.adminname}" password="${sunappserver.adminpassword}"/>
+	</target>
+
+	<target name="get.if.else">
+		<!--echo message="sunappserver.useAnonymousConnection=${sunappserver.useAnonymousConnection}"/>
+		<echo message="srcUrl=${srcUrl}"/>
+		<echo message="destFileName=${destFileName}"/-->
+		<condition property="useAnonymous">
+			<istrue value="${sunappserver.useAnonymousConnection}"/>
+		</condition>
+		<antcall target="get.without.password"/>
+		<antcall target="get.with.password"/>
+	</target>
+
+	<target name="deploy.j2ee.web">
+		<antcall target="addresources">
+			<param name="subdirectory" value="WEB-INF" />
+		</antcall>
+		<concat destfile="fooFile.properties">dirtodeploy=${project.working.dir}/${module.name}</concat>
+		<replace file="fooFile.properties" token=" " value="%20" />
+		<property file="fooFile.properties" />
+		<antcall target="get.if.else">
+			<param name="srcUrl" value="http://${sunappserver.serveraddress}:${sunappserver.adminserverportnumber}/__asadmin/deploy?path=${dirtodeploy}&amp;force=true&amp;properties=KeepSessions=${sunappserver.keepSessions}" />
+			<param name="destFileName" value="result.html"/>
+		</antcall>
+		<concat>
+			<fileset dir="." includes="result.html"/>
+		</concat>
+
+		<!--        
+        <delete>
+            <fileset dir="${server.publish.dir}" includes="${module.name}.war_*"/>
+        </delete>
+        
+        <move file="${module.name}.war" todir="${server.publish.dir}"/>
+        
+        <waitfor maxwait="60" maxwaitunit="second" checkevery="500">
+            <or>
+                <available file="${server.publish.dir}/${module.name}.war_deployed"/>
+                <available file="${server.publish.dir}/${module.name}.war_deployFailed"/>
+            </or>
+        </waitfor>
+        <fail message="${line.separator}Deployment failure. See the server log file (${server.publish.dir}/../logs/server.log) for an explanation.">
+            <condition>
+                <not>
+                    <available file="${server.publish.dir}/${module.name}.war_deployed"/>
+                </not>
+            </condition>
+        </fail>  
+        
+-->
+
+	</target>
+
+</project>

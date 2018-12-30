@@ -1,0 +1,927 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+   This is metric rule file for the WLS DMS metric aggregation for oracle_forms.
+  -->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="oracle_forms">
+  <Table Name="servers">
+    <Description>Forms WLS Servers</Description>
+    <ColumnDef Name="serverName" Type="String" Key="true" />
+    <ColumnDef Name="process" Type="String" />
+    <ColumnDef Name="instname.value" Type="String" />
+    <Select Name="server_result">
+      <TableFrom Name="FormsRuntimeInfo" />
+      <Column Name="serverName" Type="String">
+        <ColumnFrom Name="ServerName" Table="FormsRuntimeInfo" />
+      </Column>
+      <Column Name="process" Type="String">
+        <ColumnFrom Name="Process" Table="FormsRuntimeInfo" />
+      </Column>
+      <Column Name="instname.value" Type="String" />
+      <Where>
+        <Condition Type="Integer" Operator="EQ">
+          <ColumnFrom Name="pid.value" Table="FormsRuntimeInfo" />
+          <Value>-1</Value>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="application">
+    <Description>Forms J2EE applications table</Description>
+    <ColumnDef Name="appName" Type="String" Key="true" />
+    <ColumnDef Name="version" Type="String" />
+    <ColumnDef Name="internal_name" Type="String" />
+    <ColumnDef Name="ContextRoot" Type="String" />
+    <ColumnDef Name="Status" Type="Integer" />
+    <ColumnDef Name="state" Type="Integer" />
+    <ColumnDef Name="numSessions" Type="Integer" />
+    <ColumnDef Name="serverName" Type="String" Key="true" />
+    <ColumnDef Name="instname.value" Type="String" />
+    <ColumnDef Name="process" Type="String" />
+    <Select Name="application_result_1">
+      <TableFrom Name="weblogic.management.runtime.ApplicationRuntimeMBean" />
+      <TableFrom Name="weblogic.management.runtime.WebAppComponentRuntimeMBean" />
+      <Column Name="appName" Type="String">
+        <ColumnFrom Name="ApplicationName"
+                    Table="weblogic.management.runtime.ApplicationRuntimeMBean" />
+      </Column>
+      <Column Name="version" Type="String">
+        <ColumnFrom Name="ApplicationVersion" 
+                    Table="weblogic.management.runtime.ApplicationRuntimeMBean" />
+      </Column>
+      <Column Name="internal_name" Type="String">
+        <ColumnFrom Name="Name"
+                    Table="weblogic.management.runtime.ApplicationRuntimeMBean" />
+      </Column>
+      <Column Name="ContextRoot" Type="String"
+              Table="weblogic.management.runtime.WebAppComponentRuntimeMBean" />
+      <Column Name="state" Type="Integer">
+        <ColumnFrom Name="ActiveVersionState" 
+                    Table="weblogic.management.runtime.ApplicationRuntimeMBean" />
+      </Column>
+      <Column Name="Status" Type="Integer">
+        <If>
+          <Condition Operator="EQ">
+            <ColumnFrom Name="state"/>
+            <Value>2</Value>
+          </Condition>
+          <Then>
+            <Value>1</Value>
+          </Then>
+          <Else>
+            <Value>0</Value>
+          </Else>
+        </If>
+      </Column>
+      <Column Name="serverName" Type="String">
+        <ColumnFrom Name="ServerRuntime"
+                    Table="weblogic.management.runtime.ApplicationRuntimeMBean" />
+      </Column>
+      <Where>
+        <And>
+          <Condition Type="String" Operator="EQ">
+            <ColumnFrom Name="ComponentName"
+                        Table="weblogic.management.runtime.WebAppComponentRuntimeMBean" />
+            <Value>forms</Value>
+          </Condition>
+          <And>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="Name"
+                          Table="weblogic.management.runtime.ApplicationRuntimeMBean" />
+              <ColumnFrom Name="ApplicationRuntime"
+                          Table="weblogic.management.runtime.WebAppComponentRuntimeMBean" />
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="ServerRuntime"
+                          Table="weblogic.management.runtime.ApplicationRuntimeMBean" />
+              <ColumnFrom Name="ServerRuntime" 
+                          Table="weblogic.management.runtime.WebAppComponentRuntimeMBean" />
+            </Condition>
+          </And>
+        </And>
+      </Where>
+    </Select>
+    <Select Name="numSessions_result">
+      <TableFrom Name="oracle_forms:FormsUserSessions"/>
+      <Column Name="servername.value" Type="String" />
+      <Column Name="appname.value" Type="String" />
+      <Column Name="numSessions" Type="Integer">
+        <Aggregation Operator="Count" Name="pid.value" />
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="servername.value" />
+      <GroupBy Name="appname.value" />
+    </Select>
+    <Select Name="application_result_2">
+      <TableFrom Name="application_result_1" OuterJoined="true" />
+      <TableFrom Name="numSessions_result" />
+      <Column Name="appName" Type="String" Table="application_result_1" />
+      <Column Name="version" Type="String" Table="application_result_1" />
+      <Column Name="internal_name" Type="String" Table="application_result_1" />
+      <Column Name="ContextRoot" Type="String" Table="application_result_1" />
+      <Column Name="Status" Type="Integer" Table="application_result_1" />
+      <Column Name="state" Type="Integer" Table="application_result_1" />
+      <Column Name="serverName" Type="String" Table="application_result_1" />
+      <Column Name="numSessions" Type="Integer">
+        <ColumnFrom Name="numSessions" Table="numSessions_result" />
+        <Default>0</Default>
+      </Column>
+      <Where>
+        <And>
+          <Condition Type="String" Operator="EQ">
+            <ColumnFrom Name="appName" Table="application_result_1" />
+            <ColumnFrom Name="appname.value" Table="numSessions_result" />
+          </Condition>
+          <Condition Type="String" Operator="EQ">
+            <ColumnFrom Name="serverName" Table="application_result_1" />
+            <ColumnFrom Name="servername.value" Table="numSessions_result" />
+          </Condition>
+        </And>
+      </Where>
+    </Select>
+    <Select Name="application_result">
+      <TableFrom Name="application_result_2" />
+      <TableFrom Name="oracle_forms:servers" />
+      <Column Name="appName" Type="String" Table="application_result_2" />
+      <Column Name="version" Type="String" Table="application_result_2" />
+      <Column Name="internal_name" Type="String" Table="application_result_2" />
+      <Column Name="ContextRoot" Type="String" Table="application_result_2" />
+      <Column Name="Status" Type="Integer" Table="application_result_2" />
+      <Column Name="state" Type="Integer" Table="application_result_2" />
+      <Column Name="serverName" Type="String" Table="application_result_2" />
+      <Column Name="numSessions" Type="Integer" Table="application_result_2" />
+      <Column Name="instname.value" Type="String" Table="oracle_forms:servers" />
+      <Column Name="process" Type="String" Table="oracle_forms:servers" />
+      <Where>
+        <And>
+          <Condition Type="String" Operator="EQ">
+            <ColumnFrom Name="serverName" Table="application_result_2" />
+            <ColumnFrom Name="serverName" Table="oracle_forms:servers" />
+          </Condition>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="instName.parameter"/>
+              <ColumnFrom Name="instname.value" Table="oracle_forms:servers"/>
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="instName.parameter" xsi:nil="true"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="Response">
+    <Description>Forms Servlet Response metric table </Description>
+    <ColumnDef Name="instname.value" Type="String" Key="true" />
+    <ColumnDef Name="Status" Type="Integer">
+      <Description>Status of default Forms J2EE application deployment</Description>
+    </ColumnDef>
+    <Select Name="Response_result">
+      <TableFrom Name="oracle_forms:application" />
+      <Column Name="instname.value" Type="String" />
+      <Column Name="Status" Type="Integer">
+        <If>
+          <Condition Operator="GT">
+            <Aggregation Operator="Sum" Name="Status" />
+            <Value>0</Value>
+          </Condition>
+          <Then>
+            <Value>1</Value>
+          </Then>
+          <Else>
+            <Value>0</Value>
+          </Else>
+        </If>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="instname.value" />
+      <Where>
+        <And>
+          <Condition Type="String" Operator="NE">
+            <ColumnFrom Name="instname.value" />
+            <Null/>
+          </Condition>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="instname.value" />
+              <Value Name="instName.parameter" />
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="instName.parameter" xsi:nil="true"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="FormsResourceUsage">
+    <ColumnDef Name="pid.value" Type="Integer" Key="true" />
+    <ColumnDef Name="uid.value" Type="Integer" />
+    <ColumnDef Name="instname.value" Type="String">
+      <Description>Application Server Instance Name</Description>
+    </ColumnDef>
+    <ColumnDef Name="memoryUsage.value" Type="Double">
+      <Unit>KB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="privateMemory.value" Type="Double">
+      <Unit>KB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpuTime.value" Type="Integer">
+      <Unit>millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="upTime.value" Type="Integer">
+      <Unit>millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpu_usage" Type="Double">
+      <Unit>%</Unit>
+    </ColumnDef>
+    <ColumnDef Name="totalPhysicalMemory.value" Type="Long"/>
+    <Select Name="fromHost">
+      <TableFrom Name="opmn_host_statistics" />
+      <Column Name="numProcessors.value" Type="Long" />
+      <Column Name="totalPhysicalMemory.value" Type="Long">
+       <ColumnFrom Name="totalPhysicalMem.value"/>
+     </Column>
+    </Select>
+    <Select Name="ResourceUsage_result">
+      <TableFrom Name="opmn_process"/>
+      <TableFrom Name="fromHost"/>
+      <Column Name="pid.value" Type="Integer" Table="opmn_process" />
+      <Column Name="uid.value" Type="Integer" Table="opmn_process" />
+      <Column Name="instname.value" Type="String">
+        <ColumnFrom Name="iasInstance.value" Table="opmn_process" />
+      </Column>
+      <Column Name="memoryUsage.value" Type="Double">
+        <ColumnFrom Name="memoryUsed.value" Table="opmn_process" />
+      </Column>
+      <Column Name="privateMemory.value" Type="Double" Table="opmn_process"/>
+      <Column Name="cpuTime.value" Type="Long" Table="opmn_process"/>
+      <Column Name="upTime.value" Type="Long" Table="opmn_process"/>
+      <Column Name="cpu_usage" Type="Double" >
+        <Expression Operator="Div">
+          <Expression Operator="Mult">
+            <Rate Interval="30000">
+              <ColumnFrom Name="cpuTime.value" />
+              <ColumnFrom Name="upTime.value" />
+              <Default>0</Default>
+            </Rate>
+            <Value>100</Value>
+          </Expression>
+          <ColumnFrom Name="numProcessors.value" Table="fromHost"/>
+        </Expression>
+      </Column>
+      <Column Name="totalPhysicalMemory.value" Type="Long" Table="fromHost"/>
+      <Where>
+        <Condition Operator="EQ" Type="String">
+          <ColumnFrom Name="opmn_process_type" Table="opmn_process" />
+          <Value>FormsRuntime</Value>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="aggr_FormsResourceUsage">
+    <Description>Sum aggregated metric for all Forms User Sessions</Description>
+    <ColumnDef Name="totalprivateMem" Type="Double">
+      <Unit>KB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="privateMemInMB" Type="Double">
+      <Unit>MB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpuTimeTotal" Type="Double">
+      <Unit>millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpu.component" Type="Double">
+      <Unit>%</Unit>
+    </ColumnDef>
+    <ColumnDef Name="instname.value" Type="String" Key="true">
+      <Description>Application Server Instance Name</Description>
+    </ColumnDef>
+    <ColumnDef Name="totalPhysicalMemory.value" Type="Long" />
+    <ColumnDef Name="memoryPercent.component" Type="Double">
+      <Unit>%</Unit>
+    </ColumnDef> 
+    <Select Name="aggr_Resource_result">
+      <TableFrom Name="oracle_forms:FormsResourceUsage"/>
+      <Column Name="totalprivateMem" Type="Double">
+        <Aggregation Operator="Sum" Name="privateMemory.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="privateMemInMB" Type="Double">
+        <Expression Operator="Div">
+         <ColumnFrom Name="totalprivateMem"/>
+         <Value>1024</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuTimeTotal" Type="Double">
+        <Aggregation Operator="Sum" Name="cpuTime.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpu.component" Type="Double">
+        <Aggregation Operator="Sum" Name="cpu_usage" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="totalPhysicalMemory.value" Type="Long">
+       <Aggregation Operator="Avg" Name="totalPhysicalMemory.value"/>
+      </Column>
+ <Column Name="memoryPercent.component" Type="Double">
+    <Expression Operator="Mult">
+     <Expression Operator="Div">
+      <ColumnFrom Name="totalprivateMem"/>
+      <ColumnFrom Name="totalPhysicalMemory.value"/>
+     </Expression>
+     <Value>100</Value>
+    </Expression>
+   </Column>
+      <Column Name="instname.value" Type="String"/>
+      <GroupBy Name="instname.value"/>
+      <Where>
+        <Or>
+          <Condition Type="String" Operator="EQ">
+            <Value Name="instName.parameter"/>
+            <ColumnFrom Name="instname.value" Table="oracle_forms:FormsResourceUsage"/>
+          </Condition>
+          <Condition Type="String" Operator="EQ">
+            <Value Name="instName.parameter" xsi:nil="true"/>
+            <Null/>
+          </Condition>
+        </Or>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="NumberOfSessions">
+    <Description>Number of Forms User Sessions</Description>
+    <ColumnDef Name="num" Type="Integer">
+      <Description>Number of Forms User Sessions per deployment</Description>
+    </ColumnDef>
+    <ColumnDef Name="instname.value" Type="String" Key="true">
+      <Description>Application Server Instance Name</Description>
+    </ColumnDef>
+    <Select Name="aggr_Num_result">
+      <TableFrom Name="oracle_forms:FormsUserSessions"/>
+      <Column Name="instname.value" Type="String"/>
+      <Column Name="num" Type="Integer">
+        <Aggregation Operator="Count" Name="pid.value" />
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="instname.value"/>
+      <Where>
+        <And>
+          <Condition Type="Integer" Operator="NE">
+            <ColumnFrom Name="pid.value"/>
+            <Null/>
+          </Condition>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="instName.parameter"/>
+              <ColumnFrom Name="instname.value" Table="oracle_forms:FormsUserSessions"/>
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="instName.parameter" xsi:nil="true"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="JVMControllers">
+    <Description>JVM Controller metric</Description>
+    <ColumnDef Name="ParentId" Type="String" Key="true"/>
+    <ColumnDef Name="numberOfJvms" Type="Integer" />
+    <ColumnDef Name="privateMemory.value" Type="Double">
+      <Unit>KB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpuTime.value" Type="Integer">
+      <Unit>millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="upTime.value" Type="Integer">
+      <Unit>millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpu_usage" Type="Double">
+      <Unit>%</Unit>
+    </ColumnDef>
+    <ColumnDef Name="instname.value" Type="String" Key="true">
+      <Description>Application Server Instance Name</Description>
+    </ColumnDef>
+    <Select Name="JVMControllers_processes">
+      <TableFrom Name="opmn_process" />
+      <TableFrom Name="opmn_host_statistics" />
+      <Column Name="instname.value" Type="String">
+        <ColumnFrom Name="iasInstance.value" Table="opmn_process" />
+      </Column>
+      <Column Name="pid.value" Type="Integer" Table="opmn_process" />
+      <Column Name="parentId.value" Type="String" Table="opmn_process" />
+      <Column Name="privateMemory.value" Type="Double" Table="opmn_process" />
+      <Column Name="cpuTime.value" Type="Integer" Table="opmn_process" />
+      <Column Name="upTime.value" Type="Integer" Table="opmn_process" />
+      <Column Name="cpu_usage" Type="Double">
+        <Expression Operator="Div">
+          <Expression Operator="Mult">
+            <Rate Interval="30000">
+              <ColumnFrom Name="cpuTime.value" Table="opmn_process" />
+              <ColumnFrom Name="upTime.value" Table="opmn_process" />
+              <Default>0</Default>
+            </Rate>
+            <Value>100</Value>
+          </Expression>
+          <ColumnFrom Name="numProcessors.value" Table="opmn_host_statistics" />
+        </Expression>
+      </Column>
+      <Where>
+        <And>
+          <And>
+            <Condition Operator="Contains" Type="String">
+              <ColumnFrom Name="parentId.value" Table="opmn_process"/>
+              <Value>DeJvmRuntime</Value>
+            </Condition>
+            <Condition Operator="NE" Type="String">
+              <ColumnFrom Name="parentId.value" Table="opmn_process"/>
+              <Null/>
+            </Condition>
+          </And>
+          <And>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="opmn_process_type" Table="opmn_process"/>
+              <Value>DeJvmRuntime</Value>
+            </Condition>
+            <Or>
+              <Condition Type="String" Operator="EQ">
+                <ColumnFrom Name="iasInstance.value" Table="opmn_process"/>
+                <Value Name="instname.value.parameter"/>
+              </Condition>
+              <Condition Type="String" Operator="EQ">
+                <Value Name="instname.value.parameter" xsi:nil="true"/>
+                <Null/>
+              </Condition>
+            </Or>
+          </And>
+        </And>
+      </Where>
+    </Select>
+    <Select Name="JVMControllers_result">
+      <TableFrom Name="JVMControllers_processes" />
+      <Column Name="ParentId" Type="String">
+        <ColumnFrom Name="parentId.value" Table="JVMControllers_processes" />
+      </Column>
+      <Column Name="numberOfJvms" Type="Integer">
+        <Aggregation Operator="Count" Name="pid.value" Table="JVMControllers_processes" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="privateMemory.value" Type="Double">
+        <Aggregation Operator="Sum" Name="privateMemory.value" Table="JVMControllers_processes"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuTime.value" Type="Integer"> 
+        <Aggregation Operator="Sum" Name="cpuTime.value" Table="JVMControllers_processes"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="upTime.value" Type="Integer">
+        <Aggregation Operator="Max" Name="upTime.value" Table="JVMControllers_processes"/>
+      </Column>
+      <Column Name="cpu_usage" Type="Double">
+        <Aggregation Operator="Sum" Name="cpu_usage" Table="JVMControllers_processes"/>
+      </Column>
+      <Column Name="instname.value" Type="String" Table="JVMControllers_processes"/>
+      <GroupBy Name="ParentId" />
+      <GroupBy Name="instname.value" />
+    </Select>
+    <Select Name="JVMControllers_result1">
+      <TableFrom Name="JVMControllers_result"/>
+      <Where>
+        <Condition Type="String" Operator="NE">
+          <ColumnFrom Name="ParentId"/>
+          <Null/>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="JVMResourceUsage">
+    <Description>JVM Controller Resource metric</Description>
+    <ColumnDef Name="totalJvmMem" Type="Double" Key="true">
+      <Unit>KB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="totalJvmMemInMB" Type="Double">
+      <Unit>MB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="jvmCpu.component" Type="Double" Key="true">
+      <Unit>%</Unit>
+    </ColumnDef>
+    <Select Name="JvmResource_result">
+      <TableFrom Name="oracle_forms:JVMControllers"/>
+      <Column Name="totalJvmMem" Type="Double">
+        <Aggregation Operator="Sum" Name="privateMemory.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="totalJvmMemInMB" Type="Double">
+        <Expression Operator="Div">
+         <ColumnFrom Name="totalJvmMem"/>
+         <Value>1024</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Name="jvmCpu.component" Type="Double">
+        <Aggregation Operator="Sum" Name="cpu_usage" />
+        <Default>0</Default>
+      </Column>
+    </Select>
+  </Table>
+  <Table Name="FormsUserSessions">
+    <ColumnDef Name="pid.value" Type="Integer" Key="true" />
+    <ColumnDef Name="uid.value" Type="Integer" />
+    <ColumnDef Name="privateMemory.value" Type="Double">
+      <Unit>KB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpu_usage" Type="Double">
+      <Unit>%</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpuTime.value" Type="Integer">
+      <Unit>millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="config.value" Type="String" />
+    <ColumnDef Name="connect.value" Type="String" />
+    <ColumnDef Name="dbname.value" Type="String" />
+    <ColumnDef Name="executable.value" Type="String" />
+    <ColumnDef Name="form.value" Type="String" />
+    <ColumnDef Name="ip.value" Type="String" />
+    <ColumnDef Name="threadid.value" Type="String"/>
+    <ColumnDef Name="tnsentry.value" Type="String"/>
+    <ColumnDef Name="tracefile.value" Type="String"/>
+    <ColumnDef Name="tracing.value" Type="String"/>
+    <ColumnDef Name="user.value" Type="String"/>
+    <ColumnDef Name="instname.value" Type="String" />
+    <ColumnDef Name="servername.value" Type="String" />
+    <ColumnDef Name="appname.value" Type="String" />
+    <ColumnDef Name="jsessionid.value" Type="String" />
+    <ColumnDef Name="formshostname.value" Type="String" />
+    <ColumnDef Name="bytes_sent.value" Type="Integer" />
+    <ColumnDef Name="bytes_recvd.value" Type="Integer" />
+    <ColumnDef Name="round_trips.value" Type="Integer" />
+    <ColumnDef Name="exit_code.value" Type="String" Key="true" />
+    <ColumnDef Name="exit_time.value" Type="String" />
+    <ColumnDef Name="sso_user_name" Type="String" />
+    <ColumnDef Name="cluster_name" Type="String" />
+    <Select Name="resUsage_from_FormsResourceUsage">
+      <TableFrom Name="oracle_forms:FormsResourceUsage"/>
+      <Column Name="pid.value" Type="Integer" />
+      <Column Name="uid.value" Type="Integer" />
+      <Column Name="instname.value" Type="String" />
+      <Column Name="privateMemory.value" Type="Double" />
+      <Column Name="cpuTime.value" Type="Integer" />
+      <Column Name="cpu_usage" Type="Double" />
+    </Select>
+    <Select Name="FormsUserSessions_result">
+      <TableFrom Name="FormsRuntimeInfo"/>
+      <TableFrom Name="resUsage_from_FormsResourceUsage"/>
+      <Column Name="pid.value" Type="Integer" Table="FormsRuntimeInfo" />
+      <Column Name="uid.value" Type="Integer" Table="resUsage_from_FormsResourceUsage"/>
+      <Column Name="privateMemory.value" Type="Double" Table="resUsage_from_FormsResourceUsage"/>
+      <Column Name="cpu_usage" Type="Double" Table="resUsage_from_FormsResourceUsage"/>
+      <Column Name="cpuTime.value" Type="Integer" Table="resUsage_from_FormsResourceUsage"/>
+      <Column Name="config.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="connect.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="dbname.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="executable.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="form.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="ip.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="threadid.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="tnsentry.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="tracefile.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="tracing.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="user.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="instname.value" Type="String" Table="resUsage_from_FormsResourceUsage"/>
+      <Column Name="servername.value" Type="String">
+        <ColumnFrom Name="ServerName" Table="FormsRuntimeInfo" />
+      </Column>
+      <Column Name="appname.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="jsessionid.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="formshostname.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="bytes_sent.value" Type="Integer">
+        <ColumnFrom Name="bytes_sent.value" Table="FormsRuntimeInfo" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="bytes_recvd.value" Type="Integer">
+        <ColumnFrom Name="bytes_recvd.value" Table="FormsRuntimeInfo" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="round_trips.value" Type="Integer">
+        <ColumnFrom Name="round_trips.value" Table="FormsRuntimeInfo" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="exit_code.value" Type="String">
+        <ColumnFrom Name="exit_code.value" Table="FormsRuntimeInfo" />
+        <Default>RUNNING</Default>
+      </Column>
+      <Column Name="exit_time.value" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="sso_user_name" Type="String" Table="FormsRuntimeInfo"/>
+      <Column Name="cluster_name" Type="String" Table="FormsRuntimeInfo"/>
+      <Where>
+        <And>
+          <Condition Type="Integer" Operator="EQ">
+            <ColumnFrom Name="pid.value" Table="FormsRuntimeInfo"/>
+            <ColumnFrom Name="pid.value" Table="resUsage_from_FormsResourceUsage"/>
+          </Condition>
+          <And>
+            <Or>
+              <Condition Type="String" Operator="EQ">
+                <ColumnFrom Name="instname.value" Table="resUsage_from_FormsResourceUsage"/>
+                <Value Name="instname.value.parameter"/>
+              </Condition>
+              <Condition Type="String" Operator="EQ">
+                <Value Name="instname.value.parameter" xsi:nil="true"/>
+                <Null/>
+              </Condition>
+            </Or>
+            <Or>
+              <Condition Type="String" Operator="EQ">
+                <ColumnFrom Name="appname.value" Table="FormsRuntimeInfo"/>
+                <Value Name="appname.value.parameter"/>
+              </Condition>
+              <Condition Type="String" Operator="EQ">
+                <Value Name="appname.value.parameter" xsi:nil="true"/>
+                <Null/>
+              </Condition>
+            </Or>
+          </And>
+        </And>
+      </Where>
+    </Select>
+    <Select Name="FormsUseSession_result1">
+      <TableFrom Name="FormsUserSessions_result"/>
+      <Where>
+        <Condition Type="String" Operator="NE">
+          <ColumnFrom Name="pid.value"/>
+          <Null/>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+  <Table Name="ExitedSessions">
+    <ColumnDef Name="pid.value" Type="Integer" Key="true" />
+    <ColumnDef Name="uid.value" Type="Integer" />
+    <ColumnDef Name="privateMemory.value" Type="Double">
+      <Unit>KB</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpu_usage" Type="Double">
+      <Unit>%</Unit>
+    </ColumnDef>
+    <ColumnDef Name="cpuTime.value" Type="Integer">
+      <Unit>millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="config.value" Type="String" />
+    <ColumnDef Name="connect.value" Type="String" />
+    <ColumnDef Name="dbname.value" Type="String" />
+    <ColumnDef Name="executable.value" Type="String" />
+    <ColumnDef Name="form.value" Type="String" />
+    <ColumnDef Name="ip.value" Type="String" />
+    <ColumnDef Name="threadid.value" Type="String"/>
+    <ColumnDef Name="tnsentry.value" Type="String"/>
+    <ColumnDef Name="tracefile.value" Type="String"/>
+    <ColumnDef Name="tracing.value" Type="String"/>
+    <ColumnDef Name="user.value" Type="String"/>
+    <ColumnDef Name="instname.value" Type="String" />
+    <ColumnDef Name="servername.value" Type="String" />
+    <ColumnDef Name="appname.value" Type="String" />
+    <ColumnDef Name="jsessionid.value" Type="String" />
+    <ColumnDef Name="formshostname.value" Type="String" />
+    <ColumnDef Name="bytes_sent.value" Type="Integer" />
+    <ColumnDef Name="bytes_recvd.value" Type="Integer" />
+    <ColumnDef Name="round_trips.value" Type="Integer" />
+    <ColumnDef Name="exit_code.value" Type="String" />
+    <ColumnDef Name="exit_time.value" Type="String" />
+    <ColumnDef Name="sso_user_name" Type="String" />
+    <ColumnDef Name="cluster_name" Type="String" />
+    <Select Name="exited_proc_from_FormsRuntimeInfo">
+      <TableFrom Name="FormsRuntimeInfo"/>
+      <Column Name="pid.value" Type="Integer" />
+      <Column Name="uid.value" Type="Integer" />
+      <Column Name="privateMemory.value" Type="Double" />
+      <Column Name="cpuTime.value" Type="Integer" />
+      <Column Name="cpu_usage" Type="Double" />
+      <Column Name="config.value" Type="String" />
+      <Column Name="connect.value" Type="String" />
+      <Column Name="dbname.value" Type="String" />
+      <Column Name="executable.value" Type="String" />
+      <Column Name="form.value" Type="String" />
+      <Column Name="ip.value" Type="String" />
+      <Column Name="threadid.value" Type="String"/>
+      <Column Name="tnsentry.value" Type="String"/>
+      <Column Name="tracefile.value" Type="String"/>
+      <Column Name="tracing.value" Type="String"/>
+      <Column Name="user.value" Type="String"/>
+      <Column Name="instname.value" Type="String" />
+      <Column Name="servername.value" Type="String">
+        <ColumnFrom Name="ServerName" Table="FormsRuntimeInfo" />
+      </Column>
+      <Column Name="appname.value" Type="String" />
+      <Column Name="jsessionid.value" Type="String" />
+      <Column Name="formshostname.value" Type="String" />
+      <Column Name="bytes_sent.value" Type="Integer" />
+      <Column Name="bytes_recvd.value" Type="Integer" />
+      <Column Name="round_trips.value" Type="Integer" />
+      <Column Name="exit_code.value" Type="String" />
+      <Column Name="exit_time.value" Type="String" />
+      <Column Name="sso_user_name" Type="String" />
+      <Column Name="cluster_name" Type="String" />
+      <Where>
+        <And>
+          <Or>
+            <Condition Type="String" Operator="NE">
+              <ColumnFrom Name="exit_code.value"/>
+              <Value>RUNNING</Value>
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="exit_code.value"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Condition Type="Integer" Operator="GT">
+            <ColumnFrom Name="pid.value"/>
+            <Value>0</Value>
+          </Condition>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+  <Table Name="servlet_rollup_no_rate">
+    <ColumnDef Name="name" Type="String" Key="true">
+      <Description>Name of the servlet</Description>
+    </ColumnDef>
+    <ColumnDef Name="web_module" Type="String" />
+    <ColumnDef Name="appName" Type="String" Key="true" />
+    <ColumnDef Name="serverName" Type="String" Key="true" />
+    <ColumnDef Name="service.totalTime" Type="Double">
+      <Unit>Millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="service.averageTime" Type="Double">
+      <Unit>Millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="service.completed" Type="Integer" />
+    <Select Name="servlet_rollup_no_rate_result">
+      <TableFrom Name="weblogic_j2eeserver:servlet_jsp_no_rate" />
+      <Column Name="name" Type="String" />
+      <Column Name="web_module" Type="String">
+        <ColumnFrom Name="webModuleName" />
+      </Column>
+      <Column Name="appName" Type="String" />
+      <Column Name="serverName" Type="String" />
+      <Column Name="service.completed" Type="Integer" />
+      <Column Name="service.totalTime" Type="Double" />
+      <Column Name="service.averageTime" Type="Double">
+        <Expression Operator="Div">
+          <ColumnFrom Name="service.totalTime" />
+          <ColumnFrom Name="service.completed" />
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Where>
+        <Condition Type="String" Operator="EQ">
+          <ColumnFrom Name="webModuleName" />
+          <Value>forms</Value>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="servlet_rollup">
+    <ColumnDef Name="name" Type="String" Key="true">
+      <Description>Name of the servlet</Description>
+    </ColumnDef>
+    <ColumnDef Name="web_module" Type="String" />
+    <ColumnDef Name="appName" Type="String" Key="true" />
+    <ColumnDef Name="serverName" Type="String" Key="true" />
+    <ColumnDef Name="service.throughput" Type="Double" />
+    <ColumnDef Name="service.time" Type="Double">
+      <Unit>Millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="service.totalTime" Type="Double">
+      <Unit>Millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="service.averageTime" Type="Double">
+      <Unit>Millisecond (ms)</Unit>
+    </ColumnDef>
+    <ColumnDef Name="service.completed" Type="Integer" />
+    <ColumnDef Name="instname.value" Type="String" />
+    <Select Name="servlet_rollup_result">
+      <TableFrom Name="weblogic_j2eeserver:servlet_jsp" />
+      <Column Name="name" Type="String" />
+      <Column Name="web_module" Type="String">
+        <ColumnFrom Name="webModuleName" />
+      </Column>
+      <Column Name="appName" Type="String" />
+      <Column Name="serverName" Type="String" />
+      <Column Name="service.completed" Type="Integer" />
+      <Column Name="service.totalTime" Type="Double" />
+      <Column Name="service.averageTime" Type="Double">
+        <Expression Operator="Div">
+          <ColumnFrom Name="service.totalTime" />
+          <ColumnFrom Name="service.completed" />
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Name="service.throughput" Type="Double" />
+      <Column Name="service.time" Type="Double" />
+      <Where>
+        <Condition Type="String" Operator="EQ">
+          <ColumnFrom Name="name" />
+          <Value>lservlet</Value>
+        </Condition>
+      </Where>
+    </Select>
+    <Select Name="servlet_rollup_result_1">
+      <TableFrom Name="servlet_rollup_result" />
+      <TableFrom Name="oracle_forms:servers" />
+      <Column Name="name" Type="String" Table="servlet_rollup_result" />
+      <Column Name="web_module" Type="String" Table="servlet_rollup_result" />
+      <Column Name="appName" Type="String" Table="servlet_rollup_result" />
+      <Column Name="serverName" Type="String" Table="servlet_rollup_result" />
+      <Column Name="service.completed" Type="Integer" Table="servlet_rollup_result" />
+      <Column Name="service.totalTime" Type="Double" Table="servlet_rollup_result" />
+      <Column Name="service.averageTime" Type="Double" Table="servlet_rollup_result" />
+      <Column Name="service.throughput" Type="Double" Table="servlet_rollup_result" />
+      <Column Name="service.time" Type="Double" Table="servlet_rollup_result" />
+      <Column Name="instname.value" Type="String" Table="oracle_forms:servers" />
+      <Where>
+        <And>
+          <Condition Type="String" Operator="EQ">
+            <ColumnFrom Name="serverName" Table="servlet_rollup_result" />
+            <ColumnFrom Name="serverName" Table="oracle_forms:servers" />
+          </Condition>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="instName.parameter"/>
+              <ColumnFrom Name="instname.value" Table="oracle_forms:servers"/>
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="instName.parameter" xsi:nil="true"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="servlet_rollup_agg">
+    <ColumnDef Name="service.averageTime" Type="Double"/>
+    <ColumnDef Name="instname.value" Type="String" Key="true" />
+    <Select Name="servlet_rollup_agg_result">
+      <TableFrom Name="oracle_forms:servlet_rollup" />
+      <Column Name="instname.value" Type="String" />
+      <Column Name="service.averageTime" Type="Double">
+        <Aggregation Operator="Avg" Name="service.averageTime" />
+      </Column>
+      <GroupBy Name="instname.value"/>
+      <Where>
+        <Or>
+          <Condition Type="String" Operator="EQ">
+            <Value Name="instName.parameter"/>
+            <ColumnFrom Name="instname.value" Table="oracle_forms:servlet_rollup"/>
+          </Condition>
+          <Condition Type="String" Operator="EQ">
+            <Value Name="instName.parameter" xsi:nil="true"/>
+            <Null/>
+          </Condition>
+        </Or>
+      </Where>
+    </Select>
+  </Table>
+  <Table Name="ResourceUsage">
+    <ColumnDef Name="cpu.component" Type="Double">
+      <Unit>%</Unit>
+    </ColumnDef>
+    <ColumnDef Name="instname.value" Type="String" Key="true">
+      <Description>Application Server Instance Name</Description>
+    </ColumnDef>
+    <Select Name="Resource_result">
+      <TableFrom Name="oracle_forms:aggr_FormsResourceUsage"/>
+      <Column Name="cpu.component" Type="Double">
+        <Default>0</Default>
+      </Column>
+      <Column Name="instname.value" Type="String"/>
+      <Where>
+        <Or>
+          <Condition Type="String" Operator="EQ">
+            <Value Name="instName.parameter"/>
+            <ColumnFrom Name="instname.value" Table="oracle_forms:aggr_FormsResourceUsage"/>
+          </Condition>
+          <Condition Type="String" Operator="EQ">
+            <Value Name="instName.parameter" xsi:nil="true"/>
+            <Null/>
+          </Condition>
+        </Or>
+      </Where>
+    </Select>
+  </Table>
+</Adml>

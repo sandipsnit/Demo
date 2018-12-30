@@ -1,0 +1,125 @@
+# RCptx.def: Dynix/Ptx Specific Multi-run Collection Code
+# $Id: RCptx.def,v 1.10 2012/07/28 15:07:14 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/RCptx.def,v 1.10 2012/07/28 15:07:14 mschenke Exp $
+#
+# Change History
+# 20120725  KRA  Extend system error log collection.
+
+=head1 NAME
+
+RCptx - Submodule Specific to the Dynix/Ptx Operating System
+
+=cut
+
+use Buffer
+use Mrc
+
+# Make the module persistent
+var @COMMON_SECTIONS = ('NET_ifconfig','OS_system_error_log')
+keep $KEEP_BLOCK,@COMMON_SECTIONS
+
+# Initialization
+import $TOC,$TOP
+keep $TOC,$TOP
+
+=head1 CONTRIBUTION TO THE NET MODULE
+
+=head2 ifconfig - Interface Configuration
+
+Gets the network interface configuration using the F</usr/sbin/ifconfig>
+command.
+
+=cut
+
+section NET_ifconfig
+
+if testFile('x','/usr/sbin/ifconfig')
+{debug ' Inside NET module, getting network interface configuration (dynix/ptx)'
+ report ifconfig
+ prefix
+ {write '---+ Interface Configuration'
+  write '---## Using: ifconfig -a'
+ }
+ call writeCommand('/usr/sbin/ifconfig -a')
+ if isCreated(true)
+ {call validate(true)
+  write $TOP
+  toc '2:[[',getFile(),'][rda_report][Interface Configuration]]'
+ }
+}
+
+=head1 CONTRIBUTION TO THE OS MODULE
+
+=head2 system_error_log - System Error Log
+
+Collects system error log data.
+
+=cut
+
+section OS_system_error_log
+
+report system_error_log
+write '---+!! System Error Log Data'
+write $TOC
+
+write '---+ Using: /etc/ktmesg | head -1000'
+call loadCommand('/etc/ktmesg 2>&1',true,1,1000)
+call writeLastFile()
+write $TOP
+
+write '---+ Contents of System Log File'
+output d,'system.log'
+if $buf = new('Buffer','r',$fil = \
+  concat('/usr/adm/ktlog/',localtime('%Y/%m/%d')))
+{if $lim = getSetting('OS_TAIL')
+  write '   * Last ',$lim,' log file lines collected'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present risks. \
+             To prevent them, access the file outside the browser or use \
+             the link to save them and use an adequate viewer.'
+ write '|*File Name*| *Size*|*Last Modified Date*|'
+ if $lim
+  call ${CUR.LAST}->write_tail($buf,$lim,['F',$fil,'T','T'])
+ else
+  call ${CUR.LAST}->write_data($buf)
+ write '|[[',${CUR.LAST}->get_raw(true),'][_blank][',encode($fil),']]| ',\
+       getSize($fil),'|',\
+       getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+}
+elsif testFile('e',$fil)
+{write 'Unable to read ',encode($fil),'%BR%\
+        May be file permission problem.%BR%\
+        Permissions are:%BR%'
+ call statFile('b',$fil)
+ write 'User: ',id(),'%BR%'
+}
+else
+ write $fil,' does not exist%BR%'
+write $TOP
+call $[OUT]->end_report(${CUR.LAST})
+
+if isCreated(true)
+{call validate(true)
+ toc '2:[[',getFile(),'][rda_report][System Error Log]]'
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.29: Pierre Lecomte.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

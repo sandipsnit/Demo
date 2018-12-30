@@ -1,0 +1,122 @@
+# M100OS.def: Performs Operating System Multi-run Collections
+# $Id: M100OS.def,v 1.11 2012/05/23 11:21:49 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M100OS.def,v 1.11 2012/05/23 11:21:49 mschenke Exp $
+#
+# Change History
+# 20120523  KRA  Improve RAC_ocrdump section in OpenVMS.
+
+=head1 NAME
+
+M100OS - Performs Operating System Multi-run Collections
+
+=head1 DESCRIPTION
+
+This module regroups multi-run collections specific to the operating system.
+
+=cut
+
+use Mrc
+
+var @COMMON_SECTIONS  = ('RAC_ocrdump')
+var @CONTROL_SECTIONS = ('NET','OS')
+keep @COMMON_SECTIONS,@CONTROL_SECTIONS
+
+=head1 NETWORK MULTI-RUN COLLECTIONS
+
+Performs network collections.
+
+=cut
+
+section NET
+
+collect &{check(getOsName(),'aix',        'RCaix|NET',\
+                            'darwin',     'RCdarwin|NET',\
+                            'dec_osf',    'RCosf|NET',\
+                            'dynixptx',   'RCptx|NET',\
+                            'hpux',       'RChpux|NET',\
+                            'linux',      'RClinux|NET',\
+                            'solaris',    'RCsunos|NET',\
+                            cond(isUnix(),'RCunix|NET'))}()
+
+=head1 OPERATING SYSTEM MULTI-RUN COLLECTIONS
+
+Performs operating system collections.
+
+=cut
+
+section OS
+
+collect &{check(getOsName(),'aix',        'RCaix|OS',\
+                            'darwin',     'RCdarwin|OS',\
+                            'dec_osf',    'RCosf|OS',\
+                            'dynixptx',   'RCptx|OS',\
+                            'hpux',       'RChpux|OS',\
+                            'linux',      'RClinux|OS',\
+                            'solaris',    'RCsunos|OS',\
+                            cond(isUnix(),'RCunix|OS'))}()
+
+=head1 REAL APPLICATION CLUSTER MULTI-RUN COLLECTIONS
+
+=head2 ocrdump - ocrdump
+
+Collects ocrdump when requested.
+
+=cut
+
+section RAC_ocrdump
+
+if testDir('d',$hom = ${CLUSTER_CRS_HOME}) 
+{debug ' Inside RAC module, requesting an ocrdump'
+ report ocrdump
+ var $env = setEnv('ORACLE_HOME',$hom)
+ var $cmd = cond(isVms(),'ocrdump',catFile($hom,'bin','ocrdump'))
+ var $tmp = newTemp('ocrdump')
+ if and(getSetting('CLUSTER_XML_OCRDUMP'),\
+        loadCommand(concat(cond(isVms(),$cmd,lastCommand()),' -xml ',\
+                           quote($tmp,'x'))),\
+        testFile('s',$tmp))
+ {write '---+ OCR Dump in XML Format'
+  write '---## Using: ',encode($cmd)
+  if isFiltered()
+   call writeFilter($tmp,'(\binterfaces\b.*?)\d{1,3}(\|d\d{1,3}){3}','%R:IP4%')
+  else
+   call writeFile($tmp)
+ }
+ elsif loadCommand(concat(cond(isVms(),$cmd,lastCommand()),' ',\
+                          quote($tmp,'x'),' 2>&1'))
+ {write '---+ OCR Dump'
+  write '---## Using: ',encode($cmd)
+  if isFiltered()
+   call writeFilter($tmp,'(\binterfaces\b.*?)\d{1,3}(\|d\d{1,3}){3}','%R:IP4%')
+  else
+   call writeFile($tmp)
+ }
+ else
+ {write '---+ OCR Dump Error'
+  call writeLastFile()
+ }
+ call unlinkTemp('ocrdump')
+ if isCreated(true)
+ {call validate(true)
+  toc '3:[[',getFile(),'][rda_report][ocrdump]]'
+ }
+ call setEnv('ORACLE_HOME',$env)
+}
+
+=head1 SEE ALSO
+
+L<RCaix|modules::RCaix>, L<RCdarwin|modules::RCdarwin>,
+L<RChpux|modules::RChpux>, L<RClinux|modules::RClinux>,
+L<RCosf|modules::RCosf>, L<RCptx|modules::RCptx>,
+L<RCsunos|modules::RCsunos>, L<RCunix|modules::RCunix>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

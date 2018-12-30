@@ -1,0 +1,887 @@
+# S203DBM.def: Collects Oracle RDBMS Memory Information
+# $Id: S203DBM.def,v 2.7 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S203DBM.def,v 2.7 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S203DBM - Collects Oracle RDBMS Memory Information
+
+=head1 DESCRIPTION
+
+This module collects the Oracle RDBMS memory-related information.
+
+The following report can be generated and are regrouped under C<RDBMS Memory>:
+
+=cut
+
+if !getSetting('DATABASE_INSTALLED')
+ return
+echo tput('bold'),'Processing RDBMS Memory module ...',tput('off')
+
+# Initialization
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+pretoc '^1:RDBMS'
+pretoc '1+:RDBMS Memory'
+
+=head2 no_privileges - Insufficient Privileges
+
+This module must be run as a SYSDBA user.
+
+=cut
+
+if !getSetting('SQL_SYSDBA')
+{report no_privileges
+ write 'The RDBMS Memory module requires you to connect as a SYSDBA user. \
+        This can be set up during the DB module setup.'
+ toc '2:[[',getFile(),'][rda_report][Insufficient Privileges]]'
+ toc '-:RDBMS'
+ return
+}
+
+# Load the common macros
+run DBinfo()
+
+# Get database version
+var $ver = get_db_version()
+
+=head2 respool - Reserved Pool Information
+
+Collects information about Reserved Pool (or Reserved Area) inside the Shared
+Pool.
+
+=cut
+
+debug ' Inside DBM module, gathering Reserved Pool information'
+report respool
+var $TTL = '---+!! Reserved Pool Information'
+var @TTL = ('',\
+            '---+ Reserved Pool Percentage Set',\
+            '---+ Reserved Pool Information')
+var @HDR = ('',\
+            '|*Parameter* |*Session Value* |*Instance Value* |',\
+            '|*Instance* | *Free Space*| *Average Free Space*| *Free Count*\
+             | *Max Free Size*| *Used Space*| *Average Used Size*\
+             | *Used Count*| *Max Used Size*| *Requests*| *Request Misses*\
+             | *Last Miss Size*| *Max Miss Size*| *Request Failures*\
+             | *Last Failure Size*| *Aborted Request Threshold*\
+             | *Aborted Requests*| *Last Aborted Size*|')
+set $sql
+{SELECT '|' ||
+"       a.ksppinm || '| ' ||
+"       b.ksppstvl || '| ' ||
+"       c.ksppstvl || '|'
+" FROM sys.x$ksppi a,sys.x$ksppcv b,sys.x$ksppsv c
+" WHERE a.indx = b.indx
+"   AND a.indx = c.indx
+"   AND a.ksppinm = '_shared_pool_reserved_pct';
+"PROMPT ___Macro_separator(2)___
+"SELECT '|' ||
+"       p.inst_id || ' | ' ||
+"       p.free_space || '| ' ||
+"       p.avg_free_size || '| ' ||
+"       p.free_count || '| ' ||
+"       p.max_free_size || '| ' ||
+"       p.used_space || '| ' ||
+"       p.avg_used_size || '| ' ||
+"       p.used_count || '| ' ||
+"       p.max_used_size || '| ' ||
+"       s.requests || '| ' ||
+"       s.request_misses || '| ' ||
+"       s.last_miss_size || '| ' ||
+"       s.max_miss_size || '| ' ||
+"       s.request_failures || '| ' ||
+"       s.last_failure_size || '| ' ||
+"       s.aborted_request_threshold || '| ' ||
+"       s.aborted_requests || '| ' ||
+"       s.last_aborted_size || '|'
+" FROM (SELECT ROUND(AVG(x$ksmspr.inst_id),2) inst_id,
+"              SUM(DECODE(ksmchcls,'R-free',ksmchsiz,0)) free_space,
+"              ROUND(AVG(DECODE(ksmchcls,'R-free',ksmchsiz,0)),2) avg_free_size,
+"              SUM(DECODE(ksmchcls,'R-free',1,0)) free_count,
+"              MAX(DECODE(ksmchcls,'R-free',ksmchsiz,0)) max_free_size,
+"              SUM(DECODE(ksmchcls,'R-free',0,ksmchsiz)) used_space,
+"              ROUND(AVG(DECODE(ksmchcls,'R-free',0,ksmchsiz)),2) avg_used_size,
+"              SUM(DECODE(ksmchcls,'R-free',0,1)) used_count,
+"              MAX(DECODE(ksmchcls,'R-free',0,ksmchsiz)) max_used_size
+"        FROM x$ksmspr
+"        WHERE ksmchcom not like '%reserved sto%') p,
+"      (SELECT SUM(kghlurcn) requests,
+"              SUM(kghlurmi) request_misses,
+"              MAX(kghlurmz) last_miss_size,
+"              MAX(kghlurmx) max_miss_size,
+"              SUM(kghlunfu) request_failures,
+"              MAX(kghlunfs) last_failure_size,
+"              MAX(kghlumxa) aborted_request_threshold,
+"              SUM(kghlumer) aborted_requests,
+"              MAX(kghlumes) last_aborted_size
+"        FROM x$kghlu) s;
+}
+call separator(1)
+call writeSql($sql)
+call separator(0,'Reserved Pool Information')
+
+=head2 subpool - Number of Subpools
+
+Collects the number of subpools.
+
+=cut
+
+debug ' Inside DBM module, gathering number of subpools'
+report subpool
+prefix
+{write '---+ Number of Subpools'
+ write '|*Parameter* |*Session Value* |*Instance Value* |'
+}
+set $sql
+{SELECT '|' ||
+"       a.ksppinm || ' | ' ||
+"       b.ksppstvl || '| ' ||
+"       c.ksppstvl || '|'
+" FROM sys.x$ksppi a,sys.x$ksppcv b,sys.x$ksppsv c
+" WHERE a.indx = b.indx
+"   AND a.indx = c.indx
+"   AND a.ksppinm LIKE '%kghdsidx%';
+}
+call writeSql($sql)
+if isCreated(true)
+{write $TOP
+ toc '2:[[',getFile(),'][rda_report][Number of Subpools]]'
+}
+
+=head2 spresmal - Shared Pool Reserved Minimum Allocation
+
+Collects shared pool reserved minimum allocation information.
+
+=cut
+
+debug ' Inside DBM module, gathering shared pool reserved minimum \
+        allocation'
+report spresmal
+prefix
+{write '---+ Shared Pool Reserved Minimum Allocation'
+ write '|*Name* |*Value* |'
+}
+set $sql
+{SELECT '|' ||
+"       nam.ksppinm || ' | ' ||
+"       val.ksppstvl || '|'
+" FROM x$ksppi nam,x$ksppsv val
+" WHERE nam.indx = val.indx
+"   AND nam.ksppinm LIKE '%shared%'
+" ORDER BY nam.ksppinm;
+}
+call writeSql($sql)
+if isCreated()
+{write $TOP
+ toc '2:[[',getFile(),'][rda_report][Shared Pool Reserved Minimum Allocation]]'
+}
+
+=head2 lchitrat - Library Cache Hit Ratio
+
+Collects the amount of times a statement must be parsed instead of being
+reused.
+
+=cut
+
+debug ' Inside DBM module, gathering library cache hit ratio information'
+report lchitrat
+prefix
+{write '---+ Library Cache Hit Ratio'
+ write '| *Executions*| *Cache Misses While Executing*|'
+}
+set $sql
+{SELECT '| ' ||
+"       SUM(pins) || '| ' ||
+"       SUM(reloads) || '|'
+" FROM v$librarycache;
+}
+call writeSql($sql)
+if isCreated(true)
+{write $TOP
+ toc '2:[[',getFile(),'][rda_report][Library Cache Hit Ratio]]'
+}
+
+=head2 hwm - HighWaterMark Information
+
+Collects statistics about code in the library cache.
+
+=cut
+
+debug ' Inside DBM module, gathering HighWaterMark information'
+report hwm
+prefix
+{write '---+ HighWaterMark Information'
+ write '| *Max Invalidations*| *Max Versions Loaded*| *Versions HighWaterMark*\
+        | *Largest Memory object*|'
+}
+set $sql
+{SELECT '| ' ||
+"       MAX(invalidations) || '| ' ||
+"       MAX(loaded_versions) || '| ' ||
+"       MAX(version_count) || '| ' ||
+"       MAX(sharable_mem) || '|'
+" FROM v$sqlarea;
+}
+call writeSql($sql)
+if isCreated(true)
+{write $TOP
+ toc '2:[[',getFile(),'][rda_report][HighWaterMark Information]]'
+}
+
+=head2 sgacomp - SGA Component Information
+
+Collects information about the auto-tuned components in the SGA and shows
+activity moving memory around in the SGA. (Oracle 9i Release 2 and later.)
+
+=cut
+
+if match($ver,'^(92|10|11)')
+{debug ' Inside DBM module, gathering SGA component information'
+ report sgacomp
+ var $TTL = '---+!! SGA Component Information'
+ var @TTL = ('',\
+             '---+ SGA Components Size',\
+             '---+ SGA Components Last Operation',\
+             '---+ SGA Components Resize Information',\
+             '---+ Explicit Settings For Components')
+ var @HDR = ('',\
+             '|*Component* | *Current Size*| *Min Size*| *Max Size*\
+              | *Granule Size*|',\
+             '|*Component* |*Operation Type* |*Operation Mode* \
+              |*Timestamp* |',\
+             '|*Component* |*Parameter* | *Initial Size*| *Final Size*\
+              |*Status* |*Changed At* |',\
+             '|*Component* | *Low Size*| *Low Size (MiB)*| *High Size*\
+              | *High Size (MiB)*|')
+ if match($ver,'^(92|10)')
+ {var $sep = 5
+  set $sql
+  {SELECT '|' ||
+  "       component || ' | ' ||
+  "       current_size || '| ' ||
+  "       min_size || '| ' ||
+  "       max_size || '| ' ||
+  "       granule_size || '|'
+  " FROM v$sga_dynamic_components;
+  "SELECT '| | ' ||
+  "       SUM(current_size) || '| | | |'
+  " FROM v$sga_dynamic_components;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '|' ||
+  "       component || ' |' ||
+  "       last_oper_type || ' |' ||
+  "       last_oper_mode || ' |' ||
+  "       TO_CHAR(last_oper_time,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+  " FROM v$sga_dynamic_components;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '|' ||
+  "       component || ' |' ||
+  "       parameter || ' | ' ||
+  "       initial_size || '| ' ||
+  "       final_size || '|' ||
+  "       status || ' |' ||
+  "       TO_CHAR(end_time,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+  " FROM v$sga_resize_ops;
+  "PROMPT ___Macro_separator(4)___
+  "SELECT '|' ||
+  "       component || ' | ' ||
+  "       MIN(final_size) || '| ' ||
+  "       MIN(final_size / 1048576) || '| ' ||
+  "       MAX(final_size) || '| ' ||
+  "       MAX(final_size / 1048576) || '|'
+  " FROM v$sga_resize_ops
+  " GROUP BY component;
+  }
+ }
+ else
+ {var @TTL = (@TTL,'---+ Last modified Explicit Settings For Components')
+  var @HDR = (@HDR,'|*Component* |*Last Modified* | *Size*|')
+  var $sep = 6
+  set $sql
+  {SELECT '|' ||
+  "       component || ' | ' ||
+  "       current_size || '| ' ||
+  "       min_size || '| ' ||
+  "       max_size || '| ' ||
+  "       granule_size || '|'
+  " FROM v$memory_dynamic_components;
+  "SELECT '| | ' ||
+  "       SUM(current_size) || '| | | |'
+  " FROM v$sga_dynamic_components;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '|' ||
+  "       component || ' |' ||
+  "       last_oper_type || ' |' ||
+  "       last_oper_mode || ' |' ||
+  "       TO_CHAR(last_oper_time,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+  " FROM v$memory_dynamic_components;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '|' ||
+  "       component || ' |' ||
+  "       parameter || ' | ' ||
+  "       initial_size || '| ' ||
+  "       final_size || '|' ||
+  "       status || ' |' ||
+  "       TO_CHAR(end_time,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+  " FROM v$memory_resize_ops;
+  "PROMPT ___Macro_separator(4)___
+  "SELECT '|' ||
+  "       component || ' | ' ||
+  "       MIN(final_size) || '| ' ||
+  "       MIN(final_size/1048576) || '| ' ||
+  "       MAX(final_size) || '| ' ||
+  "       MAX(final_size/1048576) || '|'
+  " FROM v$memory_resize_ops
+  " GROUP BY component;
+  "PROMPT ___Macro_separator(5)___
+  "SELECT '|' ||
+  "       component || ' |' ||
+  "       lasttime || '| ' ||
+  "       setting || '| '
+  " FROM (SELECT component,
+  "              TO_CHAR(end_time,'DD-Mon-YYYY HH24:MI:SS') lasttime,
+  "              MAX(final_size) setting
+  "        FROM v$memory_resize_ops
+  "        GROUP BY component,end_time
+  "       UNION
+  "       SELECT component,
+  "              TO_CHAR(end_time,'DD-Mon-YYYY HH24:MI:SS') lasttime,
+  "              MIN(final_size) setting
+  "        FROM v$memory_resize_ops
+  "        GROUP BY component,end_time)
+  " ORDER BY component,setting;
+  }
+ }
+ if match($ver,'^(10|11)')
+ {var @TTL = (@TTL,'---+ SGA Information')
+  var @HDR = (@HDR,'|*Name* | *Bytes*|*Auto* |')
+  append $sql
+  {PROMPT ___Macro_separator(:1)___
+  "SELECT '|' ||
+  "       name || ' | ' ||
+  "       bytes || '|' ||
+  "       resizeable || ' |'
+  " FROM v$sgainfo;
+  }
+ }
+ call separator(1)
+ call writeSql(bindSql($sql,$sep))
+ call separator(0,'SGA Component Information')
+}
+
+=head2 sgastat - Top SGA Components
+
+Collects top SGA components by size.
+
+=cut
+
+debug ' Inside DBM module, gathering top SGA components'
+report sgastat
+if match($ver,'^7')
+{prefix
+ {write '---+ Top SGA Components'
+  write '|*Component* | *Size*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       name || ' | ' ||
+ "       bytes || '|'
+ " FROM v$sgastat
+ " ORDER BY bytes DESC;
+ }
+}
+else
+{prefix
+ {write '---+ Top SGA Components'
+  write '|*Pool* |*Component* | *Size*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       pool || ' |' ||
+ "       name || ' | ' ||
+ "       bytes || '|'
+ " FROM v$sgastat
+ " ORDER BY bytes DESC;
+ }
+}
+var $max = trim(getSetting('DBM_TOPSGA'))
+if match($max,'^\d+$')
+ decr $max
+else
+ var $max = 19
+if loadSql($sql)
+ call writeLastSql(0,$max)
+if isCreated(true)
+{write $TOP
+ toc '2:[[',getFile(),'][rda_report][Top SGA Components]]'
+}
+
+=head2 libcache - Library Cache Information
+
+Collects overview information about the shared pool and the library cache usage.
+(Oracle 9i Release 2 and later.)
+
+=cut
+
+if match($ver,'^(92|10|11)')
+{debug ' Inside DBM module, gathering library cache information'
+ report libcache
+ prefix
+ {write '---+ Library Cache Information'
+  write 'If database started recently, this data is not as useful.'
+  write ''
+ }
+ if match($ver,'^(92|101)')
+ {set $sql
+  {PROMPT ___Set_VMS___
+  "SET define on
+  "COL val1 NEW_VAL x_sgasize NOPRINT
+  "COL val2 NEW_VAL x_sp_size NOPRINT
+  "COL val3 NEW_VAL x_lp_size NOPRINT
+  "COL val4 NEW_VAL x_jp_size NOPRINT
+  "COL val5 NEW_VAL x_bc_size NOPRINT
+  "COL val6 NEW_VAL x_other_size NOPRINT
+  "SELECT val1,
+  "       val2,
+  "       val3,
+  "       val4,
+  "       val5,
+  "       val6
+  " FROM (SELECT SUM(bytes) val1
+  "        FROM v$sgastat) s1,
+  "      (SELECT NVL(SUM(bytes),0) val2
+  "        FROM v$sgastat
+  "        WHERE pool='shared pool') s2,
+  "      (SELECT NVL(SUM(bytes),0) val3
+  "        FROM v$sgastat
+  "        WHERE pool='large pool') s3,
+  "      (SELECT NVL(SUM(bytes),0) val4
+  "        FROM v$sgastat
+  "        WHERE pool='java pool') s4,
+  "      (SELECT NVL(SUM(bytes),0) val5
+  "        FROM v$sgastat
+  "        WHERE name='buffer_cache') s6,
+  "      (SELECT NVL(SUM(bytes),0) val6
+  "        FROM v$sgastat
+  "        WHERE name IN ('log_buffer','fixed_sga')) s7;
+  "
+  "COL val1 NEW_VAL x_sp_used NOPRINT
+  "COL val2 NEW_VAL x_sp_used_shr NOPRINT
+  "COL val3 NEW_VAL x_sp_used_per NOPRINT
+  "COL val4 NEW_VAL x_sp_used_run NOPRINT
+  "COL val5 NEW_VAL x_sp_no_stmts NOPRINT
+  "COL val6 NEW_VAL x_sp_vers NOPRINT
+  "SELECT SUM(sharable_mem+persistent_mem+runtime_mem) val1,
+  "       SUM(sharable_mem) val2,
+  "       SUM(persistent_mem) val3,
+  "       SUM(runtime_mem) val4,
+  "       COUNT(*) val5,
+  "       MAX(version_count) val6
+  " FROM v$sqlarea;
+  "
+  "COL val1 NEW_VAL x_1time_sum NOPRINT
+  "COL val2 NEW_VAL x_1time_ttl NOPRINT
+  "SELECT SUM(sharable_mem+persistent_mem+runtime_mem) val1,
+  "       COUNT(*) val2
+  " FROM v$sqlarea
+  " WHERE executions=1;
+  "
+  "COL val2 NEW_VAL x_sp_no_obj NOPRINT
+  "SELECT COUNT(*) val2
+  " FROM v$db_object_cache;
+  "
+  "COL val2 NEW_VAL x_sp_no_kept_chks NOPRINT
+  "COL val3 NEW_VAL x_sp_sz_kept_chks NOPRINT
+  "SELECT DECODE(COUNT(*),'',0,COUNT(*)) val2,
+  "       DECODE(SUM(sharable_mem),'',0,SUM(sharable_mem)) val3
+  " FROM v$db_object_cache
+  " WHERE kept='YES';
+  "
+  "COL val2 NEW_VAL x_sp_free_chks NOPRINT
+  "SELECT SUM(bytes) val2
+  " FROM v$sgastat
+  " WHERE name='free memory'
+  "   AND pool='shared pool';
+  "
+  "COL val2 NEW_VAL x_sp_no_pins NOPRINT
+  "SELECT COUNT(*) val2
+  " FROM v$session a,
+  "      v$sqltext b
+  " WHERE a.sql_address||a.sql_hash_value = b.address||b.hash_value;
+  "
+  "COL val2 NEW_VAL x_sp_sz_pins NOPRINT
+  "SELECT SUM(sharable_mem+persistent_mem+runtime_mem) val2
+  " FROM v$session a,
+  "      v$sqltext b,
+  "      v$sqlarea c
+  " WHERE a.sql_address||a.sql_hash_value = b.address||b.hash_value
+  "   AND b.address||b.hash_value = c.address||c.hash_value;
+  "
+  "COL val3 NEW_VAL x_tot_lc NOPRINT
+  "SELECT SUM(lc_inuse_memory_size)+SUM(lc_freeable_memory_size) val3
+  " FROM v$library_cache_memory;
+  "
+  "COL val2 NEW_VAL x_sp_avail NOPRINT
+  "SELECT &x_sp_size-(&x_tot_lc*1048576)-&x_sp_used val2
+  " FROM dual;
+  "
+  "COL val2 NEW_VAL x_sp_other NOPRINT
+  "SELECT &x_sp_size-(&x_tot_lc*1048576) val2
+  " FROM dual;
+  "
+  "COL val1 NEW_VAL x_trend_4031 NOPRINT
+  "COL val2 NEW_VAL x_trend_size NOPRINT
+  "COL val3 NEW_VAL x_trend_rS NOPRINT
+  "COL val4 NEW_VAL x_trend_rs_size NOPRINT
+  "SELECT request_misses val1,
+  "       DECODE(request_misses,0,0,last_Miss_Size) val2,
+  "       request_failures val3,
+  "       DECODE(request_failures,0,0,last_failure_size) val4
+  " FROM v$shared_pool_reserved;
+  "
+  "SET serveroutput on size 1000000
+  "SELECT '|*Database Started*| ' ||
+  "         TO_CHAR(startup_time,'DD-Mon-YYYY HH24:MI:SS') || '|' || CHR(10) ||
+  "       '|*Instance Name/Number*| ' || instance_name || '/' ||
+  "         instance_number || '|'
+  " FROM v$instance;
+  "BEGIN
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line('|*Breakdown of SGA*| ' ||
+  "   ROUND(&x_sgasize / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Shared Pool*| ' ||
+  "   ROUND(&x_sp_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_sp_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Large Pool*| ' ||
+  "   ROUND(&x_lp_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_lp_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Java Pool*| ' ||
+  "   ROUND(&x_jp_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_jp_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Buffer Cache*| ' ||
+  "   ROUND(&x_bc_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_bc_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Other Areas in SGA*| ' ||
+  "   ROUND(&x_other_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_other_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line('|*High Level Breakdown of Memory* ||');
+  " dbms_output.put_line('|*Sharable*| ' ||
+  "   ROUND(&x_sp_used_shr / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Persistent*| ' ||
+  "   ROUND(&x_sp_used_per / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Runtime*| ' ||
+  "   ROUND(&x_sp_used_run / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*SQL Memory Usage (Total)*| ' ||
+  "   ROUND(&x_sp_used / 1048576,2) || 'MiB (' ||
+  "   100*ROUND(&x_sp_used / &x_sp_size,0) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line('|*No Guidelines on SQL in Library Cache%BR%' ||
+  "   '(If a lot of pinned code, may need larger Shared Pool)* ||');
+  " dbms_output.put_line(
+  "   '|*Number of SQL Statements*| &x_sp_no_stmts|');
+  " dbms_output.put_line(
+  "   '|*Number of Pinned SQL Statements*| &x_sp_no_pins|');
+  " dbms_output.put_line(
+  "   '|*Number of Programmatic Constructs*| &x_sp_no_obj|');
+  " dbms_output.put_line(
+  "   '|*Number of Programmatic Construct Chunks*| &x_sp_no_kept_chks|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*Efficiency Analysis%BR%High versions (100s) could be bug* ||');
+  " dbms_output.put_line('|*Max Child Cursors found*| &x_sp_vers|');
+  " dbms_output.put_line('|*Programmatic Construct Memory Size*| ' ||
+  "   ROUND(&x_sp_sz_kept_chks / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Pinned SQL Statements Memory Size*| ' ||
+  "   ROUND(&x_sp_sz_pins / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*Library Cache at 50% or 60% of Shared Pool not uncommon*||');
+  " dbms_output.put_line('|*Estimated Total Library Cache Memory Usage*| ' ||
+  "   1.1*&x_tot_lc || ' MiB (' ||
+  "   100*ROUND((1.1*&x_tot_lc) / (&x_sp_size / 1048576),2) || '%)|');
+  " dbms_output.put_line('|*Other Shared Pool Memory *| ' ||
+  "   ROUND(&x_sp_other / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Shared Pool Free Memory Chunks*| ' ||
+  "   ROUND(&x_sp_free_chks / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_sp_free_chks / &x_sp_size,2) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*Ideal percentages for one time executions is 20% or lower* ||');
+  " dbms_output.put_line('|*Number of Objects Executed Only One Time*| ' ||
+  "   &x_1time_ttl || ' (' ||
+  "   100*ROUND(&x_1time_ttl / &x_sp_no_stmts,2) || '%)|');
+  " dbms_output.put_line('|*Memory for 1 Time Executions*| ' ||
+  "   ROUND(&x_1time_sum / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_1time_sum / &x_sp_used,2) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*0 misses is ideal, but if growing value points to memory issues*||');
+  " dbms_output.put_line(
+  "   '|*Number of Misses for Memory*| &x_trend_rs|');
+  " dbms_output.put_line(
+  "   '|*Size of Last Miss*| &x_trend_rs_size|');
+  " dbms_output.put_line(
+  "   '|*Number of Misses for Reserved Area*| &x_trend_4031|');
+  " dbms_output.put_line(
+  "   '|*Size of Last Miss for Reserved Area*| &x_trend_size|');
+  "END;
+  "/
+  }
+ }
+ else
+ {set $sql
+  {PROMPT ___Set_VMS___
+  "SET define on
+  "COL val1 NEW_VAL x_sgasize NOPRINT
+  "COL val2 NEW_VAL x_sp_size NOPRINT
+  "COL val3 NEW_VAL x_lp_size NOPRINT
+  "COL val4 NEW_VAL x_jp_size NOPRINT
+  "COL val5 NEW_VAL x_bc_size NOPRINT
+  "COL val6 NEW_VAL x_other_size NOPRINT
+  "COL val7 NEW_VAL x_str_size NOPRINT
+  "COL val8 NEW_VAL x_KGH NOPRINT
+  "SELECT val1,
+  "       val2,
+  "       val3,
+  "       val4,
+  "       val5,
+  "       val6,
+  "       val7,
+  "       val8
+  " FROM (SELECT SUM(bytes) val1
+  "        FROM v$sgastat) s1,
+  "      (SELECT NVL(SUM(bytes),0) val2
+  "        FROM v$sgastat
+  "        WHERE pool='shared pool') s2,
+  "      (SELECT NVL(SUM(bytes),0) val3
+  "        FROM v$sgastat
+  "        WHERE pool='large pool') s3,
+  "      (SELECT NVL(SUM(bytes),0) val4
+  "        FROM v$sgastat
+  "        WHERE pool='java pool') s4,
+  "      (SELECT NVL(SUM(bytes),0) val5
+  "        FROM v$sgastat
+  "        WHERE name='buffer_cache') s5,
+  "      (SELECT NVL(SUM(bytes),0) val6
+  "        FROM v$sgastat
+  "        WHERE name IN ('log_buffer','fixed_sga')) s6,
+  "      (SELECT NVL(SUM(bytes),0) val7
+  "        FROM v$sgastat
+  "        WHERE pool='streams pool') s7,
+  "      (SELECT NVL(SUM(bytes),0) val8
+  "        FROM v$sgastat
+  "        WHERE pool='shared pool'
+  "        AND name='KGH: NO ACCESS') s8;
+  "
+  "COL val1 NEW_VAL x_sp_used NOPRINT
+  "COL val2 NEW_VAL x_sp_used_shr NOPRINT
+  "COL val3 NEW_VAL x_sp_used_per NOPRINT
+  "COL val4 NEW_VAL x_sp_used_run NOPRINT
+  "COL val5 NEW_VAL x_sp_no_stmts NOPRINT
+  "COL val6 NEW_VAL x_sp_vers NOPRINT
+  "SELECT SUM(sharable_mem+persistent_mem+runtime_mem) val1,
+  "       SUM(sharable_mem) val2,
+  "       SUM(runtime_mem) val4,
+  "       SUM(persistent_mem) val3,
+  "       COUNT(*) val5,
+  "       MAX(version_count) val6
+  " FROM v$sqlarea;
+  "
+  "COL val1 NEW_VAL x_1time_sum NOPRINT
+  "COL val2 NEW_VAL x_1time_ttl NOPRINT
+  "SELECT SUM(sharable_mem+persistent_mem+runtime_mem) val1,
+  "       COUNT(*) val2
+  " FROM v$sqlarea
+  " WHERE executions=1;
+  "
+  "COL val1 NEW_VAL x_ra NOPRINT
+  "SELECT ROUND(NVL((used_space+free_space),0),2) val1
+  " FROM v$shared_pool_reserved;
+  "
+  "COL val2 NEW_VAL x_sp_no_obj NOPRINT
+  "SELECT COUNT(*) val2
+  " FROM v$db_object_cache;
+  "
+  "COL val2 NEW_VAL x_sp_no_kept_chks NOPRINT
+  "COL val3 NEW_VAL x_sp_sz_kept_chks NOPRINT
+  "SELECT DECODE(COUNT(*),'',0,COUNT(*)) val2,
+  "       DECODE(SUM(sharable_mem),'',0,SUM(sharable_mem)) val3
+  " FROM v$db_object_cache
+  " WHERE kept='YES';
+  "
+  "COL val2 NEW_VAL x_sp_free_chks NOPRINT
+  "SELECT SUM(bytes) val2
+  " FROM v$sgastat
+  " WHERE name='free memory'
+  "   AND pool='shared pool';
+  "
+  "COL val2 NEW_VAL x_sp_no_pins NOPRINT
+  "SELECT COUNT(*) val2
+  " FROM v$session a,
+  "      v$sqltext b
+  " WHERE a.sql_address||a.sql_hash_value = b.address||b.hash_value;
+  "
+  "COL val2 NEW_VAL x_sp_sz_pins NOPRINT
+  "SELECT SUM(sharable_mem+persistent_mem+runtime_mem) val2
+  " FROM v$session a,
+  "      v$sqltext b,
+  "      v$sqlarea c
+  " WHERE a.sql_address||a.sql_hash_value = b.address||b.hash_value
+  "   AND b.address||b.hash_value = c.address||c.hash_value;
+  "
+  "COL val3 NEW_VAL x_tot_lc NOPRINT
+  "SELECT SUM(lc_inuse_memory_size)+SUM(lc_freeable_memory_size) val3
+  " FROM v$library_cache_memory;
+  "
+  "COL val2 NEW_VAL x_sp_avail NOPRINT
+  "SELECT &x_sp_size-(&x_tot_lc*1048576)-&x_sp_used val2
+  " FROM dual;
+  "
+  "COL val2 NEW_VAL x_sp_other NOPRINT
+  "SELECT &x_sp_size-(&x_tot_lc*1048576) val2
+  " FROM dual;
+  "
+  "COL val1 NEW_VAL x_trend_4031 NOPRINT
+  "COL val2 NEW_VAL x_trend_size NOPRINT
+  "COL val3 NEW_VAL x_trend_rS NOPRINT
+  "COL val4 NEW_VAL x_trend_rs_size NOPRINT
+  "SELECT request_misses val1,
+  "       DECODE(request_misses,0,0,last_Miss_Size) val2,
+  "       request_failures val3,
+  "       DECODE(request_failures,0,0,last_failure_size) val4
+  " FROM v$shared_pool_reserved;
+  "
+  "SET serveroutput on size 1000000
+  "SELECT '|*Database Started*| ' ||
+  "         TO_CHAR(startup_time,'DD-Mon-YYYY HH24:MI:SS') || '|' || CHR(10) ||
+  "       '|*Instance Name/Number*| ' || instance_name || '/' ||
+  "         instance_number || '|'
+  " FROM v$instance;
+  "BEGIN
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line('|*Breakdown of SGA*| ' ||
+  "   ROUND(&x_sgasize / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Shared Pool*| ' ||
+  "   ROUND(&x_sp_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_sp_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Reserved Shared Pool*| ' ||
+  "   ROUND(&x_ra / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_ra / &x_sp_size,2) || '%)|');
+  " dbms_output.put_line('|*Large Pool*| ' ||
+  "   ROUND(&x_lp_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_lp_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Java Pool*| ' ||
+  "   ROUND(&x_jp_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_jp_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Buffer Cache*| ' ||
+  "   ROUND(&x_bc_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_bc_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Streams Pool*| ' ||
+  "   ROUND(&x_str_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_str_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('|*Other Areas in SGA*| ' ||
+  "   ROUND(&x_other_size / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_other_size / &x_sgasize,2) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line('|*High Level Breakdown of Memory* ||');
+  " dbms_output.put_line('|*Sharable*| ' ||
+  "   ROUND(&x_sp_used_shr / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Persistent*| ' ||
+  "   ROUND(&x_sp_used_per / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Runtime*| ' ||
+  "   ROUND(&x_sp_used_run / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*SQL Memory Usage (Total)*| ' ||
+  "   ROUND(&x_sp_used / 1048576,2) || 'MiB (' ||
+  "   100*ROUND(&x_sp_used / &x_sp_size,0) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line('|*No Guidelines on SQL in Library Cache%BR%' ||
+  "   '(If a lot of pinned code, may need larger Shared Pool)* ||');
+  " dbms_output.put_line(
+  "   '|*Number of SQL Statements*| &x_sp_no_stmts|');
+  " dbms_output.put_line(
+  "   '|*Number of Pinned SQL Statements*| &x_sp_no_pins|');
+  " dbms_output.put_line(
+  "   '|*Number of Programmatic Constructs*| &x_sp_no_obj|');
+  " dbms_output.put_line(
+  "   '|*Number of Programmatic Construct Chunks*| &x_sp_no_kept_chks|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*Efficiency Analysis%BR%High versions (100s) could be bug* ||');
+  " dbms_output.put_line('|*Max Child Cursors Found*| &x_sp_vers|');
+  " dbms_output.put_line('|*Programmatic Construct Memory Size*| ' ||
+  "   ROUND(&x_sp_sz_kept_chks / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Pinned SQL Statements Memory Size*| ' ||
+  "   ROUND(&x_sp_sz_pins / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*Library Cache at 50% or 60% of Shared Pool not uncommon*||');
+  " dbms_output.put_line('|*Estimated Total Library Cache Memory Usage*| ' ||
+  "   1.1*&x_tot_lc || ' MiB (' ||
+  "   100*ROUND((1.1*&x_tot_lc) / (&x_sp_size / 1048576),2) || '%)|');
+  " dbms_output.put_line('|*Other Shared Pool Memory *| ' ||
+  "   ROUND(&x_sp_other / 1048576,2) || ' MiB|');
+  " dbms_output.put_line('|*Shared Pool Free Memory Chunks*| ' ||
+  "   ROUND(&x_sp_free_chks / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_sp_free_chks / &x_sp_size,2) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*Ideal percentages for one time executions is 20% or lower* ||');
+  " dbms_output.put_line('|*Number of Objects Executed Only One Time*| ' ||
+  "   &x_1time_ttl || ' (' ||
+  "   100*ROUND(&x_1time_ttl / &x_sp_no_stmts,2) || '%)|');
+  " dbms_output.put_line('|*Memory For 1 Time Executions*| ' ||
+  "   ROUND(&x_1time_sum / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_1time_sum / &x_sp_used,2) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*If these chunks are growing, SGA_TARGET may be too low*||');
+  " dbms_output.put_line(
+  "   '|*Current KGH: NO ACCESS Allocations*| ' ||
+  "   ROUND(&x_KGH / 1048576,2) || ' MiB (' ||
+  "   100*ROUND(&x_KGH / &x_sp_size,2) || '%)|');
+  " dbms_output.put_line('| ||');
+  " dbms_output.put_line(
+  "   '|*0 misses is ideal, but if growing value points to memory issues*||');
+  " dbms_output.put_line(
+  "   '|*Number of Misses for Memory*| &x_trend_rs|');
+  " dbms_output.put_line(
+  "   '|*Size of Last Miss*| &x_trend_rs_size|');
+  " dbms_output.put_line(
+  "   '|*Number of Misses for Reserved Area*| &x_trend_4031|');
+  " dbms_output.put_line(
+  "   '|*Size of Last Miss for Reserved Area*| &x_trend_size|');
+  "END;
+  "/
+  }
+ }
+ call writeSql($sql)
+ if isCreated(true)
+ {write $TOP
+  toc '2:[[',getFile(),'][rda_report][Library Cache Information]]'
+ }
+}
+
+# Disable the group title in next index
+if isTocCreated()
+ toc '-:RDBMS'
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

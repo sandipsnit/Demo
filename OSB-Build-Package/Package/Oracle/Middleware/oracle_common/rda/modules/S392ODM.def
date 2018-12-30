@@ -1,0 +1,357 @@
+# S392ODM.def: Collects Oracle Data Mining Information
+# $Id: S392ODM.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S392ODM.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S392ODM - Collects Oracle Data Mining Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Data Mining-related information. The following
+reports can be generated and are regrouped under C<Oracle Data Mining>:
+
+=cut
+
+echo tput('bold'),'Processing ODM module ...',tput('off')
+
+# Initialization
+var $ODM_LOCAL = getSetting('ODM_LOCAL')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Oracle Data Mining'
+
+# Load the common macros
+run DBinfo()
+
+# Change the database context
+if $ODM_LOCAL
+{var $sid = getSetting('ORACLE_SID')
+ var $usr = getSetting('SQL_LOGIN')
+ var $dba = getSetting('SQL_SYSDBA')
+ var $ORACLE_VERSION = get_db_version()
+}
+elsif getSetting('ODM_SID')
+{var $sid = last
+ var $usr = uc(getSetting('ODM_LOGIN','SYSTEM'))
+ var $dba = getSetting('ODM_SYSDBA')
+
+ # Determine the user password
+ if compare('eq',$usr,'/')
+  var ($usr,$pwd) = ('','')
+ elsif hasSqlPassword($usr,$sid)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+
+ # Change the current user
+ var $old = setSqlLogin($usr,$pwd,$sid,$dba)
+
+ # If requested, change the database context and test the connection
+ if getSetting('ODM_SWITCH')
+  var $env = setSqlSid($sid)
+ else
+  var $env = undef
+ var $try = setSqlFailure(0)
+
+ # Test the database connection
+ if !testSql()
+  var $ORACLE_VERSION = get_db_version(true)
+}
+else
+{var $sid = undef
+
+ # Disable the database access
+ var $env = undef
+ var $old = setSqlLogin('','')
+ var $try = setSqlFailure(-1)
+}
+
+=head2 not_applicable - Not Applicable
+
+The Oracle Data Mining module can only be executed on Oracle Database 10g
+Release 1 or later.
+
+=cut
+
+debug ' Inside ODM module, obtain the database version'
+if !match($ORACLE_VERSION,'^(101|102|11)')
+{report not_applicable
+ write 'The Data Mining module can only be executed on 10g Release 1 or higher.'
+ toc '2:[[',getFile(),'][rda_report][Not Applicable]]'
+
+ # Restore the previous context before exiting
+ if !$ODM_LOCAL
+ {if defined($env)
+   call setSqlSid($env)
+  call setSqlLogin($old)
+  call setSqlFailure($try)
+ }
+ return
+}
+
+=head2 report - Oracle Data Mining
+
+Gathers Oracle Data Mining information.
+
+=cut
+
+debug ' Inside ODM module, gathering Oracle Data Mining information'
+report report
+var $TTL = '---+!! Oracle Data Mining'
+var @TTL = ('',\
+            '---+ Database Instance Name',\
+            '---+ Database Instance Version',\
+            '---+ Host Name',\
+            '---+ Platform',\
+            '---+ Component Info',\
+            '---+ Temp Space Memory',\
+            '---+ Largepoolsize Memory',\
+            '---+ Sharedpoolsize Memory',\
+            '---+ Partitioning, RAC and Data Mining Options',\
+            '---+ CPU Information',\
+            '---+ Instance Name',\
+            '---+ Invalid Java Objects',\
+            '---+ Invalid PL/SQL Packages',\
+            '---+ Invalid PL/SQL Package Body',\
+            '---+ Invalid PL/SQL Function',\
+            '---+ Invalid PL/SQL Procedure',\
+            '---+ Invalid Views',\
+            '---+ List of Data Mining User Accounts',\
+            '---+ Count of PL/SQL Models',\
+            '---+ List of PL/SQL Model Names')
+var @HDR = ('',\
+            '|*Database Instance Name*|',\
+            '|*Database Instance Version*|',\
+            '|*Host Name*|',\
+            '|*Platform*|',\
+            '|*Component*|*Component Name*|*Version*|*Status*|',\
+            '| *Temp Space (MiB)*|',\
+            '| *Largepoolsize (MiB)*|',\
+            '| *Sharedpoolsize (MiB)*|',\
+            '|*Option*|*Value*|',\
+            '|*Parameter*|*Value*|',\
+            '|*Instance Name*| *Instance Number*|',\
+            '|*Invalid Java Objects*|',\
+            '|*Invalid PL/SQL Packages*|',\
+            '|*Invalid PL/SQL Packages Body*|',\
+            '|*Invalid PL/SQL Function*|',\
+            '|*Invalid PL/SQL Procedure*|',\
+            '|*Invalid Views*|',\
+            '|*DMSYS User Account*|',\
+            '| *No of Models in PL/SQL*|',\
+            '|*Name*| *Count*|')
+set $sql
+{SELECT '|' ||
+"       name || ' |'
+" FROM v$database;
+"PROMPT ___Macro_separator(2)___
+"SELECT '|' ||
+"       version || ' |'
+" FROM v$instance;
+"PROMPT ___Macro_separator(3)___
+"SELECT '|' ||
+"       host_name || ' |'
+" FROM v$instance;
+"PROMPT ___Macro_separator(4)___
+"SELECT '|' ||
+"       SUBSTR(platform_name,1,30) || ' |'
+" FROM v$database;
+"PROMPT ___Macro_separator(5)___
+"SELECT '|' ||
+"       comp_id || ' |' ||
+"       comp_name || ' |' ||
+"       version || ' |' ||
+"       status || ' |'
+" FROM dba_registry;
+"PROMPT ___Macro_separator(6)___
+"SELECT '| ' ||
+"       TO_CHAR(SUM(bytes / 1048576)) || '|'
+" FROM dba_temp_files;
+"PROMPT ___Macro_separator(7)___
+"SELECT '| ' ||
+"       TO_CHAR(value / 1048576) || '|'
+" FROM v$parameter
+" WHERE name='large_pool_size';
+"PROMPT ___Macro_separator(8)___
+"SELECT '| ' ||
+"       TO_CHAR(value / 1048576) || '|'
+" FROM v$parameter
+" WHERE name='shared_pool_size';
+"PROMPT ___Macro_separator(9)___
+"SELECT '|' ||
+"       parameter || ' |' ||
+"       value || ' |'
+" FROM v$option
+" WHERE parameter IN ('Partitioning','Real Application Clusters',
+"                     'Data Mining','Data Mining Scoring Engine',
+"                     'Real Application Clusters');
+"PROMPT ___Macro_separator(10)___
+"SELECT '|' ||
+"       name || ' |' ||
+"       value || ' |'
+" FROM v$parameter
+" WHERE name IN ('cpu_count','parallel_server','trace_enabled');
+"PROMPT ___Macro_separator(11)___
+"SELECT '|' ||
+"       instance_name || ' | ' ||
+"       instance_number || '|'
+" FROM v$instance;
+"PROMPT ___Macro_separator(12)___
+"SELECT '|' ||
+"       object_name || ' |'
+" FROM dba_objects
+" WHERE owner = 'DMSYS'
+"   AND object_type = 'JAVA CLASS'
+"   AND status = 'INVALID';
+"PROMPT ___Macro_separator(13)___
+"SELECT '|' ||
+"       object_name || ' |'
+" FROM dba_objects
+" WHERE owner = 'DMSYS'
+"   AND object_type = 'PACKAGE'
+"   AND status = 'INVALID';
+"PROMPT ___Macro_separator(14)___
+"SELECT '|' ||
+"       object_name || ' |'
+" FROM dba_objects
+" WHERE owner = 'DMSYS'
+"   AND object_type = 'PACKAGE BODY'
+"   AND status = 'INVALID';
+"PROMPT ___Macro_separator(15)___
+"SELECT '|' ||
+"       object_name || ' |'
+" FROM dba_objects
+" WHERE owner = 'DMSYS'
+"   AND object_type = 'FUNCTION'
+"   AND status = 'INVALID';
+"PROMPT ___Macro_separator(16)___
+"SELECT '|' ||
+"       object_name || ' |'
+" FROM dba_objects
+" WHERE owner = 'DMSYS'
+"   AND object_type = 'PROCEDURE'
+"   AND status = 'INVALID';
+"PROMPT ___Macro_separator(17)___
+"SELECT '|' ||
+"       object_name || ' |'
+" FROM dba_objects
+" WHERE owner = 'DMSYS'
+"   AND object_type = 'VIEW'
+"   AND status = 'INVALID';
+"PROMPT ___Macro_separator(18)___
+"SELECT '|' ||
+"       account_status || ' |'
+" FROM dba_users
+" WHERE username = 'DMSYS';
+"PROMPT ___Macro_separator(19)___
+"SELECT '| ' ||
+"       TO_CHAR(COUNT(*)) || '|'
+" FROM dmsys.dm$p_model;
+"PROMPT ___Macro_separator(20)___
+"SELECT '|' ||
+"       algorithm_name || ' | ' ||
+"       COUNT(mod#) || '|'
+" FROM dmsys.dm$p_model
+" GROUP BY algorithm_name;
+}
+if match($ORACLE_VERSION,'101')
+{var $TTL[21] = '---+ List of DM Users'
+ var $TTL[22] = '---+ Count of Java Models'
+ var $TTL[23] = '---+ List of Java Model Names'
+ var $TTL[24] = '---+ Count of Java Tasks'
+
+ var $HDR[21] = '|*DM Users*|'
+ var $HDR[22] = '| *No of Models in Java*|'
+ var $HDR[23] = '|*Model ID*|*Model Name*|'
+ var $HDR[24] = '| *No of Tasks in Java*|'
+
+ append $sql
+ {PROMPT ___Macro_separator(21)___
+ "SELECT '|' ||
+ "       grantee || ' |'
+ " FROM dba_role_privs
+ " WHERE granted_role = 'DMUSER_ROLE';
+ "PROMPT ___Macro_separator(22)___
+ "SELECT '| ' ||
+ "       TO_CHAR(COUNT(*)) || '|'
+ " FROM dmsys.dm$model;
+ "PROMPT ___Macro_separator(23)___
+ "SELECT '|' ||
+ "       a.obj_id || ' |' ||
+ "       name || ' |'
+ " FROM dmsys.dm$model a, dmsys.dm$object b
+ " WHERE a.obj_id = b.id;
+ "PROMPT ___Macro_separator(24)___
+ "SELECT '| ' ||
+ "       TO_CHAR(COUNT(*)) || '|'
+ " FROM dmsys.dm$task;
+ }
+}
+elsif match($ORACLE_VERSION,'102')
+{var $TTL[21] = '---+ NLS Session Parameters'
+ var $TTL[22] = '---+ NLS Database Parameters'
+ var $TTL[23] = '---+ Data Mining Users'
+
+ var $HDR[21] = '|*Parameter*|*Value*|'
+ var $HDR[22] = '|*Parameter*|*Value*|'
+ var $HDR[23] = '|*Users*|'
+
+ append $sql
+ {PROMPT ___Macro_separator(21)___
+ "SELECT '|' ||
+ "       parameter || ' |' ||
+ "       value || ' |'
+ " FROM nls_session_parameters;
+ "PROMPT ___Macro_separator(22)___
+ "SELECT '|' ||
+ "       parameter || ' |' ||
+ "       value || ' |'
+ " FROM nls_database_parameters;
+ "PROMPT ___Macro_separator(23)___
+ "SELECT DISTINCT '|' ||
+ "       a.username || ' |'
+ " FROM dba_users a, dmsys.dm$P_model b
+ " WHERE a.user_id = b.owner#;
+ }
+}
+call separator(1)
+call writeSql($sql)
+call separator(0,'Oracle Data Mining')
+
+# Restore the previous context
+if !$ODM_LOCAL
+{if defined($env)
+  call setSqlSid($env)
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+}
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.5:  Jean-Philippe Peelman.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

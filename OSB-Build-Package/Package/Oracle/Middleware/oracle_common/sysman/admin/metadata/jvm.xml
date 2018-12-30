@@ -1,0 +1,450 @@
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="10.20300" TYPE="jvm" CATEGORY_PROPERTIES="VersionCategory">
+   <Display>
+      <Label NLSID="jvm_target_id">JVM</Label>
+      <ShortName NLSID="jvm_ShortName">Java Virtual Machine</ShortName>
+      <Description NLSID="jvm_Description">Java Virtual Machine</Description>
+   </Display>
+    <Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_response">Response</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="StartTime" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_startTime">Start Time (ms since Epoch)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Status" TYPE="NUMBER" COMPUTE_EXPR="StartTime/StartTime" COLUMN_NAME="Status">
+            <Display>
+               <Label NLSID="jvm_status">Status</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=Runtime</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">StartTime</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="CompilationTime" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_compilation_time">Compilation Time</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="TotalCompilationTimeInMillisecs" TYPE="NUMBER" TRANSIENT="TRUE">
+            <Display>
+               <Label NLSID="jvm_TotalCompilationTimeInMillisecs">Compilation Time Since Startup (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TotalCompilationTimeInSecs" TYPE="NUMBER" COMPUTE_EXPR="TotalCompilationTimeInMillisecs/1000" COLUMN_NAME="TotalCompilationTimeInSecs">
+            <Display>
+               <Label NLSID="jvm_TotalCompilationTimeInSecs">Compilation Time Since Startup (seconds)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=Compilation</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">TotalCompilationTime</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="MemoryUsage" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_MemoryUsage">Memory Usage</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="HeapMemoryUsageInBytes" TYPE="NUMBER" TRANSIENT="TRUE">
+            <Display>
+               <Label NLSID="jvm_HeapMemoryUsageInBytes">Heap Memory Usage (Bytes)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="NonHeapMemoryUsageInBytes" TYPE="NUMBER" TRANSIENT="TRUE">
+            <Display>
+               <Label NLSID="jvm_non_heap_bytes">Non-Heap Memory Usage (Bytes)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ObjectPendingFinalizationCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_ObjectPendingFinalizationCount">Objects Pending Finalization</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="HeapMemoryUsageInMBytes" TYPE="NUMBER" COMPUTE_EXPR="HeapMemoryUsageInBytes/(1024*1024)" COLUMN_NAME="HeapMemoryUsageInMBytes">
+            <Display>
+               <Label NLSID="jvm_HeapMemoryUsageInMBytes">Heap Memory Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="NonHeapMemoryUsageInMBytes" TYPE="NUMBER" COMPUTE_EXPR="NonHeapMemoryUsageInBytes/(1024*1024)" COLUMN_NAME="NonHeapMemoryUsageInMBytes">
+            <Display>
+               <Label NLSID="jvm_NonHeapMemoryUsageInMBytes">Non-Heap Memory Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=Memory</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">HeapMemoryUsage/used;NonHeapMemoryUsage/used;ObjectPendingFinalizationCount</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="ClassLoading" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_ClassLoading">Class Loading</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="CurrentLoadedClassCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_CurrentLoadedClassCount">Classes Currently Loaded</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TotalLoadedClassCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_TotalLoadedClassCount">Classes Loaded Since Startup</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="UnloadedClassCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_UnloadedClassCount">Classes Unloaded Since Startup</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=ClassLoading</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">LoadedClassCount;TotalLoadedClassCount;UnloadedClassCount</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="MemoryPools" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_MemoryPools">Memory Pools</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="jvm_mpool_name">Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="UsageInBytes" TYPE="NUMBER" TRANSIENT="TRUE">
+            <Display>
+               <Label NLSID="jvm_UsageInBytes">Memory Pool - Current Usage (Bytes)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="PeakUsageInBytes" TYPE="NUMBER" TRANSIENT="TRUE">
+            <Display>
+               <Label NLSID="jvm_PeakUsageInBytes">Memory Pool - Peak Usage (Bytes)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="UsageInMBytes" TYPE="NUMBER" COMPUTE_EXPR="UsageInBytes/(1024*1024)" COLUMN_NAME="UsageInMBytes">
+            <Display>
+               <Label NLSID="jvm_UsageInMBytes">Memory Pool - Current Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="PeakUsageInMBytes" TYPE="NUMBER" COMPUTE_EXPR="PeakUsageInBytes/(1024*1024)" COLUMN_NAME="PeakUsageInMBytes">
+            <Display>
+               <Label NLSID="jvm_PeakUsageInMBytes">Memory Pool - Peak Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=MemoryPool,*</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;Usage/used;PeakUsage/used</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="GarbageCollectors" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_GarbageCollectors">Garbage Collectors</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="jvm_gc_name">Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="NumberOfCollections" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_NumberOfCollections">Garbage Collector - Garbage Collection Invocations Since Startup</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TotalCollectionTimeInMillisecs" TYPE="NUMBER" TRANSIENT="TRUE">
+            <Display>
+               <Label NLSID="jvm_TotalCollectionTimeInMillisecs">Garbage Collector - Execution Time Since Startup (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TotalCollectionTimeInSecs" TYPE="NUMBER" COMPUTE_EXPR="TotalCollectionTimeInMillisecs/1000" COLUMN_NAME="TotalCollectionTimeInSecs">
+            <Display>
+               <Label NLSID="jvm_TotalCollectionTimeInSecs">Garbage Collector - Execution Time Since Startup (seconds)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=GarbageCollector,*</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;CollectionCount;CollectionTime</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Threads" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_Threads">Threads</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="ThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_ThreadCount">Active Threads</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="DaemonThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_DaemonThreadCount">Active Daemon Threads</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TotalStartedThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_TotalStartedThreadCount">Threads Started Since Startup</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="PeakThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_PeakThreadCount">Peak Thread Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="DeadlockedThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_DeadlockedThreadCount">Deadlocked Thread Count</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <ExecutionDescriptor>
+         <GetTable NAME="Threads_Raw" METRIC_NAME="Threads_Raw" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GetTable NAME="DeadlockedThreads" METRIC_NAME="DeadlockedThreads" USE_CACHE="TRUE_IF_COLLECT"/>
+         <GroupBy NAME="deadlocked_thread_count" FROM_TABLE="DeadlockedThreads">
+            <AggregateColumn NAME="DeadlockedThreadCount" COLUMN_NAME="threadId" OPERATOR="COUNT"/>
+         </GroupBy>
+         <JoinTables NAME="threadInfo">
+            <Table NAME="Threads_Raw"/>
+            <Table NAME="deadlocked_thread_count"/>
+            <Column NAME="ThreadCount" COLUMN_NAME="ThreadCount" TABLE_NAME="Threads_Raw"/>
+            <Column NAME="DaemonThreadCount" COLUMN_NAME="DaemonThreadCount" TABLE_NAME="Threads_Raw"/>
+            <Column NAME="TotalStartedThreadCount" COLUMN_NAME="TotalStartedThreadCount" TABLE_NAME="Threads_Raw"/>
+            <Column NAME="PeakThreadCount" COLUMN_NAME="PeakThreadCount" TABLE_NAME="Threads_Raw"/>
+            <Column NAME="DeadlockedThreadCount" COLUMN_NAME="DeadlockedThreadCount" TABLE_NAME="deadlocked_thread_count"/>
+         </JoinTables>
+      </ExecutionDescriptor>
+   </Metric>
+   <Metric NAME="Threads_Raw" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="jvm_raw_threads">Raw Threads</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="ThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_raw_ThreadCount">ThreadCount</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="DaemonThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_raw_DaemonThreadCount">DaemonThreadCount</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TotalStartedThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_raw_TotalStartedThreadCount">TotalStartedThreadCount</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="PeakThreadCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_raw_PeakThreadCount">PeakThreadCount</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=Threading</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">ThreadCount;DaemonThreadCount;TotalStartedThreadCount;PeakThreadCount</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="DeadlockedThreads" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="jvm_DeadlockedThreads">DeadlockedThreads</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="threadId" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="jvm_threadId">threadId</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=Threading</Property>
+         <Property NAME="operation" SCOPE="GLOBAL">findMonitorDeadlockedThreads</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">findMonitorDeadlockedThreads</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Runtime" TYPE="TABLE">
+      <Display>
+         <Label NLSID="jvm_Runtime">Runtime</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="VmName" TYPE="STRING">
+            <Display>
+               <Label NLSID="jvm_name">JVM Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="VmVendor" TYPE="STRING">
+            <Display>
+               <Label NLSID="jvm_vendor">JVM Vendor</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="VmVersion" TYPE="STRING">
+            <Display>
+               <Label NLSID="jvm_version">JVM Version</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="UptimeInMillis" TYPE="NUMBER" TRANSIENT="TRUE">
+            <Display>
+               <Label NLSID="jvm_uptime_ms">Up Time (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="UpTimeInMins" TYPE="NUMBER" COMPUTE_EXPR="UptimeInMillis/(1000*60)" COLUMN_NAME="UpTimeInMins">
+            <Display>
+               <Label NLSID="jvm_upTimeInSecs">Up Time (minutes)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+         <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">UserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">password</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">protocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">service</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="nestedView" SCOPE="GLOBAL" OPTIONAL="TRUE">false</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">java.lang:type=Runtime</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">none</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">VmName;VmVendor;VmVersion;Uptime</Property>
+      </QueryDescriptor>
+   </Metric>
+   <InstanceProperties>
+      <InstanceProperty NAME="MachineName">
+         <Display>
+            <Label NLSID="jvm_MACHINENAME_LABEL">Machine name</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="Port">
+         <Display>
+            <Label NLSID="jvm_Port_LABEL ">Admin Port number</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="UserName" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="jvm_UserName_Label">User Name</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="password" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="jvm_Password_Label">JVM Admin User Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="protocol" OPTIONAL="TRUE"><Display><Label NLSID="jvm_Protocol_Label">Communication Protocol</Label></Display>rmi</InstanceProperty>
+      <InstanceProperty NAME="service" OPTIONAL="TRUE"><Display><Label NLSID="jvm_Service_Label">Service Name</Label></Display>jmxrmi</InstanceProperty>
+      <InstanceProperty NAME="SSLTrustStore" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="jvm_SSLTrustStore">SSLTrust Store</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="SSLTrustStorePassword" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="jvm_SSLTrustStorePassword">SSLTrust Store Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="lookupClass" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="jvm_lookupClass">Custom lookup provider Class</Label>
+         </Display>
+      </InstanceProperty>
+   </InstanceProperties>
+</TargetMetadata>

@@ -1,0 +1,1381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+   <Adml xmlns="http://www.oracle.com/iAS/aggregator" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" TableSpace="oracle_soa_composite">
+      <!-- Response metrics associated with a composite -->
+      <Table Name="Response">
+      	 <ColumnDef Name="Name" Type="String" Key="true"/>
+         <ColumnDef Name="ServerName" Type="String" Key="true"/>
+				 <ColumnDef Name="soainfra_composite" Type="String"/>
+				 <ColumnDef Name="soainfra_composite_revision" Type="String"/>
+				 <ColumnDef Name="soainfra_domain" Type="String"/>
+         <ColumnDef Name="Status" Type="Integer"/>
+         <Select Name="Response_result_1">
+            <TableFrom Name="soainfra_composite_label"/>
+            <Column Name="Name"  Type="String"/>
+            <Column Name="ServerName" Type="String"/>
+				    <Column Name="soainfra_composite" Type="String"/>
+				    <Column Name="soainfra_composite_revision" Type="String"/>
+				    <Column Name="soainfra_domain" Type="String"/>
+            <Column Name="Status" Type="String">
+               <If>
+                  <Condition Operator="EQ">
+                     <ColumnFrom Name="CompositeState.value"/>
+                     <Value>on</Value>
+                  </Condition>
+                  <Then>
+                     <Value>1</Value>
+                  </Then>
+                  <Else>
+                     <Value>0</Value>
+                  </Else>
+               </If>
+               <Default>0</Default>
+            </Column>
+            <Where>
+            	 <And>
+	               <Or>
+	                  <Condition Operator="EQ" Type="String">
+	                     <ColumnFrom Name="soainfra_composite_revision"/>
+	                     <Value Name="CompositeRevision.parameter"/>
+	                  </Condition>
+			  						<Condition Operator="EQ" Type="String">
+	                     <Value xsi:nil="true" Name="CompositeRevision.parameter"/>
+	                     <Null/>
+	                  </Condition>
+	               </Or>
+	               <Or>
+	                  <Condition Type="String" Operator="EQ">
+	                     <ColumnFrom Name="soainfra_composite"/>
+	                     <Value Name="CompositeName.parameter"/>
+	                  </Condition>
+			  						<Condition Operator="EQ" Type="String">
+	                     <Value xsi:nil="true" Name="CompositeName.parameter"/>
+	                     <Null/>
+	                  </Condition>
+	               </Or>
+	               <Or>
+	                  <Condition Type="String" Operator="EQ">
+	                     <ColumnFrom Name="Name"/>
+	                     <Value Name="CompositeLabel.parameter"/>
+	                  </Condition>
+			  						<Condition Operator="EQ" Type="String">
+	                     <Value xsi:nil="true" Name="CompositeLabel.parameter"/>
+	                     <Null/>
+	                  </Condition>
+	               </Or>
+	              </And>
+            </Where>
+         </Select>
+      </Table>
+      <Table Name="soainfra_composite_label_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="Double" Name="RequestEvents.throughput"/>
+         <ColumnDef Type="Double" Name="PostEvents.throughput"/>
+         <ColumnDef Type="Double" Name="compositeInstances.throughput"/>
+         <ColumnDef Type="Double" Name="Requests.throughput"/>
+         <ColumnDef Type="Double" Name="Requests.totalTime"/>
+         <ColumnDef Type="Double" Name="Requests.averageTime"/>
+         <ColumnDef Type="Double" Name="Posts.throughput"/>
+         <ColumnDef Type="Double" Name="Posts.totalTime"/>
+         <ColumnDef Type="Double" Name="Posts.averageTime"/>
+         <ColumnDef Type="Double" Name="Requests.time"/>
+         <ColumnDef Type="Double" Name="Posts.time"/>
+         <Select Name="soainfra_composite_label_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_composite_label_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="Double" Name="RequestEvents.throughput"/>
+            <Column Type="Double" Name="PostEvents.throughput"/>
+            <Column Type="Double" Name="compositeInstances.throughput"/>
+            <Column Type="Double" Name="Requests.throughput"/>
+            <Column Type="Double" Name="Requests.totalTime"/>
+            <Column Type="Double" Name="Posts.throughput"/>
+            <Column Type="Double" Name="Posts.totalTime"/>
+            <Column Type="Double" Name="Requests.averageTime"/>
+            <Column Type="Double" Name="Posts.averageTime"/>
+            <Column Type="Double" Name="Requests.time"/>
+            <Column Type="Double" Name="Posts.time"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for soainfra_composite_label,  rolled up to revision -->
+      <Table Name="soainfra_composite_label_delta_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="Integer" Name="RequestEvents.deltaCount"/>
+         <ColumnDef Type="Integer" Name="PostEvents.deltaCount"/>
+         <ColumnDef Type="Integer" Name="Requests.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="Requests.deltaTime"/>
+         <ColumnDef Type="Double" Name="Requests.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="Requests.totalTime"/>
+         <ColumnDef Type="Integer" Name="Posts.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="Posts.deltaTime"/>
+         <ColumnDef Type="Double" Name="Posts.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="Posts.totalTime"/>
+         <Select Name="soainfra_composite_label_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_composite_label_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="Double" Name="Requests.totalTime"/>
+            <Column Type="Double" Name="Posts.totalTime"/>
+            <Column Type="Integer" Name="RequestEvents.deltaCount"/>
+            <Column Type="Integer" Name="PostEvents.deltaCount"/>
+            <Column Type="Integer" Name="Requests.deltaCompleted"/>
+            <Column Type="Integer" Name="Posts.deltaCompleted"/>
+            <Column Type="Double" Name="Requests.deltaTime"/>
+            <Column Type="Double" Name="Posts.deltaTime"/>
+            <Column Type="Double" Name="Requests.deltaAverageTime"/>
+            <Column Type="Double" Name="Posts.deltaAverageTime"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- end delta table -->
+
+      <Table Name="soainfra_composite_faults_with_rate">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="Double" Name="faulted.throughput"/>
+         <ColumnDef Type="Double" Name="faulted.time"/>
+         <Select Name="soainfra_composite_faults_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_composite_faults_with_rate"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="Double" Name="faulted.throughput"/>
+            <Column Type="Double" Name="faulted.time"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- TABLE : soainfra_Binding : START -->
+      <!-- Rate table for soainfra_composite_label rolled up to binding interface and  grouped by composite revision -->
+      <Table Name="soainfra_binding_rollup">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member_type"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member"/>
+         <ColumnDef Type="Double" Name="processIncomingMessagesEvents.throughput"/>
+         <ColumnDef Type="Double" Name="processOutboundMessagesEvents.throughput"/>
+         <ColumnDef Type="Double" Name="Errors.throughput"/>
+         <ColumnDef Type="Double" Name="processIncomingMessages.throughput"/>
+         <ColumnDef Type="Double" Name="processIncomingMessages.totalTime"/>
+         <ColumnDef Type="Double" Name="processIncomingMessages.averageTime"/>
+         <ColumnDef Type="Double" Name="processIncomingMessages.time"/>
+         <ColumnDef Type="Double" Name="processOutboundMessages.throughput"/>
+         <ColumnDef Type="Double" Name="processOutboundMessages.totalTime"/>
+         <ColumnDef Type="Double" Name="processOutboundMessages.averageTime"/>
+         <ColumnDef Type="Double" Name="processOutboundMessages.time"/>
+         <ColumnDef Type="Integer" Name="processIncomingMessagesEvents.count"/>
+         <ColumnDef Type="Integer" Name="processOutboundMessagesEvents.count"/>
+         <ColumnDef Type="Integer" Name="Errors.count"/>
+         <ColumnDef Type="Integer" Name="processIncomingMessages.completed"/>
+         <ColumnDef Type="Integer" Name="processOutboundMessages.completed"/>
+         <Select Name="soainfra_binding_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_binding_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member_type"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member"/>
+            <Column Type="Double" Name="processIncomingMessagesEvents.throughput"/>
+            <Column Type="Double" Name="processOutboundMessagesEvents.throughput"/>
+            <Column Type="Double" Name="Errors.throughput"/>
+            <Column Type="Double" Name="processIncomingMessages.throughput"/>
+            <Column Type="Double" Name="processIncomingMessages.totalTime"/>
+            <Column Type="Double" Name="processOutboundMessages.throughput"/>
+            <Column Type="Double" Name="processOutboundMessages.totalTime"/>
+            <Column Type="Double" Name="processIncomingMessages.averageTime"/>
+            <Column Type="Double" Name="processOutboundMessages.averageTime"/>
+            <Column Type="Double" Name="processOutboundMessages.time"/>
+            <Column Type="Double" Name="processIncomingMessages.time"/>
+            <Column Type="Integer" Name="processIncomingMessagesEvents.count"/>
+            <Column Type="Integer" Name="processOutboundMessagesEvents.count"/>
+            <Column Type="Integer" Name="Errors.count"/>
+            <Column Type="Integer" Name="processIncomingMessages.completed"/>
+            <Column Type="Integer" Name="processOutboundMessages.completed"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for soainfra_binding,  rolled up to interface and composite revision-->
+      <Table Name="soainfra_binding_delta_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member_type"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member"/>
+         <ColumnDef Type="Integer" Name="processIncomingMessagesEvents.deltaCount"/>
+         <ColumnDef Type="Integer" Name="processOutboundMessagesEvents.deltaCount"/>
+         <ColumnDef Type="Integer" Name="Errors.deltaCount"/>
+         <ColumnDef Type="Integer" Name="processIncomingMessages.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="processIncomingMessages.deltaTime"/>
+         <ColumnDef Type="Double" Name="processIncomingMessages.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="processIncomingMessages.totalTime"/>
+         <ColumnDef Type="Integer" Name="processOutboundMessages.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="processOutboundMessages.deltaTime"/>
+         <ColumnDef Type="Double" Name="processOutboundMessages.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="processOutboundMessages.totalTime"/>
+         <Select Name="soainfra_binding_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_binding_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member_type"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member"/>
+            <Column Type="Double" Name="processIncomingMessages.totalTime"/>
+            <Column Type="Double" Name="processOutboundMessages.totalTime"/>
+            <Column Type="Integer" Name="processIncomingMessagesEvents.deltaCount"/>
+            <Column Type="Integer" Name="processOutboundMessagesEvents.deltaCount"/>
+            <Column Type="Integer" Name="Errors.deltaCount"/>
+            <Column Type="Integer" Name="processIncomingMessages.deltaCompleted"/>
+            <Column Type="Integer" Name="processOutboundMessages.deltaCompleted"/>
+            <Column Type="Double" Name="processIncomingMessages.deltaTime"/>
+            <Column Type="Double" Name="processOutboundMessages.deltaTime"/>
+            <Column Type="Double" Name="processIncomingMessages.deltaAverageTime"/>
+            <Column Type="Double" Name="processOutboundMessages.deltaAverageTime"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- end delta table -->
+      <!-- TABLE : composite_policy : START -->
+      <!-- Rate table for soainfra_composite_label rolled up to composite revision -->
+      <Table Name="interceptor_policy_version_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member"/>
+         <ColumnDef Type="String" Key="true" Name="policy_name"/>
+         <ColumnDef Type="String" Name="soainfra_composite_assembly_member_type"/>
+         <ColumnDef Type="String" Name="policy_category"/>
+         <ColumnDef Type="String" Name="policy_version"/>
+         <ColumnDef Type="Double" Name="AuthenticationFailures.throughput"/>
+         <ColumnDef Type="Double" Name="AuthenticationSuccesses.throughput"/>
+         <ColumnDef Type="Double" Name="AuthorizationFailures.throughput"/>
+         <ColumnDef Type="Double" Name="AuthorizationSuccesses.throughput"/>
+         <ColumnDef Type="Double" Name="ConfidentialityFailures.throughput"/>
+         <ColumnDef Type="Double" Name="ConfidentialitySuccesses.throughput"/>
+         <ColumnDef Type="Double" Name="IntegrityFailures.throughput"/>
+         <ColumnDef Type="Double" Name="IntegritySuccesses.throughput"/>
+         <ColumnDef Type="Double" Name="TotalViolations.throughput"/>
+         <ColumnDef Type="Integer" Name="AuthenticationFailures.count"/>
+         <ColumnDef Type="Integer" Name="AuthenticationSuccesses.count"/>
+         <ColumnDef Type="Integer" Name="AuthorizationFailures.count"/>
+         <ColumnDef Type="Integer" Name="AuthorizationSuccesses.count"/>
+         <ColumnDef Type="Integer" Name="ConfidentialityFailures.count"/>
+         <ColumnDef Type="Integer" Name="ConfidentialitySuccesses.count"/>
+         <ColumnDef Type="Integer" Name="IntegrityFailures.count"/>
+         <ColumnDef Type="Integer" Name="IntegritySuccesses.count"/>
+         <ColumnDef Type="Integer" Name="TotalViolations.count"/>
+
+         <Select Name="interceptor_policy_version_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:interceptor_policy_version_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member_type"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member"/>
+            <Column Type="String" Name="policy_category"/>
+            <Column Type="String" Name="policy_name"/>
+            <Column Type="String" Name="policy_version"/>
+            <Column Type="Double" Name="AuthenticationFailures.throughput"/>
+            <Column Type="Double" Name="AuthenticationSuccesses.throughput"/>
+            <Column Type="Double" Name="AuthorizationFailures.throughput"/>
+            <Column Type="Double" Name="AuthorizationSuccesses.throughput"/>
+            <Column Type="Double" Name="ConfidentialityFailures.throughput"/>
+            <Column Type="Double" Name="ConfidentialitySuccesses.throughput"/>
+            <Column Type="Double" Name="IntegrityFailures.throughput"/>
+            <Column Type="Double" Name="IntegritySuccesses.throughput"/>
+            <Column Type="Double" Name="TotalViolations.throughput"/>
+			<Column Type="Integer" Name="AuthenticationFailures.count"/>
+			<Column Type="Integer" Name="AuthenticationSuccesses.count"/>
+			<Column Type="Integer" Name="AuthorizationFailures.count"/>
+			<Column Type="Integer" Name="AuthorizationSuccesses.count"/>
+			<Column Type="Integer" Name="ConfidentialityFailures.count"/>
+			<Column Type="Integer" Name="ConfidentialitySuccesses.count"/>
+			<Column Type="Integer" Name="IntegrityFailures.count"/>
+			<Column Type="Integer" Name="IntegritySuccesses.count"/>
+			<Column Type="Integer" Name="TotalViolations.count"/>
+
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for interceptor_policy_version,  rolled up to composite revision-->
+      <Table Name="interceptor_policy_version_delta_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member"/>
+         <ColumnDef Type="String" Key="true" Name="policy_name"/>
+         <ColumnDef Type="String" Name="soainfra_composite_assembly_member_type"/>
+         <ColumnDef Type="String" Name="policy_category"/>
+         <ColumnDef Type="String" Name="policy_version"/>
+         <ColumnDef Type="Integer" Name="AuthenticationFailures.deltaCount"/>
+         <ColumnDef Type="Integer" Name="AuthenticationSuccesses.deltaCount"/>
+         <ColumnDef Type="Integer" Name="AuthorizationFailures.deltaCount"/>
+         <ColumnDef Type="Integer" Name="AuthorizationSuccesses.deltaCount"/>
+         <ColumnDef Type="Integer" Name="ConfidentialityFailures.deltaCount"/>
+         <ColumnDef Type="Integer" Name="ConfidentialitySuccesses.deltaCount"/>
+         <ColumnDef Type="Integer" Name="IntegrityFailures.deltaCount"/>
+         <ColumnDef Type="Integer" Name="IntegritySuccesses.deltaCount"/>
+         <ColumnDef Type="Integer" Name="TotalViolations.deltaCount"/>
+         <Select Name="interceptor_policy_version_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:interceptor_policy_version_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member_type"/>
+            <Column Type="String" Name="soainfra_composite_assembly_member"/>
+            <Column Type="String" Name="policy_category"/>
+            <Column Type="String" Name="policy_name"/>
+            <Column Type="String" Name="policy_version"/>
+            <Column Type="Integer" Name="AuthenticationFailures.deltaCount"/>
+            <Column Type="Integer" Name="AuthenticationSuccesses.deltaCount"/>
+            <Column Type="Integer" Name="AuthorizationFailures.deltaCount"/>
+            <Column Type="Integer" Name="AuthorizationSuccesses.deltaCount"/>
+            <Column Type="Integer" Name="ConfidentialityFailures.deltaCount"/>
+            <Column Type="Integer" Name="ConfidentialitySuccesses.deltaCount"/>
+            <Column Type="Integer" Name="IntegrityFailures.deltaCount"/>
+            <Column Type="Integer" Name="IntegritySuccesses.deltaCount"/>
+            <Column Type="Integer" Name="TotalViolations.deltaCount"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <Table Name="soainfra_component_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Name="soainfra_composite_label"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component_type"/>
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="Double" Name="instantiated.throughput"/>
+         <ColumnDef Type="Integer" Name="successful.active"/>
+         <ColumnDef Type="Integer" Name="successful.completed"/>
+         <ColumnDef Type="Double" Name="successful.totalTime"/>
+         <ColumnDef Type="Double" Name="successful.averageTime"/>
+         <ColumnDef Type="Double" Name="successful.throughput"/>
+         <ColumnDef Type="Double" Name="successful.time"/>
+         <ColumnDef Type="Integer" Name="faulted.active"/>
+         <ColumnDef Type="Integer" Name="faulted.completed"/>
+         <ColumnDef Type="Double" Name="faulted.totalTime"/>
+         <ColumnDef Type="Double" Name="faulted.averageTime"/>
+         <ColumnDef Type="Double" Name="faulted.throughput"/>
+         <ColumnDef Type="Double" Name="faulted.time"/>
+         <ColumnDef Type="Double" Name="businessFaults.throughput"/>
+         <ColumnDef Type="Double" Name="systemFaults.throughput"/>
+         <ColumnDef Type="Double" Name="totalFaults.throughput"/>
+         <Select Name="soainfra_component_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_component_rollup"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_label"/>
+            <Column Type="String" Name="soainfra_component_type"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="Double" Name="instantiated.throughput"/>
+            <Column Type="Integer" Name="successful.active"/>
+            <Column Type="Integer" Name="successful.completed"/>
+            <Column Type="Double" Name="successful.totalTime"/>
+            <Column Type="Double" Name="successful.averageTime"/>
+            <Column Type="Double" Name="successful.throughput"/>
+            <Column Type="Double" Name="successful.time"/>
+            <Column Type="Integer" Name="faulted.active"/>
+            <Column Type="Integer" Name="faulted.completed"/>
+            <Column Type="Double" Name="faulted.totalTime"/>
+            <Column Type="Double" Name="faulted.averageTime"/>
+            <Column Type="Double" Name="faulted.throughput"/>
+            <Column Type="Double" Name="faulted.time"/>
+            <Column Type="Double" Name="businessFaults.throughput"/>
+            <Column Type="Double" Name="systemFaults.throughput"/>
+            <Column Type="Double" Name="totalFaults.throughput"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!--soainfra_composite - oc4j delta-->
+      <Table Name="soainfra_component_delta_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Name="soainfra_composite_label"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component_type"/>
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="Integer" Name="instantiated.deltaCount"/>
+         <ColumnDef Type="Integer" Name="successful.deltaCompleted"/>
+         <ColumnDef Type="Integer" Name="faulted.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="successful.deltaTime"/>
+         <ColumnDef Type="Double" Name="faulted.deltaTime"/>
+         <ColumnDef Type="Double" Name="faulted.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="faulted.totalTime"/>
+         <ColumnDef Type="Double" Name="successful.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="successful.totalTime"/>
+         <ColumnDef Type="Integer" Name="businessFaults.deltaCount"/>
+         <ColumnDef Type="Integer" Name="systemFaults.deltaCount"/>
+         <ColumnDef Type="Integer" Name="totalFaults.deltaCount"/>
+         <Select Name="soainfra_component_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_component_delta_rollup"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_label"/>
+            <Column Type="String" Name="soainfra_component_type"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="Double" Name="successful.totalTime"/>
+            <Column Type="Double" Name="faulted.totalTime"/>
+            <Column Type="Integer" Name="instantiated.deltaCount"/>
+            <Column Type="Integer" Name="successful.deltaCompleted"/>
+            <Column Type="Integer" Name="faulted.deltaCompleted"/>
+            <Column Type="Double" Name="successful.deltaTime"/>
+            <Column Type="Double" Name="faulted.deltaTime"/>
+            <Column Type="Double" Name="faulted.deltaAverageTime"/>
+            <Column Type="Double" Name="successful.deltaAverageTime"/>
+            <Column Type="Integer" Name="businessFaults.deltaCount"/>
+            <Column Type="Integer" Name="systemFaults.deltaCount"/>
+            <Column Type="Integer" Name="totalFaults.deltaCount"/>
+         </Select>
+      </Table>
+      <Table Name="soainfra_mediator_flow_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="String" Name="soainfra_mediator_flowtype"/>
+         <ColumnDef Type="Double" Name="instantiated.throughput"/>
+         <ColumnDef Type="Integer" Name="instantiated.count"/>
+         <ColumnDef Type="Double" Name="failedFilteredCaseCount.throughput"/>
+         <ColumnDef Type="Integer" Name="failedFilteredCaseCount.count"/>
+         <ColumnDef Type="Double" Name="deferredMessageCount.throughput"/>
+         <ColumnDef Type="Integer" Name="deferredMessageCount.count"/>
+         <ColumnDef Type="Integer" Name="successfulInstanceProcessingTime.completed"/>
+         <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.throughput"/>
+         <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.totalTime"/>
+         <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.averageTime"/>
+         <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.time"/>
+         <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.throughput"/>
+         <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.totalTime"/>
+         <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.averageTime"/>
+         <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.time"/>
+         <ColumnDef Type="Integer" Name="faultedInstanceProcessingTime.completed"/>
+         <Select Name="soainfra_mediator_flow_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_mediator_flow_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="soainfra_mediator_flowtype"/>
+            <Column Type="Double" Name="instantiated.throughput"/>
+            <Column Type="Integer" Name="instantiated.count"/>
+            <Column Type="Double" Name="failedFilteredCaseCount.throughput"/>
+            <Column Type="Integer" Name="failedFilteredCaseCount.count"/>
+            <Column Type="Double" Name="deferredMessageCount.throughput"/>
+            <Column Type="Integer" Name="deferredMessageCount.count"/>
+            <Column Type="Integer" Name="successfulInstanceProcessingTime.completed"/>
+            <Column Type="Double" Name="successfulInstanceProcessingTime.totalTime"/>
+            <Column Type="Double" Name="faultedInstanceProcessingTime.totalTime"/>
+            <Column Type="Double" Name="successfulInstanceProcessingTime.throughput"/>
+            <Column Type="Double" Name="faultedInstanceProcessingTime.throughput"/>
+            <Column Type="Double" Name="successfulInstanceProcessingTime.averageTime"/>
+            <Column Type="Double" Name="faultedInstanceProcessingTime.averageTime"/>
+            <Column Type="Double" Name="successfulInstanceProcessingTime.time"/>
+            <Column Type="Double" Name="faultedInstanceProcessingTime.time"/>
+            <Column Type="Integer" Name="faultedInstanceProcessingTime.completed"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for the oc4j target type -->
+      <Table Name="soainfra_mediator_flow_by_revision_delta_rollup">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="String" Name="soainfra_mediator_flowtype"/>
+         <ColumnDef Type="Integer" Name="instantiated.deltaCount"/>
+         <ColumnDef Type="Integer" Name="failedFilteredCaseCount.deltaCount"/>
+         <ColumnDef Type="Integer" Name="deferredMessageCount.deltaCount"/>
+         <ColumnDef Type="Integer" Name="successfulInstanceProcessingTime.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.deltaTime"/>
+         <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.totalTime"/>
+         <ColumnDef Type="Integer" Name="faultedInstanceProcessingTime.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.deltaTime"/>
+         <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.totalTime"/>
+         <Select Name="soainfra_mediator_flow_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_mediator_flow_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="soainfra_mediator_flowtype"/>
+            <Column Type="Double" Name="successfulInstanceProcessingTime.totalTime"/>
+            <Column Type="Double" Name="faultedInstanceProcessingTime.totalTime"/>
+            <Column Type="Integer" Name="instantiated.deltaCount"/>
+            <Column Type="Integer" Name="failedFilteredCaseCount.deltaCount"/>
+            <Column Type="Integer" Name="deferredMessageCount.deltaCount"/>
+            <Column Type="Integer" Name="successfulInstanceProcessingTime.deltaCompleted"/>
+            <Column Type="Integer" Name="faultedInstanceProcessingTime.deltaCompleted"/>
+            <Column Type="Double" Name="successfulInstanceProcessingTime.deltaTime"/>
+            <Column Type="Double" Name="faultedInstanceProcessingTime.deltaTime"/>
+            <Column Type="Double" Name="successfulInstanceProcessingTime.deltaAverageTime"/>
+            <Column Type="Double" Name="faultedInstanceProcessingTime.deltaAverageTime"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- end delta table -->
+      <!-- TABLE : soainfra_mediator_flow : END -->
+      <!-- TABLE : soainfra_mediator_case : START -->
+      <!-- Rate table for soainfra_mediator_flow -->
+      <Table Name="soainfra_mediator_case_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="String" Name="soainfra_mediator_flow"/>
+         <ColumnDef Type="String" Name="soainfra_mediator_casetarget"/>
+         <ColumnDef Type="Double" Name="invocationCount.throughput"/>
+         <ColumnDef Type="Double" Name="filterMessageCount.throughput"/>
+         <ColumnDef Type="Double" Name="failedFilterMessageCount.throughput"/>
+         <ColumnDef Type="Integer" Name="successfulCaseProcessingTime.completed"/>
+         <ColumnDef Type="Double" Name="successfulCaseProcessingTime.throughput"/>
+         <ColumnDef Type="Double" Name="successfulCaseProcessingTime.totalTime"/>
+         <ColumnDef Type="Double" Name="successfulCaseProcessingTime.averageTime"/>
+         <ColumnDef Type="Double" Name="successfulCaseProcessingTime.time"/>
+         <ColumnDef Type="Integer" Name="faultedCaseProcessingTime.completed"/>
+         <ColumnDef Type="Double" Name="faultedCaseProcessingTime.throughput"/>
+         <ColumnDef Type="Double" Name="faultedCaseProcessingTime.totalTime"/>
+         <ColumnDef Type="Double" Name="faultedCaseProcessingTime.averageTime"/>
+         <ColumnDef Type="Double" Name="faultedCaseProcessingTime.time"/>
+         <ColumnDef Type="Double" Name="avgInvocationProcessingTime.throughput"/>
+         <ColumnDef Type="Double" Name="avgInvocationProcessingTime.totalTime"/>
+         <ColumnDef Type="Double" Name="avgInvocationProcessingTime.averageTime"/>
+         <ColumnDef Type="Double" Name="avgInvocationProcessingTime.time"/>
+         <ColumnDef Type="Integer" Name="invocationCount.count"/>
+         <ColumnDef Type="Integer" Name="filterMessageCount.count"/>
+         <ColumnDef Type="Integer" Name="failedFilterMessageCount.count"/>
+         <Select Name="soainfra_mediator_case_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_mediator_case_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="soainfra_mediator_flow"/>
+            <Column Type="String" Name="soainfra_mediator_casetarget"/>
+            <Column Type="Double" Name="invocationCount.throughput"/>
+            <Column Type="Double" Name="filterMessageCount.throughput"/>
+            <Column Type="Double" Name="failedFilterMessageCount.throughput"/>
+            <Column Type="Integer" Name="successfulCaseProcessingTime.completed"/>
+            <Column Type="Double" Name="successfulCaseProcessingTime.totalTime"/>
+            <Column Type="Double" Name="faultedCaseProcessingTime.totalTime"/>
+            <Column Type="Double" Name="avgInvocationProcessingTime.totalTime"/>
+            <Column Type="Double" Name="successfulCaseProcessingTime.throughput"/>
+            <Column Type="Double" Name="faultedCaseProcessingTime.throughput"/>
+            <Column Type="Double" Name="avgInvocationProcessingTime.throughput"/>
+            <Column Type="Double" Name="successfulCaseProcessingTime.averageTime"/>
+            <Column Type="Double" Name="faultedCaseProcessingTime.averageTime"/>
+            <Column Type="Integer" Name="faultedCaseProcessingTime.completed"/>
+            <Column Type="Double" Name="avgInvocationProcessingTime.averageTime"/>
+            <Column Type="Double" Name="successfulCaseProcessingTime.time"/>
+            <Column Type="Double" Name="faultedCaseProcessingTime.time"/>
+            <Column Type="Double" Name="avgInvocationProcessingTime.time"/>
+            <Column Type="Integer" Name="invocationCount.count"/>
+            <Column Type="Integer" Name="filterMessageCount.count"/>
+            <Column Type="Integer" Name="failedFilterMessageCount.count"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for the oc4j target type -->
+      <Table Name="soainfra_mediator_case_by_revision_delta_rollup">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="String" Name="soainfra_mediator_flow"/>
+         <ColumnDef Type="String" Name="soainfra_mediator_casetarget"/>
+         <ColumnDef Type="Integer" Name="invocationCount.deltaCount"/>
+         <ColumnDef Type="Integer" Name="filterMessageCount.deltaCount"/>
+         <ColumnDef Type="Integer" Name="failedFilterMessageCount.deltaCount"/>
+         <ColumnDef Type="Integer" Name="successfulCaseProcessingTime.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="successfulCaseProcessingTime.deltaTime"/>
+         <ColumnDef Type="Double" Name="successfulCaseProcessingTime.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="successfulCaseProcessingTime.totalTime"/>
+         <ColumnDef Type="Integer" Name="faultedCaseProcessingTime.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="faultedCaseProcessingTime.deltaTime"/>
+         <ColumnDef Type="Double" Name="faultedCaseProcessingTime.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="faultedCaseProcessingTime.totalTime"/>
+         <ColumnDef Type="Integer" Name="avgInvocationProcessingTime.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="avgInvocationProcessingTime.deltaTime"/>
+         <ColumnDef Type="Double" Name="avgInvocationProcessingTime.deltaAverageTime"/>
+         <ColumnDef Type="Double" Name="avgInvocationProcessingTime.totalTime"/>
+         <Select Name="soainfra_mediator_case_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_mediator_case_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="soainfra_mediator_flow"/>
+            <Column Type="String" Name="soainfra_mediator_casetarget"/>
+            <Column Type="Integer" Name="invocationCount.count"/>
+            <Column Type="Integer" Name="filterMessageCount.count"/>
+            <Column Type="Integer" Name="failedFilterMessageCount.count"/>
+            <Column Type="Double" Name="successfulCaseProcessingTime.totalTime"/>
+            <Column Type="Double" Name="faultedCaseProcessingTime.totalTime"/>
+            <Column Type="Double" Name="avgInvocationProcessingTime.totalTime"/>
+            <Column Type="Integer" Name="invocationCount.deltaCount"/>
+            <Column Type="Integer" Name="filterMessageCount.deltaCount"/>
+            <Column Type="Integer" Name="failedFilterMessageCount.deltaCount"/>
+            <Column Type="Integer" Name="successfulCaseProcessingTime.deltaCompleted"/>
+            <Column Type="Integer" Name="faultedCaseProcessingTime.deltaCompleted"/>
+            <Column Type="Integer" Name="avgInvocationProcessingTime.deltaCompleted"/>
+            <Column Type="Double" Name="successfulCaseProcessingTime.deltaTime"/>
+            <Column Type="Double" Name="faultedCaseProcessingTime.deltaTime"/>
+            <Column Type="Double" Name="avgInvocationProcessingTime.deltaTime"/>
+            <Column Type="Double" Name="successfulCaseProcessingTime.deltaAverageTime"/>
+            <Column Type="Double" Name="faultedCaseProcessingTime.deltaAverageTime"/>
+            <Column Type="Double" Name="avgInvocationProcessingTime.deltaAverageTime"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- end delta table -->
+      <!-- TABLE : soainfra_mediator_case : END -->
+      <!-- TABLE : soainfra_wfStateEvent : START -->
+      <!-- Rate table for soainfra_mediator_flow -->
+      <Table Name="soainfra_wfStateEvent_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="Double" Name="state.throughput"/>
+         <Select Name="soainfra_wfStateEvent_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_wfStateEvent_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="Double" Name="state.throughput"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for the oc4j target type -->
+      <Table Name="soainfra_wfStateEvent_by_revision_delta_rollup">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="Integer" Name="state.deltaCount"/>
+         <Select Name="soainfra_wfStateEvent_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_wfStateEvent_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="soainfra_mediator_flowtype"/>
+            <Column Type="Integer" Name="state.deltaCount"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- end delta table -->
+      <!-- TABLE : soainfra_wfStateEvent : END -->
+      <!-- TABLE : soainfra_wfOutcomeEvent : START -->
+      <!-- Rate table for soainfra_mediator_flow -->
+      <Table Name="soainfra_wfOutcomeEvent_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="Double" Name="outcome.throughput"/>
+         <ColumnDef Type="Integer" Name="outcome.count"/>
+         <Select Name="soainfra_wfOutcomeEvent_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_wfOutcomeEvent_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="Double" Name="outcome.throughput"/>
+            <Column Type="Integer" Name="outcome.count"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for the oc4j target type -->
+      <Table Name="soainfra_wfOutcomeEvent_by_revision_delta_rollup">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="Integer" Name="outcome.deltaCount"/>
+         <Select Name="soainfra_wfOutcomeEvent_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_wfOutcomeEvent_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="soainfra_mediator_flowtype"/>
+            <Column Type="Integer" Name="outcome.deltaCount"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- end delta table -->
+      <!-- TABLE : soainfra_wfOutcomeEvent : END -->
+      <!-- TABLE : soainfra_wfNotificationEvent : START -->
+      <!-- Rate table for soainfra_mediator_flow -->
+      <Table Name="soainfra_wfNotificationEvent_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="Double" Name="notification.throughput"/>
+         <ColumnDef Type="Integer" Name="notification.count"/>
+         <Select Name="soainfra_wfNotificationEvent_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_wfNotificationEvent_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="Double" Name="notification.throughput"/>
+            <Column Type="Integer" Name="notification.count"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- Delta table for the oc4j target type -->
+      <Table Name="soainfra_wfNotificationEvent_by_revision_delta_rollup">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="Integer" Name="notification.deltaCount"/>
+         <Select Name="soainfra_wfNotificationEvent_delta_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_wfNotificationEvent_delta_rollup"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="soainfra_mediator_flowtype"/>
+            <Column Type="Integer" Name="notification.deltaCount"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <Table Name="bpel_activity_time_distribution_delta_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Name="soainfra_composite_label"/>
+         <ColumnDef Type="String" Name="soainfra_component_type"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="Integer" Name="executionTime.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="executionTime.averageTime"/>
+         <ColumnDef Type="Integer" Name="executionTime.completed"/>
+         <Select Name="soainfra_bpel_activity_result">
+            <TableFrom Name="weblogic_j2eeserver:bpel_activity_time_distribution_delta_rollup"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_label"/>
+            <Column Type="String" Name="soainfra_component_type"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="Integer" Name="executionTime.deltaCompleted"/>
+            <Column Type="Double" Name="executionTime.averageTime"/>
+            <Column Type="Integer" Name="executionTime.completed"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <Table Name="bpmn_activity_time_distribution_delta_rollup_by_revision">
+         <ColumnDef Type="String" Key="true" Name="Name"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+         <ColumnDef Type="String" Name="soainfra_composite_label"/>
+         <ColumnDef Type="String" Name="soainfra_component_type"/>
+         <ColumnDef Type="String" Key="true" Name="soainfra_component"/>
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+         <ColumnDef Type="Integer" Name="executionTime.deltaCompleted"/>
+         <ColumnDef Type="Double" Name="executionTime.averageTime"/>
+         <ColumnDef Type="Integer" Name="executionTime.completed"/>
+         <Select Name="soainfra_bpmn_activity_result">
+            <TableFrom Name="weblogic_j2eeserver:bpmn_activity_time_distribution_delta_rollup"/>
+            <Column Type="String" Name="Name"/>
+            <Column Type="String" Name="soainfra_domain"/>
+            <Column Type="String" Name="soainfra_composite"/>
+            <Column Type="String" Name="soainfra_composite_revision"/>
+            <Column Type="String" Name="soainfra_composite_label"/>
+            <Column Type="String" Name="soainfra_component_type"/>
+            <Column Type="String" Name="soainfra_component"/>
+            <Column Type="String" Name="ServerName"/>
+            <Column Type="Integer" Name="executionTime.deltaCompleted"/>
+            <Column Type="Double" Name="executionTime.averageTime"/>
+            <Column Type="Integer" Name="executionTime.completed"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- the references rate table -->
+      <Table Name="soainfra_component_references_rollup_by_revision">
+         <ColumnDef Name="Name" Type="String" Key="true"/>
+         <ColumnDef Name="ServerName" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_domain" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_revision" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_label" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_assembly_member_type" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_assembly_member" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_ComponentReferences" Type="String" Key="true"/>
+         <ColumnDef Name="RequestErrors.throughput" Type="Integer"/>
+         <ColumnDef Name="RequestEvents.throughput" Type="Integer"/>
+         <ColumnDef Name="Requests.throughput" Type="Integer"/>
+         <ColumnDef Name="Requests.time" Type="Double"/>
+         <ColumnDef Name="PostErrors.throughput" Type="Integer"/>
+         <ColumnDef Name="PostEvents.throughput" Type="Integer"/>
+         <ColumnDef Name="Posts.throughput" Type="Integer"/>
+         <ColumnDef Name="Posts.time" Type="Double"/>
+         <ColumnDef Name="instances.errorCount" Type="Integer"/>
+         <ColumnDef Name="instances.eventCount" Type="Integer"/>
+         <ColumnDef Name="instances.completed" Type="Integer"/>
+         <ColumnDef Name="instances.totalTime" Type="Double"/>
+         <ColumnDef Name="instances.time" Type="Double"/>
+         <ColumnDef Name="instances.averageTime" Type="Double"/>
+         <Select Name="soainfra_component_references_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_component_references_rollup"/>
+            <Column Type="String" Name="Name"/>
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="soainfra_domain" Type="String"/>
+            <Column Name="soainfra_composite" Type="String"/>
+            <Column Name="soainfra_composite_revision" Type="String"/>
+            <Column Name="soainfra_composite_label" Type="String"/>
+            <Column Name="soainfra_composite_assembly_member_type" Type="String"/>
+            <Column Name="soainfra_composite_assembly_member" Type="String"/>
+            <Column Name="soainfra_ComponentReferences" Type="String"/>
+            <Column Name="RequestErrors.throughput" Type="Integer"/>
+            <Column Name="RequestEvents.throughput" Type="Integer"/>
+            <Column Name="Requests.throughput" Type="Integer"/>
+            <Column Name="Requests.time" Type="Double"/>
+            <Column Name="PostErrors.throughput" Type="Integer"/>
+            <Column Name="PostEvents.throughput" Type="Integer"/>
+            <Column Name="Posts.throughput" Type="Integer"/>
+            <Column Name="Posts.time" Type="Double"/>
+            <Column Name="instances.errorCount" Type="Integer"/>
+            <Column Name="instances.eventCount" Type="Integer"/>
+            <Column Name="instances.completed" Type="Integer"/>
+            <Column Name="instances.totalTime" Type="Double"/>
+            <Column Name="instances.time" Type="Double"/>
+            <Column Name="instances.averageTime" Type="Double"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+      <!-- the references delta table -->
+      <Table Name="soainfra_component_references_delta_rollup_by_revision">
+         <ColumnDef Type="String" Name="Name" Key="true"/>
+         <ColumnDef Name="ServerName" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_domain" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_revision" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_label" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_assembly_member_type" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_composite_assembly_member" Type="String" Key="true"/>
+         <ColumnDef Name="soainfra_ComponentReferences" Type="String" Key="true"/>
+         <ColumnDef Name="RequestErrors.deltaCount" Type="Integer"/>
+         <ColumnDef Name="RequestEvents.deltaCount" Type="Integer"/>
+         <ColumnDef Name="Requests.deltaTime" Type="Double"/>
+         <ColumnDef Name="Requests.deltaCompleted" Type="Integer"/>
+         <ColumnDef Name="PostErrors.deltaCount" Type="Integer"/>
+         <ColumnDef Name="PostEvents.deltaCount" Type="Integer"/>
+         <ColumnDef Name="Posts.deltaTime" Type="Double"/>
+         <ColumnDef Name="Posts.totalTime.previous" Type="Double"/>
+         <ColumnDef Name="Posts.totalTime" Type="Double"/>
+         <ColumnDef Name="Posts.deltaCompleted" Type="Integer"/>
+         <ColumnDef Name="instances.deltaErrorCount" Type="Integer"/>
+         <ColumnDef Name="instances.deltaEventCount" Type="Integer"/>
+         <ColumnDef Name="instances.deltaAverageTime" Type="Double"/>
+         <Select Name="soainfra_component_references_delta_rollup_by_revision_result">
+            <TableFrom Name="weblogic_j2eeserver:soainfra_component_references_delta_rollup"/>
+            <Column Type="String" Name="Name"/>
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="soainfra_domain" Type="String"/>
+            <Column Name="soainfra_composite" Type="String"/>
+            <Column Name="soainfra_composite_revision" Type="String"/>
+            <Column Name="soainfra_composite_label" Type="String"/>
+            <Column Name="soainfra_composite_assembly_member_type" Type="String"/>
+            <Column Name="soainfra_composite_assembly_member" Type="String"/>
+            <Column Name="soainfra_ComponentReferences" Type="String"/>
+            <Column Name="RequestErrors.deltaCount" Type="Integer"/>
+            <Column Name="RequestEvents.deltaCount" Type="Integer"/>
+            <Column Name="PostEvents.deltaCount" Type="Integer"/>
+            <Column Name="PostErrors.deltaCount" Type="Integer"/>
+            <Column Name="Requests.deltaCompleted" Type="Integer"/>
+            <Column Name="Posts.deltaCompleted" Type="Integer"/>
+            <Column Name="Requests.deltaTime" Type="Double"/>
+            <Column Name="Posts.deltaTime" Type="Double"/>
+            <Column Name="instances.deltaErrorCount" Type="Integer"/>
+            <Column Name="instances.deltaEventCount" Type="Integer"/>
+            <Column Name="instances.deltaAverageTime" Type="Double"/>
+            <Where>
+               <Or>
+                  <Condition Operator="EQ" Type="String">
+                     <ColumnFrom Name="soainfra_composite"/>
+                     <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Operator="EQ" Type="String">
+                     <Value xsi:nil="true" Name="appName.parameter"/>
+                     <Null/>
+
+                  </Condition>
+               </Or>
+            </Where>
+         </Select>
+      </Table>
+
+		  <Table Name='b2b_trading_partners_rollup_for_inbound'>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite_assembly_member'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite_assembly_member_type'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite_revision'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_domain'/>
+		  	<ColumnDef Type='String' Key='true' Name='Name' />
+		  	<ColumnDef Type='String' Name='ServerName'/>
+		    <ColumnDef Type='Integer' Name='inboundMessages.count' />
+		    <ColumnDef Type='Double' Name='inboundMessages.processingTime' />
+		    <ColumnDef Type='Double' Name='inboundMessages.messageSize' />
+		    <ColumnDef Type='Integer' Name='inboundMessages.faults' />
+		    <ColumnDef Type='Integer' Name='totalMessages.count'/>
+		    <Select Name="b2b_trading_partners_rollup_for_inbound">
+		    	<TableFrom Name="weblogic_j2eeserver:b2b_trading_partners_rollup_for_inbound"/>
+		    	<Column Name="soainfra_composite_assembly_member" Type="String"/>
+		    	<Column Name="soainfra_composite_assembly_member_type" Type="String"/>
+		    	<Column Name="soainfra_composite_revision" Type="String"/>
+		    	<Column Name="soainfra_composite" Type="String"/>
+		    	<Column Name="soainfra_domain" Type="String"/>
+		    	<Column Name="Name" Type="String"/>
+		    	<Column Name="ServerName" Type="String"/>
+		    	<Column Name="inboundMessages.faults" Type="Integer"/>
+		    	<Column Name="inboundMessages.count" Type="Integer"/>
+		    	<Column Name="inboundMessages.processingTime" Type="Double"/>
+		    	<Column Name="inboundMessages.messageSize" Type="Double"/>
+      		<Column Name="totalMessages.count" Type="Integer"/>
+          <Where>
+             <Or>
+                <Condition Operator="EQ" Type="String">
+                   <ColumnFrom Name="soainfra_composite"/>
+                   <Value Name="appName.parameter"/>
+                </Condition>
+                <Condition Operator="EQ" Type="String">
+                   <Value xsi:nil="true" Name="appName.parameter"/>
+                   <Null/>
+                </Condition>
+             </Or>
+          </Where>
+		    </Select>
+		  </Table>
+
+		  <Table Name='b2b_trading_partners_rollup_for_outbound'>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite_assembly_member'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite_assembly_member_type'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite_revision'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_composite'/>
+		    <ColumnDef Type='String' Key='true' Name='soainfra_domain'/>
+		  	<ColumnDef Type='String' Key='true' Name='Name' />
+		  	<ColumnDef Type='String' Name='ServerName'/>
+		    <ColumnDef Type='Integer' Name='outboundMessages.count' />
+		    <ColumnDef Type='Double' Name='outboundMessages.processingTime' />
+		    <ColumnDef Type='Double' Name='outboundMessages.messageSize' />
+		    <ColumnDef Type='Integer' Name='outboundMessages.faults' />
+		    <ColumnDef Type='Integer' Name='totalMessages.count'/>
+		    <Select Name="b2b_trading_partners_rollup_for_outbound">
+		    	<TableFrom Name="weblogic_j2eeserver:b2b_trading_partners_rollup_for_outbound"/>
+		    	<Column Name="soainfra_composite_assembly_member" Type="String"/>
+		    	<Column Name="soainfra_composite_assembly_member_type" Type="String"/>
+		    	<Column Name="soainfra_composite_revision" Type="String"/>
+		    	<Column Name="soainfra_composite" Type="String"/>
+		    	<Column Name="soainfra_domain" Type="String"/>
+		    	<Column Name="Name" Type="String"/>
+		    	<Column Name="ServerName" Type="String"/>
+		    	<Column Name="outboundMessages.faults" Type="Integer"/>
+		    	<Column Name="outboundMessages.count" Type="Integer"/>
+		    	<Column Name="outboundMessages.processingTime" Type="Double"/>
+		    	<Column Name="outboundMessages.messageSize" Type="Double"/>
+      		<Column Name="totalMessages.count" Type="Integer"/>
+          <Where>
+             <Or>
+                <Condition Operator="EQ" Type="String">
+                   <ColumnFrom Name="soainfra_composite"/>
+                   <Value Name="appName.parameter"/>
+                </Condition>
+                <Condition Operator="EQ" Type="String">
+                   <Value xsi:nil="true" Name="appName.parameter"/>
+                   <Null/>
+                </Condition>
+             </Or>
+          </Where>
+		    </Select>
+		  </Table>
+
+		<Table Name="total_composite_instances">
+			<ColumnDef Type='String' Name='ServerName' />
+			<ColumnDef Type='String' Name='soainfra_domain' />
+			<ColumnDef Type='String' Key='true' Name='soainfra_composite' />
+			<ColumnDef Type='String' Key='true' Name='soainfra_composite_revision' />
+			<ColumnDef Name="Instance.count" Type="Integer"/>
+			<Select Name="total_composite_instances_result_1">
+				<TableFrom Name="weblogic_j2eeserver:soainfra_composite_label_rollup_no_rate"/>
+				<Column Type='String' Name='ServerName' />
+				<Column Type='String' Name='soainfra_domain' />
+				<Column Type='String' Name='soainfra_composite' />
+				<Column Type='String' Name='soainfra_composite_revision' />
+				<Column Name="Instance.count" Type="Integer">
+					<Expression Operator="Plus">
+						<ColumnFrom Name="RequestEvents.count" />
+						<ColumnFrom Name="PostEvents.count" />
+					</Expression>
+					<Default>0</Default>
+				</Column>
+
+				<Where>
+				   <And>
+					  <Condition Operator="EQ" Type="String">
+						 <ColumnFrom Name="soainfra_composite_revision"/>
+						 <Value Name="CompositeRevision.parameter"/>
+					  </Condition>
+					  <Condition Type="String" Operator="EQ">
+						 <ColumnFrom Name="soainfra_composite"/>
+						 <Value Name="CompositeName.parameter"/>
+					  </Condition>
+				   </And>
+				</Where>
+			</Select>
+		</Table>
+
+		  <Table Name="total_faults">
+			<ColumnDef Type='String' Key='true' Name='soainfra_composite' />
+			<ColumnDef Type='String' Key='true' Name='soainfra_composite_revision' />
+			<ColumnDef Name="Fault.count" Type="Integer"/>
+			<Select Name="total_faults_result_1">
+			   <TableFrom Name="weblogic_j2eeserver:soainfra_component_rollup_no_rate"/>
+			   <TableFrom Name="weblogic_j2eeserver:soainfra_binding_rollup"/>
+					<Column Type='String' Name='soainfra_composite' />
+					<Column Type='String' Name='soainfra_composite_revision' />
+					<Column Name="Fault.count" Type="Integer">
+						<Expression Operator="Plus">
+							<ColumnFrom Name="totalFaults.count" Table="weblogic_j2eeserver:soainfra_component_rollup_no_rate" />
+							<ColumnFrom Name="Errors.count" Table="weblogic_j2eeserver:soainfra_binding_rollup" />
+						</Expression>
+						<Default>0</Default>
+					</Column>
+
+				<Where>
+				   <And>
+				     <And>
+						  <Condition Operator="EQ" Type="String">
+							 <ColumnFrom Name="soainfra_composite_revision" Table="weblogic_j2eeserver:soainfra_component_rollup_no_rate"/>
+							 <Value Name="CompositeRevision.parameter"/>
+						  </Condition>
+						  <Condition Operator="EQ" Type="String">
+							 <ColumnFrom Name="soainfra_composite_revision" Table="weblogic_j2eeserver:soainfra_binding_rollup"/>
+							 <Value Name="CompositeRevision.parameter"/>
+						  </Condition>
+					  </And>
+					  <And>
+						  <Condition Type="String" Operator="EQ">
+							 <ColumnFrom Name="soainfra_composite" Table="weblogic_j2eeserver:soainfra_component_rollup_no_rate"/>
+							 <Value Name="CompositeName.parameter"/>
+						  </Condition>
+						  <Condition Type="String" Operator="EQ">
+							 <ColumnFrom Name="soainfra_composite" Table="weblogic_j2eeserver:soainfra_binding_rollup"/>
+							 <Value Name="CompositeName.parameter"/>
+						  </Condition>
+					  </And>
+				   </And>
+				</Where>
+			</Select>
+	   </Table>
+   </Adml>
+

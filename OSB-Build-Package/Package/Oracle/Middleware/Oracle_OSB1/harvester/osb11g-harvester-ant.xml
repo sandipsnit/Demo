@@ -1,0 +1,133 @@
+<project name="harvester" default="usage" basedir=".">
+    <description>
+        Ant script to harvest Oracle Service Bus 11g artifacts.
+    </description>
+
+
+    <!--    Usages  -->
+    <target name="usage">
+
+    </target>
+
+
+    <!--    Environment values  -->
+    <property environment="env"/>
+    <property name="mw.home"            location="${env.MW_HOME}"/>
+    <property name="wl.home"            location="${env.WL_HOME}"/>
+    <property name="osb.home"           location="${env.OSB_HOME}"/>
+    <property name="harvester.home"     location="${osb.home}/harvester"/>
+
+
+    <!--    Task Definition     -->
+    <taskdef name="harvester.submit"
+             classname="com.bea.alsb.harvester.ant.HarvesterTask"/>
+
+
+    <!--    Initialize the default values -->
+    <target name="harvest.init">
+
+        <property name="task.debug"                     value="false" />
+        <property name="task.failonerror"               value="true" />
+        <property name="task.errorproperty"             value="" />
+
+        <property name="harvester.settings"             location="${harvester.home}/HarvesterSettings.xml" />
+
+        <property name="repository.url"                 value="" />
+        <property name="repository.username"            value="" />
+        <property name="repository.password"            value="" />
+        <property name="repository.timeout"             value="30000" />
+
+        <property name="settings.workdir"               value="" />
+        <property name="settings.description"           value="" />
+        <property name="settings.namespace"             value="" />
+        <property name="settings.registrationStatus"    value="" />
+
+    </target>
+
+
+    <!--
+            Harvest from a HarvesterSettings file
+    -->
+    <target name="harvest.settings" depends="harvest.init">
+        <harvester.submit debug="${task.debug}"
+                          failonerror="${task.failonerror}"
+                          errorProperty="${task.errorproperty}"
+                          harvesterSettings="${harvester.settings}"
+                          repositoryURL="${repository.url}"
+		                  repositoryUsername="${repository.username}"
+		                  repositoryPassword="${repository.password}"
+                          repositoryTimeout="${repository.timeout}"
+                          workDir="${settings.workdir}"
+                          description="${settings.description}"
+                          namespace="${settings.namespace}"
+                          registrationStatus="${settings.registrationStatus}">
+        </harvester.submit>
+    </target>
+
+
+    <!--
+            Harvest from a File Query
+    -->
+    <target name="harvest.file" depends="harvest.init">
+
+        <fail unless="file.name" description="The OSB config jar file name must be configured."/>
+
+        <property name="file.artifactStore" value=""/>
+
+        <harvester.submit debug="${task.debug}"
+                          failonerror="${task.failonerror}"
+                          errorProperty="${task.errorproperty}"
+                          harvesterSettings="${harvester.settings}"
+                          repositoryURL="${repository.url}"
+		                  repositoryUsername="${repository.username}"
+		                  repositoryPassword="${repository.password}"
+                          repositoryTimeout="${repository.timeout}"
+                          workDir="${settings.workdir}"
+                          description="${settings.description}"
+                          namespace="${settings.namespace}"
+                          registrationStatus="${settings.registrationStatus}">
+
+            <FileQuery file="${file.name}"
+                       artifactStore="${file.artifactStore}"/>
+
+        </harvester.submit>
+    </target>
+
+
+    <!--
+            Harvest from a Remote Query
+    -->
+    <target name="harvest.remote" depends="harvest.init">
+
+        <fail unless="remote.uri" description="The URI of the remote server must be configured."/>
+        <fail unless="remote.username" description="The Username of the remote server must be configured."/>
+        <fail unless="remote.password" description="The Password of the remote server must be configured."/>
+
+        <property name="remote.artifactStore"       value=""/>
+        <property name="remote.projects"            value=""/>
+        <property name="remote.projectsDelimiter"   value=","/>
+
+        <harvester.submit debug="${task.debug}"
+                          failonerror="${task.failonerror}"
+                          errorProperty="${task.errorproperty}"
+                          harvesterSettings="${harvester.settings}"
+                          repositoryURL="${repository.url}"
+		                  repositoryUsername="${repository.username}"
+		                  repositoryPassword="${repository.password}"
+                          repositoryTimeout="${repository.timeout}"
+                          workDir="${settings.workdir}"
+                          description="${settings.description}"
+                          namespace="${settings.namespace}"
+                          registrationStatus="${settings.registrationStatus}">
+
+            <RemoteQuery uri="${remote.uri}"
+                         username="${remote.username}"
+                         password="${remote.password}"
+                         artifactStore="${remote.artifactStore}"
+                         projects="${remote.projects}"
+                         projectsDelimiter="${remote.projectsDelimiter}"/>
+
+        </harvester.submit>
+    </target>
+
+</project>

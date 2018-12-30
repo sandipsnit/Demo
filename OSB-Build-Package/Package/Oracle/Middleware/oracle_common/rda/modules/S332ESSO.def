@@ -1,0 +1,242 @@
+# S332ESSO.def: Collects Oracle Enterprise Single Sign-On Information
+# $Id: S332ESSO.def,v 2.9 2012/01/03 13:34:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S332ESSO.def,v 2.9 2012/01/03 13:34:45 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S332ESSO - Collects Oracle Enterprise Single Sign-On (PassLogix) Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Enterprise Single Sign-On (PassLogix)-related
+information. This module is applicable to Microsoft Windows systems only.
+
+The following reports can be generated and are regrouped under C<Oracle
+Enterprise Single Sign-On>:
+
+=cut
+
+echo tput('bold'),'Processing ESSO module ...',tput('off')
+
+# Initialisation
+var $DATA_DIR  = getEnv('APPDATA')
+var $ESSO_HOME = getSetting('ESSO_HOME')
+var $TAIL      = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Oracle Enterprise Single Sign-On'
+
+# Load the common macros
+run library()
+
+=head2 registry - Registry Information
+
+Collects Oracle Enterprise Single Sign-On registry information.
+
+=cut
+
+report registry
+debug 'Inside ESSO module, gathering registry information'
+prefix
+ write '---+!! Oracle Enterprise Single Sign-On Registry information'
+if !writeRegistry('HKLM\SOFTWARE\Passlogix')
+ write 'There are no Oracle Enterprise Single Sign-On entries'
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Registry Information]]'
+
+=head2 appdata - Application Files
+
+Collects application files.
+
+=cut
+
+pretoc '2:Application Files'
+debug 'Inside ESSO module, gathering application files'
+var $dir = catDir($DATA_DIR,'PassLogix')
+call sort_files(3,0,grepDir($dir,'\.(ini|xml|log)$','ip'))
+
+=head2 secfiles - Secrets Directory Contents
+
+Collects the contents of the F<Secrets> directory.
+
+=cut
+
+debug 'Inside ESSO module, gathering contents of secrets directory'
+var $dir = catDir($DATA_DIR,'PassLogix','Secrets')
+if testDir('d',$dir)
+{report secfiles
+ write '---+ Secrets Directory Contents'
+ write '---## Information Taken from ',encode($dir)
+ call statDir('an',$dir)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Secrets Directory Contents]]'
+}
+unpretoc
+
+=head2 ldifde - Active Directory Entries
+
+Collects active directory entries from organization unit created to store
+password reset objects.
+
+=cut
+
+if findCommand('ldifde')
+{var $cmd = last
+ var $val = getRegValue(\
+                 'HKLM\SOFTWARE\Passlogix\SSPR\Storage\Extensions\AD\Servers',\
+                 'Server1')
+ var ($srv,$prt) = split(':',$val)
+ var $obj = getRegValue('HKLM\SOFTWARE\Passlogix\SSPR\Storage\Extensions\AD',\
+                        'root')
+ if and($srv,$prt,$obj)
+ {report ldifde
+  var $fil = catFile(${OUT.C},concat(${CUR.PREFIX},'exportEu.ldf'))
+  var $cmd = concat($cmd,' -f ',quote($fil,'x'),' -s ',$srv,' -t ',$prt,\
+                    ' -d "',$obj,'" -p subtree -r "(objectClass=*)"')
+  prefix
+  {write '---+ Active Directory Entries'
+   write '---## Using ',encode($cmd)
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser or \
+               use the link to save them and use an adequate viewer.'
+   write '|*File Name*| *Size*|*Last Modified Date*|'
+  }
+  call command($cmd)
+  var $siz = getSize($fil)
+  if $siz
+  {var $lnk = concat('[[',basename($fil),'][_blank][',basename($fil),']]')
+   write '|',$lnk,' | ',$siz,'|',\
+             getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Active Directory Entries]]'
+ }
+}
+
+=head2 syncstat - Synchronization Status
+
+RDA runs the synchronization and then checks if the last modification date of
+file F<%APPDATA%/Passlogix/aelist.ini> has been modified.
+
+=cut
+
+if testDir('d',$ESSO_HOME)
+{if getSetting('ESSO_CHECK_SYNC',1)
+ {if getRegValue('HKLM\SOFTWARE\Passlogix','Path')
+  {if testFile('f',catFile(last,'ssoshell.exe'))
+   {debug 'Inside ESSO module, testing sychronization'
+    report syncstat
+    var $cmd = concat(lastCommand(),' /syncmgr /download')
+    var $fil = catFile($DATA_DIR,'PassLogix','aelist.ini')
+    write '---+ Synchronization Status'
+    write '---## Using: ',encode($cmd)
+    write 'Current time is ',replace(${RDA.GMTIME},'\s','&nbsp;',true)
+    write '---++ File Status before the Synchronization'
+    call statFile('p',$fil)
+    if loadCommand($cmd)
+    {write '---++ Synchronization Output'
+     call writeLastFile()
+     write '---++ File Status after the Synchronization'
+     call statFile('p',$fil)
+    }
+    else
+    {write '---++ Synchronization Error'
+     call writeLastFile()
+    }
+    toc '2:[[',getFile(),'][rda_report][Synchronization Status]]'
+   }
+  }
+ }
+
+=head2 versions - Executable and Library Versions
+
+Collects the executable and library versions.
+
+=cut
+
+ report versions
+ debug 'Inside ESSO module, gathering executable and library versions'
+ prefix
+ {write '---+!! Version Information'
+  write $TOC
+ }
+ loop $fil (grepDir($ESSO_HOME,'\.(dll|exe)$','dir'))
+ {write '---+ Version Information from ',basename($fil)
+  call statFile('p',$fil)
+  write '%BR%'
+  var $inf = getVersionInfo($fil)
+  loop $key (keys($inf))
+   write '|*',replace($key,'\012','',true),' *|',\
+              replace($inf->{$key},'\012','',true),' |'
+  write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Executable and Library Versions]]'
+
+=head2 instdir - Installation Directory Contents
+
+When requested, the report attaches the content of Oracle Enterprise Single
+Sign-On installation directory. It does not generate this report when there is
+no archiving utility.
+
+=cut
+
+ if and(testDir('dr',$ESSO_HOME),getSetting('ESSO_COLLECT_DIR'))
+ {var $dst = catFile(${OUT.C},concat(${CUR.PREFIX},'pass.zip'))
+  if testCommand('zip -h')
+  {var $cmd = concat('zip -9 -q -r "',$dst,'" "',$ESSO_HOME,'"')
+  }
+  elsif findCommand('jar')
+  {var $cmd = concat(last,' -cfM "',$dst,'" -C "',$ESSO_HOME,'" .')
+  }
+  else
+  {var $cmd = undef
+   echo 'Unable to find an utility for archiving the installation directory.'
+  }
+  if $cmd
+  {debug 'Inside ESSO module, gathering install directory contents'
+   if loadCommand($cmd)
+   {report instdir
+    write '---+!! Contents of PassLogix Directory'
+    write '---## Information Taken from ',encode($ESSO_HOME)
+    var $bas = basename($dst)
+    write '|[[',$bas,'][_blank][',encode($bas),']]|',\
+          getLastModify($dst,'%d-%b-%Y&nbsp;%H:%M:%S'),'| ',\
+          getSize($dst),'|'
+    toc '2:[[',getFile(),'][rda_report][Installation Directory Contents]]'
+   }
+  }
+ }
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.16: Octavian Morariu.
+
+=item RDA 4.22: Raju Channabasappa, Joel Flores.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

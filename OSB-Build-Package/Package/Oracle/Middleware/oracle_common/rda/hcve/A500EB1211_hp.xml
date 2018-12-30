@@ -1,0 +1,696 @@
+<sdp_diaglet platform="hpux" product="EB1211" set="A500EB1211_hp" title="Oracle E-Business Suite Release 12 (12.1.1) Preinstall (HP-UX)" type="A">
+<sdp_meta id="$Id: A500EB1211_hp.xml,v 1.14 2012/05/18 08:41:07 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Enhance OS Bundles, OS Patches, and Motif" date="20120516" type="history"/>
+<sdp_content set="A500EB1211_hp" title="Oracle E-Business Suite Release 12 (12.1.1) Preinstall (HP-UX)" type="check">
+<sdp_group>
+
+<sdp_rule id="A00100" mode="RECORD" name="OS Type">
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$OS_BIT,$OS_NAM,$OS_VER
+call setHcveResult(check(uc($OS_NAM),\
+   'HP-UX',concat($OS_NAM,' ',$OS_ARC,' ',$OS_VER,' ',$OS_BIT,'-bit'),\
+   'Uncertified OS'))
+var $BOOK = 'Oracle Applications Installation Guide Using Rapid Install \
+  Release 12.1 (12.1.1)'
+call setHcveVariable('$BOOK')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system (OS) name, architecture, version and bit of your system when you work on HP-UX system.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00200" mode="VERIFY" name="OS Certified?">
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$OS_BIT,$OS_NAM,$OS_VER
+call setHcveResult(check(uc($OS_NAM),\
+  'HP-UX',check($OS_ARC,\
+    'Itanium',check($OS_VER,'^11\.(23|31)$','Certified',\
+                            'Uncertified HP-UX Itanium Version'),\
+    'PA-RISC',check($OS_VER,'11.11',        'Partly Certified',\
+                            '^11\.(23|31)$','Certified',\
+                            'Uncertified HP-UX PA-RISC Version')),\
+    'Uncertified OS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the correct version of HP-UX for installing the application tier of an Oracle E-Business Suite Release 12 (12.1.1), possibly combined with a database tier install. Correct versions for the installation of the application tier and the database tier are HP-UX PA-RISC 11.23, HP-UX PA-RISC 11.31, HP-UX Itanium 11.23, and HP-UX Itanium 11.31. An HP-UX PA-RISC 11.11 system supports the installation of the application tier only since that version of the Operating System does not support the installation of the 11g Release 1 version of the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Certified" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action condition="==" minimum="Partly Certified" result="PASSED"><![CDATA[It is certified to install the application tier on HP-UX PA-RISC 11.11 only but it is not supported to install the database tier.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[!!SHOWSTOPPER!!
+You do not have a correct version of HP-UX installed on your server. For the certified versions of HP-UX, see the Knowledge Article 762894.1 for HP-UX PA-RISC and the Knowledge Article 762891.1 for HP-UX Itanium.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00210" mode="VERIFY" name="Got OS Bundles? ">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified HP-UX system"><![CDATA[This rule applies for certified HP-UX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$OS_ARC
+macro check_bundle
+{var ($bdl,$ref,$pat1,$pat2,$num) = @arg
+ var ($fnd) = grepLastFile($bdl,'if')
+ if !$fnd
+  return concat($bdl,'NotFound')
+ return cond(expr('>=',field($pat2,$num,field($pat1,1,$fnd)),$ref),\
+             concat($bdl,'Found'),concat($bdl,'TooOld'))
+}
+if !loadCommand('/usr/sbin/swlist -l bundle')
+ return setHcveResult('No access to /usr/sbin/swlist')
+if compare('eq',$OS_VER,'11.11')
+{var $msg = check_bundle('GOLDQPK11i',2006,',','\s+',1)
+ if !match($msg,'GOLDQPK11iNotFound')
+  call push(@tbl,$msg)
+ else
+ {var $app = check_bundle('GOLDAPPS11i',0606,'\s+','\.',3)
+  var $bas = check_bundle('GOLDBASE11i',0606,'\s+','\.',3)
+  if and(match($app,'NotFound'),match($bas,'NotFound'))
+   call push(@tbl,'QPKComponentsNotFound')
+  else
+  {var $cnt = 0
+   if !match($app,'GOLDAPPS11iFound')
+    incr $cnt,push(@tbl,$app)
+   if !match($bas,'GOLDBASE11iFound')
+    incr $cnt,push(@tbl,$bas)
+   if !$cnt
+    call push(@tbl,'QPKComponentsAdequate')
+  }
+ }
+}
+elsif compare('eq',$OS_VER,'11.23')
+{if match($OS_ARC,'PA-RISC',true)
+  call push(@tbl,check_bundle('QPK1123',0712,'\s+','\.',3))
+ else
+ {var $msg = check_bundle('QPK1123',0712,'\s+','\.',3)
+  if !match($msg,'QPK1123NotFound')
+   call push(@tbl,$msg)
+  else
+  {var $app = check_bundle('QPKAPPS',0712,'\s+','\.',3)
+   var $bas = check_bundle('QPKBASE',0712,'\s+','\.',3)
+   if and(match($app,'NotFound'),match($bas,'NotFound'))
+    call push(@tbl,'QPKComponentsNotFound')
+   else
+   {var $cnt = 0
+    if !match($app,'QPKAPPSFound')
+     incr $cnt,push(@tbl,$app)
+    if !match($bas,'QPKBASEFound')
+     incr $cnt,push(@tbl,$bas)
+    if !$cnt
+     call push(@tbl,'QPKComponentsAdequate')
+   }
+  }
+ }
+}
+elsif compare('eq',$OS_VER,'11.31')
+{if match($OS_ARC,'PA-RISC',true)
+  call push(@tbl,check_bundle('QPK1131',0809,'\s+','\.',3))
+ else
+ {var $msg = check_bundle('QPK1131',0809,'\s+','\.',3)
+  if !match($msg,'QPK1131NotFound')
+   call push(@tbl,$msg)
+  else
+  {var $app = check_bundle('QPKAPPS',0809,'\s+','\.',3)
+   var $bas = check_bundle('QPKBASE',0809,'\s+','\.',3)
+   if and(match($app,'NotFound'),match($bas,'NotFound'))
+    call push(@tbl,'QPKComponentsNotFound')
+   else
+   {var $cnt = 0
+    if !match($app,'QPKAPPSFound')
+     incr $cnt,push(@tbl,$app)
+    if !match($bas,'QPKBASEFound')
+     incr $cnt,push(@tbl,$bas)
+    if !$cnt
+     call push(@tbl,'QPKComponentsAdequate')
+   }
+  }
+ }
+}
+else
+ call push(@tbl,'NotChecked')
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that all required OS bundles are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="GOLDQPK11iFound|Bundle11iFound|QPK1123Found|QPK1131Found|QPKComponentsAdequate|NotChecked" result="PASSED"><![CDATA[The required OS patch bundle is installed. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[For HP-UX PA-RISC 11.11, install GOLDQPK11i, June 2006 or later or both GOLDAPPS11i and GOLDBASE11i, June 2006 or later. 
+For HP-UX 11.23 (PA-RISC and Itanium), install the Quality Pack patch bundles from the December 2007 Support Pack.
+For HP-UX 11.31 (PA-RISC and Itanium), install the Quality Pack patch bundles from the September 2008 Support Pack.
+This test requires that the current user can execute ``/usr/sbin/swlist``.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00220" mode="VERIFY" name="Got OS Patches?">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A00200" minimum="Certified$" result="SKIPPED" value="Not on certified HP-UX system"><![CDATA[This rule applies for certified HP-UX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$OS_ARC
+macro check_patch
+{var (\@tbl,$pch,@pch) = @arg
+ var $pat = concat('(',join('|',$pch,@pch),')')
+ if !grepLastFile($pat,'if')
+  call push(@tbl,concat($pch,' missing'))
+}
+if !loadCommand('/usr/sbin/swlist -l fileset')
+ return setHcveResult('NoAccess')
+if match($OS_VER,'^11\.31$')
+{if match($OS_ARC,'Itanium',true)
+ {call check_patch(\@tbl,'PHKL_40208','PHKL_40207','PHKL_40941','PHKL_40963',\
+                         'PHKL_41481','PHKL_41981','PHKL_42300')
+  call check_patch(\@tbl,'PHSS_39822','PHSS_40538','PHSS_41179','PHSS_41492',\
+                         'PHSS_42040')
+  call check_patch(\@tbl,'PHSS_39827','PHSS_40454','PHSS_40540','PHSS_41181',\
+                         'PHSS_42041')
+ }
+}
+elsif match($OS_VER,'^11\.23$')
+{call check_patch(\@tbl,'PHCO_36673','PHCO_37228','PHCO_38273','PHCO_38637',\
+                        'PHCO_40571')
+ call check_patch(\@tbl,'PHKL_35029','PHKL_36826','PHKL_37121','PHKL_41057')
+ call check_patch(\@tbl,'PHKL_35478','PHKL_36085','PHKL_36319')
+ call check_patch(\@tbl,'PHSS_35978','PHSS_36343','PH SS_37500','PHSS_38140',\
+                        'PHSS_40543','PHSS_41184')
+ call check_patch(\@tbl,'PHSS_35979','PHSS_36336','PHSS_36342','PHSS_37201',\
+                        'PHSS_37492','PHSS_37947','PHSS_38134','PHSS_39093',\
+                        'PHSS_39821','PHSS_40537','PHSS_41178','PHSS_41491',\
+                        'PHSS_42043')
+ if match($OS_ARC,'Itanium',true)
+ {call check_patch(\@tbl,'PHCO_38637','PHCO_40571')
+  call check_patch(\@tbl,'PHSS_39101','PHSS_40541','PHSS_41182','PHSS_41495')
+  call check_patch(\@tbl,'PHSS_39821','PHSS_40537','PHSS_41178','PHSS_41491',\
+                         'PHSS_42043')
+ }
+}
+elsif match($OS_VER,'^11\.11$')
+{var $mtc = 1
+ call check_patch(\@tbl,'PHSS_28871','PHSS_30049','PHSS_30966','PHSS_30968',\
+                        'PHSS_30970','PHSS_32864','PHSS_33033','PHSS_33035',\
+                        'PHSS_33037','PHSS_35379','PHSS_35381','PHSS_35383',\
+                        'PHSS_35385','PHSS_37516','PHSS_37517','PHSS_38154',\
+                        'PHSS_39077','PHSS_39749','PHSS_40549','PHSS_41214',\
+                        'PHSS_41713','PHSS_42253')
+}
+else
+ call push(@tbl,'NotChecked')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OSpatchesFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the required OS patches for the installation of the application tier of an E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="OSpatchesFound|NotChecked" result="PASSED"><![CDATA[All required OS patches are adequate. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="NoAccess" result="FAILED"><![CDATA[You do not have access to ``/usr/sbin/swlist``.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required OS patches were not met or found. Review the recommended OS patches from the ${'BOOK}.
+Ensure that the following patches or superseding patches are installed.
+|*Return Value*|*Action*|
+|PHCO_36673 missing|PHCO_36673 (last known superseding patch PHCO_40571)|
+|PHCO_38637 missing|PHCO_38637 (last known superseding patch PHCO_40571)|
+|PHKL_35029 missing|PHKL_35029 (last known superseding patch PHKL_41057)|
+|PHKL_35478 missing|PHKL_35478 (last known superseding patch PHKL_36319)|
+|PHKL_40208 missing|PHKL_40208 (last known superseding patch PHKL_42300)|
+|PHSS_28871 missing|PHSS_28871 (last known superseding patch PHSS_42253)|
+|PHSS_35978 missing|PHSS_35978 (last known superseding patch PHSS_41184)|
+|PHSS_35979 missing|PHSS_35979 (last known superseding patch PHSS_42043)|
+|PHSS_39101 missing|PHSS_39101 (last known superseding patch PHSS_41495)|
+|PHSS_39821 missing|PHSS_39821 (last known superseding patch PHSS_42043)|
+|PHSS_39822 missing|PHSS_39822 (last known superseding patch PHSS_42040)|
+|PHSS_39827 missing|PHSS_39827 (last known superseding patch PHSS_42041)|
+The list of superseding patches may be incomplete and patches installed in thissystem may already include patches that supersede the requirements.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00230" mode="VERIFY" name="Motif Check">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified HP-UX system"><![CDATA[This rule applies for certified versions of the HP-UX operating system only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$OS_ARC
+macro check_lib
+{var (\@tbl,$cmd,$pat) = @arg
+ import $exe
+ if !grepCommand(concat($exe,$cmd),$pat,'f')
+  call push(@tbl,$cmd)
+}
+if match($OS_ARC,'Itanium',true)
+ return setHcveResult('NA')
+if !loadCommand('/usr/sbin/swlist -l product')
+ return setHcveResult('No access to /usr/sbin/swlist')
+if grepLastFile('MotifDevKit\.MOTIF21-PRG','if')
+ return setHcveResult('Motif21Found')
+var $exe = concat(findCommand('ls'),' -l /usr/lib/')
+call check_lib(\@tbl,'libX11.sl','libX11.3')
+call check_lib(\@tbl,'libXIE.sl','libXIE.2')
+call check_lib(\@tbl,'libXext.sl','libXext.3')
+call check_lib(\@tbl,'libXhp11.sl','libXhp11.3')
+call check_lib(\@tbl,'libXi.sl','libXi.3')
+call check_lib(\@tbl,'libXm.sl','libXm.4')
+call check_lib(\@tbl,'libXp.sl','libXp.2')
+call check_lib(\@tbl,'libXt.sl','libXt.3')
+call check_lib(\@tbl,'libXtst.sl','libXtst.2')
+call setHcveResult(cond(\
+  scalar(@tbl),concat('Missing Motif links [',join(' ',@tbl),']'),\
+               'Motif links exist'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the Motif 2.1 Development Environment Motif 2.1 Development Environment (X11MotifDevKit.MOTIF21-PRG) for HP-UX PA-RISC is installed. This package is not required if the following symbolic links exist:
+libX11.sl -> llibX11.3,
+libXIE.sl -> libXIE.2,
+libXext.sl -> libXext.3,
+libXhp11.sl -> libXhp11.3,
+libXi.sl -> libXi.3,
+libXm.sl -> libXm.4,
+libXp.sl -> libXp.2,
+libXt.sl -> libXt.3 and
+libXtst.sl -> libXtst.2]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[The Motif requirement does not apply to HP-UX on Itanium.]]></sdp_action>
+<sdp_action condition="=~" maximum="N" minimum="Motif21Found|Motif links exist" result="PASSED"><![CDATA[The Motif package exists or all Motif links exist.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|No access to /usr/sbin/swlist|Grant execute permissions on ``/usr/sbin/swlist`` to the user who is logged in.|
+|Missing Motif links ...|Create the listed missing links or install the Motif 2.1 Development Environment package listed above.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00370" mode="VERIFY" name="Got Software Tools?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+macro find_exe
+{var (\@tbl,$exe,$ref) = @arg
+ if findCommand($exe)
+ {var $cmd = readLink(last,last)
+  if !compare('eq',$cmd,$ref)
+   call push(@tbl,concat(ucfirst($exe),'Elsewhere'))
+ }
+ else
+  call push(@tbl,concat(ucfirst($exe),'NotFound'))
+}
+if !findCommand('aCC')
+ call push(@tbl,'aCCNotFound')
+call find_exe(\@tbl,'ar','/usr/ccs/bin/ar')
+if !findCommand('cc')
+ call push(@tbl,'CcNotFound')
+call find_exe(\@tbl,'make','/usr/ccs/bin/make')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'tools_found'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required software tools for the installation of the installation of the application tier of an Oracle E-Business Suite Release 12 (12.1.1) exist.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="tools_found" result="PASSED"><![CDATA[All required software tools for the installation of the application tier of Oracle E-Business Suite Release 12 (12.1.1) were found. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required software tools for the the application tier of Oracle E-Business Suite Release 12 (12.1.1) installation were not found. Check your installation.
+|*Return Value*|*Action*|
+|aCCNotFound|``aCC`` is not found in PATH, which is an indication that the ac++ Linker Driver (aCC_link) is not installed. Consult [[http://docs.hp.com/en/5992-3373/ch10s02.html][_blank][http://docs.hp.com/en/5992-3373/ch10s02.html]] for more information.|
+|ArNotFound|``ar`` is not found in PATH.|
+|ArElsewhere|``ar`` is not in ``/usr/ccs/bin`` as required.|
+|CcNotFound|``cc`` is not found in PATH.|
+|MakeNotFound|``make`` is not found in PATH.|
+|MakeElsewhere|``make`` is not in ``/usr/ccs/bin`` as required.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00400" mode="RECORD" name="IP address">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var $ip = field('\s+',3,\
+ grepCommand(concat('/usr/sbin/ping ',$hst,' -n 1'),'\s(\d+\.\d+\.)+','f'))
+call setHcveResult(replace($ip,':'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host IP address.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00410" mode="RECORD" name="Domain Name">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var ($nam,$dom) = split('\.',$hst,2)
+if testFile('x','/bin/domainname')
+ var ($nis) = command('/bin/domainname')
+if testFile('r','/etc/resolv.conf')
+ var $dns = field('\s+',1,grepFile('/etc/resolv.conf','domain'))
+if testFile('x','/bin/nslookup')
+{if $nam
+ {var $nsl = field(concat(quote($nam),'\.'),1,\
+                  grepCommand(concat('/bin/nslookup ',$hst),'Name','f'))
+ }
+ else
+ {var $nsl = field(concat(quote($hst),'\.'),1,\
+                  grepCommand(concat('/bin/nslookup ',$hst),'Name','f'))
+ }
+}
+call setHcveResult(cond($dom,$dom,\
+                        $nis,$nis,\
+                        $dns,$dns,\
+                        $nsl,$nsl,\
+                        'Not configured'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host domain name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00420" mode="VERIFY" name="DNS Lookup">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00400" minimum="PASSED|RECORD" result="FAILED" value="IP Address Required"><![CDATA[This rule requires to know the IP address.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var $ip  = "%A00400%"
+var $hst = field('\.',0,command('hostname'))
+call setHcveResult(cond(\
+  not(length($ip)),\
+    'Cannot determine IP address',\
+  not(testFile('x','/bin/nslookup')),\
+    'Cannot access /bin/nslookup',\
+  and(grepCommand(concat('/bin/nslookup ',$hst),quote($ip),'f'),\
+      grepCommand(concat('/bin/nslookup ',$ip),quote($hst),'f')),\
+    'Host correctly registered in DNS',\
+    'Host not correctly registered in DNS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the host is registered correctly in the DNS.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Host correctly registered in DNS" result="PASSED"><![CDATA[The host is registered correctly in the DNS.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Host not correctly registered in DNS|Register the host.domain in the DNS.|
+|Cannot determine IP address|Fix any problem with the host IP address.|
+|Cannot access /bin/nslookup|Grant execute permissions on ``/bin/nslookup`` for the login user.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00430" mode="VERIFY" name="/etc/hosts Format">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00410" minimum="RECORD" result="FAILED" value="Domain name unknown"><![CDATA[This rule requires to know the domain name.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if !testFile('r','/etc/hosts')
+ return setHcveResult('Cannot access /etc/hosts')
+if !@tbl = grepFile('/etc/hosts',\
+  concat('^([^\s\#]+\s+)+',quote(${RDA.HOST}),\
+         '\s+([^\s\#]+\s+)*',quote(${RDA.NODE}),'(\s|\z|\#)'))
+ return setHcveResult('no entry found')
+
+# Test that line begins with IPv4 IP address
+if grep(@tbl,'^(\d{1,3}\.){3}\d{1,3}\s','f')
+ return setHcveResult('Adequate IPv4 entry')
+
+# Tests that line begins with IPv6 IP address, first that all eight groups are populated, then situations where groups that are all zero are omitted (two colons together).
+if grep(@tbl,'^([A-F\d]{1,4}(:[A-F\d]{1,4}){7}\s|\
+                :(:[A-F\d]{1,4}){1,6}\s|\
+                ([A-F\d]{1,4}:){1,5}(:[A-F\d]{1,4}){1,5}\s|\
+                ([A-F\d]{1,4}:){1,6}:\s)','f')
+ return setHcveResult('Adequate IPv6 entry')
+return setHcveResult('no correct entry found')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``/etc/hosts`` file contains a line with ``ip_address fully_qualified_domainname short_hostname``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^Adequate" result="PASSED"><![CDATA[The ``/etc/hosts`` entry for the fully qualified domain name and host name is adequate.]]></sdp_action>
+<sdp_action condition="==" minimum="Cannot access /etc/hosts" result="FAILED"><![CDATA[Grant read permissions on ``/etc/hosts`` to the current user.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The fully qualified host name and host name are not configured correctly. Ensure that there is an IP address entry for the fully qualified domain name with the host name as one of the aliases.
+|*Return Value*|*Action"|
+|no entry found|No entry with the fully qualified domain name followed by the host name was found.|
+|no correct entry found|No entry beginning with an IP address with the fully qualified domain name followed by the host name was found.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00440" mode="VERIFY" name="Net Service Access?">
+<sdp_command type="RDA"><![CDATA[var $NET='/tmp/.oracle'
+call setHcveResult(cond(not(testDir('e',$NET)),'NonExist',\
+                        not(testDir('d',$NET)),'NoDir',\
+                        testDir('rwx',$NET),'PermOk','PermNotOk'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user who is logged in can create the ``/tmp/.oracle`` directory or can create files in it. The directory is used by the Net Service Listeners.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="NonExist|PermOk" result="PASSED"><![CDATA[The user who is logged in can create the ``/tmp/.oracle`` directory or he can create files in the directory.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoDir|The ``/tmp/.oracle`` is not a directory. Remove the ``.oracle`` entry in ``/tmp``.|
+|PermNotOk|The user who is logged in cannot create files in the ``/tmp/.oracle`` directory. Grant read, write, and execute permissions on this directory to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00450" mode="VERIFY" name="Port 6000">
+<sdp_command type="RDA"><![CDATA[
+if grepCommand('netstat -an','[\.:]6000\s','f')
+ return setHcveResult('Occupied')
+return setHcveResult('Free')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that port 6000 is free. The 6000 port is often used by the graphics console login process on an Unix server and can conflict with the OPMN (Oracle Process Manager and Notification) listen port from EBS, which is set to 6000 by default by RapidWiz.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Free" result="PASSED"><![CDATA[Port 6000 is free. No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Port 6000 is taken. Either check which process is using the port and stop the process or enter a port different from 6000 as the OPMN listen port in RapidWiz.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00500" mode="VERIFY" name="Kernel Parameters">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A00200" minimum="Certified$" result="SKIPPED" value="Not on certified HP-UX system"><![CDATA[This rule applies for certified HP-UX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$MEM
+if !or(loadCommand('/usr/sbin/kctune'),\
+       loadCommand('/usr/sbin/kmtune'),\
+       loadFile('/stand/system'))
+ return setHcveResult('NoAccess')
+
+macro hx2dec
+{var ($hex) = @arg
+ var %tbl = ('0',0,'1',1,'2',2,'3',3,'4',4,'5',5,'6',6,'7',7,'8',8,'9',9,\
+             'A',10,'B',11,'C',12,'D',13,'E',14,'F',15)
+ var $res = 0
+ loop $chr (split('',uc($hex)))
+  var $res = expr('+',expr('*',$res,16),$tbl{$chr})
+}
+
+macro rpl_nam
+{var ($str) = @arg
+
+ var $cnt = 8
+ while match($str,'\b([A-Za-z_]+)\b')
+ {var ($nam) = last
+  var $val = field('\s+',1,grepLastFile(concat('^',quote($nam)),'fi'))
+  var $str = replace($str,concat('\b',quote($nam),'\b'),\
+                          concat('(',nvl($val, 0),')'),true)
+  decr $cnt
+  break !$cnt
+ }
+ return compute($str)
+}
+
+var @par = ('dbc_max_pct=20',\
+            'ksi_alloc_max=33600|(8*nproc)',\
+            'maxdsiz=3221225472',\
+            'maxdsiz_64bit=4294967296',\
+            'maxfiles=4096',\
+            'maxfiles_lim=4096',\
+            'maxssiz=56623104',\
+            'maxssiz_64bit=268435456',\
+            'maxtsiz=1048576',\
+            'maxuprc=37813781|((nproc*9)/10)+1',\
+            'max_thread_proc=1024',\
+            'msgmni=4200|(nproc)',\
+            'msgtql=4200|(nproc)',\
+            'ncsize=8976',\
+            'nflocks=8400|(2*nproc)',\
+            'nkthread=8400|(2*nproc)',\
+            'nproc=4200',\
+            'semmni=8400|(2*nproc)',\
+            'semmns=1680|(4*nproc)',\
+            'semmnu=4196|(nproc-4)',\
+            'semume=100',\
+            'semvmx=32767',\
+            'shmseg=300',\
+            'shmmax=1073741824',\
+            'shmmni=4200|(nproc)',\
+            'swchunk=16384',\
+            'vps_ceiling=256')
+if compare('eq',$OS_VER,'11.11')
+  push(@par,'tcp_conn_request_max=2048')
+if match($OS_VER,'^11\.(11|23)$')
+  push(@par,'msgmap=4202|(msgtql + 2)',\
+            'msgseg=32767')
+if compare('eq',$OS_VER,'11.31')
+  push(@par,'msgmbs=8388608')
+ 
+loop $par (@par)
+{var ($nam,$val) = split('=',$par,2)
+ var ($val,$exp) = split('\|',$val,2)
+ var $cur = field('\s+',1,grepLastFile(concat('^',quote($nam)),'fi'))
+ if !length($cur)
+  call push(@tbl,concat('[',$nam,'] undef'))
+ else
+ {if match($cur,'^0X',true)
+   var $cur = hx2dec($cur)
+  if match($cur,'\b[A-Za-z_]+\b')
+  {var $cur = rpl_nam($cur)
+   if !length($cur)
+   {call push(@tbl,concat('[',$nam,'] too complex'))
+    next
+   }
+  }
+  if expr('<',$cur,$val)
+   call push(@tbl,concat('[',$nam,'=',$cur,'] too small'))
+ }
+}
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'All Set'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the kernel parameters are set either to the formula or to values greater than or equal to the recommended values. The recommended formula/values are as follows:
+dbc_max_pct=20
+ksi_alloc_max=33600|(8*nproc)
+maxdsiz=3221225472
+maxdsiz_64bit=4294967296
+maxfiles=4096
+maxfiles_lim=4096
+maxssiz=56623104
+maxssiz_64bit=268435456
+maxtsiz=1048576
+maxuprc=37813781|((nproc*9)/10)+1
+max_thread_proc=1024
+msgmni=4200|(nproc)
+msgtql=4200|(nproc)
+ncsize=8976
+nflocks=8400|(2*nproc)
+nkthread=8400|(2*nproc)
+nproc=4200
+semmni=8400|(2*nproc)
+semmns=1680|(4*nproc)
+semmnu=4196|(nproc-4)
+semume=100
+semvmx=32767
+shmseg=300
+shmmax=1073741824|max(1073741824,$MEM)
+shmmni=4200|(nproc)
+swchunk=16384
+vps_ceiling=256
+
+The following kernel parameter is checked for HP-UX PA-RISC 11.11 only:
+tcp_conn_request_max=2048
+The following kernel parameters are checked for HP-UX 11.11 and 11.23 only:
+msgmap=4202|(msgtql + 2)
+msgseg=32767
+The following kernel parameter is checked for HP-UX PA-RISC 11.31 only:
+msgmbs=8388608
+
+When you install a database tier the following kernel parameters must be checked also:
+max_async_ports=200 (For database-tier systems using async_io.)
+shmmax is set the amount of physical memory of the system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="All Set" result="PASSED"><![CDATA[All kernel parameters are set correctly.]]></sdp_action>
+<sdp_action condition="==" minimum="NoAccess" result="FAILED"><![CDATA[You do not have access to ``/stand/system``.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not Certified OS|You must use one of the listed certified operating systems.|
+|... undef|Some kernel parameters are not set. Ensure they are set.|
+|... too complex|RDA cannot evaluate the expression associated with some kernel parameters.|
+|... too small|Set the value of the kernel parameters listed to the correct value of the formula.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00520" mode="VERIFY" name="ulimits OK?">
+<sdp_command type="RDA"><![CDATA[var @tbl =()
+macro get_ulimit_unl
+{var (\@tbl,$nam) = @arg
+ var $lmt = field('\s+',1,grepLastFile(concat('^',$nam,'\('),'if'))
+ if !defined($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif compare('ne',$lmt,'unlimited')
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+macro get_ulimit_val
+{var (\@tbl,$nam,$ref) = @arg
+ var $lmt = field('\s+',1,grepLastFile(concat('^',$nam,'\('),'if'))
+ if !length($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif and(compare('ne',$lmt,'unlimited'),expr('<',$lmt,$ref))
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+call loadCommand('/usr/bin/ulimit -a')
+call get_ulimit_unl(\@tbl,'Time')
+call get_ulimit_unl(\@tbl,'File')
+call get_ulimit_val(\@tbl,'Data',3221225472)
+call get_ulimit_val(\@tbl,'Stack',56623104)
+call get_ulimit_val(\@tbl,'Memory',2045680)
+call get_ulimit_unl(\@tbl,'Coredump')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'ulimitOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the ``ulimit`` settings are adequate for the installation of the application tier of an E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="ulimitOK" result="PASSED"><![CDATA[The ``ulimit`` settings are adequate for the installation of the application tier of an E-Business Suite Release 12 (12.1.1).]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Review the ``ulimit`` settings and check the recommended values from the ${'BOOK} before installing the software.
+|*Return Value*|*Action*|
+|TimeNotDefined|ulimit(TIME) is not defined.|
+|TimeTooSmall|Increase the ulimit(TIME) to unlimited.|
+|FileNotDefined|ulimit(FILE) is not defined.|
+|FileTooSmall|Increase the ulimit(FILE) to unlimited.|
+|DataNotDefined|ulimit(DATA) is not defined.|
+|DataTooSmall|Increase the ulimit(DATA) to a minimum of 1048576.|
+|StackNotDefined|ulimit(STACK) is not defined.|
+|StackTooSmall|Increase the ulimit(STACK) to a minimum of 32768.|
+|MemoryNotDefined|ulimit(MEMORY) is not defined.|
+|MemoryTooSmall|Increase the ulimit(MEMORY) to unlimited.|
+|CoredumpNotDefined|ulimit(COREDUMP) is not defined.|
+|CoredumpTooSmall|Increase the ulimit(COREDUMP) to unlimited.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00600" mode="RECORD" name="ApplTierDirectory">
+<sdp_command type="PROMPT" default="" variable="$APP_TIER_DIR"><![CDATA[Planned application tier installation directory]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the planned directory of the application tier of the Oracle E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00610" mode="VERIFY" name="A_T Valid?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00600" minimum="RECORD" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a planned directory for application tier.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+call setHcveResult(cond(\
+  not($APP_TIER_DIR),             'ATNotSpecified',\
+  not(testDir('d',$APP_TIER_DIR)),'ATnotvalid',\
+  not(testDir('l',$APP_TIER_DIR)),'ATexists',\
+                                  'ATsymlink'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the directory for the installation of the application tier (A_T) of the Oracle E-Business suite R12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ATexists" result="PASSED"><![CDATA[The application tier installation directory exists. No action required]]></sdp_action>
+<sdp_action condition="==" minimum="ATNotSpecified" result="SKIPPED"><![CDATA[The application tier installation directory was not specified. No action required]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[ALERT:
+You did not specify a valid application tier installation directory. Ensure that you provided the correct location or that this directory is created and then run this script again.
+|*Return Value*|*Action*|
+|ATnotvalid|Ensure that the for application tier directory is a valid directory.|
+|ATsymlink|Ensure that the specified application tier directory is not a symbolic link.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00620" mode="VERIFY" name="A_T Permissions OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00610" minimum="PASSED" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a valid application tier directory]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+call setHcveResult(cond(\
+  not(testDir('r',$APP_TIER_DIR)),'NoReadPerm',\
+  not(testDir('w',$APP_TIER_DIR)),'NoWritePerm',\
+  not(testDir('x',$APP_TIER_DIR)),'NoExecutePerm',\
+                                  'CorrectPerms'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user has the correct privileges to install the application tier (A_T) of the Oracle E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="CorrectPerms" result="PASSED"><![CDATA[The permissions for the application tier directory are correct. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoReadPerm|The install user has no read permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|
+|NoWritePerm|The install user has no write permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|
+|NoExecutePerm|The install user has no execute permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00630" mode="VERIFY" name="A_T Disk Space">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00610" minimum="PASSED" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a valid application tier directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+var $dsk = get_df($APP_TIER_DIR)
+var $DSK = cond($OS_ARC,'Itanium',50,35)
+call setHcveVariable('$DSK')
+call setHcveResult(cond(and(isNumber($dsk),\
+                            expr('>=',$dsk,expr('*',$DSK,1048576))),\
+                   'Available','NotAvailable'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if there is sufficient disk space to install the application tier of the Oracle E-Business Suite Release 12 (12.1.1). You need at least 35 GB on an HP-UX PA-RISC system and 50 GB on an HP-UX Itanium system for the application tier.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[There is sufficient disk space to install the application tier of the Oracle E-Business Suite Release 12 (12.1.1) in the directory. No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is insufficient disk space to install the application tier of the Oracle E-Business Suite Release 12 (12.1.1). You need at least ${DSK} GB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00640" mode="VERIFY" name="Space in tmp">
+<sdp_command type="RDA"><![CDATA[var $tmp = nvl(getEnv('TMP'),getEnv('TMPDIR'),'/tmp')
+call setHcveResult(cond(\
+  not(testDir('d',$tmp)),         'Cannot access tmp directory',\
+  expr('>=',get_df($tmp),1048576),'Available',\
+                                  'Need at least 1GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough temporary space. Initially Oracle Rapid Install (RI) checks the ``TMP`` and ``TMPDIR`` environment variables to locate the temporary directory. If these environment variables do not exist, then RI uses ``/tmp``. The minimum requirement is 1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough temporary space.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the available temporary space to 1 GB or more. You can define ``TMP`` or ``TMPDIR`` to point to a directory with 1 GB available space.|
+|Cannot access tmp directory|Grant read, write, and execute permissions on ``/tmp`` or directories in ``TMP`` or ``TMPDIR`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

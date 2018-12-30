@@ -1,0 +1,2061 @@
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd" [
+]>
+<TargetMetadata META_VER="11.00000" TYPE="oc4jjvm" 
+                CATEGORY_PROPERTIES="VersionCategory;isJVMMBeansEnabled;OC4JVersionCategory">
+  <Display>
+    <Label NLSID="oc4j_jvm_OC4JJVMNLSID">OC4J JVM</Label>
+    <ShortName NLSID="oc4j_jvm_OC4JJVMShortName">OC4J JVM</ShortName>
+    <Description NLSID="oc4j_jvm_OC4JJVMDescription">OC4J JVM</Description>
+  </Display>
+
+  <AssocTarget ASSOCIATION_NAME="oc4j" ASSOC_TARGET_TYPE="oc4j"/>
+  <AssocTarget ASSOCIATION_NAME="farm" ASSOC_TARGET_TYPE="oracle_mas_farm"/>
+
+  <Metric NAME="Response" TYPE="TABLE">
+    <Display>
+      <Label NLSID="oc4j_jvm_Response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_Status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="oc4j_jvm_instance_rollup"/>
+      <GroupBy NAME="result1" FROM_TABLE="oc4j_jvm_instance_rollup">
+        <AggregateColumn NAME="noOfRows" COLUMN_NAME="startTime.value"
+                         OPERATOR="COUNT"/>
+        <ComputeColumn NAME="Status" EXPR="(noOfRows > 0) ? 1 : 0"/>
+      </GroupBy>
+    </ExecutionDescriptor>
+     <QueryDescriptor FETCHLET_ID="JMX">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+       <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:Response</Property>
+      <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+      <Property NAME="JVMId.parameter"  OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+      <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+      <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+        <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+  <!-- Regular DMS based metrics computed from assoc oc4j instance -->
+  
+  <!-- Metric oc4j_web_module_rollup -->
+  <Metric NAME="oc4j_jvm_web_module_rollup" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_web_module_rollup">OC4J JVM Web Module Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_name">Web Module Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="oc4j_ear" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_application_name">Application Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_session_active">Web Module - Active Sessions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.active" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_processRequest_active">Web Module - Active Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_processRequest_time">Web Module - Request Processing Time (seconds)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.throughput" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_processRequest_throughput">Web Module - Requests Per Second</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.completed" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_processRequest_completed">Web Module - Requests Completed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="classLoad.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_classLoad_time">Web Module - Class Load Time (seconds)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="client.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_web_module_rollup_client_time">Web Module - Client Time (seconds)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <!-- Create filter so that we get metrics only for this oc4j instance -->
+      <GetTable NAME="oc4j_multi_jvm_rollup" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="this_oc4jjvm" FROM_TABLE="oc4j_multi_jvm_rollup">
+        <Filter COLUMN_NAME="indexInSet.value" SCOPE="INSTANCE" OPERATOR="EQ">JVMId</Filter>
+      </GetView>
+      <!-- Get all the web module metrics for this oc4j instance -->
+      <GetTable NAME="oc4j_context" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_oc4j_context" FROM_TABLE="oc4j_context">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <!-- Report all metrics by web module and application -->
+      <GroupBy NAME="result" FROM_TABLE="filtered_oc4j_context">
+        <By NAME="name" COLUMN_NAME="name"/>
+        <By NAME="oc4j_ear" COLUMN_NAME="oc4j_ear"/>
+        <AggregateColumn NAME="session.active"
+                         COLUMN_NAME="sessionActivation.active" OPERATOR="SUM"/>
+        <AggregateColumn NAME="processRequest.active"
+                         COLUMN_NAME="processRequest.active" OPERATOR="SUM"/>
+        <AggregateColumn NAME="processRequest.completed"
+                         COLUMN_NAME="processRequest.completed" OPERATOR="SUM"/>
+        <AggregateColumn NAME="processRequest.deltaTimeSum"
+                         COLUMN_NAME="processRequest.deltaTime" OPERATOR="SUM"/>
+        <AggregateColumn NAME="processRequest.deltaCompletedSum"
+                         COLUMN_NAME="processRequest.deltaCompleted"
+                         OPERATOR="SUM"/>
+        <AggregateColumn NAME="interval" COLUMN_NAME="interval" OPERATOR="AVG"/>
+        <ComputeColumn NAME="processRequest.time"
+                       EXPR="(processRequest.deltaCompletedSum != 0) ? processRequest.deltaTimeSum/processRequest.deltaCompletedSum : 0"/>
+        <ComputeColumn NAME="processRequest.throughput"
+                       EXPR="processRequest.deltaCompletedSum/interval"/>
+        <AggregateColumn NAME="resolveServlet.deltaTimeSum"
+                         COLUMN_NAME="resolveServlet.deltaTime" OPERATOR="SUM"/>
+        <AggregateColumn NAME="resolveServlet.deltaCompletedSum"
+                         COLUMN_NAME="resolveServlet.deltaCompleted"
+                         OPERATOR="SUM"/>
+        <ComputeColumn NAME="classLoad.time"
+                       EXPR="(resolveServlet.deltaCompletedSum != 0) ? resolveServlet.deltaTimeSum/resolveServlet.deltaCompletedSum : 0"/>
+        <ComputeColumn NAME="client.time"
+                       EXPR="processRequest.time - classLoad.time"/>
+      </GroupBy>
+    </ExecutionDescriptor>
+  </Metric>
+  <!-- Metric oc4j_ejb_module_rollup -->
+  <Metric NAME="oc4j_jvm_ejb_module_rollup" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_ejb_module_rollup">OC4J JVM EJB Module Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ejb_module_rollup_name">EJB Module Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="oc4j_ear" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ejb_module_rollup_app_name">Application Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ejb_module_rollup_ejbMethod_active">EJB Module - Active Methods</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_time_EJB_M">EJB Module - Method Execution Time (seconds)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.throughput" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ejb_module_rollup_ejbMethod_thoughput">EJB Module - Method Execution Rate (per second)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <!--Create filter so that we get metrics only for this oc4j instance -->
+      <GetTable NAME="oc4j_multi_jvm_rollup" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="this_oc4jjvm" FROM_TABLE="oc4j_multi_jvm_rollup">
+        <Filter COLUMN_NAME="indexInSet.value" SCOPE="INSTANCE" OPERATOR="EQ">JVMId</Filter>
+      </GetView>
+      <!-- Get all the EJB method metrics for this oc4j instance -->
+      <GetTable NAME="oc4j_ejb_method" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_oc4j_ejb_method" FROM_TABLE="oc4j_ejb_method">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <!-- Report the metrics by EJB module and application -->
+      <GroupBy NAME="result" FROM_TABLE="filtered_oc4j_ejb_method">
+        <By NAME="name" COLUMN_NAME="oc4j_ejb_pkg"/>
+        <By NAME="oc4j_ear" COLUMN_NAME="oc4j_ear"/>
+        <AggregateColumn NAME="ejbMethod.deltaCompletedSum"
+                         COLUMN_NAME="wrapper.deltaCompleted" OPERATOR="SUM"/>
+        <AggregateColumn NAME="ejbMethod.deltaTimeSum"
+                         COLUMN_NAME="wrapper.deltaTime" OPERATOR="SUM"/>
+        <AggregateColumn NAME="interval" COLUMN_NAME="interval" OPERATOR="AVG"/>
+        <ComputeColumn NAME="ejbMethod.time"
+                       EXPR="(ejbMethod.deltaCompletedSum != 0) ? ejbMethod.deltaTimeSum/ejbMethod.deltaCompletedSum : 0"/>
+        <ComputeColumn NAME="ejbMethod.throughput"
+                       EXPR="ejbMethod.deltaCompletedSum/interval"/>
+        <AggregateColumn NAME="ejbMethod.active" COLUMN_NAME="wrapper.active"
+                         OPERATOR="SUM"/>
+      </GroupBy>
+    </ExecutionDescriptor>
+  </Metric>
+  <!-- Metric oc4j_jvm_ear_rollup -->
+  <Metric NAME="oc4j_jvm_ear_rollup" TYPE="TABLE">
+    <Display>
+      <Label NLSID="oc4j_jvm_ear_rollup">OC4J JVM Application Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ear_rollup_name">Application Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ear_rollup_session_active">Application - Active Sessions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.active" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ear_rollup_processRequest_active">Application - Active Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ear_rollup_processRequest_time">Application - Request Processing Time (seconds)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.throughput" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ear_rollup_processRequest_throughput">Application - Requests Per Second</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ear_rollup_ejbMethod_active">Application - Active EJB Methods</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_time_App">Application - EJB Method Execution Time (seconds)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.throughput" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_ear_rollup_ejbMethod_time">Application - EJB Method Execution Rate (per second)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+      <!--Create filter so that we get metrics only for this oc4j instance -->
+      <GetTable NAME="oc4j_multi_jvm_rollup" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="this_oc4jjvm" FROM_TABLE="oc4j_multi_jvm_rollup">
+        <Filter COLUMN_NAME="indexInSet.value" SCOPE="INSTANCE" OPERATOR="EQ">JVMId</Filter>
+      </GetView>
+      <!-- Get all the web module metrics for this oc4j instance -->
+      <GetTable NAME="oc4j_context" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_oc4j_context" FROM_TABLE="oc4j_context">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_oc4j_context" FROM_TABLE="filtered_oc4j_context">
+        <By NAME="oc4j_ear"/>
+        <AggregateColumn NAME="processRequest.deltaTimeSum"
+                         COLUMN_NAME="processRequest.deltaTime" OPERATOR="SUM"/>
+        <AggregateColumn NAME="processRequest.deltaCompletedSum"
+                         COLUMN_NAME="processRequest.deltaCompleted"
+                         OPERATOR="SUM"/>
+        <AggregateColumn NAME="interval" COLUMN_NAME="interval" OPERATOR="AVG"/>
+        <ComputeColumn NAME="processRequest.time"
+                       EXPR="(processRequest.deltaCompletedSum != 0) ? processRequest.deltaTimeSum/processRequest.deltaCompletedSum : 0"/>
+        <ComputeColumn NAME="processRequest.throughput"
+                       EXPR="processRequest.deltaCompletedSum/interval"/>
+        <AggregateColumn NAME="processRequest.active"
+                         COLUMN_NAME="processRequest.active" OPERATOR="SUM"/>
+        <AggregateColumn NAME="session.active"
+                         COLUMN_NAME="sessionActivation.active" OPERATOR="SUM"/>
+      </GroupBy>
+      <!-- Get all EJB method metrics for this OC4J instance -->
+      <GetTable NAME="oc4j_ejb_method" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_oc4j_ejb_method" FROM_TABLE="oc4j_ejb_method">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_oc4j_ejb_method" FROM_TABLE="filtered_oc4j_ejb_method">
+        <By NAME="oc4j_ear"/>
+        <AggregateColumn NAME="ejbMethod.deltaCompletedSum"
+                         COLUMN_NAME="wrapper.deltaCompleted" OPERATOR="SUM"/>
+        <AggregateColumn NAME="ejbMethod.deltaTimeSum"
+                         COLUMN_NAME="wrapper.deltaTime" OPERATOR="SUM"/>
+        <AggregateColumn NAME="interval" COLUMN_NAME="interval" OPERATOR="AVG"/>
+        <ComputeColumn NAME="ejbMethod.throughput"
+                       EXPR="ejbMethod.deltaCompletedSum/interval"/>
+        <ComputeColumn NAME="ejbMethod.time"
+                       EXPR="(ejbMethod.deltaCompletedSum != 0) ? ejbMethod.deltaTimeSum/ejbMethod.deltaCompletedSum : 0"/>
+        <AggregateColumn NAME="ejbMethod.active" COLUMN_NAME="wrapper.active"
+                         OPERATOR="SUM"/>
+      </GroupBy>
+      <!-- Combine the web module and ejb information by J2EE application 
+         First, join the web module information with the EJB information  -->
+      <JoinTables NAME="result1" OUTER="TRUE">
+        <Table NAME="sum_oc4j_context"/>
+        <Table NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="name" COLUMN_NAME="oc4j_ear"
+                TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="processRequest.time" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="processRequest.throughput" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="processRequest.active" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="session.active" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="ejbMethod.active" TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="ejbMethod.time" TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="ejbMethod.throughput" TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Where FROM_TABLE="sum_oc4j_context" JOIN_TABLE="sum_oc4j_ejb_method"
+               FROM_KEY="oc4j_ear" JOIN_KEY="oc4j_ear"/>
+      </JoinTables>
+      <!-- Now join the EJB information with the web module information  -->
+      <JoinTables NAME="result2" OUTER="TRUE">
+        <Table NAME="sum_oc4j_ejb_method"/>
+        <Table NAME="sum_oc4j_context"/>
+        <Column NAME="name" COLUMN_NAME="oc4j_ear"
+                TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="processRequest.time" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="processRequest.throughput" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="processRequest.active" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="session.active" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="ejbMethod.active" TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="ejbMethod.time" TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="ejbMethod.throughput" TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Where FROM_TABLE="sum_oc4j_ejb_method" JOIN_TABLE="sum_oc4j_context"
+               FROM_KEY="oc4j_ear" JOIN_KEY="oc4j_ear"/>
+      </JoinTables>
+      <!-- Combine the two result tables -->
+      <Union NAME="result_with_empty" DISTINCT="TRUE">
+        <Table NAME="result1"/>
+        <Table NAME="result2"/>
+      </Union>
+      <!-- Show zeros for empty columns -->
+      <GroupBy NAME="result" FROM_TABLE="result_with_empty">
+        <By NAME="name"/>
+        <AggregateColumn NAME="_processRequest.time"
+                         COLUMN_NAME="processRequest.time" OPERATOR="AVG"/>
+        <ComputeColumn NAME="processRequest.time" EXPR="_processRequest.time"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <AggregateColumn NAME="_processRequest.throughput"
+                         COLUMN_NAME="processRequest.throughput"
+                         OPERATOR="AVG"/>
+        <ComputeColumn NAME="processRequest.throughput"
+                       EXPR="_processRequest.throughput"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <AggregateColumn NAME="_processRequest.active"
+                         COLUMN_NAME="processRequest.active" OPERATOR="AVG"/>
+        <ComputeColumn NAME="processRequest.active"
+                       EXPR="_processRequest.active" DEFAULT_WHEN_EMPTY="TRUE"/>
+        <AggregateColumn NAME="_session.active" COLUMN_NAME="session.active"
+                         OPERATOR="AVG"/>
+        <ComputeColumn NAME="session.active" EXPR="_session.active"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <AggregateColumn NAME="_ejbMethod.active" COLUMN_NAME="ejbMethod.active"
+                         OPERATOR="AVG"/>
+        <ComputeColumn NAME="ejbMethod.active" EXPR="_ejbMethod.active"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <AggregateColumn NAME="_ejbMethod.time" COLUMN_NAME="ejbMethod.time"
+                         OPERATOR="AVG"/>
+        <ComputeColumn NAME="ejbMethod.time" EXPR="_ejbMethod.time"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <AggregateColumn NAME="_ejbMethod.throughput"
+                         COLUMN_NAME="ejbMethod.throughput" OPERATOR="AVG"/>
+        <ComputeColumn NAME="ejbMethod.throughput" EXPR="_ejbMethod.throughput"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+      </GroupBy>
+    </ExecutionDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+      <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:oc4j_jvm_ear_rollup</Property>
+      <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+      <Property NAME="JVMId.parameter"  OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+      <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+        <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+      </Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">name;session.active;processRequest.active;processRequest.time;processRequest.throughput;ejbMethod.active;ejbMethod.time;ejbMethod.throughput</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  <!-- Metric oc4j_instance_rollup per JVM -->
+  <Metric NAME="oc4j_jvm_instance_rollup" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_instance_rollup">OC4J JVM Instance Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="cpu.value" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_rollup_cpu_value">OC4J JVM - CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.value" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_rollup_memory_value">OC4J JVM - Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="heap.value" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_heap_value">OC4J JVM Instance - Heap Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="thread.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_rollup_thread_active">OC4J JVM - Active Threads</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="startTime.value" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="oc4j_jvm_instance_rollup_startTime_value">OC4J JVM Instance - Start Time (ms since Epoch)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+           <Label NLSID="oc4j_jvm_instance_rollup_session_active">OC4J JVM Instance - Active Sessions</Label>
+           <ShortName NLSID='oc4j_jvm_instance_rollup_session_active_short'>Active Sessions</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.active" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_active">OC4J JVM Instance - Active Requests</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_active_short'>Active Requests</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+           <Label NLSID="oc4j_jvm_instance_rollup_processRequest_time">OC4J JVM Instance - Request Processing Time (seconds)</Label>
+           <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_time_short'>Request Time (sec)</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.throughput" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_throughput">OC4J JVM Instance - Requests Per Second</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_throughput_short'>Requests Per Second</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+            <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_active_OC4JI">OC4J JVM Instance - Active EJB Methods</Label>
+            <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_active'>Active EJB Methods</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+           <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_time_OC4J_I">OC4J JVM Instance - EJB Method Execution Time (seconds)</Label>
+           <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_time_short'>EJB Method Time(sec)</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.throughput" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+           <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_throughput">OC4J JVM Instance - EJB Method Execution Rate (per second)</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_throughput_short'>EJBs Per Second</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jdbcConnections.active" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+           <Label NLSID="oc4j_jvm_instance_rollup_jdbcConnections_active">OC4J JVM Instance - Open JDBC Connections</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_jdbcConnections_active_short'>JDBC Connections</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jdbcConnections.total" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+         <Label NLSID="oc4j_jvm_instance_rollup_jdbcConnections_total">OC4J JVM Instance - Total JDBC Connections</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+         <Label NLSID="oc4j_jvm_instance_rollup_transactions_active">OC4J JVM Instance - Active Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.committed" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+         <Label NLSID="oc4j_jvm_instance_rollup_transactions_committed">OC4J JVM Instance - Committed Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.aborted" TYPE="NUMBER" IS_KEY="FALSE"
+                        TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_transactions_aborted">OC4J JVM Instance - Aborted Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <!-- Create filter so that we get metrics only for this oc4j instance -->
+      <GetTable NAME="oc4j_multi_jvm_rollup" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="this_oc4jjvm" FROM_TABLE="oc4j_multi_jvm_rollup">
+        <Filter COLUMN_NAME="indexInSet.value" SCOPE="INSTANCE" OPERATOR="EQ">JVMId</Filter>
+      </GetView>
+      <!-- Get all the web module metrics for this oc4j instance -->
+      <GetTable NAME="oc4j_context" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_oc4j_context" FROM_TABLE="oc4j_context">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_oc4j_context" FROM_TABLE="filtered_oc4j_context">
+        <AggregateColumn NAME="processRequest.deltaTimeSum"
+                         COLUMN_NAME="processRequest.deltaTime" OPERATOR="SUM"/>
+        <AggregateColumn NAME="processRequest.deltaCompletedSum"
+                         COLUMN_NAME="processRequest.deltaCompleted"
+                         OPERATOR="SUM"/>
+        <AggregateColumn NAME="interval" COLUMN_NAME="interval" OPERATOR="AVG"/>
+        <ComputeColumn NAME="processRequest.time"
+                       EXPR="(processRequest.deltaCompletedSum != 0) ? processRequest.deltaTimeSum/processRequest.deltaCompletedSum : 0"/>
+        <ComputeColumn NAME="processRequest.throughput"
+                       EXPR="processRequest.deltaCompletedSum/interval"/>
+        <AggregateColumn NAME="processRequest.active"
+                         COLUMN_NAME="processRequest.active" OPERATOR="SUM"/>
+        <AggregateColumn NAME="session.active"
+                         COLUMN_NAME="sessionActivation.active" OPERATOR="SUM"/>
+      </GroupBy>
+      <GetTable NAME="oc4j_ejb_method" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <!-- Get all the EJB method metrics for this oc4j instance -->
+      <GetView NAME="filtered_oc4j_ejb_method" FROM_TABLE="oc4j_ejb_method">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_oc4j_ejb_method" FROM_TABLE="filtered_oc4j_ejb_method">
+        <AggregateColumn NAME="ejbMethod.deltaCompletedSum"
+                         COLUMN_NAME="wrapper.deltaCompleted" OPERATOR="SUM"/>
+        <AggregateColumn NAME="ejbMethod.deltaTimeSum"
+                         COLUMN_NAME="wrapper.deltaTime" OPERATOR="SUM"/>
+        <AggregateColumn NAME="interval" COLUMN_NAME="interval" OPERATOR="AVG"/>
+        <ComputeColumn NAME="ejbMethod.throughput"
+                       EXPR="ejbMethod.deltaCompletedSum/interval"/>
+        <ComputeColumn NAME="ejbMethod.time"
+                       EXPR="(ejbMethod.deltaCompletedSum != 0) ? ejbMethod.deltaTimeSum/ejbMethod.deltaCompletedSum : 0"/>
+        <AggregateColumn NAME="ejbMethod.active" COLUMN_NAME="wrapper.active"
+                         OPERATOR="SUM"/>
+      </GroupBy>
+      <!-- Get the process related metrics for this OC4J instance -->
+      <GetTable NAME="JVM" ASSOC_TARGET="oc4j" USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_JVM" FROM_TABLE="JVM">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_JVM" FROM_TABLE="filtered_JVM">
+        <AggregateColumn NAME="totalMemory.value.sum"
+                         COLUMN_NAME="totalMemory.value" OPERATOR="SUM"/>
+        <AggregateColumn NAME="freeMemory.value.sum"
+                         COLUMN_NAME="freeMemory.value" OPERATOR="SUM"/>
+        <ComputeColumn NAME="heap.value"
+                       EXPR="(totalMemory.value.sum-freeMemory.value.sum)/1024"/>
+        <AggregateColumn NAME="startTime.value" COLUMN_NAME="startTime.value"
+                         OPERATOR="MIN"/>
+      </GroupBy>
+      <!-- Get all the JDBC related metrics for this OC4J instance -->
+      <GetTable NAME="JDBC_Connection" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_JDBC_Connection" FROM_TABLE="JDBC_Connection">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_JDBC_Connection" FROM_TABLE="filtered_JDBC_Connection">
+        <AggregateColumn NAME="connection.active"
+                         COLUMN_NAME="CreateStatement.time" OPERATOR="COUNT"/>
+      </GroupBy>
+      <GetTable NAME="JDBC_DataSource" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_JDBC_DataSource" FROM_TABLE="JDBC_DataSource">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_JDBC_DataSource" FROM_TABLE="filtered_JDBC_DataSource">
+        <AggregateColumn NAME="datasource.open.sum"
+                         COLUMN_NAME="ConnectionOpenCount.count"
+                         OPERATOR="SUM"/>
+      </GroupBy>
+      <GetTable NAME="JDBC_Driver" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_JDBC_Driver" FROM_TABLE="JDBC_Driver">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_JDBC_Driver" FROM_TABLE="filtered_JDBC_Driver">
+        <AggregateColumn NAME="driver.open.sum"
+                         COLUMN_NAME="ConnectionOpenCount.count"
+                         OPERATOR="SUM"/>
+      </GroupBy>
+      <!-- Get all the transaction related metrics for this oc4j instance -->
+      <GetTable NAME="oc4j_txnMgr" ASSOC_TARGET="oc4j"
+                USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetView NAME="filtered_oc4j_txnMgr" FROM_TABLE="oc4j_txnMgr">
+        <In COLUMN_NAME="Process" IN_TABLE_NAME="this_oc4jjvm"
+            IN_COLUMN_NAME="Process"/>
+      </GetView>
+      <GroupBy NAME="sum_oc4j_txnMgr" FROM_TABLE="filtered_oc4j_txnMgr">
+        <AggregateColumn NAME="transactions.active"
+                         COLUMN_NAME="open_transactions.value" OPERATOR="SUM"/>
+        <AggregateColumn NAME="transactions.committed"
+                         COLUMN_NAME="committed_transactions.value"
+                         OPERATOR="SUM"/>
+        <AggregateColumn NAME="transactions.aborted"
+                         COLUMN_NAME="aborted_transactions.value"
+                         OPERATOR="SUM"/>
+      </GroupBy>
+      <!-- Combine all the metric values into a single table -->
+      <JoinTables NAME="result" OUTER="TRUE">
+        <Table NAME="sum_oc4j_context"/>
+        <Table NAME="sum_oc4j_ejb_method"/>
+        <Table NAME="sum_JVM"/>
+        <Table NAME="sum_JDBC_Connection"/>
+        <Table NAME="sum_JDBC_DataSource"/>
+        <Table NAME="sum_JDBC_Driver"/>
+        <Table NAME="sum_oc4j_txnMgr"/>
+        <Table NAME="this_oc4jjvm"/>
+        <Column NAME="processRequest.time" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="processRequest.throughput" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="processRequest.active" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="session.active" TABLE_NAME="sum_oc4j_context"/>
+        <Column NAME="cpu.value" TABLE_NAME="this_oc4jjvm"/>
+        <Column NAME="memory.value" TABLE_NAME="this_oc4jjvm"/>
+        <Column NAME="thread.active" TABLE_NAME="this_oc4jjvm"/>
+        <!-- When we don't have ejbs show zeros -->
+        <Column NAME="_ejbMethod.active" COLUMN_NAME="ejbMethod.active"
+                TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="_ejbMethod.time" COLUMN_NAME="ejbMethod.time"
+                TABLE_NAME="sum_oc4j_ejb_method"/>
+        <Column NAME="_ejbMethod.throughput" COLUMN_NAME="ejbMethod.throughput"
+                TABLE_NAME="sum_oc4j_ejb_method"/>
+        <ComputeColumn NAME="ejbMethod.active" EXPR="_ejbMethod.active"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <ComputeColumn NAME="ejbMethod.time" EXPR="_ejbMethod.time"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <ComputeColumn NAME="ejbMethod.throughput" EXPR="_ejbMethod.throughput"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <Column NAME="heap.value" TABLE_NAME="sum_JVM"/>
+        <Column NAME="startTime.value" TABLE_NAME="sum_JVM"/>
+        <Column NAME="datasource.open.sum" TABLE_NAME="sum_JDBC_DataSource"/>
+        <Column NAME="driver.open.sum" TABLE_NAME="sum_JDBC_Driver"/>
+        <ComputeColumn NAME="jdbcConnections.total"
+                       EXPR="datasource.open.sum + driver.open.sum"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <Column NAME="connection.active" TABLE_NAME="sum_JDBC_Connection"/>
+        <ComputeColumn NAME="jdbcConnections.active" EXPR="connection.active"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <!-- When we don't have transaction metrics show zeros -->
+        <Column NAME="_transactions.active" COLUMN_NAME="transactions.active"
+                TABLE_NAME="sum_oc4j_txnMgr"/>
+        <ComputeColumn NAME="transactions.active" EXPR="_transactions.active"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <Column NAME="_transactions.committed"
+                COLUMN_NAME="transactions.committed"
+                TABLE_NAME="sum_oc4j_txnMgr"/>
+        <ComputeColumn NAME="transactions.committed"
+                       EXPR="_transactions.committed"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+        <Column NAME="_transactions.aborted" COLUMN_NAME="transactions.aborted"
+                TABLE_NAME="sum_oc4j_txnMgr"/>
+        <ComputeColumn NAME="transactions.aborted" EXPR="_transactions.aborted"
+                       DEFAULT_WHEN_EMPTY="TRUE"/>
+      </JoinTables>
+    </ExecutionDescriptor>
+  </Metric>
+  <Metric NAME="oc4j_jvm_instance_rollup" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_instance_rollup">OC4J JVM Instance Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ProcessUID" TYPE="STRING">
+        <Display>
+          <Label NLSID="ProcessUID">ProcessUID</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pid.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_process_id">pid</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="startTime.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_startTime_value">OC4J JVM Instance - Start Time (ms since Epoch)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpuUsage.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_rollup_cpu_value">OC4J JVM - CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="activeThreads.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_rollup_thread_active">OC4J JVM - Active Threads</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="heap.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_heap_value">OC4J JVM Instance - Heap Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryUsage.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_rollup_memory_value">OC4J JVM - Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.active" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_active_OC4JI">OC4J JVM Instance - Active EJB Methods</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_active'>Active EJB Methods</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.throughput" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_throughput">OC4J JVM Instance - EJB Method Execution Rate (per second)</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_throughput_short'>EJBs Per Second</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.time" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_time_OC4J_I">OC4J JVM Instance - EJB Method Execution Time (seconds)</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_time_short'>EJB Method Time(sec)</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jdbcConnections.active" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_jdbcConnections_active">OC4J JVM Instance - Open JDBC Connections</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_jdbcConnections_active_short'>JDBC Connections</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jdbcConnections.total" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_jdbcConnections_total">OC4J JVM Instance - Total JDBC Connections</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processIndex.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_processindex">Process Index</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.active" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_active">OC4J JVM Instance - Active Requests</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_active_short'>Active Requests</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.throughput" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_throughput">OC4J JVM Instance - Requests Per Second</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_throughput_short'>Requests Per Second</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.time" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_time">OC4J JVM Instance - Request Processing Time (seconds)</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_time_short'>Request Time (sec)</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_session_active">OC4J JVM Instance - Active Sessions</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_session_active_short'>Active Sessions</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_transactions_active">OC4J JVM Instance - Active Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.committed" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_transactions_committed">OC4J JVM Instance - Committed Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.aborted" TYPE="NUMBER" IS_KEY="FALSE"
+                        TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_transactions_aborted">OC4J JVM Instance - Aborted Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:oc4j_jvm_instance_rollup</Property>
+      <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+      <Property NAME="JVMId.parameter"  OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+      <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+        <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+      </Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">ProcessUID;pid.value;startTime.value;cpuUsage.value;activeThreads.value;heap.value;memoryUsage.value;ejbMethod.active;ejbMethod.throughput;ejbMethod.time;jdbcConnections.active;jdbcConnections.total;processIndex.value;processRequest.active;processRequest.throughput;processRequest.time;session.active;transactions.aborted;transactions.active;transactions.committed</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+   <Metric NAME="oc4j_jvm_rollup" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_rollup">OC4J JVM Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ProcessUID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="ProcessUID">ProcessUID</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pid.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_pid">pid</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="startTime.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_startTime_value">OC4J JVM Instance - Start Time (ms since Epoch)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpuUsage.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_rollup_cpu_value">OC4J JVM - CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="activeThreads.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_ThreadCount">Active Threads</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="heap.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_heap_value">OC4J JVM Instance - Heap Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryUsageMB.value" TYPE="NUMBER">
+        <Display>
+           <Label NLSID="oc4j_jvm_rollup_memory_value">OC4J JVM - Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.active" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_active_OC4JI">OC4J JVM Instance - Active EJB Methods</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_active'>Active EJB Methods</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.throughput" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_throughput">OC4J JVM Instance - EJB Method Execution Rate (per second)</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_throughput_short'>EJBs Per Second</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbMethod.time" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_ejbMethod_time_OC4J_I">OC4J JVM Instance - EJB Method Execution Time (seconds)</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_ejbMethod_time_short'>EJB Method Time(sec)</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jdbcConnections.active" TYPE="NUMBER"
+                        IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_jdbcConnections_active">OC4J JVM Instance - Open JDBC Connections</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_jdbcConnections_active_short'>JDBC
+                                                                                   Connections</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jdbcConnections.total" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_jdbcConnections_total">OC4J JVM Instance - Total JDBC Connections</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processIndex.value" TYPE="NUMBER">
+        <Display>
+           <Label NLSID="oc4j_jvm_processindex">Process Index</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.active" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_active">OC4J JVM Instance - Active Requests</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_active_short'>Active
+                                                                                  Requests</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.throughput" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_throughput">OC4J JVM Instance - Requests Per Second</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_throughput_short'>Requests Per Second</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processRequest.time" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_processRequest_time">OC4J JVM Instance - Request Processing Time (seconds)</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_processRequest_time_short'>Request Time (sec)</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oc4j_jvm_instance_rollup_session_active">OC4J JVM Instance - Active Sessions</Label>
+          <ShortName NLSID='oc4j_jvm_instance_rollup_session_active_short'>Active Sessions</ShortName>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_transactions_active">OC4J JVM Instance - Active Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.committed" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_transactions_committed">OC4J JVM Instance - Committed Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="transactions.aborted" TYPE="NUMBER" IS_KEY="FALSE"
+                        TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_instance_rollup_transactions_aborted">OC4J JVM Instance - Aborted Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:oc4j_jvm_rollup</Property>
+      <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+      <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+        <![CDATA[<argument type="java.util.Map"><value><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+      </Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">ProcessUID;pid.value;startTime.value;cpuUsage.value;activeThreads.value;heap.value;memoryUsageMB.value;ejbMethod.active;ejbMethod.throughput;ejbMethod.time;jdbcConnections.active;jdbcConnections.total;processIndex.value;processRequest.active;processRequest.throughput;processRequest.time;session.active;transactions.aborted;transactions.active;transactions.committed</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  
+  <!-- Following are JMX based metrics computed for Ver1.5 
+     with platform mbeans enabled by specifying 
+     -Dcom.sun.management.jmxremote property on oc4j startup 
+-->
+
+    <Metric NAME="oc4j_jvm_runtime" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+      <Display>
+         <Label NLSID="oc4j_jvm_runtime">JVM Runtime</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="ProcessUID" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ProcessUID">ProcessUID</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ReportingComponentNodeID" TYPE="STRING">
+            <Display>
+               <Label NLSID="ReportingComponentNodeID">ReportingComponentNodeID</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="pid.value" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_pid">pid</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="specName.value" TYPE="STRING">
+            <Display>
+               <Label NLSID="oc4j_jvm_spec_name">JVM SpecName</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="vmName.value" TYPE="STRING">
+            <Display>
+               <Label NLSID="oc4j_jvm_vmName">JVM Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="vmVendor.value" TYPE="STRING">
+            <Display>
+               <Label NLSID="oc4j_jvm_vmVendor">JVM Vendor</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="vmVersion.value" TYPE="STRING">
+            <Display>
+               <Label NLSID="oc4j_jvm_vmVersion">JVM Version</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:oc4j_jvm_runtime</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter"  OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">ProcessUID;ReportingComponentNodeID;pid.value;specName.value;vmName.value;vmVendor.value;vmVersion.value</Property>
+      </QueryDescriptor>
+   </Metric>
+
+   <Metric NAME="GarbageCollectors" TYPE="TABLE">
+   <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_GarbageCollectors">Garbage Collectors</Label>
+    </Display>
+      <TableDescriptor>
+        <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_Name">Name</Label>
+        </Display>
+      </ColumnDescriptor>
+        <ColumnDescriptor NAME="count.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_NumberOfCollections">Garbage Collector - Garbage Collection Invocations Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="time.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalCollectionTimeInMillisecs">Garbage Collector - Execution Time Since Startup (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:GarbageCollectors</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter" OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;count.value;time.value</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="CompilationTime" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+      <Display>
+      <Label NLSID="oc4j_jvm_CompilationTime">Compilation Time</Label>
+    </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="totalTime.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalCompilationTimeInMillisecs">Compilation Time Since Startup (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:CompilationTime</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter"  OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">totalTime.value</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="ClassLoading" TYPE="TABLE">
+   <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_ClassLoading">Class Loading</Label>
+    </Display>
+      <TableDescriptor>
+       <ColumnDescriptor NAME="loaded.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_CurrentLoadedClassCount">Classes Currently Loaded</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalLoaded.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalLoadedClassCount">Classes Loaded Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="unloaded.value" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_UnloadedClassCount">Classes Unloaded Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:ClassLoading</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter" OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">loaded.value;totalLoaded.value;unloaded.value</Property>
+      </QueryDescriptor>
+   </Metric>   
+   <Metric NAME="MemoryPools" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+      <Display>
+      <Label NLSID="oc4j_jvm_MemoryPools">Memory Pools</Label>
+    </Display>
+      <TableDescriptor>
+        <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_Name">Name</Label>
+        </Display>
+        </ColumnDescriptor>
+         <ColumnDescriptor NAME="usedNow.value" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_usedNow">Memory Pool - Current Usage</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="usedPeak.value" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_usedPeak">Memory Pool - Peak Usage</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:MemoryPools</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter" OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="Name.parameter" SCOPE="USER" OPTIONAL="TRUE">Name.parameter</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item><item><key>Name.parameter</key><value type="java.lang.String">%Name.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;usedNow.value;usedPeak.value</Property>
+      </QueryDescriptor>
+   </Metric>
+    <Metric NAME="MemoryUsage" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+      <Display>
+      <Label NLSID="oc4j_jvm_MemoryUsage">Memory Usage</Label>
+    </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="HeapMemoryUsage" TYPE="NUMBER">
+           <Display>
+           <Label NLSID="oc4j_jvm_HeapMemoryUsageInBytes">Heap Memory Usage (Bytes)</Label>
+           </Display>
+         </ColumnDescriptor>
+          <ColumnDescriptor NAME="NonHeapMemoryUsage" TYPE="NUMBER">
+            <Display>
+             <Label NLSID="oc4j_jvm_NonHeapMemoryUsageInBytes">Non-Heap Memory Usage (Bytes)</Label>
+             <Unit NLSID="oc4j_jvm_bytes">Bytes</Unit>
+            </Display>
+           </ColumnDescriptor>
+           <ColumnDescriptor NAME="ObjectsPendingFinalization" TYPE="NUMBER">
+             <Display>
+              <Label NLSID="oc4j_jvm_ObjectPendingFinalizationCount">Objects Pending Finalization</Label>
+             </Display>
+           </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:MemoryUsage</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter" OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">HeapMemoryUsage;NonHeapMemoryUsage;ObjectsPendingFinalization</Property>
+      </QueryDescriptor>
+   </Metric>
+
+  <Metric NAME="CompilationTime" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_CompilationTime">Compilation Time</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="TotalCompilationTimeInMillisecs" TYPE="NUMBER"
+                        TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalCompilationTimeInMillisecs">Compilation Time Since Startup (ms)</Label>
+          <Unit NLSID="oc4j_jvm_millisec">millisec</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="TotalCompilationTimeInSecs" TYPE="NUMBER"
+                        COLUMN_NAME="TotalCompilationTimeInSecs"
+                        COMPUTE_EXPR="TotalCompilationTimeInMillisecs/1000">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalCompilationTimeInSecs">Compilation Time Since Startup (seconds)</Label>
+          <Unit NLSID="oc4j_jvm_sec">sec</Unit>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OJMX">
+      <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="oc4jInstanceName" SCOPE="INSTANCE" OPTIONAL="TRUE">OC4JInstanceName</Property>
+      <Property NAME="jvmId" SCOPE="INSTANCE" OPTIONAL="TRUE">JVMId</Property>
+      <Property NAME="mgmtWebSite" SCOPE="INSTANCE" OPTIONAL="TRUE">MgmtWebSite</Property>
+      <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+      <Property NAME="authpwd" SCOPE="INSTANCE" OPTIONAL="TRUE">authPasswd</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">CompilationTime</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      <Property NAME="name" SCOPE="GLOBAL">getAttributes</Property>
+      <Property NAME="signature" SCOPE="GLOBAL">objectName,attributeNames,languageCode,countryCode</Property>
+      <Property NAME="returnType" SCOPE="GLOBAL">arrayOfComplexObjectBean</Property>
+      <Property NAME="dontAddDefaultRowKey" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">/TotalCompilationTime</Property>
+      <Property NAME="arguments" SCOPE="GLOBAL">
+        <![CDATA[<arguments>
+   <argument>
+      <value>java.lang:type=Compilation</value>
+   </argument>
+   <argument>
+      <value>TotalCompilationTime</value>
+   </argument>
+   <argument>
+      <value>en</value>
+   </argument>
+   <argument>
+      <value>US</value>
+   </argument>
+</arguments>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+  <Metric NAME="MemoryUsage" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_MemoryUsage">Memory Usage</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="HeapMemoryUsageInBytes" TYPE="NUMBER"
+                        TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_HeapMemoryUsageInBytes">Heap Memory Usage
+                                                         (Bytes)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NonHeapMemoryUsageInBytes" TYPE="NUMBER"
+                        TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_NonHeapMemoryUsageInBytes">Non-Heap Memory Usage (Bytes)</Label>
+          <Unit NLSID="oc4j_jvm_bytes">Bytes</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ObjectPendingFinalizationCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_ObjectPendingFinalizationCount">Objects Pending Finalization</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="HeapMemoryUsageInMBytes" TYPE="NUMBER"
+                        COLUMN_NAME="HeapMemoryUsageInMBytes"
+                        COMPUTE_EXPR="HeapMemoryUsageInBytes/(1024*1024)">
+        <Display>
+          <Label NLSID="oc4j_jvm_HeapMemoryUsageInMBytes">Heap Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NonHeapMemoryUsageInMBytes" TYPE="NUMBER"
+                        COLUMN_NAME="NonHeapMemoryUsageInMBytes"
+                        COMPUTE_EXPR="NonHeapMemoryUsageInBytes/(1024*1024)">
+        <Display>
+          <Label NLSID="oc4j_jvm_NonHeapMemoryUsageInMBytes">Non-Heap Memory Usage (MB)</Label>
+          <Unit NLSID="oc4j_jvm_mbytes">MBytes</Unit>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OJMX">
+      <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="oc4jInstanceName" SCOPE="INSTANCE" OPTIONAL="TRUE">OC4JInstanceName</Property>
+      <Property NAME="jvmId" SCOPE="INSTANCE" OPTIONAL="TRUE">JVMId</Property>
+      <Property NAME="mgmtWebSite" SCOPE="INSTANCE" OPTIONAL="TRUE">MgmtWebSite</Property>
+      <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+      <Property NAME="authpwd" SCOPE="INSTANCE" OPTIONAL="TRUE">authPasswd</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">MemoryUsage</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      <Property NAME="name" SCOPE="GLOBAL">getAttributes</Property>
+      <Property NAME="signature" SCOPE="GLOBAL">objectName,attributeNames,languageCode,countryCode</Property>
+      <Property NAME="returnType" SCOPE="GLOBAL">arrayOfComplexObjectBean</Property>
+      <Property NAME="dontAddDefaultRowKey" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">/HeapMemoryUsage/used,/NonHeapMemoryUsage/used,/ObjectPendingFinalizationCount</Property>
+      <Property NAME="arguments" SCOPE="GLOBAL">
+        <![CDATA[<arguments>
+   <argument>
+      <value>java.lang:type=Memory</value>
+   </argument>
+   <argument>
+      <value>HeapMemoryUsage</value>
+      <value>NonHeapMemoryUsage</value>
+      <value>ObjectPendingFinalizationCount</value>
+   </argument>
+   <argument>
+      <value>en</value>
+   </argument>
+   <argument>
+      <value>US</value>
+   </argument>
+</arguments>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+  <Metric NAME="ClassLoading" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_ClassLoading">Class Loading</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="CurrentLoadedClassCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_CurrentLoadedClassCount">Classes Currently Loaded</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="TotalLoadedClassCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalLoadedClassCount">Classes Loaded Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="UnloadedClassCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_UnloadedClassCount">Classes Unloaded Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OJMX">
+      <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="oc4jInstanceName" SCOPE="INSTANCE" OPTIONAL="TRUE">OC4JInstanceName</Property>
+      <Property NAME="jvmId" SCOPE="INSTANCE" OPTIONAL="TRUE">JVMId</Property>
+      <Property NAME="mgmtWebSite" SCOPE="INSTANCE" OPTIONAL="TRUE">MgmtWebSite</Property>
+      <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+      <Property NAME="authpwd" SCOPE="INSTANCE" OPTIONAL="TRUE">authPasswd</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">ClassLoading</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      <Property NAME="name" SCOPE="GLOBAL">getAttributes</Property>
+      <Property NAME="signature" SCOPE="GLOBAL">objectName,attributeNames,languageCode,countryCode</Property>
+      <Property NAME="returnType" SCOPE="GLOBAL">arrayOfComplexObjectBean</Property>
+      <Property NAME="dontAddDefaultRowKey" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">/LoadedClassCount,/TotalLoadedClassCount,/UnloadedClassCount</Property>
+      <Property NAME="arguments" SCOPE="GLOBAL">
+        <![CDATA[<arguments>
+   <argument>
+      <value>java.lang:type=ClassLoading</value>
+   </argument>
+   <argument>
+      <value>LoadedClassCount</value>
+      <value>TotalLoadedClassCount</value>
+      <value>UnloadedClassCount</value>
+   </argument>
+   <argument>
+      <value>en</value>
+   </argument>
+   <argument>
+      <value>US</value>
+   </argument>
+</arguments>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+  <Metric NAME="MemoryPools" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_MemoryPools">Memory Pools</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_Name">Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="UsageInBytes" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_UsageInBytes">Memory Pool - Current Usage (Bytes)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="PeakUsageInBytes" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_PeakUsageInBytes">Memory Pool - Peak Usage (Bytes)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="UsageInMBytes" TYPE="NUMBER"
+                        COLUMN_NAME="UsageInMBytes"
+                        COMPUTE_EXPR="UsageInBytes/(1024*1024)">
+        <Display>
+          <Label NLSID="oc4j_jvm_UsageInMBytes">Memory Pool - Current Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="PeakUsageInMBytes" TYPE="NUMBER"
+                        COLUMN_NAME="PeakUsageInMBytes"
+                        COMPUTE_EXPR="PeakUsageInBytes/(1024*1024)">
+        <Display>
+          <Label NLSID="oc4j_jvm_PeakUsageInMBytes">Memory Pool - Peak Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OJMX">
+      <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="oc4jInstanceName" SCOPE="INSTANCE" OPTIONAL="TRUE">OC4JInstanceName</Property>
+      <Property NAME="jvmId" SCOPE="INSTANCE" OPTIONAL="TRUE">JVMId</Property>
+      <Property NAME="mgmtWebSite" SCOPE="INSTANCE" OPTIONAL="TRUE">MgmtWebSite</Property>
+      <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+      <Property NAME="authpwd" SCOPE="INSTANCE" OPTIONAL="TRUE">authPasswd</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">MemoryPools</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      <Property NAME="name" SCOPE="GLOBAL">getAttributesTable</Property>
+      <Property NAME="signature" SCOPE="GLOBAL">objNamePattern,attributeNames,languageCode,countryCode</Property>
+      <Property NAME="returnType" SCOPE="GLOBAL">arrayOfObjectBeanRow</Property>
+      <Property NAME="dontAddDefaultRowKey" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">/Name,/Usage/used,/PeakUsage/used</Property>
+      <Property NAME="arguments" SCOPE="GLOBAL">
+        <![CDATA[<arguments>
+   <argument>
+      <value>java.lang:type=MemoryPool,*</value>
+   </argument>
+   <argument>
+      <value>Name</value>
+      <value>Usage</value>
+      <value>PeakUsage</value>
+   </argument>
+   <argument>
+      <value>en</value>
+   </argument>
+   <argument>
+      <value>US</value>
+   </argument>
+</arguments>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+  <Metric NAME="GarbageCollectors" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_GarbageCollectors">Garbage Collectors</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_Name">Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NumberOfCollections" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_NumberOfCollections">Garbage Collector - Garbage Collection Invocations Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="TotalCollectionTimeInMillisecs" TYPE="NUMBER"
+                        TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalCollectionTimeInMillisecs">Garbage
+                                                                 Collector -
+                                                                 Execution Time
+                                                                 Since Startup
+                                                                 (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="TotalCollectionTimeInSecs" TYPE="NUMBER"
+                        COLUMN_NAME="TotalCollectionTimeInSecs"
+                        COMPUTE_EXPR="TotalCollectionTimeInMillisecs/1000">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalCollectionTimeInSecs">Garbage Collector - Execution Time Since Startup (seconds)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OJMX">
+      <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="oc4jInstanceName" SCOPE="INSTANCE" OPTIONAL="TRUE">OC4JInstanceName</Property>
+      <Property NAME="jvmId" SCOPE="INSTANCE" OPTIONAL="TRUE">JVMId</Property>
+      <Property NAME="mgmtWebSite" SCOPE="INSTANCE" OPTIONAL="TRUE">MgmtWebSite</Property>
+      <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+      <Property NAME="authpwd" SCOPE="INSTANCE" OPTIONAL="TRUE">authPasswd</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">GarbageCollectors</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      <Property NAME="name" SCOPE="GLOBAL">getAttributesTable</Property>
+      <Property NAME="signature" SCOPE="GLOBAL">objNamePattern,attributeNames,languageCode,countryCode</Property>
+      <Property NAME="returnType" SCOPE="GLOBAL">arrayOfObjectBeanRow</Property>
+      <Property NAME="dontAddDefaultRowKey" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">/Name,/CollectionCount,/CollectionTime</Property>
+      <Property NAME="arguments" SCOPE="GLOBAL">
+        <![CDATA[<arguments>
+   <argument>
+      <value>java.lang:type=GarbageCollector,*</value>
+   </argument>
+   <argument>
+      <value>Name</value>
+      <value>CollectionCount</value>
+      <value>CollectionTime</value>
+   </argument>
+   <argument>
+      <value>en</value>
+   </argument>
+   <argument>
+      <value>US</value>
+   </argument>
+</arguments>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+  <!-- Aggregate Thread metric -->
+  <Metric NAME="Threads" TYPE="TABLE">
+     <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+       <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_Threads">Threads</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_ThreadCount">Active Threads</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DaemonThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_DaemonThreadCount">Active Daemon Threads</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="TotalStartedThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalStartedThreadCount">Threads Started Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="PeakThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_PeakThreadCount">Peak Thread Count</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeadlockedThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_DeadlockedThreadCount">Deadlocked Thread Count</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="Threads_Raw" USE_CACHE="TRUE_IF_COLLECT"/>
+      <GetTable NAME="DeadlockedThreads" USE_CACHE="TRUE_IF_COLLECT"/>
+      <GroupBy NAME="deadlocked_thread_count" FROM_TABLE="DeadlockedThreads">
+        <AggregateColumn NAME="DeadlockedThreadCount" COLUMN_NAME="threadId"
+                         OPERATOR="COUNT"/>
+      </GroupBy>
+      <JoinTables NAME="threadInfo">
+        <Table NAME="Threads_Raw"/>
+        <Table NAME="deadlocked_thread_count"/>
+        <Column NAME="ThreadCount" TABLE_NAME="Threads_Raw"/>
+        <Column NAME="DaemonThreadCount" TABLE_NAME="Threads_Raw"/>
+        <Column NAME="TotalStartedThreadCount" TABLE_NAME="Threads_Raw"/>
+        <Column NAME="PeakThreadCount" TABLE_NAME="Threads_Raw"/>
+        <Column NAME="DeadlockedThreadCount"
+                TABLE_NAME="deadlocked_thread_count"/>
+      </JoinTables>
+    </ExecutionDescriptor>
+  </Metric>
+  <!-- Aggregate Thread metric -->
+  <Metric NAME="Threads" TYPE="TABLE">
+     <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_Threads">Threads</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_ThreadCount">Active Threads</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DaemonThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_DaemonThreadCount">Active Daemon Threads</Label
+>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="TotalStartedThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_TotalStartedThreadCount">Threads Started Since Startup</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="PeakThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_PeakThreadCount">Peak Thread Count</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeadlockedThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_DeadlockedThreadCount">Deadlocked Thread Count</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+     <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:Threads</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter" OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">ThreadCount;DaemonThreadCount;TotalStartedThreadCount;PeakThreadCount;DeadlockedThreadCount</Property>
+      </QueryDescriptor>
+  </Metric>
+  <Metric NAME="Threads_Raw" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT"
+          HELP="NO_HELP">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_raw_Threads">Raw Threads</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm__raw_ThreadCount">ThreadCount</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DaemonThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_raw_DaemonThreadCount">DaemonThreadCount</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="TotalStartedThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_raw_TotalStartedThreadCount">TotalStartedThreadCount</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="PeakThreadCount" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_raw_PeakThreadCount">PeakThreadCount</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OJMX">
+      <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="oc4jInstanceName" SCOPE="INSTANCE" OPTIONAL="TRUE">OC4JInstanceName</Property>
+      <Property NAME="jvmId" SCOPE="INSTANCE" OPTIONAL="TRUE">JVMId</Property>
+      <Property NAME="mgmtWebSite" SCOPE="INSTANCE" OPTIONAL="TRUE">MgmtWebSite</Property>
+      <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+      <Property NAME="authpwd" SCOPE="INSTANCE" OPTIONAL="TRUE">authPasswd</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">Threads_Raw</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      <Property NAME="name" SCOPE="GLOBAL">getAttributes</Property>
+      <Property NAME="signature" SCOPE="GLOBAL">objectName,attributeNames,languageCode,countryCode</Property>
+      <Property NAME="returnType" SCOPE="GLOBAL">arrayOfComplexObjectBean</Property>
+      <Property NAME="dontAddDefaultRowKey" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">/ThreadCount,/DaemonThreadCount,/TotalStartedThreadCount,/PeakThreadCount</Property>
+      <Property NAME="arguments" SCOPE="GLOBAL">
+        <![CDATA[<arguments>
+   <argument>
+      <value>java.lang:type=Threading</value>
+   </argument>
+   <argument>
+      <value>ThreadCount</value>
+      <value>DaemonThreadCount</value>
+      <value>TotalStartedThreadCount</value>
+      <value>PeakThreadCount</value>
+   </argument>
+   <argument>
+      <value>en</value>
+   </argument>
+   <argument>
+      <value>US</value>
+   </argument>
+</arguments>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+  <Metric NAME="DeadlockedThreads" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT"
+          HELP="NO_HELP">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="Ver1.5"/>
+      <CategoryProp NAME="isJVMMBeansEnabled" CHOICES="1"/>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oc4j_jvm_DeadlockedThreads">DeadlockedThreads</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="threadId" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="oc4j_jvm_threadId">threadId</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OJMX">
+      <Property NAME="machine" SCOPE="INSTANCE">HTTPMachine</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="oc4jInstanceName" SCOPE="INSTANCE" OPTIONAL="TRUE">OC4JInstanceName</Property>
+      <Property NAME="jvmId" SCOPE="INSTANCE" OPTIONAL="TRUE">JVMId</Property>
+      <Property NAME="mgmtWebSite" SCOPE="INSTANCE" OPTIONAL="TRUE">MgmtWebSite</Property>
+      <Property NAME="authuser" SCOPE="INSTANCE" OPTIONAL="TRUE">authUser</Property>
+      <Property NAME="authpwd" SCOPE="INSTANCE" OPTIONAL="TRUE">authPasswd</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">DeadlockedThreads</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      <Property NAME="name" SCOPE="GLOBAL">invoke</Property>
+      <Property NAME="signature" SCOPE="GLOBAL">objectName,operationName,languageCode,countryCode</Property>
+      <Property NAME="returnType" SCOPE="GLOBAL">ComplexObjectBean</Property>
+      <Property NAME="dontAddDefaultRowKey" SCOPE="GLOBAL">true</Property>
+      <Property NAME="rowType" SCOPE="GLOBAL">/findMonitorDeadlockedThreads</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">/findMonitorDeadlockedThreads</Property>
+      <Property NAME="arguments" SCOPE="GLOBAL">
+        <![CDATA[<arguments>
+   <argument>
+      <value>java.lang:type=Threading</value>
+   </argument>
+   <argument>
+      <value>findMonitorDeadlockedThreads</value>
+   </argument>
+   <argument>
+      <value>en</value>
+   </argument>
+   <argument>
+      <value>US</value>
+   </argument>
+</arguments>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <Metric NAME="ThreadContention" TYPE="TABLE">
+      <ValidIf>
+       <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+      </ValidIf>
+     <Display>
+         <Label NLSID="oc4j_jvm_ThreadContention">ThreadContention</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="ThreadName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="oc4j_jvm_ThreadName">Thread Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="State" TYPE="STRING">
+            <Display>
+               <Label NLSID="oc4j_jvm_thread_State">Thread State</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="CpuUsageInSecs" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_CpuUsageInSec">Cpu Usage In Secs</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="BlockedTimeInSecs" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_BlockedValueSec">Blocked Time in Secs</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="BlockedCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_BlockedCount">Blocked Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="WaitTimeInSecs" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_WaitValueSec">Wait Time In Secs</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="WaitCount" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="oc4j_jvm_WaitCount">Wait Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="LockName" TYPE="STRING">
+            <Display>
+               <Label NLSID="oc4j_jvm_LockName">Lock Name</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oc4jjvm:Thread_Contention</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">metricTopologyNodeID</Property>
+         <Property NAME="JVMId.parameter" OPTIONAL="TRUE" SCOPE="INSTANCE">JVMId</Property>
+         <Property NAME="ComponentNodeID.parameter" SCOPE="INSTANCE">ComponentNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[<argument type="java.util.Map"><value><item><key>JVMId.parameter</key><value type="java.lang.String">%JVMId.parameter%</value></item><item><key>ComponentNodeID.parameter</key><value type="java.lang.String">%ComponentNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">ThreadName;State;CpuUsageInSecs;BlockedTimeInSecs;BlockedCount;WaitTimeInSecs;WaitCount;LockName</Property>
+      </QueryDescriptor>
+   </Metric>
+
+  <InstanceProperties>
+
+    <InstanceProperty NAME="ObjectName" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="object_name_prop">Object Name</Label>
+      </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="farmTopologyNodeID" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="farm_topology_node_id_prop">Farm Topology Node Id</Label>
+      </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="MAS_OracleHome" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="mas_oracle_home_prop">MAS Oracle Home</Label>
+      </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="MAS_Version" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="mas_version_prop">MAS Version</Label>
+      </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="MAS_FarmGUID" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="mas_farm_guid_prop">MAS Farm Guid</Label>
+      </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="CanonicalPath" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="canonical_path_prop">Canonical Path</Label>
+      </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="OracleInstance" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="oracle_instance_prop">Oracle Instance</Label>
+      </Display>
+    </InstanceProperty>
+
+
+    <InstanceProperty NAME="HTTPMachine">
+     <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+      <Display>
+        <Label NLSID="oc4j_jvm_dms_HTTPMachine_iprop">Machine name</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="URI" OPTIONAL="TRUE">
+      <Display>
+        <Label NLSID="oc4j_jvm_URI">URI</Label>
+      </Display>
+      /JMXSoapAdapter/JMXSoapAdapter
+    </InstanceProperty>
+    <InstanceProperty NAME="OracleHome">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+      <Display>
+        <Label NLSID="oc4j_jvm_dms_OracleHome_iprop">OracleHome</Label>
+      </Display>
+    </InstanceProperty>
+<InstanceProperty NAME="OracleBinaryHome" OPTIONAL="TRUE">
+  <Display>
+    <Label NLSID="OracleBinaryHome_iprop">Oracle Binary Home</Label>
+  </Display>
+</InstanceProperty>
+    <InstanceProperty NAME="OC4JInstanceName">
+    <ValidIf>
+      <CategoryProp NAME="OC4JVersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+      <Display>
+        <Label NLSID="oc4j_jvm_oc4jInstanceName_iprop">OC4JInstanceName</Label>
+      </Display>
+      home
+    </InstanceProperty>
+    <InstanceProperty NAME="JVMId" OPTIONAL="TRUE">
+      <Display>
+        <Label NLSID="oc4j_jvm_jvmId_iprop">JVMId</Label>
+      </Display>
+      1
+    </InstanceProperty>
+    <InstanceProperty NAME="MgmtWebSite" OPTIONAL="TRUE">
+      <Display>
+        <Label NLSID="oc4j_jvm_mgmtWebSite_iprop">MgmtWebSite</Label>
+      </Display>
+      default-web-site
+    </InstanceProperty>
+    <InstanceProperty NAME="ComponentNodeID">
+       <ValidIf>
+         <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+       </ValidIf>
+      <Display>
+        <Label NLSID="oc4j_jvm_componentNodeID_iprop">OC4J Topology ID</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="metricTopologyNodeID">
+       <ValidIf>
+        <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+       </ValidIf>
+      <Display>
+        <Label NLSID="oc4j_jvm_metricTopologyNodeID_iprop">JVM Metric Topology ID</Label>
+      </Display>
+    </InstanceProperty>
+    <DynamicProperties NAME="from_assoc_instance" FORMAT="ROW"
+                       PROP_LIST="authUser;authPasswd;OC4JVersionCategory">
+      <QueryDescriptor FETCHLET_ID="PropsFromAssocTgt">
+        <Property NAME="TARGET_NAME" SCOPE="INSTANCE">NAME</Property>
+        <Property NAME="TARGET_TYPE" SCOPE="INSTANCE">TYPE</Property>
+        <Property NAME="ASSOC_TARGET" SCOPE="GLOBAL">oc4j</Property>
+        <Property NAME="PROP_LIST" SCOPE="GLOBAL">authUser;authPasswd;VersionCategory</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+    <DynamicProperties NAME="computed_for_jvm" FORMAT="ROW"
+                       PROP_LIST="Version;isJVMMBeansEnabled">
+      <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+        <ValidIf>
+           <CategoryProp NAME="OC4JVersionCategory" CHOICES="1013plus"/>
+       </ValidIf>
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+        <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+        <Property NAME="targetName" SCOPE="INSTANCE">OC4JInstanceName</Property>
+        <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+        <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/oc4j/getJVMInfo.pl" "%oracleHome%" %targetName%</Property>
+        <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+        <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+        <ValidIf>
+           <CategoryProp NAME="OC4JVersionCategory" CHOICES="11plus"/>
+       </ValidIf>
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+        <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+        <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/oc4j/getJVMInfo.pl"</Property>
+        <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+        <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+    <DynamicProperties NAME="ComputeVC" FORMAT="ROW"
+                       PROP_LIST="VersionCategory">
+      <QueryDescriptor FETCHLET_ID="VersionRangeComputer">
+        <Property NAME="Version" SCOPE="INSTANCE">Version</Property>
+        <Property NAME="DefaultRange" SCOPE="GLOBAL">Ver1.5</Property>
+        <Property NAME="Ver1.4" SCOPE="GLOBAL">1.4;</Property>
+        <Property NAME="Ver1.5" SCOPE="GLOBAL">1.5;</Property>
+        <Property NAME="Ver1.6" SCOPE="GLOBAL">1.6;</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+  </InstanceProperties>
+</TargetMetadata>

@@ -1,0 +1,191 @@
+##############################################################################
+# Copyright (c) 2002, 2009, Oracle and/or its affiliates. All rights reserved. 
+#
+# emoms.properties.template
+#
+# Properties used by Console Configuration Manager.
+##############################################################################
+#
+#     Version 1.0
+#
+#   MODIFIED    (MM/DD/YY)
+#      joyoon    09/17/09 - remove mas connection url
+#      gan       08/06/08 - add homes properties
+#      bkolloju  04/24/08 - Adding properties related to host cache
+#      jaysmith  04/02/08 - 6875609: extend EMDClient timeout as workaround
+#      pchebrol  02/27/08 - Bug 6739597 - deprecate repos details from
+#                           emoms.prop
+#      smodh     02/26/08 - Removing proxy properties
+#      pinshah   12/11/06 - added event cache enable/disable flag
+#      ezeng     01/09/07 - XbranchMerge ezeng_bug-5484542 from st_emdbsa_11.1
+#      edemembe  09/11/06 - Adding OMS decommission mode
+#      hmodawel  09/08/06 - for m6
+#      edemembe  08/17/06 - Adding OMS Quiesce parameter.
+#      scgrover  07/05/06 - add loader params 
+#      djoly     06/14/06 - add repos mode as a default 
+#      ezeng     01/09/07 - ASH purge size
+#      dtsao     08/24/05 - Add LargeRepository attribute 
+#      neearora  08/22/05 - Bug 4561330. set value of property 
+#                           oracle.sysman.emRep.dbConn.statementCacheSize=50 
+#      aholser   05/24/05 - add port to oms name 
+#      neearora  04/22/05 - Added new property for diagnostic dump 
+#      jabramso  10/15/04 - Add PublicServlet 
+#      rpinnama  10/08/04 - Add the property for metadatacache 
+#      xuliu     10/06/04 - add dbid 
+#      qding     09/17/04 - Added proxy settings 
+#      jabramso  06/22/04 - 
+#      asawant   05/07/04 - Adding seed. 
+#      aholser   04/14/04 - add email parameters for oob oms down 
+#      hsu       01/30/04 - change default stmt cache size 
+#      hsu       01/19/04 - change default stmt cache size 
+#      rpinnama  12/26/03 - Removing repAgentUrl 
+#      sjconnol  12/11/03 - remove noSave flag for pref creds
+#      hsu       12/05/03 - add param for stmt caching 
+#      mpawelko  11/24/03 - change iSQLPlus URL entries 
+#      hsu       11/10/03 - add sharing param 
+#      sjconnol  10/16/03 - add noSave flag for pref creds
+#      mgoodric  10/10/03 - add proxyHost, proxyPort, dontProxyFor
+#      vkapur    08/13/03 - add emdRepRAC for db console 
+#      mpawelko  07/15/03 - add iSQLPlus DBA URL placeholder
+#      mpawelko  06/26/03 - add iSQLPlus URL placeholder
+#      streddy   06/12/03 - Added emdrep.ping.pingCommand
+#      dkapoor   04/21/03 - append db console params
+#      aholser   04/02/03 - add oms name
+#      skini     03/26/03 - Add connect descriptor
+#      skini     02/20/03 - skini_2771051_2_4.0.1_main
+#      rpinnama  01/03/03 - Remove pingDirectory
+#      skini     12/31/02 - Leave only essential properties
+#      skini     12/30/02 - Comment out defaults
+#      rpinnama  12/12/02 - Add emdrep.ping.pingDirectory
+#      skini     11/13/02 - Add documentation for proxy parameters
+#      skini     11/08/02 - Add auth properties
+#      jpyang    10/24/02 - change maxConnForJobWorkers to 10
+#      ggilchri  10/23/02 - add https port
+#      dmshah    10/16/02 - Adding nvp for db connection settings
+#      xshi      10/03/02 - 
+#      xshi      10/02/02 - sso config - domain
+#      aholser   10/07/02 - move repository.properties to console.properties
+#      xshi      08/19/02 - add das location
+#      xshi      08/14/02 - add sso consoleauthentication
+#      lyang     06/14/02 - lyang_add_configuration_manager
+#
+
+#
+# OMS quiescent state - this parameter shuts down almost all
+# background processing normally done by the OMS.  This includes
+# data, severity, and metadata loading as well as notification 
+# and EM job processing.
+#
+#  Default: false
+# 
+OMSQuiescent=false
+
+# The default mode the oms runs in
+oracle.sysman.emRep.repositoryMode=repository
+
+# From the old web.xml file
+oracle.sysman.emSDK.svlt.ConsoleServerHost=$$Computer.name$$
+oracle.sysman.emSDK.svlt.ConsoleServerPort=%EM_UPLOAD_PORT%
+# The https port dedicated to the receiver servlet using an EM Certificate 
+oracle.sysman.emSDK.svlt.ConsoleServerHTTPSPort=%EM_UPLOAD_HTTPS_PORT%
+oracle.sysman.emSDK.svlt.ConsoleServerName=$$Computer.name$$:%EM_UPLOAD_PORT%_Management_Service
+
+#oracle.sysman.emSDK.svlt.ConsoleMode=%CONSOLE_MODE%
+#oracle.sysman.emSDK.sec.ReuseLogonPassword=true
+#oracle.sysman.eml.mntr.emdRepDBName=
+#oracle.sysman.eml.mntr.emdRepRAC=false
+
+#oracle.sysman.eml.mntr.emdRepDBID=
+
+# iSQL*Plus integration
+#oracle.sysman.db.isqlplusUrl=%ISQLPLUS_PROTOCOL%://%ISQLPLUS_HOST%:%ISQLPLUS_PORT%/isqlplus/dynamic
+#oracle.sysman.db.isqlplusWebDBAUrl=%ISQLPLUS_PROTOCOL%://%ISQLPLUS_HOST%:%ISQLPLUS_PORT%/isqlplus/dba/dynamic
+
+# port specific ping command
+emdrep.ping.pingCommand=%EM_PING_COMMAND%
+
+# timeout in seconds for both connect and read in communications 
+# from OMS to agent
+oracle.sysman.emSDK.emd.httpConnectionTimeout=600
+
+# For controlling the sharing of realtime metric collection
+#oracle.sysman.emSDK.emd.rt.useMonitoringCred=true
+
+# The number of JDBC statements that's cached per repository
+# connection.  Setting it to 0 would turn off caching
+oracle.sysman.emRep.dbConn.statementCacheSize=50
+
+# The number of JDBC statements that's cached per direct-target admin
+# connection.  Setting it to 0 would turn off caching
+#oracle.sysman.db.adm.conn.statementCacheSize=0
+
+# The number of JDBC statements that's cached per real-time database
+# connection used for performance monitorng
+#oracle.sysman.db.perf.conn.statementCacheSize=0
+#
+# The email address for out-of-band notifications
+#
+#em_email_address=
+#em_email_gateway=
+
+# The number of results to be returned in the tables
+# on activity-related pages
+#oracle.sysman.db.ashPurgeSize=10
+
+# This boolean property controls whether the loader should use metadata cache
+# The loader skips over rowsets for which it detects that the metadata is
+# already present.
+#
+# The default value is TRUE
+# em.loader.enableMetadataCache=FALSE
+
+#
+# The return email address for out-of-band notifications
+#
+#em_from_email_address=
+
+# Set the following to true to receive email for the oms startup, shutdown or crash
+em_oob_startup=false
+em_oob_shutdown=false
+em_oob_crash=false
+em.ip.ui.enable=true
+
+# Set whether event cache is enabled
+em.event.cache.Enabled=true
+
+#
+# Whether or not the PublicServlet is enabled to allow WEB-INF/publicPages.lst
+# to specify pages that don't require login to EM
+#
+oracle.sysman.emSDK.svlt.PublicServletEnabled=true
+
+# Comma seperated list of modules for which dump command should executed.
+em.oms.dumpModules=omsThread,repos 
+
+# 
+# In an environment with large number of targets, alerts, errors, policy 
+#   violations, ORACLE_HOMEs, etc, the rendering time of Console Home Page 
+#   may be too long. Setting this attribute to true will hide some element
+#   in the Console Home Page and thus reducing the rendering time.
+#
+# Default : false
+#
+LargeRepository=false
+
+# Number of loader threads, defaults to 1
+# %EM_LOADER_THREADS%
+
+#  cache expiry interval
+em.repoless.transient.cache.timetolive=7200000
+
+
+
+# Host Cache properties
+oracle.sysman.core.model.host.cacheAliveTime=300000
+oracle.sysman.core.model.host.realtimeCacheMaxSize=120
+oracle.sysman.core.model.host.metricRealtimeUpdateIntervalInMin=1 
+oracle.sysman.core.model.host.maxNumberOfRealtimeUpdateThreads=10
+oracle.sysman.core.model.host.garbageCollectionWakeupTimeInerval=360000
+oracle.sysman.core.model.host.resultSetFetchSize=1000
+  
+

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="SimpleForm" type="com.bea.alsb.console.forms.SimpleForm" />
+        <form-bean name="FindAndReplaceForm" type="com.bea.alsb.console.customization.forms.FindAndReplaceForm" />
+        <form-bean name="SelectCustomizationFileForm" type="com.bea.alsb.console.customization.forms.SelectCustomizationFileForm" />
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+	<action-mappings>
+
+        <action path="/PerformFindAndReplace"
+            type="com.bea.alsb.console.customization.actions.FindAndReplaceAction"
+            name="FindAndReplaceForm"
+            scope="session"
+            validate="true"
+            input="success">
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/customization/FindAndReplace.jsp" />
+        </action>
+
+        <action path="/FindAndReplace"
+            type="com.bea.alsb.console.customization.actions.FindAndReplaceAction"
+            name="FindAndReplaceForm"
+            parameter="entry"
+            scope="session"
+            validate="false">
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/customization/FindAndReplace.jsp" />
+        </action>
+
+        <action path="/SortFoundAndReplaced"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/customization/FindAndReplace.jsp" />
+
+        <action path="/SelectCustomizationFile"
+            type="com.bea.alsb.console.customization.actions.SelectCustomizationFileAction"
+            validate="false">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/customization/SelectCustomizationFile.jsp" />
+        </action>
+
+        <action path="/ViewCustomizationFile"
+            type="com.bea.alsb.console.customization.actions.ViewCustomizationFileAction"
+            name="SelectCustomizationFileForm"
+            scope="sessions"
+            validate="true"
+            input="error">
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/customization/ViewCustomizationFile.jsp" />
+            <forward
+                name="error"
+                contextRelative="true"
+                path="jsp/customization/SelectCustomizationFile.jsp" />
+        </action>
+
+        <action path="/ExecuteCustomizationFile"
+            type="com.bea.alsb.console.customization.actions.ExecuteCustomizationFileAction"
+            name="SelectCustomizationFileForm"
+            scope="sessions"
+            validate="false">
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/customization/SelectCustomizationFile.jsp"/>
+            <forward name="selectcustomizationfile"
+                 contextRelative="true"
+                 path="jsp/customization/SelectCustomizationFile.jsp"/>
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/customization/ViewCustomizationFile.jsp"/>
+            <forward name="viewcustomizationfile"
+                contextRelative="true"
+                path="jsp/customization/ViewCustomizationFile.jsp"/>
+        </action>
+
+        <action path="/SortCustomizations"
+            type="org.apache.struts.actions.ForwardAction"
+            parameter="jsp/customization/ViewCustomizationFile.jsp" />
+
+        <!--
+                <action path="/ExecuteCustomizationFile"
+                    type="com.bea.alsb.console.customization.actions.ExecuteCustomizationFileAction"
+                    name="SelectCustomizationFileForm"
+                    attribute="do_not_validate"
+                    scope="request"
+                    validate="false"
+                    input="error">
+                    <forward name="success"
+                        contextRelative="true"
+                        path="jsp/customization/SelectCustomizationFile.jsp"/>
+                    <forward name="selectcustomizationfile"
+                         contextRelative="true"
+                         path="jsp/customization/SelectCustomizationFile.jsp"/>
+                    <forward name="error"
+                        contextRelative="true"
+                        path="jsp/customization/ViewCustomizationFile.jsp"/>
+                </action>
+        -->
+
+        <action path="/CreateCustomizationFile"
+            type="com.bea.alsb.console.customization.actions.CreateCustomizationFileAction"
+            validate="false">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/customization/ViewAllResources.jsp" />
+        </action>
+
+        <action path="/UpdateResourceSelection"
+                type="com.bea.alsb.console.customization.actions.UpdateResourceSelectionAction"
+                validate="false">
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/customization/ViewAllResources.jsp" />
+        </action>
+        
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

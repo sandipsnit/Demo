@@ -1,0 +1,942 @@
+# S130INST.def: Collects the Oracle Installation Information
+# $Id: S130INST.def,v 2.12 2012/07/30 20:53:00 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S130INST.def,v 2.12 2012/07/30 20:53:00 mschenke Exp $
+#
+# Change History
+# 20120730  MSC  Improve Windows 64-bit support.
+
+=head1 NAME
+
+S130INST - Collects Oracle Installation Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle installation information.
+
+The following reports can be generated and are regrouped under C<Oracle
+Installation>:
+
+=cut
+
+echo tput('bold'),'Processing Oracle installation module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $OPATCH_DIR  = getSetting('OPATCH_DIR','')
+var $ORACLE_SID  = nvl(field(':',-1,getSetting('ORACLE_SID')),'')
+var $ALT_OI_INV  = getSetting('INST_ALT_OI_INV')
+var $ALT_OH_INV  = getSetting('INST_ALT_OH_INV')
+var $INST_AGE    = getSetting('INST_AGE',15)
+var $INST_FILTER = cond(isVms(),false,getSetting('INST_FILTER'))
+var $INST_TAIL   = getSetting('INST_TAIL',1000)
+var $USE_OPATCH  = getSetting('INST_USE_OPATCH')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Oracle Installation'
+
+# Load the common macros
+run DBinfo()
+run library()
+run INSTinfo()
+
+# Identify other Oracle homes
+var %HOMES
+loop $dir (split('\|',$ALT_OH_INV))
+{if testDir('d',$dir)
+  var $HOMES{$dir}
+}
+
+=head2 registry - Registry Settings
+
+For Windows, it exports the Oracle registry settings.
+
+=cut
+
+if or(isWindows(),isCygwin())
+{debug ' Inside INST module, export Oracle registry settings'
+ report registry
+ title '---+!! Oracle Registry Settings'
+ title $TOC
+ if hasRegOption()
+ {prefix
+   write '---+ Oracle 64-Bit Registry Settings'
+  call writeRegistry64('HKLM\SOFTWARE\Oracle')
+  prefix
+   write '---+ Oracle 32-Bit Registry Settings'
+  call writeRegistry32('HKLM\SOFTWARE\Oracle')
+  if !isCreated(true)
+   write 'There are no Oracle registry entries'
+ }
+ elsif !writeRegistry('HKLM\SOFTWARE\Oracle')
+  write 'There are no Oracle registry entries'
+ toc '2:[[',getFile(),'][rda_report][Registry Settings]]'
+}
+
+=head2 oratab - Oratab
+
+For UNIX, it reports F<oratab> file content.
+
+=cut
+
+if isUnix()
+{debug ' Inside INST module, looking for an oratab file'
+ report oratab
+ loop $fil ('/var/opt/oracle/oratab','/etc/oratab')
+ {if testFile('r',$fil)
+  {write '---+!! Oratab File Content'
+   write '---## From ',encode($fil)
+   write '<verbatim>'
+   loop $lin (grepFile($fil,'^\s*($|#)','v'))
+    write $lin
+   write '</verbatim>'
+   break
+  }
+ }
+ if isCreated(true)
+ {write $TOP
+  toc '2:[[',getFile(),'][rda_report][Oratab]]'
+ }
+}
+elsif isVms()
+{debug ' Inside INST module, looking for an oratab file'
+ report oratab
+
+ macro f_getsyi
+ {var ($val) = command(concat('write sys$output f$getsyi("',$arg[0],'")'))
+  return $val
+ }
+
+ var $hom = getEnv('SYS$LOGIN')
+ var $nod = f_getsyi('NODENAME')
+ loop $dir (catDir($hom,$nod),\
+            catDir($hom))
+ {if testFile('r',catFile($dir,'oratab.'))
+  {var $fil = catFile($dir,'oratab.')
+   write '---+!! Oratab File Content'
+   write '---## From ',encode($fil)
+   write '<verbatim>'
+   loop $lin (grepFile($fil,'^\s*($|#)','v'))
+    write $lin
+   write '</verbatim>'
+   break
+  }
+ }
+ if isCreated(true)
+ {write $TOP
+  toc '2:[[',getFile(),'][rda_report][Oratab]]'
+ }
+}
+
+=head2 oracle_home - Oracle Home Files
+
+Reports the content of key C<ORACLE_HOME> directories.
+
+=cut
+
+debug ' Inside INST module, list files from primary $ORACLE_HOME directories'
+report oracle_home
+write '---+!! List Files from Primary $ORACLE_HOME Directories'
+write $TOC
+
+macro stat_dir0
+{var ($dir) = @arg
+ if testDir('d',$dir)
+  call stat_dir1($dir)
+}
+
+macro stat_dir1
+{var ($dir) = @arg
+ import $TOP
+ write '---+ Listing of ',encode($dir)
+ if !statDir('n',$dir)
+  write 'Could not list files in ',encode($dir),'%BR%'
+ write $TOP
+}
+
+call stat_dir1($ORACLE_HOME)
+call stat_dir1(catDir($ORACLE_HOME,'bin'))
+call stat_dir1(catDir($ORACLE_HOME,'lib'))
+call stat_dir0(catDir($ORACLE_HOME,'lib64'))
+call stat_dir1(catDir($ORACLE_HOME,'rdbms','lib'))
+call stat_dir0(catDir($ORACLE_HOME,'rdbms','lib64'))
+call stat_dir0(catDir($ORACLE_HOME,'lib32'))
+call stat_dir0(catDir($ORACLE_HOME,'rdbms','lib32'))
+call stat_dir0(getEnv('ORA_SQLLIB'))
+call stat_dir0(getEnv('ORA_JAVAVM_LIB'))
+call stat_dir0(getEnv('ORA_SQLJ_LIB'))
+call stat_dir0(catDir($ORACLE_HOME,'database'))
+call stat_dir0(catDir($ORACLE_HOME,'dbs'))
+
+toc '2:[[',getFile(),'][rda_report][Oracle Home Files]]'
+
+=head2 logicals - VMS Logicals
+
+For VMS, it reports the C<ORA*>, C<NLS_*>, C<*PQL*> logicals and the database
+logical name tables.
+
+=cut
+
+if isVms()
+{debug ' Inside INST module, about to list VMS logicals for Oracle Server'
+ report logicals
+ write '---+!! VMS Logicals for Oracle Server'
+ write $TOC
+
+ write '---+ ORA* Logicals'
+ call writeCommand('show logical ORA*')
+ write $TOP
+
+ write '---+ NLS_* Logicals'
+ call writeCommand('show logical NLS_*')
+ write $TOP
+
+ write '---+ Database Logical Name Tables'
+ call writeCommand('show logical/table=*ORA*')
+ write $TOP
+
+ write '---+ *PQL* Logicals'
+ call writeCommand('show logical *PQL*')
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][VMS Logicals]]'
+
+=head2 identifiers - VMS Identifiers
+
+For VMS, it reports the C<ORA*>, C<NLS_*>, C<*PQL*> logicals and the database
+logical name tables.
+
+=cut
+
+ debug ' Inside INST module, about to list VMS identifiers'
+ report identifiers
+ var $TTL = '---+!! VMS Identifiers'
+
+ prefix
+ {if !isCreated()
+  {write $TTL
+   write $TOC
+  }
+  write '---+ Oracle Identifier'
+ }
+ var $pgm = createTemp('VMS','.com')
+ call writeTemp('VMS','$ runuaf = "$SYS$SYSTEM:AUTHORIZE.EXE"')
+ var $fil = 'ORA_ROOT:[000000]NETWORK.DIR'
+ if testFile('r',$fil)
+ {var ($uic) = command(concat('write sys$output f$file_attribute("',$fil,\
+                              '","UIC")'))
+  call writeTemp('VMS',concat('$ runuaf show ',$uic,' /full'))
+ }
+ else
+  call writeTemp('VMS','$ runuaf show *ORACLE* /full')
+ call closeTemp('VMS')
+ call writeCommand(concat('@',$pgm))
+ call unlinkTemp('VMS')
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {if !isCreated()
+  {write $TTL
+   write $TOC
+  }
+  write '---+ List of all Identifiers'
+ }
+ var $pgm = createTemp('VMS','.com')
+ call writeTemp('VMS','$ runuaf = "$SYS$SYSTEM:AUTHORIZE.EXE"')
+ call writeTemp('VMS','$ runuaf show /identifier/full *')
+ call closeTemp('VMS')
+ call writeCommand(concat('@',$pgm))
+ call unlinkTemp('VMS')
+ if hasOutput(true)
+  write $TOP
+
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][VMS Identifiers]]'
+}
+
+=head2 orainst_loc - oraInst.loc File
+
+For UNIX, it reads the F<oraInst.loc> file to determine the directory where
+the inventory is stored. The F<installActions.log> files should be in a logs
+directory directly underneath this. If the F<oraInst.loc> file does not exist
+in any of three known possible locations, then a message is displayed informing
+you that the inventory was not found or else this is a pre-Oracle 8i
+installation.
+
+For Windows, the inventory directory is retrieved from the registry key
+C<HKLM\SOFTWARE\Oracle>.
+
+=cut
+
+debug ' Inside INST module, about to do get installActions.log files'
+toc '2:Oracle Installer'
+
+if or(isWindows(),isCygwin())
+ var $inv = cond(hasRegOption(),\
+   nvl(getReg64Value('HKLM\SOFTWARE\Oracle','inst_loc'),\
+       getReg32Value('HKLM\SOFTWARE\Oracle','inst_loc')),\
+   getRegValue('HKLM\SOFTWARE\Oracle','inst_loc'))
+elsif isUnix()
+{report orainst_loc
+ write '---+ Contents of oraInst.loc file'
+
+ if testFile('e','/etc/oraInst.loc')
+  var $loc = '/etc/oraInst.loc'
+ elsif testFile('e','/var/opt/oracle/oraInst.loc')
+  var $loc = '/var/opt/oracle/oraInst.loc'
+ elsif testFile('e',catFile($ORACLE_HOME,'oraInst.loc'))
+  var $loc = catFile($ORACLE_HOME,'oraInst.loc')
+ else
+  var $loc = ''
+
+ if !$loc
+ {# Could not find the oraInst.loc file
+  write 'Unable to find oraInst.loc file%BR%\
+         Checked /etc, /var/opt/oracle and $ORACLE_HOME.%BR%\
+         Verify database version as oraInst.loc files only in use for 8i and \
+         above.'
+  var $inv = ''
+ }
+ elsif writeFile($loc)
+ {# Extract the inventory directory from the file
+  var $inv = value(grepFile($loc,'^[^#]*inventory_loc','if'))
+  if !$inv
+   write 'oraInst.loc file does not contain the Inventory Location directory'
+  write $TOP
+ }
+ else
+ {# Could not read the oraInst.loc file
+  write 'Unable to read oraInst.loc file%BR%\
+         May be file permission problem.%BR%\
+         Permissions are:%BR%'
+  call statFile('p',$loc)
+  write 'User: ',id(),'%BR%'
+  var $inv = ''
+ }
+ toc '3:[[',getFile(),'][rda_report][oraInst.loc File]]'
+}
+elsif isVms()
+{report orainst_loc
+ write '---+ Contents of oraInst.loc file'
+ var $hom = getEnv('SYS$LOGIN')
+ var $nod = f_getsyi('NODENAME')
+ var $inv = ''
+ loop $dir (catDir($ORACLE_HOME),\
+            catDir($hom,$nod),\
+            catDir($hom))
+ {if testFile('r',catFile($dir,'orainst.loc'))
+  {var $loc = catFile($dir,'orainst.loc')
+   if writeFile($loc)
+   {# Extract the inventory directory from the file
+    var $inv = value(grepFile($loc,'^[^#]*inventory_loc','if'))
+    if !$inv
+     write 'oraInst.loc file does not contain the Inventory Location directory'
+    write $TOP
+   }
+   else
+   {# Could not read the oraInst.loc file
+    write 'Unable to read oraInst.loc file%BR%\
+           May be file permission problem.%BR%\
+           Permissions are:%BR%'
+    call statFile('p',$loc)
+    var $inv = ''
+   }
+   toc '3:[[',getFile(),'][rda_report][oraInst.loc File]]'
+   break
+  }
+ }
+}
+else
+ var $inv = ''
+
+if $inv
+ var ($cnt,@inv) = (0,$inv)
+else
+ var ($cnt,@inv) = (1)
+if $ALT_OI_INV
+ var @inv = (@inv,split('\|',$ALT_OI_INV))
+
+=head2 inventory_xml - inventory.xml File
+
+Collects the F<inventory.xml> file from the inventory directory.
+
+=cut
+
+loop $dir (@inv)
+{debug ' Inside INST module, analyzing inventory in ',$dir
+ if $cnt
+  pretoc '3:Information from ',encode($dir)
+ elsif or(isWindows(),isCygwin())
+  pretoc '3:Information from the Registry Location'
+ else
+  pretoc '3:Information from oraInst.loc'
+
+ debug ' - Gathering the inventory.xml file'
+ if $cnt
+  report concat('inventory_xml',$cnt)
+ else
+  report inventory_xml
+ var $fil = catFile($dir,'ContentsXML','inventory.xml')
+ prefix
+ {write '---+ inventory.xml File'
+  write '---## Information Taken from ',encode($fil)
+ }
+ call writeFile($fil)
+ if isCreated(true)
+ {write $TOP
+  toc '4:[[',getFile(),'][rda_report][inventory.xml File]]'
+ }
+
+=head2 comps_xml - comps.xml File
+
+Collects the F<comps.xml file> from the inventory directory.
+
+=cut
+
+ debug ' - Gathering the comps.xml file'
+ if $cnt
+  report concat('comps_xml',$cnt)
+ else
+  report comps_xml
+ var $fil = catFile($dir,'ContentsXML','comps.xml')
+ prefix
+ {write '---+ comps.xml File'
+  write '---## Information Taken from ',encode($fil)
+ }
+ call writeFile($fil)
+ if isCreated(true)
+ {write $TOP
+  toc '4:[[',getFile(),'][rda_report][comps.xml File]]'
+ }
+
+=head2 orainventory_logdir - Inventory Log Directory
+
+Explores the inventory directory.
+
+=cut
+
+ debug ' - Exploring the inventory location directory'
+ if $cnt
+  report concat('orainventory_logdir',$cnt)
+ else
+  report orainventory_logdir
+ write '---+ Oracle Inventory Log Directory'
+ toc '4:[[',getFile(),'][rda_report][Inventory Log Directory]]'
+ if !testDir('r',$dir)
+ {# No access to the logs directory.  Ensure the files all denote it.
+  write 'Unable to display ',encode($dir),' directory.%BR%\
+         Could be permissions problem.%BR%\
+         Permissions are:%BR%'
+  call statDir('n',$dir)
+  write 'User: ',id(),'%BR%'
+ }
+ else
+ {# List the content of the logs directory
+  var $log = catDir($dir,'logs')
+  call statDir('n',$log)
+  write $TOP
+
+=head2 orainventory_files - Inventory Log Files
+
+Reports the Oracle Inventory log files and the related error and out
+files. Only accessible files with some content are collected.
+
+=cut
+
+  macro get_file
+  {var ($dir,$nam) = @arg
+   var $fil = catFile($dir,$nam)
+   var $lnk = encode($nam)
+   if and(testFile('r',$fil),getSize($fil))
+   {output d,$nam
+    if ${CUR.LAST}->write_data($fil)
+     var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+    call $[OUT]->end_report(${CUR.LAST})
+   }
+   return $lnk
+  }
+
+  macro check_ora_home
+  {var ($dat,$ref,$flg) = @arg
+
+   # Select the file if there no Oracle home associations
+   if !existsData('inst',$dat)
+    return true
+
+   # Check for the current Oracle home
+   loop $dir (getDataKeys('inst',$dat))
+   {if compare('eq',cond($flg,lc(catDir($dir)),catDir($dir)),$ref)
+     return true
+   }
+   return false
+  }
+
+  # Identify the files
+  loop $fil (grepDir($log,'\.(log|err|out)',concat('im',$INST_AGE)))
+  {if match($fil,'^installActions(.*)\.log$',true)
+   {var ($dat) = (last)
+    var $dat{$dat} = 1
+    var $log{$dat} = get_file($log,$fil)
+    loop $lin (grepFile(catFile($log,$fil),\
+      "Setting (variable 'ORACLE_HOME'|value of ORACLE_HOME) to ",'i'))
+    {if match($lin,"\sto\s+'([^']+)'")
+      call incrDataValue('inst',$dat,last)
+     elsif match($lin,"\sto\s+([^'].*)")
+      call incrDataValue('inst',$dat,last)
+    }
+   }
+   elsif match($fil,'^oraInstall(.*)\.err$',true)
+   {var ($dat) = (last)
+    var $dat{$dat} = 1
+    var $err{$dat} = get_file($log,$fil)
+   }
+   elsif match($fil,'^oraInstall(.*)\.out$',true)
+   {var ($dat) = (last)
+    var $dat{$dat} = 1
+    var $out{$dat} = get_file($log,$fil)
+   }
+  }
+
+  # Report the files
+  if $cnt
+   report concat('orainventory_files',$cnt)
+  else
+   report orainventory_files
+  title '---+!! Oracle Inventory Log Files'
+  title '---## From ',encode($log)
+  title '   * Only accessible files with some content from last ',$INST_AGE,\
+             ' days have been collected.'
+  title '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              security risks. To prevent them, access the file outside the \
+              browser or use the link to save them and use an adequate viewer.'
+  if $INST_FILTER
+  {prefix
+   {write '   * Log files associated to ``',$ORACLE_HOME,'``'
+    write '   * Log files that cannot be associated to an Oracle Home'
+    write '%BR%'
+    write '|*Log File*|*Error File*|*Out File*|*Associated Oracle Home*|'
+   }
+   if or(isWindows(),isCygwin())
+    var ($ref,$flg) = (lc(catDir($ORACLE_HOME)),true)
+   else
+    var ($ref,$flg) = (catDir($ORACLE_HOME),false)
+   loop $dat (keys(%dat))
+   {var @OH = getDataValue($OH,$dat)
+    loop $cmp (@OH)
+    {if check_ora_home($dat,$ref,$flg)
+      write '|',$log{$dat},' |',$err{$dat},' |',\
+            $out{$dat},' |',join('%BR%',getDataKeys('inst',$dat)),' |'
+    }
+   }
+  }
+  else
+  {prefix
+    write '|*Log File*|*Error File*|*Out File*|*Associated Oracle Home*|'
+   loop $dat (keys(%dat))
+    write '|',$log{$dat},' |',$err{$dat},' |',\
+          $out{$dat},' |',join('%BR%',getDataKeys('inst',$dat)),' |'
+  }
+  if isCreated(true)
+  {write $TOP
+   toc '4:[[',getFile(),'][rda_report][Inventory Log Files]]'
+  }
+  call clearData('inst')
+
+=head2 repcfglog_files - Repository Configuration Log Files
+
+Reports the repository configuration-related log files from the Oracle
+Inventory. Only accessible files with some content are collected.
+
+=cut
+
+  if $cnt
+   report concat('repcfglog_files',$cnt)
+  else
+   report repcfglog_files
+  prefix
+  {write '---+!! Repository Configuration Log Files'
+   write '   * Only accessible files with some content from last ',$INST_AGE,\
+              ' days have been collected.'
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser or \
+               use the link to save them and use an adequate viewer.'
+   write '|*File Name*| *Size*|*Last Modified Date*|'
+  }
+  loop $fil (grepDir(\
+   catDir($log,'emdbprereqs','LATEST'),'^[^\.]',concat('ptm',$INST_AGE)))
+  {if testFile('fr',$fil)
+   {var $lnk = encode($fil)
+    var $siz = getSize($fil)
+    if $siz
+    {output d,concat('log_',basename($fil))
+     if ${CUR.LAST}->write_data($fil)
+      var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+     call $[OUT]->end_report(${CUR.LAST})
+    }
+    write '|',$lnk,' | ',$siz,'|',\
+              getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+  }
+  if isCreated(true)
+  {write $TOP
+   toc '4:[[',getFile(),'][rda_report][Repository Configuration Log Files]]'
+  }
+
+=head2 oui_loc[n] - Oracle Installer Location
+
+When the F<oui.loc> file is found, it indicates the Oracle Universal Installer
+location.
+
+=cut
+
+  if $cnt
+   report concat('oui_loc',$cnt)
+  else
+   report oui_loc
+  var $fil = catFile($dir,'oui.loc')
+  prefix
+  {write '---+!! Oracle Universal Installer Location'
+   write '---## From ',encode($fil)
+  }
+  call writeFile($fil)
+  if isCreated(true)
+  {write $TOP
+   toc '4:[[',getFile(),'][rda_report][Oracle Installer Location]]'
+  }
+ }
+
+=head2 install_log[n] - Install.log
+
+Looks for F<install.log> in the inventory directory.
+
+=cut
+
+ debug ' - Looking for install.log'
+ if $cnt
+  report concat('install_log',$cnt)
+ else
+  report install_log
+
+ prefix
+ {write '---+ Install.log'
+  write '---## From ',encode($dir)
+ }
+ if testFile('fr',catFile($dir,'install.log'))
+  call writeFile(lastFile())
+ if isCreated(true)
+ {write $TOP
+  toc '4:[[',getFile(),'][rda_report][Install.log]]'
+ }
+
+=head2 homes[n] - Oracle Home List
+
+Lists Oracle homes from central inventory.
+
+=cut
+
+ debug ' - Listing Oracle homes'
+ if $cnt
+ {report concat('homes',$cnt)
+
+  var $fil = catFile($dir,'ContentsXML','inventory.xml')
+  var $xml = xmlLoadFile($fil)
+  prefix
+  {write '---+ Oracle Home List'
+   write '---## Information Taken from ',encode($fil)
+   write '|*Name*|*Location*|'
+  }
+  loop $itm (xmlFind($xml,'.../HOME_LIST/HOME'))
+  {var $loc = xmlValue($itm,'LOC')
+   write '|',xmlValue($itm,'NAME'),' |',$loc,' |'
+   var $HOMES{$loc} = 1
+  }
+  if isCreated(true)
+  {write $TOP
+   toc '4:[[',getFile(),'][rda_report][Oracle Home List]]'
+  }
+ }
+ else
+ {# Share CFG reports
+  loop $id (findShares('OI_INV','CFG'))
+   toc '4:[[',setShare($id),'][rda_report][',getShare($id),']]'
+ }
+
+ # Prepare the next iteration
+ unpretoc
+ incr $cnt
+}
+
+=head2 oh_inv[n] - Oracle Home Inventory
+
+Produces a detailed inventory report based on the Oracle Home inventory
+information.
+
+=cut
+
+debug ' Inside INST module, getting Oracle home inventories (can take time)'
+
+# Share CFG reports
+debug ' - From the current Oracle home'
+pretoc '2:Oracle Home Inventory'
+loop $id (findShares('OH_INV','CFG'))
+ toc '3:[[',setShare($id),'][rda_report][',getShare($id),']]'
+
+# Treat alternate Oracle home inventory directories
+var $cnt = 0
+loop $dir (keys(%HOMES))
+{next sameDir($dir,$ORACLE_HOME)
+ if testFile('fr',catFile($dir,'ContentsXML','comps.xml'))
+ {debug ' - From ',lastFile()
+  report concat('oh_inv',incr($cnt))
+  prefix
+  {write '---+!! Inventory from ',encode(lastFile())
+   write $TOC
+  }
+  call inventory_details($dir,$CFG_INTERIM)
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][From ',encode($dir),']]'
+ }
+}
+
+=head2 make_report - Last Make Log
+
+Looks for F<install.log> and F<make.log> in the Oracle home.
+
+=cut
+
+debug ' Inside INST module, looking for install.log and make.log'
+report make_report
+
+title '---+!! Last Make Log'
+title $TOC
+prefix
+ write '---+ Install.log'
+if testFile('fr',catFile($ORACLE_HOME,'orainst','install.log'))
+ call writeFile(lastFile())
+if hasOutput(true)
+ write $TOP
+
+prefix
+ write '---+ Make.log'
+if !writeFile(catFile($ORACLE_HOME,'install','make.log'))
+{if ${RDA.UNIX}
+  write 'Could not find the make.log file in $ORACLE_HOME/install or \
+         could not read.'
+}
+if hasOutput(true)
+ write $TOP
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Last Make Log]]'
+
+=head2 rdbms_patches - RDBMS Patches
+
+For VMS, it gets the list of RDBMS patches.
+
+=cut
+
+if isVms()
+{debug ' Inside INST module, about to do get patch information'
+ report rdbms_patches
+ write '---+ RDBMS Patches'
+ call writeFile('ORA_ROOT:[PATCHES]PATCHES_HISTORY.TXT')
+ toc '2:[[',getFile(),'][rda_report][RDBMS Patches]]'
+}
+
+=head2 opatch_detail - Current Oracle Home
+
+Produces a detailed inventory report. Determines if F<opatch.pl> exists in the
+C<OPATCH_DIR>. If it does not exist, the possible reasons may be as follows:
+
+=over 2
+
+=item o The directory specified in the setup is incorrect.
+
+=item o Opatch is not valid, that is, Oracle Server is pre-Oracle 9i R2.
+
+=back
+
+=head2 opatch_all - All Oracle Homes
+
+When OPatch is available, it gives an overview of all Oracle homes.
+
+=cut
+
+elsif $USE_OPATCH
+{debug ' Inside INST module, about to do get opatch information'
+ report opatch_detail
+ toc '2:OPatch Inventory Reports'
+ toc '3:[[',getFile(),'][rda_report][Current Oracle Home]]'
+ title '---+ Detailed Inventory Report'
+
+ var $flg = false
+ if or(isWindows(),isCygwin())
+ {var ($pgm) = grepDir($OPATCH_DIR,'^opatch\.bat$','fip')
+  var $arg = concat('-oh ',$ORACLE_HOME,' 2>&1')
+ }
+ else
+ {var ($pgm) = grepDir($OPATCH_DIR,'^opatch$','fip')
+  var $arg = concat('-invPtrLoc "',$loc,'" 2>&1')
+ }
+
+ if !$pgm
+ {write 'Unable to find OPatch, in $OPATCH_DIR%BR%\
+         For more details on OPatch please check the Knowledge Article \
+         189489.1 on My Oracle Support%BR%\
+         Title: Oracle9i Data Server Interim Patch Installation (OPatch)'
+ }
+ else
+ {var $pgm = quote($pgm,'x')
+
+  # Produce the detail report
+  var $cmd = concat($pgm,' lsinventory -detail ',$arg)
+  var $sta = writeCommand($cmd)
+  if !$sta
+  {# Take care that LD_ASSUME_KERNEL is set on Linux
+   if match(getOsName(),'linux')
+   {var $key = 'LD_ASSUME_KERNEL'
+    if !defined(getEnv($key))
+    {call setEnv($key,'2.4.19')
+     var $flg = true
+     var $sta = writeCommand($cmd)
+    }
+   }
+  }
+  if !$sta
+   write 'Unable to execute OPatch'
+
+  # Produce the global report
+  report opatch_all
+  prefix
+   write '---+ All Oracle Homes'
+  call writeCommand(concat($pgm,' lsinventory -all'))
+  if isCreated(true)
+  {write $TOP
+   toc '3:[[',getFile(),'][rda_report][All Oracle Homes]]'
+  }
+
+  # Restore the environment variable
+  if $flg
+   call setEnv($key)
+ }
+}
+
+=head2 oradim_log - Oradim Log File
+
+Reports the contents of the F<oradim.log> file.
+
+=cut
+
+debug ' Inside INST module, about to do get oradim log file'
+report oradim_log
+var $fil = catFile($ORACLE_HOME,'database','oradim.log')
+prefix
+{write '---+ Oradim Log File'
+ write '---## From ',encode($fil)
+}
+call writeFile($fil)
+if isCreated(true)
+{write $TOP
+ toc '2:[[',getFile(),'][rda_report][Oradim Log File]]'
+}
+
+=head2 oracle_install - Oracle Home Installation Files
+
+Lists the contents of the Oracle home installation directories and collects the
+recent related files.
+
+=cut
+
+debug ' Inside INST module, list Oracle home installation files'
+report oracle_install
+prefix
+{write '---+!! Oracle Home Installation Directories'
+ write $TOC
+}
+var $ORACLE_BASE = find_base()
+
+call stat_dir0(catDir($ORACLE_HOME,'.patch_storage'))
+call stat_dir0(catDir($ORACLE_HOME,'assistants','dbma','logs'))
+call stat_dir0(catDir($ORACLE_HOME,'assistants','dbua','logs'))
+call stat_dir0(catDir($ORACLE_HOME,'cfgtoollogs'))
+call stat_dir0(catDir($ORACLE_HOME,'cfgtoollogs','dbca'))
+if $ORACLE_SID
+{call stat_dir0(catDir($ORACLE_HOME,'cfgtoollogs','dbca',$ORACLE_SID))
+ call stat_dir0(catDir($ORACLE_HOME,'cfgtoollogs','dbua',$ORACLE_SID,'upgrade'))
+}
+call stat_dir0(catDir($ORACLE_HOME,'cfgtoollogs','dbua','logs'))
+if !sameDir($ORACLE_HOME,$ORACLE_BASE)
+{call stat_dir0(catDir($ORACLE_BASE,'cfgtoollogs'))
+ call stat_dir0(catDir($ORACLE_BASE,'cfgtoollogs','dbca'))
+ if $ORACLE_SID
+ {call stat_dir0(catDir($ORACLE_BASE,'cfgtoollogs','dbca',$ORACLE_SID))
+  call stat_dir0(catDir($ORACLE_BASE,'cfgtoollogs','dbua',$ORACLE_SID,\
+                        'upgrade'))
+ }
+ call stat_dir0(catDir($ORACLE_BASE,'cfgtoollogs','dbua','logs'))
+}
+
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Oracle Home Installation Files]]'
+
+debug ' Inside INST module, getting Oracle home installation file content'
+var $opt = concat('pm',$INST_AGE)
+call sort_files(3,$INST_TAIL,\
+      grepDir(catDir($ORACLE_HOME,'.patch_storage'),'.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'assistants','dbma','logs'),'.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'assistants','dbua','logs'),'.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'cfgtoollogs'),'.',$opt),\
+      grepDir(catDir($ORACLE_BASE,'cfgtoollogs'),'.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'cfgtoollogs','dbca'),'.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'cfgtoollogs','dbca',$ORACLE_SID),'.',$opt),\
+      grepDir(catDir($ORACLE_BASE,'cfgtoollogs','dbca'),'.',$opt),\
+      grepDir(catDir($ORACLE_BASE,'cfgtoollogs','dbca',$ORACLE_SID),'.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'cfgtoollogs','dbua','logs'),'.',$opt),\
+      grepDir(catDir($ORACLE_BASE,'cfgtoollogs','dbua','logs'),'.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'cfgtoollogs','dbua',$ORACLE_SID,'upgrade'),\
+              '.',$opt),\
+      grepDir(catDir($ORACLE_BASE,'cfgtoollogs','dbua',$ORACLE_SID,'upgrade'),\
+              '.',$opt),\
+      grepDir(catDir($ORACLE_HOME,'cfgtoollogs','opatch'),'.',$opt))
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>, L<library|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.1:  Raul de Diego Garcia.
+
+=item RDA 4.2:  Noriyuki Kamei.
+
+=item RDA 4.3:  Satyanarayana Garaga, John Peeken.
+
+=item RDA 4.10: Daniel Mortimer.
+
+=item RDA 4.11: Alain Richy.
+
+=item RDA 4.12: Francois Lange.
+
+=item RDA 4.15: Grant Hayden, Eliane Papillon Le Noc, Wes Root.
+
+=item RDA 4.19: Roelof Van Suilichem.
+
+=item RDA 4.26: Laurence De Sulzer Wart, Eliane Papillon Le Noc.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

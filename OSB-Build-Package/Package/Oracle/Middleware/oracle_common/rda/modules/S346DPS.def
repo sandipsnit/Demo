@@ -1,0 +1,261 @@
+# S346DPS.def: Collects Oracle DSEE Directory Proxy Server Information
+# $Id: S346DPS.def,v 1.4 2012/08/22 12:54:26 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S346DPS.def,v 1.4 2012/08/22 12:54:26 mschenke Exp $
+#
+# Change History
+# 20120821  KRA  Improve collection.
+
+=head1 NAME
+
+S346DPS - Collects Oracle DSEE Directory Proxy Server Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Directory Server Enterprise Edition (DSEE)
+Directory proxy Server-related information. The module covers ODSEE Directory
+Proxy Server release 6.x and later.
+
+The following reports can be generated and are regrouped under C<Directory
+Proxy Server>:
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing DPS module ...',tput('off')
+
+# Initialization
+var $DPS_HOME = getSetting('DPS_HOME','')
+var $INS_HOME = getSetting('DPS_INSTANCE_HOME','')
+
+var $MOD = cond(isUnix(),'fx','fr')
+
+if or(testFile($MOD,catFile($DPS_HOME,'bin',${AS.EXE:'dpadm'})),\
+      testFile($MOD,catFile($DPS_HOME,'dps6','bin',${AS.EXE:'dpadm'})))
+ var $DPADM = lastCommand() 
+else
+ var $DPADM = undef
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Directory Proxy Server'
+
+# Load the common macros
+run library()
+
+=head1 DIRECTORY PROXY SERVER INFORMATION
+
+=head2 dpsstate - DPS State Information
+
+Gathers Oracle DSEE Directory Proxy Server state information on versions
+11.1.1.5 and higher using F<dpsstate> command.
+
+=cut
+
+var $ver = ''
+if grepCommand(concat($DPADM,' -V'),'^dpadm\s*:\s*(\S+)\s*','f1')
+ var ($ver) = last
+if compare('valid',$ver,'11.1.1.5')
+{debug ' Inside DPS module, gathering state information'
+ if testFile($MOD,catFile($DPS_HOME,'bin','support_tools',${AS.EXE:'dpsstate'}))
+ {var ($box,$DPSSTATE) = (cleanBox(),lastCommand())
+  if compare('valid',$ver,'11.1.1.7')
+   var $cmd = concat($DPSSTATE,' -i ',quote($INS_HOME,'x'),\
+                               ' -o ',quote($box,'x'))
+  else
+   var $cmd = concat($DPSSTATE,' -a ',quote($INS_HOME,'x'),\
+                               ' -o ',quote($box,'x'))
+  call command($cmd)
+  if grepDir($box,'^state\.zip$')
+  {var ($nam) = (last)
+   data $nam
+   if transfer($box,$nam,${OUT.C},$trg = getFile('.'))
+   {report dpsstate
+    write '---+ DPS State Information'
+    write '   * Links point to files that have been collected in their \
+                original format. Opening them directly in your browser can \
+                present security risks. To prevent them, access the file \
+                outside the browser or use the link to save them and use an \
+                adequate viewer.'
+    write '|*File Name*|'
+    write '|[[',$trg,'][_blank][',$nam,']]|'
+    toc '2:[[',getFile(),'][rda_report][DPS State Information]]'
+   }
+  }
+  call cleanBox()
+ }
+}
+
+=head2 param_info - Parameter Information
+
+Gathers Oracle DSEE Directory Proxy Server parameter information on versions
+earlier than 11.1.1.5.
+
+=cut
+
+else
+{if ?$DPADM
+ {debug ' Inside DPS module, gathering parameter information'
+  report param_info
+  var $cmd = concat($DPADM,' info ',quote($INS_HOME,'x'))
+  prefix
+  {write '---+ Oracle DSEE Directory Proxy Server Parameter Information'
+   write '---## Using: ',encode($cmd)
+   write '|*Parameter*|*Value*|'
+  }
+  call loadCommand($cmd)
+  loop $lin (getLines())
+  {var ($key,$val) = split('\s*:\s*',$lin,2)
+   if match($key,'^Non-secure port')
+    var $prt = trim($val)
+   write '|',$key,' |',$val,' |'
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Parameter Information]]'
+
+=head2 version_info - Version Information
+
+Gathers Oracle DSEE Directory Proxy Server version information on versions
+earlier than 11.1.1.5.
+
+=cut
+
+  debug ' Inside DPS module, gathering version information'
+  report version_info
+  var $cmd = concat($DPADM,' -V')
+  prefix
+  {write '---+ Oracle DSEE Directory Proxy Server Version Information'
+   write '---## Using: ',encode($cmd)
+  }
+  call writeCommand($cmd)
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Version Information]]'
+ }
+
+=head2 memory_stat - Memory Statistics
+
+Gathers Oracle DSEE Directory Proxy Server instance memory statistics on
+versions earlier than 11.1.1.5 using the F<ldapsearch> command.
+
+=cut
+
+ if and(defined($prt),\
+   or(testFile($MOD,catFile($DPS_HOME,'dsrk','bin',${AS.EXE:'ldapsearch'})),\
+      testFile($MOD,catFile($DPS_HOME,'dsrk6','bin',${AS.EXE:'ldapsearch'}))))
+ {debug ' Inside DPS module, gathering the instance memory statistics'
+  var $pgm = lastCommand()
+
+  # Create a password file
+  var $bnd = quote(createTemp('BIND','.tmp',false),'x')
+  if getSetting('SQL_PASSWORD_DPS_DIRECTORY_MANAGER')
+   var ($pwd) = unpack('u',last)
+  else
+   var $pwd = askPassword('Enter directory manager password:')
+  call writeTemp('BIND',$pwd)
+  call closeTemp('BIND')
+
+  # Get the directory manager
+  var $mgr = 'cn=Proxy Manager'
+  if grepFile(catFile($INS_HOME,'config','conf.ldif'),\
+              '^configManagerDN:\s*(.*?)\s*$','f1')
+   var ($mgr) = last
+  var $cmd = concat($pgm,' -T -p ',$prt,' -D "',$mgr,'" -j ',$bnd,\
+                    ' -s sub -b "cn=monitor" "(&(objectClass=*))" \*')
+
+  # Produce the report
+  report memory_stat
+  prefix
+  {write '---+ Oracle DSEE Directory Proxy Server Memory Statistics \
+               Information'
+   write '---## Using: ',encode($cmd)
+  }
+  call writeCommand(concat($cmd,' 2>&1'))
+  if isCreated(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][Memory Statistics]]'
+  }
+
+  # Unlink the password file
+  call unlinkTemp('BIND')
+ }
+
+=head1 INSTANCE INFORMATION
+
+=head2 Configuration Files
+
+Gathers Oracle DSEE Directory Proxy Server instance-related configuration files
+on versions earlier than 11.1.1.5.
+
+=cut
+
+ if testDir('d',$INS_HOME)
+ {debug ' Inside DPS module, collecting the instance configuration files'
+  pretoc '2:Configuration Files'
+  call sort_files(3,0,catFile($INS_HOME,'config','state'),\
+                      grepDir(catDir($INS_HOME,'config'),'\.ldif','ip'))
+  unpretoc
+
+=head2 Log Files
+
+Gathers Oracle DSEE Directory Proxy Server instance-related log files on
+versions earlier than 11.1.1.5.
+
+=cut
+
+  # Macro to get the log files
+  macro get_logs
+  {var (\%log,$pth) = @arg
+
+   if testFile('fr',$pth)
+    var $log{$pth} = 1
+   var ($dir,$bas) = parseFile($pth)
+   var ($pth) = reverse(grepDir($dir,concat('^',$bas,'\.\d{8}-\d{6}$'),'np'))
+   if testFile('fr',$pth)
+    var $log{$pth} = 2
+  }
+
+  debug ' Inside DPS module, collecting the instance log files'
+  var (%ACCESSLOG,%ERRORLOG) = ()
+  loop $lin (grepFile(catFile($INS_HOME,'config','conf.ldif'),\
+                      '^file_logFileName:','ij'))
+  {var $str = field(':\s*',1,$lin)
+   if !isAbsolute($fil = catFile($str))
+    var $fil = catFile($INS_HOME,$fil)
+   if match($str,'access')
+    call get_logs(\%ACCESSLOG,$fil)
+   elsif match($str,'errors')
+    call get_logs(\%ERRORLOG,$fil)
+  }
+  pretoc '2:Log Files'
+  call sort_files(3,0,keys(%ACCESSLOG),keys(%ERRORLOG))
+  unpretoc
+ }
+}
+unpretoc
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.26: Lee Trujillo.
+
+=item RDA 4.29: Lee Trujillo.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

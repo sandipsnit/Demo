@@ -1,0 +1,479 @@
+<sdp_diaglet product="Portal" set="P305PDA_gen" title="Oracle Portal Postinstall (generic)" type="P">
+<sdp_meta id="$Id: P305PDA_gen.xml,v 2.3 2010/12/02 13:09:19 mschenke Exp $" type="version"/>
+<sdp_meta author="LDE" change="Improve Documentation" date="20101202" type="history"/>
+<sdp_content set="P305PDA_gen" title="Oracle Portal Postinstall (generic)" type="check">
+<sdp_group>
+<sdp_rule id="P00010" mode="RECORD" name="SystemVariables">
+<sdp_command type="SQL"><![CDATA[DEFINE runos=''
+COL runos new_value runos_new
+VARIABLE checkos VARCHAR2(10)
+DECLARE
+  oscheck VARCHAR2(25);
+BEGIN
+  SELECT Decode(Substr(value,1,1),'/','env','set') INTO oscheck FROM v$parameter
+    WHERE Upper(name) = 'CONTROL_FILES' ;
+  :checkos := oscheck;
+END;
+/
+SELECT :checkos runos FROM dual;
+HOST &&runos_new;]]></sdp_command>
+<sdp_description><![CDATA[This rule lists the operating system variables.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="P00011" mode="RECORD" name="Host Name">
+<sdp_command type="SQL"><![CDATA[SELECT host_name FROM v$instance;]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the host name.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="P00012" mode="RECORD" name="PortalRepository">
+<sdp_command type="SQL"><![CDATA[SELECT banner FROM v$version;]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the Portal Repository database version.
+For information about Portal Patches and Alerts see the document below:
+Knowledge Article 229536.1 Support Status and Alerts for Oracle Portal Release 2 (9.0.2.x)]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="P00013" mode="VERIFY" name="PlSqlToolKit">
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON
+BEGIN
+  dbms_output.put_line(owa_util.get_version);
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the PL/SQL Toolkit version.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="V+" minimum="9.0.2.0.1" result="PASSED"><![CDATA[The PL/SQL Toolkit version is 9.0.2.0.1 or later.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The PL/SQL Toolkit version must be 9.0.2.0.1 or later.
+You can install PL/SQL Toolkit and other relevant packages by running the owaload.sql script connected to the database as a SYS user. Use the latest script available from the following location:
+  ``$ORACLE_HOME/Apache/modplsql/owa/``
+  ``$ORACLE_HOME/rdbms/admin/``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00014" mode="VERIFY" name="InvalidObjects">
+<sdp_command type="SQL"><![CDATA[SELECT Count(*) "Invalid Objects" FROM all_objects WHERE status = 'INVALID';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for any invalid objects in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="0" result="PASSED"><![CDATA[There should be no invalid objects in the database.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Compile invalid objects by running the invalid package recompilation utility (utlrp.sql) connected to the database as SYS user. This utility is located at:
+  ``$ORACLE_HOME/rdbms/admin/utlrp.sql``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00015" mode="VERIFY" name="InvalidPortalObjects">
+<sdp_command type="SQL"><![CDATA[SELECT Count(*) "Invalid Objects" FROM all_objects
+  WHERE status = 'INVALID'
+  AND owner = 'PORTAL';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for invalid objects in the PORTAL schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="0" result="PASSED"><![CDATA[There should not be any invalid objects in the database, especially in the PORTAL schema.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Compile invalid objects by running the invalid package recompilation utility (utlrp.sql) connected to the database as SYS user. This utility is located at:
+   ``$ORACLE_HOME/rdbms/admin/utlrp.sql``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00016" mode="VERIFY" name="SYSJavaObjects">
+<sdp_command type="SQL"><![CDATA[SELECT count(*) FROM dba_objects
+  WHERE object_type LIKE 'JAVA%'
+  AND owner = 'SYS';]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the number of Java objects in the SYS schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="10000" result="PASSED"><![CDATA[The total number of Java objects in the SYS schema in an Oracle 9i database is expected to be more than 10000.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle JVM is incorrectly configured or it must be enabled in the database. At least 11125 Java objects are expected in the SYS schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00017" mode="VERIFY" name="ORDSYSJavaObjects">
+<sdp_command type="SQL"><![CDATA[SELECT count(*) FROM dba_objects
+  WHERE object_type LIKE 'JAVA%'
+  AND owner = 'ORDSYS';]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the number of Java objects in the ORDSYS schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="863" result="PASSED"><![CDATA[The total number of Java objects in the ORDSYS schema in an Oracle 9i database is expected to be more than 863.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle JVM is incorrectly configured or it must be enabled in the database. At least 863 Java objects are expected in the ORDSYS schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00018" mode="VERIFY" name="WKSYSJavaObjects">
+<sdp_command type="SQL"><![CDATA[SELECT count(*) FROM dba_objects
+  WHERE object_type LIKE 'JAVA%'
+  AND owner = 'WKSYS';]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the number of Java objects in the WKSYS schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="40" result="PASSED"><![CDATA[The total number of Java objects in the WKSYS schema in an Oracle 9i database is expected to be more than 40.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle JVM is incorrectly configured or it must be enabled in the database. At least 40 Java objects are expected in the WKSYS schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00019" mode="VERIFY" name="PORTALJavaObjects">
+<sdp_command type="SQL"><![CDATA[SELECT count(*) FROM dba_objects
+  WHERE object_type LIKE 'JAVA%'
+  AND owner = 'PORTAL';]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the number of Java objects in the PORTAL schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="524" result="PASSED"><![CDATA[The total number of Java objects in the PORTAL schema in an Oracle 9i database is expected to be more than 520.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle JVM is incorrectly configured or it must be enabled in the database. At least 524 Java objects are expected in the PORTAL schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00020" mode="VERIFY" name="PORTALIntermediaObjects">
+<sdp_command type="SQL"><![CDATA[SELECT Count(*) FROM dba_policies
+  WHERE object_owner = 'PORTAL';]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the number of Intermedia objects in the PORTAL schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="198" result="PASSED"><![CDATA[The total number of Intermedia objects in the PORTAL schema in an Oracle 9i database is expected to be more than 198.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle Intermedia is incorrectly configured or it must be enabled in the database. At least 198 Intermedia policies are expected in the PORTAL schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00021" mode="VERIFY" name="PORTALHttpListener">
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON
+DECLARE
+    req  utl_http.req;
+    resp utl_http.resp;
+    name  VARCHAR2(256);
+    value VARCHAR2(1024);
+    v1 VARCHAR2(10) := 'FAILED';
+    curl VARCHAR2(500);
+    cursor config_info_cur is SELECT ls_login_url FROM PORTAL.wwsec_enabler_config_info$;
+BEGIN
+    FOR my_cur IN config_info_cur LOOP
+    BEGIN
+      curl := Substr(my_cur.ls_login_url,1,Instr(my_cur.ls_login_url,'/pls',1,1))||'images/home.gif';
+--      dbms_output.put_line(To_Char(config_info_cur%ROWCOUNT)||'. Testing => '||curl);
+      req := utl_http.begin_request(curl);
+      utl_http.set_header(req, 'User-Agent', 'Mozilla/4.0');
+      resp := utl_http.get_response(req);
+      IF resp.status_code = utl_http.http_ok THEN
+	v1 := 'SUCCESS';
+/*
+	FOR i IN 1..utl_http.get_header_count(resp) LOOP
+	  utl_http.get_header(resp, i, name, value);
+	  dbms_output.put_line(name || ': ' || Substr(value,1,225));
+	END LOOP;
+        dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+*/
+	utl_http.end_response(resp);
+      END IF;
+--      dbms_output.put_line(v1);
+   EXCEPTION
+      WHEN utl_http.request_failed THEN
+        NULL;
+--      dbms_output.put_line('FAILED');
+   END;
+   END LOOP;
+   dbms_output.put_line(v1);
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the Oracle9iAS HTTP Server Listener in Application Server.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="SUCCESS" result="PASSED"><![CDATA[Oracle9iAS HTTP Server (Application Server) is accessible.
+Note: Where Portal is accessed from multiple middle-tiers and/or authenticated against multiple SSO/OID, all the Listeners are tested in HTTP protocol and one SUCCESS is reported as SUCCESS for all. Therefore, all the entries in the Portal configuration table (PORTAL.wwsec_enabler_config_info$) are tested in HTTP protocol.
+For information about each entry in the Portal configuration table, modify the fragment of code listed under the current rule (and uncomment all code) and execute it in SQL*Plus.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Verify that Oracle HTTP Server is started. Enter the following URL in the browser:
+  ``http://servername:port/``
+If you cannot access this page, verify that the Oracle HTTP Server (OHS) is up and running. You can do this from the Oracle Enterprise Manager (EM) Web site or from the command line using DCM:
+  ``$ dcmctl getstate -v``
+Starting services using EM Web site:
+The EM Web site is accessed through a Web browser with the following URL:
+  ``http://servername:1810``
+For the correct URL for your installation, refer to the setupinfo.txt file located in $ORA_HOME/Apache/Apache.
+If the Infrastructure and Middle-tier are installed on the same server, then ``$ORA_HOME`` is the Portal Application Server ``$ORACLE_HOME``.
+- Navigate to the Portal Application Server Farm.
+- Select the service and Start.
+Starting services using DCM:
+- Start HTTP Server and OC4J
+  ``$ dcmctl start``
+- Start HTTP Server only
+  ``$ dcmctl start -ct ohs -v``
+- Start OC4J only
+  ``$ dcmctl start -ct oc4j -v``
+For additional information, see Knowledge Article 200475.1 9iAS Release 2 (9.0.2) Start/Stop Instructions.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00022" mode="VERIFY" name="OC4JPortal">
+<sdp_command type="SQL"><![CDATA[SET DEFINE OFF
+SET SERVEROUTPUT ON
+DECLARE
+    req  utl_http.req;
+    resp utl_http.resp;
+    name  VARCHAR2(256);
+    value VARCHAR2(1024);
+    v1 VARCHAR2(10) := 'FAILED';
+    curl VARCHAR2(500);
+    cursor config_info_cur is SELECT lsnr_token FROM PORTAL.wwsec_enabler_config_info$;
+BEGIN
+    FOR my_cur IN config_info_cur LOOP
+    BEGIN
+      curl := 'http://'||my_cur.lsnr_token||'/portal/page?_pageid=5,1,5_28749&_dad=portal&_schema=PORTAL';
+--      dbms_output.put_line(To_Char(config_info_cur%ROWCOUNT)||'. Testing => '||curl);
+      req := utl_http.begin_request(curl);
+      utl_http.set_header(req, 'User-Agent', 'Mozilla/4.0');
+      resp := utl_http.get_response(req);
+      IF resp.status_code = utl_http.http_ok THEN
+	v1 := 'SUCCESS';
+/*
+	FOR i IN 1..utl_http.get_header_count(resp) LOOP
+	  utl_http.get_header(resp, i, name, value);
+	  dbms_output.put_line(name || ': ' || Substr(value,1,225));
+	END LOOP;
+        dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+*/
+	utl_http.end_response(resp);
+      END IF;
+--      dbms_output.put_line(v1);
+   EXCEPTION
+      WHEN utl_http.request_failed THEN
+        NULL;
+--      dbms_output.put_line('FAILED');
+   END;
+   END LOOP;
+   dbms_output.put_line(v1);
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the Oracle9iAS OC4J instance for Portal Application.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="SUCCESS" result="PASSED"><![CDATA[Oracle9iAS OC4J Portal instance (OC4J_Portal) is functional.
+Note: Where Portal is accessed from multiple middle-tiers and/or authenticated against multiple SSO/OID, all the listeners are tested in HTTP protocol and one SUCCESS is reported as SUCCESS for all. In other words, all the entries in the Portal configuration table (PORTAL.wwsec_enabler_config_info$) are tested in HTTP protocol.
+For information about each entry in the Portal configuration table, modify the fragment of code listed under the current rule (and uncomment all code) and execute it in SQL*Plus.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Verify that the OC4J Portal instance (OC4J_PORTAL) is started. Enter the following URL:
+  ``http://servername:port/pls/portal``
+Log in to this page as the orcladmin user (default password is the same as ias_admin user).
+If you cannot access this page, verify that all the services of Application Server are up and running. You can do this from the Oracle Enterprise Manager (EM) Web site or from the command line using DCM:
+  ``$ dcmctl getstate -v``
+Starting services using the EM Web site:
+The EM Web site is accessed through a Web browser using the following URL:
+  ``http://servername:1810``
+For the correct URL for your installation, refer to the ``setupinfo.txt`` file located in ``$ORA_HOME/Apache/Apache``.
+If both Infrastructure and Middle-tier are installed on the same server, then ``$ORA_HOME`` is the Portal Application Server ``$ORACLE_HOME``.
+- Navigate to the Application Server Farm.
+- Select the service and Start.
+Starting services using DCM:
+- Start HTTP Server and OC4J
+  ``$ dcmctl start -v``
+- Start HTTP Server only
+  ``$ dcmctl start -ct ohs -v``
+- Start OC4J only
+  ``$ dcmctl start -ct oc4j -v``
+For additional information, see Knowledge Article 200475.1 9iAS Release 2 (9.0.2) Start/Stop Instructions and Knowledge Article 206191.1 Troubleshooting Oracle Portal 9.0.x.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00031" mode="VERIFY" name="InfraHttpListener">
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON
+DECLARE
+    req  utl_http.req;
+    resp utl_http.resp;
+    name  VARCHAR2(256);
+    value VARCHAR2(1024);
+    v1 VARCHAR2(10) := 'FAILED';
+    curl VARCHAR2(500);
+    cursor config_info_cur is SELECT ls_login_url FROM PORTAL.wwsec_enabler_config_info$;
+BEGIN
+    FOR my_cur IN config_info_cur LOOP
+    BEGIN
+      curl := Substr(my_cur.ls_login_url,1,Instr(my_cur.ls_login_url,'/pls',1,1))||'images/home.gif';
+--      dbms_output.put_line(To_Char(config_info_cur%ROWCOUNT)||'. Testing => '||curl);
+      req := utl_http.begin_request(curl);
+      utl_http.set_header(req, 'User-Agent', 'Mozilla/4.0');
+      resp := utl_http.get_response(req);
+      IF resp.status_code = utl_http.http_ok THEN
+	v1 := 'SUCCESS';
+/*
+	FOR i IN 1..utl_http.get_header_count(resp) LOOP
+	  utl_http.get_header(resp, i, name, value);
+	  dbms_output.put_line(name || ': ' || Substr(value,1,225));
+	END LOOP;
+        dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+*/
+	utl_http.end_response(resp);
+      END IF;
+--      dbms_output.put_line(v1);
+   EXCEPTION
+      WHEN utl_http.request_failed THEN
+        NULL;
+--      dbms_output.put_line('FAILED');
+   END;
+   END LOOP;
+   dbms_output.put_line(v1);
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the Oracle9iAS HTTP Server Listener Infrastructure.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="SUCCESS" result="PASSED"><![CDATA[Oracle9iAS HTTP Server (Infrastructure) is accessible.
+Note: Where Portal is accessed from multiple middle-tiers and/or authenticated against multiple SSO/OID, all the Listeners are tested in HTTP protocol and one SUCCESS is reported as SUCCESS for all. In other words, all the entries in the Portal configuration table (PORTAL.wwsec_enabler_config_info$) are tested in HTTP protocol.
+For information about each entry in the Portal configuration table, modify the fragment of code listed under the current rule (and uncomment all code) and execute it in SQL*Plus.
+For additional information, see Knowledge Article 226750.1 either Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Verify that the Oracle HTTP Server is up and running. Enter the following URL:
+  ``http://servername:port/``
+If you cannot access this page, verify the status of Oracle HTTP Server. You can do this from the Oracle Enterprise Manager (EM) Web site or from the command line using DCM:
+  ``$ dcmctl getstate -v``
+Starting services using the EM Web site:
+The EM site is accessed through a Web browser using the following URL:
+  ``http://servername:1810``
+For the correct URL for your installation, refer to the setupinfo.txt file located in $ORA_HOME/Apache/Apache.
+If both Infrastructure and Middle-tier are installed on the same server, then $ORA_HOME is the Infrastructure $ORACLE_HOME.
+- Navigate to the Infrastructure Farm.
+- Select the service and Start.
+Starting services using DCM:
+- Start HTTP Server and OC4J
+  ``$ dcmctl start -v``
+- Start HTTP Server only
+  ``$ dcmctl start -ct ohs -v``
+- Start OC4J only
+  ``$ dcmctl start -ct oc4j -v``
+For additional information, see Knowledge Article 200475.1 9iAS Release 2 (9.0.2) Start/Stop Instructions and Knowledge Article 226750.1 Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00032" mode="VERIFY" name="InfraSSO">
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON
+DECLARE
+    req  utl_http.req;
+    resp utl_http.resp;
+    name  VARCHAR2(256);
+    value VARCHAR2(1024);
+    v1 VARCHAR2(10) := 'FAILED';
+    curl VARCHAR2(500);
+    cursor config_info_cur is SELECT ls_login_url FROM PORTAL.wwsec_enabler_config_info$;
+BEGIN
+    FOR my_cur IN config_info_cur LOOP
+    BEGIN
+      curl := my_cur.ls_login_url;
+--      dbms_output.put_line(To_Char(config_info_cur%ROWCOUNT)||'. Testing => '||curl);
+      req := utl_http.begin_request(curl);
+      utl_http.set_header(req, 'User-Agent', 'Mozilla/4.0');
+      resp := utl_http.get_response(req);
+      IF resp.status_code = utl_http.http_ok THEN
+	v1 := 'SUCCESS';
+/*
+	FOR i IN 1..utl_http.get_header_count(resp) LOOP
+	  utl_http.get_header(resp, i, name, value);
+	  dbms_output.put_line(name || ': ' || Substr(value,1,225));
+	END LOOP;
+        dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+*/
+	utl_http.end_response(resp);
+      END IF;
+--      dbms_output.put_line(v1);
+   EXCEPTION
+      WHEN utl_http.request_failed THEN
+        NULL;
+--      dbms_output.put_line('FAILED');
+   END;
+   END LOOP;
+   dbms_output.put_line(v1);
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule checks Oracle9iAS Single Sign On Infrastructure.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="SUCCESS" result="PASSED"><![CDATA[Oracle9iAS Single Sign On (Infrastructure) is accessible.
+For additional information, see Knowledge Article 226750.1 Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Verify that Oracle9iAS Single Sign-On Server is configured properly. Enter the following URL:
+  ``http://servername:port/pls/orasso``
+Log in as the orcladmin user (default password is the same as ias_admin user).
+If you cannot access this page, verify the status of Oracle HTTP Server. You can do this from the Oracle Enterprise Manager (EM) Web site or from the command line using DCM:
+  ``$ dcmctl getstate -v``
+Starting services using the EM Web site:
+The EM Web site is accessed through a Web browser using the following URL:
+  ``http://servername:1810``
+For the correct URL for your installation, refer to the setupinfo.txt file located in $ORA_HOME/Apache/Apache.
+If both Infrastructure and Middle-tier are installed on the same server, then $ORA_HOME is the Infrastructure $ORACLE_HOME.
+- Navigate to the Infrastructure Farm.
+- Select the service and Start.
+Starting services using DCM:
+- Start HTTP Server and OC4J
+  ``$ dcmctl start -v``
+- Start HTTP Server only
+  ``$ dcmctl start -ct ohs -v``
+- Start OC4J only
+  ``$ dcmctl start -ct oc4j -v``
+For additional information, see Knowledge Article 200475.1 9iAS Release 2 (9.0.2) Start/Stop Instructions, Knowledge Article 206191.1 Troubleshooting Oracle Portal 9.0.x, and Knowledge Article 226750.1 Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00033" mode="VERIFY" name="InfraOID">
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON
+DECLARE
+    req  utl_http.req;
+    resp utl_http.resp;
+    name  VARCHAR2(256);
+    value VARCHAR2(1024);
+    v1 VARCHAR2(10) := 'FAILED';
+    curl VARCHAR2(500);
+    cursor config_info_cur is SELECT ls_login_url FROM PORTAL.wwsec_enabler_config_info$;
+BEGIN
+    FOR my_cur IN config_info_cur LOOP
+    BEGIN
+      curl := Substr(my_cur.ls_login_url,1,Instr(my_cur.ls_login_url,'/pls',1,1))||'oiddas';
+--      dbms_output.put_line(To_Char(config_info_cur%ROWCOUNT)||'. Testing => '||curl);
+      req := utl_http.begin_request(curl);
+      utl_http.set_header(req, 'User-Agent', 'Mozilla/4.0');
+      resp := utl_http.get_response(req);
+      IF resp.status_code = utl_http.http_ok THEN
+	v1 := 'SUCCESS';
+/*
+	FOR i IN 1..utl_http.get_header_count(resp) LOOP
+	  utl_http.get_header(resp, i, name, value);
+	  dbms_output.put_line(name || ': ' || Substr(value,1,225));
+	END LOOP;
+        dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+*/
+	utl_http.end_response(resp);
+      END IF;
+--      dbms_output.put_line(v1);
+   EXCEPTION
+      WHEN utl_http.request_failed THEN
+        NULL;
+--      dbms_output.put_line('FAILED');
+   END;
+   END LOOP;
+   dbms_output.put_line(v1);
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for Oracle Internet Directory Infrastructure.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="SUCCESS" result="PASSED"><![CDATA[Oracle Internet Directory (Infrastructure) is accessible.
+For additional information, see Knowledge Article 226750.1 Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Verify that Oracle Internet Directory is accessible. Enter the following URL:
+  ``http://servername:Port/oiddas``
+Log in as the orcladmin user (default password is the same as ias_admin user).
+If you cannot access this page, verify that Delegated Access Services (OC4J_DAS) is started. You can do this from the Oracle Enterprise Manager (EM) Web site or from the command line using DCM:
+  ``$ dcmctl getstate -v``
+Starting services using the EM Web site:
+EM Web Site is accessed through a Web browser using the following URL:
+  ``http://servername:1810``
+For the correct URL for your installation, refer to the setupinfo.txt file located in $ORA_HOME/Apache/Apache.
+If both Infrastructure and Middle-tier are installed on the same server, then $ORA_HOME is the Infrastructure $ORACLE_HOME.
+- Navigate to the Infrastructure Farm.
+- Select the service and Start.
+Starting services using DCM:
+- Start HTTP Server and OC4J
+  ``$ dcmctl start -v``
+- Start HTTP Server only
+  ``$ dcmctl start -ct ohs -v``
+- Start OC4J only
+  ``$ dcmctl start -ct oc4j -v``
+For additional information, see Knowledge Article 200475.1 9iAS Release 2 (9.0.2) Start/Stop, Instructions Knowledge Article 206191.1 Troubleshooting Oracle Portal 9.0.x, and Knowledge Article 226750.1 Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="P00041" mode="VERIFY" name="EMWebsite">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="P00011" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires rule A00011.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON SIZE 10000 FORMAT WOR
+DEFINE EMWebsiteHost=%P00011%;
+SET DEFINE ON
+DECLARE
+  req   utl_http.req;
+  resp  utl_http.resp;
+  name  VARCHAR2(256);
+  value VARCHAR2(1024);
+  iURL  VARCHAR2(100) := 'http://&EMWebsiteHost:1810/';
+BEGIN
+  req := utl_http.begin_request(iURL);
+  utl_http.set_header(req, 'User-Agent', 'Mozilla/4.0');
+  resp := utl_http.get_response(req);
+  IF resp.status_code = '200' THEN
+    dbms_output.put_line('Enterprise Manager Website(EMCTL) is started.');
+    dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+    dbms_output.put_line('HTTP response status code: ' || resp.status_code);
+    dbms_output.put_line('HTTP response reason phrase: ' || resp.reason_phrase);
+    FOR i IN 1..utl_http.get_header_count(resp) LOOP
+      utl_http.get_header(resp, i, name, value);
+      dbms_output.put_line(name || ': ' || Substr(value,1,225));
+    END LOOP;
+  ELSE
+    dbms_output.put_line('Enterprise Manager Web site (EMCTL) is not started');
+  END IF;
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule ensures that the Enterprise Manager Web site is shut down.]]></sdp_description>
+</sdp_rule>
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

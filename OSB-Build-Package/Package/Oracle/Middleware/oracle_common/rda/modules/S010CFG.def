@@ -1,0 +1,393 @@
+# S010CFG.def: Collects Key Configuration Information
+# $Id: S010CFG.def,v 2.10 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S010CFG.def,v 2.10 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S010CFG - Collects Key Configuration Information
+
+=head1 DESCRIPTION
+
+This module performs the gathering of key configuration information for the RDA
+process.
+
+The following reports can be generated and are regrouped under C<Overview>:
+
+=cut
+
+echo tput('bold'),'Processing CFG module ...',tput('off')
+if !isFiltered()
+ toc '0:Executed on ',${RDA.HOST}
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME')
+var $CFG_INTERIM = getSetting('CFG_INTERIM')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Overview'
+
+# Load the common macros
+run INSTinfo()
+
+=head2 report - Report Settings
+
+Produces an overview of the main current settings, as well as some statistics
+about the SQL statement executions. This report contains basic runtime
+information only. You can find all gathered data by using the links in the
+index frame. The END module generates the report.
+
+=cut
+
+toc '2:[[%MRC:S999END%',getFile('report','S999END'),\
+    '][rda_report][Report Settings]]'
+
+=head2 system - System Information
+
+Produces an overview of key system configuration information (for example,
+CPUs and memory). The END module generates the report.
+
+=cut
+
+toc '2:[[',getFile('system','S999END'),'][rda_report][System Information]]'
+
+=head2 catalog - Collected Files
+
+Produces an overview of the collected files, with an indication about the
+modules that collect them. The END module generates the report itself unless
+the security filter is enabled.
+
+=cut
+
+if !isFiltered()
+ toc '2:[[%MRC:S999END%',getFile('files','S999END'),\
+     '][rda_report][Collected Files]]'
+
+=head2 database - Database Information
+
+When the database is installed, it gets the product versions and determines
+which version of the database is installed. Next, it gets additional
+information about the database from C<V$Database>, C<V$Instance>. Finally, it
+executes a F<tnsping> and collects connection characteristics. The F<tnsping>
+command execution is limited to 30 seconds.
+
+=cut
+
+section db
+
+if getSetting('DATABASE_INSTALLED')
+{# Get the database settings
+ var $ORACLE_SID = getSetting('ORACLE_SID')
+ run DBinfo()
+
+ # Determine the database version
+ debug ' Inside CFG module, identifying the database version'
+ if get_db_version()
+ {var $DATABASE_VERSION = last
+  call setSetting('DATABASE_VERSION',$DATABASE_VERSION,'T','Database Version')
+ }
+
+ # Prepare the report
+ debug ' Inside CFG module, gathering key database information'
+ report database
+ var $TTL = '---+!! Database Information'
+ var @TTL = ('',\
+  '---+ Database Overview',\
+  '---+ V$Database',\
+  '---+ V$Version')
+ var @HDR = ('',\
+  undef,\
+  undef,\
+  '|*Banner*|')
+ set $sql
+ {SELECT '|*DB Name*|' ||
+ "       d.name  || ' |' || CHR(10) ||
+ "       '|*Global Name*|' ||
+ "       g.global_name  || ' |' || CHR(10) ||
+ "       '|*Host Name*|' ||
+ "       i.host_name  || ' |' || CHR(10) ||
+ "       '|*Instance Name*|' ||
+ "       i.instance_name  || ' |' || CHR(10) ||
+ "       '|*Instance Start Time*|' ||
+ "       TO_CHAR(i.startup_time,'DD-Mon-YYYY HH24:MI:SS') || ' |' || CHR(10) ||
+ "       '|*Restricted Mode*|' ||
+ "       DECODE(i.logins,'RESTRICTED','YES','NO')  || ' |' || CHR(10) ||
+ "       '|*Archive Log Mode*|' ||
+ "       d.log_mode  || ' |'
+ " FROM v$database d, v$instance i, global_name g;
+ "PROMPT ___Macro_separator(2)___
+ }
+ if match($DATABASE_VERSION,'^7')
+ {var $HDR[2] = '|*Name*|*Date Created*|*Log Mode*|'
+  append $sql
+  {SELECT '|' ||
+  "       d.name || '|' ||
+  "       d.created || '|' ||
+  "       d.log_mode || '|'
+  " FROM v$database d;
+  }
+ }
+ elsif match($DATABASE_VERSION,'^80$')
+ {var $HDR[2] = '|*DBID*|*Name*|*Date Created*|*Log Mode*|*ControlFile Type*|\
+                  *Open ResetLogs*|'
+  append $sql
+  {SELECT '|' ||
+  "       d.dbid || '|' ||
+  "       d.name || '|' ||
+  "       TO_CHAR(d.created, 'DD-Mon-YYYY HH24:MI:SS') || '|' ||
+  "       d.log_mode || '|' ||
+  "       d.controlfile_type || '|' ||
+  "       d.open_resetlogs || '|'
+  " FROM v$database d;
+  }
+ }
+ elsif match($DATABASE_VERSION,"^81$")
+ {var $HDR[2] = '|*DBID*|*Name*|*Date Created*|*Log Mode*|*ControlFile Type*|\
+                  *Open ResetLogs*|*Open Mode*|'
+  append $sql
+  {SELECT '|' ||
+  "       d.dbid || '|' ||
+  "       d.name || '|' ||
+  "       TO_CHAR(d.created, 'DD-Mon-YYYY HH24:MI:SS') || '|' ||
+  "       d.log_mode || '|' ||
+  "       d.controlfile_type || '|' ||
+  "       d.open_resetlogs || '|' ||
+  "       d.open_mode || '|'
+  " FROM v$database d;
+  }
+ }
+ elsif match($DATABASE_VERSION,"^90$")
+ {var $HDR[2] = '|*DBID*|*Name*|*Date Created*|*Log Mode*|*ControlFile Type*|\
+                  *Open ResetLogs*|*Open Mode*|*Database Role*|'
+  append $sql
+  {SELECT '|' ||
+  "       d.dbid || '|' ||
+  "       d.name || '|' ||
+  "       TO_CHAR(d.created, 'DD-Mon-YYYY HH24:MI:SS') || '|' ||
+  "       d.log_mode || '|' ||
+  "       d.controlfile_type || '|' ||
+  "       d.open_resetlogs || '|' ||
+  "       d.open_mode || '|' ||
+  "       d.database_role || '|'
+  " FROM v$database d;
+  }
+ }
+ elsif match($DATABASE_VERSION,'^(92|10|11)')
+ {var $HDR[2] = '|*DBID*|*Name*|*Date Created*|*Log Mode*|*ControlFile Type*|\
+                  *Open ResetLogs*|*Open Mode*|*Database Role*|*Force Logging*|'
+  append $sql
+  {SELECT '|' ||
+  "       d.dbid || '|' ||
+  "       d.name || '|' ||
+  "       TO_CHAR(d.created, 'DD-Mon-YYYY HH24:MI:SS') || '|' ||
+  "       d.log_mode || '|' ||
+  "       d.controlfile_type || '|' ||
+  "       d.open_resetlogs || '|' ||
+  "       d.open_mode || '|' ||
+  "       d.database_role || '|' ||
+  "       d.force_logging || '|'
+  " FROM v$database d;
+  }
+ }
+ call separator(1)
+ call writeSql($sql)
+ call separator(3)
+ call writeLastSql()
+ call separator(0,'Database Information')
+
+ if match($ORACLE_SID,'^(.*):(\d+):(.*)$')
+ {var ($hst,$prt,$sid) = (last)
+  debug ' Inside CFG module, extracting database connection information'
+  write '---+ Database Connection Information'
+  write '|*Host*|',$hst,'|'
+  write '|*Port*|',$prt,'|'
+  write '|*Service Name*|',$sid,'|'
+  write $TOP
+ }
+ else
+ {debug ' Inside CFG module, executing a tnsping'
+  call loadCommand(concat('tnsping ',$ORACLE_SID))
+  prefix
+   write '---+ TNS Ping Information'
+  var ($lin) = grepLastFile('Attempting to contact','i',-1)
+  if $lin
+  {if match($lin,'\(HOST\s*=\s*([^\)]+)\)',true)
+    write '|*Host*|',last,'|'
+   if match($lin,'\(PORT\s*=\s*([^\)]+)\)',true)
+    write '|*Port*|',last,'|'
+   if match($lin,'\(SERVICE_NAME\s*=\s*([^\)]+)\)',true)
+    write '|*Service Name*|',last,'|'
+  }
+  var ($lin) = grepLastFile('OK\s*\(','i',-1)
+  if $lin
+  {if match($lin,'OK\s*\(([^\)]+)\)',true)
+    write '|*Ping Time*|',last,'|'
+  }
+  if hasOutput(true)
+   write $TOP
+ }
+}
+
+=head2 homes - Oracle Home List
+
+Lists Oracle homes from central inventory.
+
+=cut
+
+section central
+
+if or(isWindows(),isCygwin())
+ var $inv = getRegValue('HKLM\SOFTWARE\Oracle','inst_loc')
+elsif isUnix()
+{if testFile('e','/etc/oraInst.loc')
+  var $loc = '/etc/oraInst.loc'
+ elsif testFile('e','/var/opt/oracle/oraInst.loc')
+  var $loc = '/var/opt/oracle/oraInst.loc'
+ elsif testFile('e',catFile($ORACLE_HOME,'oraInst.loc'))
+  var $loc = catFile($ORACLE_HOME,'oraInst.loc')
+ else
+  var $loc = ''
+ var $inv = value(grepFile($loc,'^[^#]*inventory_loc','if'))
+}
+elsif isVms()
+{macro f_getsyi
+ {var ($val) = command(concat('write sys$output f$getsyi("',$arg[0],'")'))
+  return $val
+ }
+
+ var $hom = getEnv('SYS$LOGIN')
+ var $nod = f_getsyi('NODENAME')
+ var $inv = ''
+ loop $dir (catDir($ORACLE_HOME),\
+            catDir($hom,$nod),\
+            catDir($hom))
+ {if testFile('r',catFile($dir,'orainst.loc'))
+  {var $loc = catFile($dir,'orainst.loc')
+   var $inv = value(grepFile($loc,'^[^#]*inventory_loc','if'))
+   break
+  }
+ }
+}
+else
+ var $inv = ''
+
+if $inv
+{debug ' Inside CFG module, listing Oracle homes'
+ report homes
+
+ var $fil = catFile($inv,'ContentsXML','inventory.xml')
+ var $xml = xmlLoadFile($fil)
+ prefix
+ {write '---+ Oracle Home List'
+  write '---## Information Taken from ',encode($fil)
+  write '|*Name*|*Location*|'
+ }
+ loop $itm (xmlFind($xml,'.../HOME_LIST/HOME'))
+  write '|',xmlValue($itm,'NAME'),' |',xmlValue($itm,'LOC'),' |'
+ if isCreated(true)
+ {toc '2:[[',getFile(),'][rda_report][Oracle Home List]]'
+  share 'OI_INV','Oracle Home List'
+ }
+}
+
+=head2 oh_inv - Oracle Home Product Information
+
+Produces a detailed inventory report based on the Oracle Home inventory
+information.
+
+=cut
+
+section oh
+
+debug ' Inside CFG module, getting Oracle home inventory (can take time)'
+report oh_inv
+
+if or(isWindows(),isCygwin())
+ var $nam = 'nt.rgs'
+else
+ var $nam = 'unix.rgs'
+
+if testFile('fr',catFile($ORACLE_HOME,'inventory','ContentsXML','comps.xml'))
+{prefix
+ {write '---+!! Oracle Home Product Information'
+  write $TOC
+ }
+ call inventory_details(catDir($ORACLE_HOME,'inventory'),$CFG_INTERIM)
+}
+elsif loadFile(catFile($ORACLE_HOME,'orainst',$nam))
+{prefix
+ {write '---+!! Oracle Home Product Information'
+  write $TOC
+  write '---+ Installed Products'
+  write '|*Name*|*Version*|'
+ }
+ var $flt = isFiltered()
+ loop $lin (getLines())
+ {next !match($lin,'Product files loaded')
+  var @tbl = split('"',$lin)
+  write '|',$tbl[5],' |',\
+        cond($flt,replace($tbl[3],'\.','&#46;',true),$tbl[3]),' |'
+ }
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+{toc '2:[[',getFile(),'][rda_report][Oracle Home Product Information]]'
+ share 'OH_INV','Current Oracle Home'
+}
+
+=head2 as_inv - Application Server Product Information
+
+In Oracle Application context, it produces a detailed inventory report based
+on the Application Server inventory information.
+
+=cut
+
+section ias
+
+var $ias = getEnv('IAS_ORACLE_HOME')
+if and($ias,\
+       testFile('fr',catFile($ias,'inventory','ContentsXML','comps.xml')))
+{debug ' Inside CFG module, getting Application Server inventory \
+        (can take time)'
+ report as_inv
+ prefix
+ {write '---+!! Application Server Product Information'
+  write $TOC
+ }
+ call inventory_details(catDir($ias,'inventory'),$CFG_INTERIM)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Application Server Product Information]]'
+}
+
+=head1 SEE ALSO
+
+L<OSaix|modules::OSaix>, L<OSdarwin|modules::OSdarwin>,
+L<OShpux|modules::OShpux>, L<OSlinux|modules::OSlinux>,
+L<OSosf|modules::OSosf>, L<OSptx|modules::OSptx>,
+L<OSsunos|modules::OSsunos>, L<OSunix|modules::OSunix>,
+L<OSvms|modules::OSvms>, L<OSwin32|modules::OSwin32>,
+L<S999END|modules::S999END>, L<DBinfo.def|modules::DBinfo>,
+L<INSTinfo.def|modules::INSTinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.15: Grant Hayden.
+
+=back
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

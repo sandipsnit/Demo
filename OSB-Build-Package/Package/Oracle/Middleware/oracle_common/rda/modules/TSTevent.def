@@ -1,0 +1,353 @@
+# TSTevent.def: Extracts Event Log Information
+# $Id: TSTevent.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TSTevent.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+TSTevent - Extracts Event Log Information
+
+=head1 DESCRIPTION
+
+This test module extracts event log information.
+
+  <rda> -T event  or  <rda> -T event:Limit
+
+Produces an overview of the data collection execution duration and report size
+based on limit records (from RDA 4.18).
+
+  <rda> -T event:Collect
+
+Produces an overview of the data collection duration.
+
+  <rda> -T event:Setup
+
+Produces an overview of the data collection setup duration.
+
+In some cases, data collection duration time can include the setup time,
+particularly for tasks performed before the creation of the report directory.
+
+=cut
+
+echo tput('bold'),'Processing the event log ...',tput('off')
+
+# Initialisation
+var (%fix,%mod,%tst) = ('CFG',1,'END',1,'INI',1,'LOAD',1,'OCM',1,'RDSP',1)
+
+# Analyze the arguments
+var ($typ,$flg,@log) = ('L',true)
+if getSetting('TST_ARGS')
+{loop $opt (split(',',last))
+ {if match($opt,'^C(ollect)?$',true)
+   var $act = 'C'
+  elsif match($opt,'^L(imit)?$',true)
+   var $flg = 'L'
+  elsif match($opt,'^S(etup)?$',true)
+   var $flg = 'S'
+  else
+   call push(@log,grepDir($opt,'^RDA\.log$','ir'))
+ }
+}
+if !scalar(@log)
+ var @log = (catFile(${OUT.C},'RDA.log'))
+
+# Define the parsing macros
+code debug = 0
+ debug last
+
+code add_collect = -1
+{var $cfg = field('\|',1,line)
+ call push($CFG{$cfg,'evt'},line)
+ var $CFG{$cfg,'flg'} = false
+}
+
+code add_fork = -1
+{var (undef,$cfg,undef,$mod) = split('\|',line,5)
+ if match($mod,'^S\d{3}(.*)',true)
+  var $CFG{$cfg,'frk',uc(last)} = 1
+}
+
+code add_limit = -1
+{var (undef,$cfg,undef,$mod,$spc,$dur) = split('\|',line,7)
+ if match($mod,'^S\d{3}(.*)',true)
+ {var $mod = uc(last)
+  incr $mod{$mod}
+  var $CFG{$cfg,'m_s',$mod} = $spc
+  var $CFG{$cfg,'m_d',$mod} = $dur
+ }
+ elsif match($mod,'^(TL|TM|TST)(.*)',true)
+ {var $mod = lc(last->[1])
+  incr $tst{$mod}
+  var $CFG{$cfg,'t_s',$mod} = $spc
+  var $CFG{$cfg,'t_d',$mod} = $dur
+ }
+}
+
+code add_setup = -1
+{var ($tim,$cfg) = split('\|',line,3)
+ if $CFG{$cfg,'flg'}
+  var $CFG{$cfg,'beg'} = $tim
+}
+
+code beg_session = -1
+{var ($tim,$cfg) = split('\|',line,3)
+ call eval(&end_session($cfg))
+ var $CFG{$cfg} = {beg=>$tim,flg=>true,ref=>$tim}
+}
+
+code end_session = -1
+{var ($cfg) = last
+ if $CFG{$cfg,'beg'}
+ {var $beg = last
+  var $key = join('|',$nam,$cfg,nvl($CFG{$cfg,'ref'},$beg))
+  if exists($CFG{$cfg,'m_d'})
+  {var $RPT{$key} = $CFG{$cfg,'m_d'}
+   var $RPT{$key,'-'} = 0
+   loop $mod (keys($CFG{$cfg,'frk'}))
+    decr $RPT{$key,'-'},$CFG{$cfg,'m_d',$mod}
+   var $MSP{$key} = $CFG{$cfg,'m_s'}
+  }
+  elsif exists($CFG{$cfg,'t_d'})
+  {var $TST{$key} = $CFG{$cfg,'t_d'}
+   var $TSP{$key} = $CFG{$cfg,'t_s'}
+  }
+  else
+  {var ($dur,$prv,$off) = parse_time($beg,0,0)
+   loop $evt (@{$CFG{$cfg,'evt'}})
+   {var ($tim,undef,undef,$mod) = split('\|',$evt,5)
+    var ($dur,$prv,$off) = parse_time($tim,$prv,$off)
+    var $RPT{$key,'-'} = 0
+    if match($mod,'^S\d{3}(.*)',true)
+    {var $mod = uc(last)
+     incr $mod{$mod}
+     var $RPT{$key,$mod} = $dur
+    }
+    elsif match($mod,'^(TL|TM|TST)(.*)',true)
+    {var $mod = lc(last->[1])
+     incr $tst{$mod}
+     var $TST{$key,$mod} = $dur
+    }
+   }
+  }
+ }
+ call delete($CFG{$cfg})
+}
+
+macro parse_time
+{var ($tim,$prv,$off) = @arg
+ var $nxt = $off
+ incr $nxt,expr('*',substr($tim,9,2),3600)
+ incr $nxt,expr('*',substr($tim,11,2),60)
+ incr $nxt,substr($tim,13,2)
+ var $dur = $nxt
+ decr $dur,$prv
+ if expr('<',$dur,0)
+ {var $dlt = cond(expr('>',$dur,-3600),$dur,-86400)
+  decr $dur,$dlt
+  decr $nxt,$dlt
+  decr $off,$dlt
+ }
+ return ($dur,$nxt,$off)
+}
+
+# Define the parsing directives
+call parseReset()
+call parsePattern('TOP',\
+  '^\d{8}_\d{6}\|',\
+    cond(compare('ne',$cur,substr(line,0,8)),\
+         &debug($cur = substr(line,0,8)),\
+         0),\
+  '.?',-1)
+if compare('eq',$typ,'L')
+ call parsePattern('TOP',\
+  '^(.*?\|){2}c\|',\
+    &add_fork,\
+  '^(.*?\|){2}l\|',\
+    &add_limit,\
+  '^(.*?\|){2}b\|',\
+    &beg_session,\
+  '^(.*?\|){2}e\|',\
+    &end_session(field('\|',1,line)))
+if compare('eq',$typ,'C')
+ call parsePattern('TOP',\
+  '^(.*?\|){2}C\|',\
+    &add_collect,\
+  '^(.*?\|){2}S\|',\
+    &add_setup,\
+  '^(.*?\|){2}b\|',\
+    &beg_session,\
+  '^(.*?\|){2}e\|',\
+    &end_session(field('\|',1,line)))
+else
+ call parsePattern('TOP',\
+  '^\d{8}_\d{6}\|[^\|]*\|S\|',\
+    code(push($CFG{field('\|',1,line),'evt'},line),\
+         0),\
+  '^\d{8}_\d{6}\|[^\|]*\|b\|',\
+    &beg_session,\
+  '^\d{8}_\d{6}\|[^\|]*\|e\|',\
+    &end_session(field('\|',1,line)))
+
+# Parse the event logs
+loop $log (@log)
+{next !createBuffer('LOG','R',$log)
+ debug ' Inside TSTevent, parsing ',$log,' ...'
+ var ($cur,$nam) = ('00000000',dirname($log))
+ call parse('LOG')
+ loop $cfg (keys(%CFG))
+  call eval(&end_session($cfg))
+ call deleteBuffer('LOG')
+}
+
+# Produce the report
+call setAbbr('EVENT')
+call purge('C','log',0)
+var @mod = keys(%mod)
+if compare('eq',$typ,'L')
+{debug ' Inside TSTevent, producing the data collection duration overview ...'
+ report log
+ prefix
+ {write '---+ Data Collection Duration'
+  write '|*Directory*|*Setup*|*Start*| *',join('*| *',@mod),\
+        '*| *Fixed*| *Total*|'
+ }
+ loop $run (keys(%RPT))
+ {var ($fix,$tot,@rpt) = (0,$RPT{$run,'-'})
+  loop $mod (@mod)
+  {var $val = $RPT{$run,$mod}
+   if ?$val
+   {if $fix{$mod}
+     incr $fix,$val
+    incr $tot,$val
+    call push(@rpt,$val)
+   }
+   else
+    call push(@rpt,'')
+  }
+  write '|',$run,'| ',join('| ',@rpt),'| ',$fix,'| ',$tot,'|'
+ }
+
+ debug ' Inside TSTevent, producing the data collection space overview ...'
+ prefix
+ {write '---+ Data Collection Report Text Space'
+  write '|*Directory*|*Setup*|*Start*| *',join('*| *',@mod),'*| *Total*|'
+ }
+ loop $run (keys(%MSP))
+ {var ($tot,@rpt) = (0)
+  loop $mod (@mod)
+  {var $val = $MSP{$run,$mod}
+   if ?$val
+   {incr $tot,$val
+    call push(@rpt,$val)
+   }
+   else
+    call push(@rpt,'')
+  }
+  write '|',$run,'| ',join('| ',@rpt),'| ',$tot,'|'
+ }
+
+ if isCreated(true)
+ {call renderFile()
+  echo last
+ }
+
+ debug ' Inside TSTevent, producing the tool/test duration module overview ...'
+ report test
+ prefix
+ {write '---+ Tool/Test Module Duration'
+  write '|*Directory*|*Setup*|*Start*| *',join('*| *',keys(%tst)),'*|'
+ }
+ loop $run (keys(%TST))
+ {var @rpt = ()
+  loop $mod (keys(%tst))
+   call push(@rpt,nvl($TST{$run,$mod},''))
+  write '|',$run,'| ',join('| ',@rpt),'|'
+ }
+
+ debug ' Inside TSTevent, producing the tool/test module space overview ...'
+ prefix
+ {write '---+ Tool/Test Module Report Text Space'
+  write '|*Directory*|*Setup*|*Start*| *',join('*| *',keys(%tst)),'*|'
+ }
+ loop $run (keys(%TSP))
+ {var @rpt = ()
+  loop $mod (keys(%tst))
+   call push(@rpt,nvl($TSP{$run,$mod},''))
+  write '|',$run,'| ',join('| ',@rpt),'|'
+ }
+}
+elsif compare('eq',$typ,'C')
+{debug ' Inside TSTevent, producing the data collection overview ...'
+ report log
+ prefix
+ {write '---+ Data Collection Duration'
+  write '|*Directory*|*Setup*|*Start*| *',join('*| *',@mod),\
+        '*| *Fixed*| *Total*|'
+ }
+ loop $run (keys(%RPT))
+ {var ($fix,$tot,@rpt) = (0,$RPT{$run,'-'})
+  loop $mod (@mod)
+  {var $val = $RPT{$run,$mod}
+   if ?$val
+   {if $fix{$mod}
+     incr $fix,$val
+    incr $tot,$val
+    call push(@rpt,$val)
+   }
+   else
+    call push(@rpt,'')
+  }
+  write '|',$run,'| ',join('| ',@rpt),'| ',$fix,'| ',$tot,'|'
+ }
+
+ debug ' Inside TSTevent, producing the tool/test module overview ...'
+ prefix
+ {write '---+ Tool/Test Module Duration'
+  write '|*Directory*|*Setup*|*Start*| *',join('*| *',keys(%tst)),'*|'
+ }
+ loop $run (keys(%TST))
+ {var @rpt = ()
+  loop $mod (keys(%tst))
+   call push(@rpt,nvl($TST{$run,$mod},''))
+  write '|',$run,'| ',join('| ',@rpt),'|'
+ }
+}
+else
+{debug ' Inside TSTevent, producing the module setup overview ...'
+ report log
+ prefix
+ {write '---+ Module Setup Duration'
+  write '|*Directory*|*Setup*|*Start*| *',join('*| *',@mod),'*| *Total*|'
+ }
+ loop $run (keys(%RPT))
+ {var ($tot,@rpt) = ()
+  loop $mod (@mod)
+  {var $val = $RPT{$run,$mod}
+   if ?$val
+   {incr $tot,$val
+    call push(@rpt,$val)
+   }
+   else
+    call push(@rpt,'')
+  }
+  write '|',$run,'| ',join('| ',@rpt),'| ',$tot,'|'
+ }
+}
+
+if isCreated(true)
+{call renderFile()
+ echo last
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

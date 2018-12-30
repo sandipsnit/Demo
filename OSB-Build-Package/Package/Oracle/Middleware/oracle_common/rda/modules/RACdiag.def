@@ -1,0 +1,854 @@
+# RACdiag.def: Cluster Diagnostic Scripts
+# $Id: RACdiag.def,v 2.9 2012/05/04 17:43:22 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/RACdiag.def,v 2.9 2012/05/04 17:43:22 mschenke Exp $
+#
+# Change History
+# 20120427  KRA  Improve CLUSTER_SLEVEL variable assignment.
+
+=head1 NAME
+
+RACdiag - Runs the Cluster Diagnostic Scripts in the Database
+
+=head1 DESCRIPTION
+
+This module runs the cluster diagnostic scripts in the database and collects
+the output.
+
+=cut
+
+# Initialization
+var $CLUSTER_PARALLEL = getSetting('CLUSTER_PARALLEL',1)
+var $CLUSTER_HLEVEL   = getSetting('CLUSTER_HANGANALYZE')
+var $CLUSTER_SLEVEL   = getSetting('CLUSTER_SYSTEMSTATE')
+var $CLUSTER_FACTOR   = getSetting('CLUSTER_FACTOR',26)
+var $CLUSTER_REPEAT   = getSetting('CLUSTER_REPEAT',2)
+var $CLUSTER_SLEEP    = getSetting('CLUSTER_SLEEP',0)
+var $DATABASE_LOCAL   = getSetting('DATABASE_LOCAL',1)
+
+import $TOC,$TOP
+
+# Load the libraries
+run DBinfo()
+run DBssd()
+
+# Validate the dump levels
+if !match($CLUSTER_HLEVEL,'^\d+$')
+ var $CLUSTER_HLEVEL = cond(isWindows(),1,isCygwin(),1,3)
+if !match($CLUSTER_SLEVEL,'^\d+$')
+{var $ver = get_db_full_version()
+ if or(isWindows(),isCygwin())
+ {if compare('VALID',$ver,'11.2.0.3')
+   var $CLUSTER_SLEVEL = 11
+  elsif compare('VALID',$ver,'11.1')
+   var $CLUSTER_SLEVEL = 2
+  else
+   var $CLUSTER_SLEVEL = 11
+ }
+ elsif compare('VALID',$ver,'11.2.0.3')
+  var $CLUSTER_SLEVEL = 266
+ elsif compare('VALID',$ver,'11.1')
+  var $CLUSTER_SLEVEL = 258
+ else
+  var $CLUSTER_SLEVEL = 266
+}
+
+# Define hanganalyze/systemstate macros
+var @ALR = ('  Hanganalyze may take up to 3 minutes or might even hang',\
+            '  Systemstate dump may take up to 10 minutes or might even hang')
+
+macro alert
+{import @ALR
+ keep @ALR
+ echo $ALR[$arg[0]]
+}
+
+macro get_dumps
+{var (\%hit,$cnt) = @arg
+ import $CLUSTER_FACTOR,$CLUSTER_HLEVEL,$CLUSTER_SLEVEL,$CLUSTER_PARALLEL
+ keep $CLUSTER_FACTOR,$CLUSTER_HLEVEL,$CLUSTER_SLEVEL,$CLUSTER_PARALLEL
+
+ write '---+ Hanganalyze/Systemstate Dump'
+ write '---## Taken at ',${RDA.GMTIME}
+ write '<verbatim>'
+ write 'oradebug setmypid'
+ write 'oradebug unlimit'
+
+ if $CLUSTER_PARALLEL
+ {write 'oradebug setinst all'
+  write 'oradebug -g all hanganalyze ',$CLUSTER_HLEVEL
+  write 'oradebug -g all dump systemstate ',$CLUSTER_SLEVEL
+
+  set $sql
+  {PROMPT ___Cut___
+  "ALTER session SET nls_date_format = 'DD-Mon-YYYY HH24:MI:SS';
+  "ALTER session SET timed_statistics = true;
+  "oradebug setmypid
+  "oradebug unlimit
+  "oradebug setinst all
+  "PROMPT ___Cut___
+  "PROMPT ___Macro_alert(0)___
+  "oradebug -g all hanganalyze :1
+  "PROMPT ___Macro_alert(1)___
+  "oradebug -g all dump systemstate :2
+  }
+ }
+ else
+ {write 'oradebug hanganalyze ',$CLUSTER_HLEVEL
+  write 'oradebug dump systemstate ',$CLUSTER_SLEVEL
+
+  set $sql
+  {PROMPT ___Cut___
+  "ALTER session SET nls_date_format = 'DD-Mon-YYYY HH24:MI:SS';
+  "ALTER session SET timed_statistics = true;
+  "oradebug setmypid
+  "oradebug unlimit
+  "PROMPT ___Cut___
+  "PROMPT ___Macro_alert(0)___
+  "oradebug hanganalyze :1
+  "PROMPT ___Macro_alert(1)___
+  "oradebug dump systemstate :2
+  "oradebug tracefile_name
+  }
+ }
+ 
+ call writeSql(bindSql($sql,$CLUSTER_HLEVEL,$CLUSTER_SLEVEL),$CLUSTER_FACTOR,\
+               '(^Hang Analysis in |\.trc\b)') 
+ write '</verbatim>'
+ if getSqlMessage()
+  write last,'%BR%'
+ loop $fil (getSqlHits())
+ {incr $cnt
+  var $hit{replace($fil,'^Hang Analysis in\s+')} = $cnt
+ }
+}
+
+=pod
+
+Gets a first C<hanganalyze> and C<systemstate> dump. This is only performed
+for databases associated with the current Oracle home.
+
+=cut
+
+report diag
+var ($cnt,%hit) = (0)
+write '---+!! Cluster Diagnostics'
+write $TOC
+if $DATABASE_LOCAL
+ var $cnt = get_dumps(\%hit,$cnt)
+
+=pod
+
+Collects the diagnostic information from the database.
+
+=cut
+
+var $TTL = undef
+var @DBG = ('',\
+            '  - Getting instance list',\
+            '  - Getting waiting sessions',\
+            '  - Getting event parameter lookup',\
+            '  - Getting GES lock blockers',\
+            '  - Getting GES lock waiters',\
+            '  - Getting local enqueues',\
+            '  - Getting latch holders',\
+            '  - Getting latch statistics',\
+            '  - Getting no wait latches',\
+            '  - Getting global cache CR performance',\
+            '  - Getting global cache Lock performance',\
+            '  - Getting resource usage',\
+            '  - Getting DLM traffic information',\
+            '  - Getting DLM misc.',\
+            '  - Getting lock conversion detail',\
+            '  - Getting top 10 write pinging/fusion objects',\
+            '  - Getting top 10 read pinging/fusion objects',\
+            '  - Getting top 10 false pinging objects',\
+            '  - Getting nondefault init parameters',\
+            '  - Getting top 10 wait events on system',\
+            '  - Getting session/process reference',\
+            '  - Getting system statistics',\
+            '  - Getting current SQL for waiting sessions',\
+            '  - Getting Trace File Location')
+var @TTL = ('',\
+            '---+ Instances',\
+            '---+ Waiting Sessions',\
+            '---+ Event Parameter Lookup',\
+            '---+ GES Lock Blockers',\
+            '---+ GES Lock Waiters',\
+            '---+ Local Enqueues',\
+            '---+ Latch Holders',\
+            '---+ Latch Statistics',\
+            '---+ No Wait Latches',\
+            '---+ Global Cache CR Performance',\
+            '---+ Global Cache Lock Performance',\
+            '---+ Resource Usage',\
+            '---+ DLM Traffic Information',\
+            '---+ DLM Misc',\
+            '---+ Lock Conversion Detail',\
+            '---+ Top 10 Write Pinging/Fusion Objects',\
+            '---+ Top 10 Read Pinging/Fusion Objects',\
+            '---+ Top 10 False Pinging Objects',\
+            '---+ Nondefault Init Parameters for Each Node',\
+            '---+ Top 10 Wait Events on System',\
+            '---+ Session/Process Reference',\
+            '---+ System Statistics',\
+            '---+ Current SQL for Waiting Sessions',\
+            '---+ Trace File Location')
+var @TXT = ('',\
+            '',\
+            "The entries that are shown at the top are the sessions that have \
+             waited the longest amount of time that are waiting for nonidle \
+             wait events (event column). You can research and find out what \
+             the wait event indicates (along with its parameters) by checking \
+             the Oracle Server Reference Manual or look for any known issues \
+             or documentation by searching My Oracle Support for the event \
+             name in the search bar. Example (include single quotes): \
+             ``[ 'buffer busy due to global cache' ]``. My Oracle Support \
+             and/or the Server Reference Manual should return some useful \
+             information on each type of wait event. \
+             The ``Inst`` column shows the instance where the session resides \
+             and the ``SID`` is the unique identifier for the session \
+             (gv$session). The ``P1``, ``P2``, and ``P3`` columns will show \
+             event specific information that may be important to debug the \
+             problem. To find out what the P1, P2, and P3 indicates see the \
+             next section. Items with wait_time of anything other than 0 \
+             indicate we do not know how long these sessions have been \
+             waiting.",\
+            "This section will give a description of the parameter names of \
+             the events seen in the last section. ``P1 Text`` is the parameter \
+             value for P1 in the WAITING SESSIONS section while ``P2 Text`` is \
+             the parameter value for P2 and ``P3 Text`` is the parameter value \
+             for P3. The parameter values in the first section can be helpful \
+             for debugging the wait event.",\
+            "This section will show us any sessions that are holding locks \
+             that are blocking other users. The ``Inst`` will show us the \
+             instance that the session resides on while the ``SID`` will be a \
+             unique identifier for the session. The ``Grant Level`` will show \
+             us how the GES lock is granted the user. The ``Request Level`` \
+             will show us what status we are trying to. The ``Lock State`` \
+             column will show us what status the lock is in. The last shows \
+             how long this session has been waiting.",\
+            "This section will show us any sessions that are waiting for \
+             locks that are blocked by other users. The ``Inst`` will show us \
+             the instance that the session resides on while the ``SID`` will \
+             be a unique identifier for the session. The ``Grant Level`` will \
+             show us how the GES lock is granted the user. The ``Request \
+             Level`` will show us what status we are trying to. The ``Lock \
+             State`` column will show us what status the lock is in. The last \
+             shows how long this session has been waiting.",\
+            "This section will show us if there are any local enqueues. The \
+             ``Inst`` show us the instance that the session resides on while \
+             the ``SID`` will be unique identifier for. The ``Addr`` column \
+             will show the lock address. ``Type`` will show the lock type. The \
+             ``ID1`` and ``ID2`` columns will show specific parameters for the \
+             lock type.",\
+            "If there is latch contention or 'latch free' wait events in the \
+             WAITING SESSIONS section we will need to find out which processes \
+             are holding latches. The Inst will show us the instance that the \
+             session reside on while the ``SID`` will be a unique identifier \
+             for. The Username column will show the session's username. The \
+             ``OS User`` column will show the operating system user that the \
+             user logged in as. The ``Name`` column will show us the type of \
+             latch being waited on. You can search My Oracle Support for the \
+             latch name the search bar. Example (include single quotes): \
+             ``[ 'library cache' latch ]``. My Oracle Support should return \
+             some useful information on the type of latch.",\
+            "This view will show us latches with less than optimal hit ratios. \
+             The ``Inst`` will show us the instance for the particular latch. \
+             The ``Latch Name`` column will show us the type of latch. You can \
+             search My Oracle Support for the latch name in the search bar. \
+             Example (include single quotes) ``[ 'library cache' latch ]``. \
+             My Oracle Support should return some useful information on the \
+             type of latch. The ``Hit Ratio`` shows the percentage of time we \
+             successfully acquired the latch.",\
+            '',\
+            "This shows the average latency of a consistent block request. \
+             ``Avg CR Block Receive Time`` should typically be about 15 \
+             milliseconds depending on your system configuration and volume, \
+             is the average latency of a consistent-read request round-trip \
+             from the requesting instance to the holding instance and back to \
+             the requesting instance. If your CPU has limited idle time and \
+             your system typically processes long-running queries, then the \
+             latency may be higher.  However, it is possible to have an \
+             average latency of less than one millisecond with User-mode IPC. \
+             Latency can be influenced by a high value for the \
+             ``DB_MULTI_BLOCK_READ_COUNT`` parameter. This is because a \
+             requesting process can issue more than one request for a block \
+             depending on the setting of this parameter. Correspondingly, the \
+             requesting process may wait longer. Also check interconnect \
+             bandwidth, operating system TCP settings, and operating system \
+             UDP settings if ``Avg CR Block Receive Time`` is high.",\
+            "This shows the average global enqueue get time. Typically ``Avg \
+             Global Lock Get Time`` should be 20-30 milliseconds. The elapsed \
+             time for a get includes the allocation and initialization of a \
+             new global enqueue. If the average global enqueue get (global \
+             cache get time) or average global enqueue conversion times are \
+             excessive, then your system may be experiencing timeouts. See the \
+             'WAITING SESSIONS', 'GES LOCK BLOCKERS', 'GES LOCK WAITERS', and \
+             'TOP 10 WAIT EVENTS ON SYSTEM' sections if the AVG GLOBAL \
+             LOCK GET TIME is high.",\
+            "This section will show how much of our resources we have used.",\
+            "This section shows how many tickets are available in the DLM. If \
+             the ``TCKT_WAIT`` columns says 'YES' then we have run out of DLM \
+             tickets which could cause a DLM hang. Make sure that you also \
+             have enough ``TCKT_AVAIL``.",\
+            '',\
+            "This view shows the types of lock conversion being done on each \
+             instance.",\
+            "This view shows the top 10 objects for write pings accross \
+             instances. The ``Inst`` column shows the node that the block was \
+             pinged on. ``The Name`` column shows the object name of the \
+             offending object. The ``File#`` shows the offending file number \
+             (gc_files_to_locks). The ``Status`` column will show the current \
+             status of the pinged block. The ``Read Pings`` will show us read \
+             converts and the ``Write Pings`` will show us objects with write \
+             converts. Any rows that show up are objects that are concurrently \
+             accessed across more than one instance.",\
+            "This view shows the top 10 objects for read pings. The ``Inst`` \
+             column shows the node that the block was pinged on. The ``Name`` \
+             column shows the object name of the offending object. The \
+             ``File#`` shows the offending file number (gc_files_to_locks). \
+             The ``Status`` column will show the current status of the pinged \
+             block. The ``Read Pings`` will show us read converts and the \
+             ``Write Pings`` will show us objects with write converts. Any \
+             rows that show up are objects that are concurrently accessed \
+             across more than one instance.",\
+            "This view shows the top 10 objects for false pings. This can be \
+             avoided by better gc_files_to_locks configuration. The ``Inst`` \
+             column shows the node that the block was pinged on. The ``Name`` \
+             column shows the object name of the offending object. The \
+             ``File#`` shows the offending file number (gc_files_to_locks). \
+             The ``Status`` column will show the current status of the pinged \
+             block. The ``Read Pings`` will show us read converts and the \
+             ``Write Pings`` will show us objects with write converts. Any \
+             rows that show up are objects that are concurrently accessed \
+             across more than one instance.",\
+            '',\
+            "This view will provide a summary of the top wait events in the \
+             database.",\
+            "This section is very important for most of the above sections to \
+             find out which user/os_user/process is identified to which \
+             session/process.",\
+            "All system statistics with values of greater than 0. These can be \
+             referenced in the Server Reference Manual",\
+            "Current SQL for any session in the WAITING SESSIONS list.",\
+            "Alert log and trace files are located in")
+var @HDR = ('',\
+            '| *Inst*|*Instance Name*|*Host Name*|*Version*|*Status*|\
+               *Startup Time*|',\
+            '| *Inst*| *SID*|*State*|*Event*| *Seconds*| *P1*| *P2*| *P3*|\
+               *Last SQL*|',\
+            '|*Event*|*P1 Text*|*P2 Text*|*P3 Text*|',\
+            '| *Inst*| *SID*| *SPID*|*Resource Name*|*Grant Level*|\
+               *Request Level* |*Lock State* |*Event*| *Sec*|',\
+            '| *Inst*| *SID*| *SPID*|*Resource Name*|*Grant Level*|\
+               *Request Level* |*Lock State* |*Event*| *Sec*|',\
+            '| *Inst*| *SID*|*Addr*|*Type*| *ID1*| *ID2*|*Block*|*Event*| \
+               *Sec*|',\
+            '| *Inst*| *SID*|*Username*|*OS User*|*Name*|',\
+            '| *Inst*|*Latch Name*| *Hit Ratio*| *Sleeps/miss*|',\
+            '| *Inst*|*Latch Name*| *Hit Ratio*| *Sleeps/miss*|',\
+            '| *Inst*| *GCS CR Blocks Received*| *GCS CR Block Receive Time*| \
+               *Avg CR Block Receive Time (ms)*|',\
+            '| *Inst*| *Global Lock Gets*| *Get Time*| \
+               *Avg Global Lock Get Time (ms)*|',\
+            '| *Inst*|*Resource Name*| *Current Utilization*| \
+               *Max Utilization*| *Initial Allocation*|',\
+            '',\
+            '',\
+            '',\
+            '| *Inst*|*Name*|*Kind*| *File#*|*Status*| *Blocks*| *Read Pings*| \
+               *Write Pings*|',\
+            '| *Inst*|*Name*|*Kind*| *File#*|*Status*| *Blocks*| *Read Pings*| \
+               *Write Pings*|',\
+            '| *Inst*|*Name*|*Kind*| *File#*|*Status*| *Blocks*| *Read Pings*| \
+               *Write Pings*|',\
+            '| *Inst*|*Name*|*Value*|*Description*|',\
+            '| *Inst*|*Event*| *Time Waited*| *Total Waits*| \
+               *Total Timeouts*|',\
+            '| *Inst*| *SID*| *Serial#*| *PID*| *SPID*|*Program*|*Username*|\
+               *OS User*|*Event*| *Sec*|',\
+            '| *Inst*|*Name*| *Value*|',\
+            '| *Inst*| *SID*| *Sec*|*SQL*|',\
+            '|*Host Name*|*Name*|*Value*|')
+
+var ($HDR[13],$col1) = getSqlColumns('RDA','','GV$DLM_TRAFFIC_CONTROLLER')
+call clearSqlColumns('RDA')
+var ($HDR[14],$col2) = getSqlColumns('RDA','','GV$DLM_MISC')
+call clearSqlColumns('RDA')
+var ($HDR[15],$col3) = getSqlColumns('RDA','','GV$LOCK_ACTIVITY')
+call clearSqlColumns('RDA')
+set $sql
+{PROMPT ___Cut___
+"ALTER session SET nls_date_format = 'DD-Mon-YYYY HH24:MI:SS';
+"ALTER session SET timed_statistics = true;
+"PROMPT ___Cut___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       instance_name || '|' ||
+"       SUBSTR(host_name,1,20) || '|' ||
+"       version || '|' ||
+"       status || '|' ||
+"       TO_CHAR(startup_time,'DD-Mon-YYYY HH24:MI:SS') || '|'
+" FROM gv$instance
+" ORDER BY inst_id;
+"PROMPT ___Macro_separator(2)___
+"SELECT '| ' ||
+"       sw.inst_id || '| ' ||
+"       sw.sid || '|' ||
+"       SUBSTR(sw.state,1,7) || '|' ||
+"       SUBSTR(sw.event,1,25) || '| ' ||
+"       sw.seconds_in_wait || '| ' ||
+"       sw.p1 || '| ' ||
+"       sw.p2 || '| ' ||
+"       sw.p3 || '|' ||
+"       REPLACE(REPLACE(REPLACE(sa.sql_text,
+"        '|', '&#124;'),
+"        '<', '&lt;'),
+"        '>', '&gt;') || '|'
+" FROM gv$session_wait sw,gv$session s,gv$sqlarea sa
+" WHERE sw.event NOT IN
+"        ('rdbms ipc message','smon timer','pmon timer',
+"         'SQL*Net message from client','lock manager wait for remote message',
+"         'ges remote message','gcs remote message','gcs for action',
+"         'client message','pipe get','Null event','PX Idle Wait',
+"         'single-task message','PX Deq: Execution Msg',
+"         'KXFQ: kxfqdeq - normal deqeue','listen endpoint status',
+"         'slave wait','wakeup time manager')
+"   AND sw.seconds_in_wait > 0
+"   AND (sw.inst_id = s.inst_id AND sw.sid = s.sid)
+"   AND (s.inst_id = sa.inst_id AND s.sql_address = sa.address)
+" ORDER BY sw.seconds_in_wait DESC;
+"PROMPT ___Macro_separator(3)___
+"SELECT DISTINCT '|' ||
+"       SUBSTR(event,1,30) || ' |' ||
+"       SUBSTR(p1text,1,25) || ' |' ||
+"       SUBSTR(p2text,1,25) || ' |' ||
+"       SUBSTR(p3text,1,25) || ' |'
+" FROM gv$session_wait sw
+" WHERE sw.event NOT IN ('rdbms ipc message','smon timer','pmon timer',
+"        'SQL*Net message from client','lock manager wait for remote message',
+"        'ges remote message','gcs remote message','gcs for action',
+"        'client message','pipe get','null event','PX Idle Wait',
+"        'single-task message','PX Deq: Execution Msg',
+"        'KXFQ: kxfqdeq - normal deqeue','listen endpoint status',
+"        'slave wait','wakeup time manager')
+"   AND sw.seconds_in_wait > 0
+" ORDER BY 1;
+"PROMPT ___Macro_separator(4)___
+"SELECT '| ' ||
+"       dl.inst_id || '| ' ||
+"       s.sid || '| ' ||
+"       p.spid || '|' ||
+"       dl.resource_name1 || '|' ||
+"       DECODE(SUBSTR(dl.grant_level,1,8),'KJUSERNL','Null',
+"                                         'KJUSERCR','Row-S (SS)',
+"                                         'KJUSERCW','Row-X (SX)',
+"                                         'KJUSERPR','Share',
+"                                         'KJUSERPW','S/Row-X (SSX)',
+"                                         'KJUSEREX','Exclusive',
+"                                         request_level) || ' |' ||
+"       DECODE(SUBSTR(dl.request_level,1,8),'KJUSERNL','Null',
+"                                           'KJUSERCR','Row-S (SS)',
+"                                           'KJUSERCW','Row-X (SX)',
+"                                           'KJUSERPR','Share',
+"                                           'KJUSERPW','S/Row-X (SSX)',
+"                                           'KJUSEREX','Exclusive',
+"                                           request_level) || ' |' ||
+"       DECODE(SUBSTR(dl.state,1,8),'KJUSERGR','Granted',
+"                                   'KJUSEROP','Opening',
+"                                   'KJUSERCA','Canceling',
+"                                   'KJUSERCV','Converting') || ' |' ||
+"       SUBSTR(sw.event,1,30) || '| ' ||
+"       sw.seconds_in_wait || '|'
+" FROM gv$ges_enqueue dl,gv$process p,gv$session s,gv$session_wait sw
+" WHERE blocker = 1
+"   AND (dl.inst_id = p.inst_id AND dl.pid = p.spid)
+"   AND (p.inst_id = s.inst_id AND p.addr = s.paddr)
+"   AND (s.inst_id = sw.inst_id AND s.sid = sw.sid)
+" ORDER BY sw.seconds_in_wait DESC;
+"PROMPT ___Macro_separator(5)___
+"SELECT '| ' ||
+"       dl.inst_id || '| ' ||
+"       s.sid || '| ' ||
+"       p.spid || '|' ||
+"       dl.resource_name1 || '|' ||
+"       DECODE(SUBSTR(dl.grant_level,1,8),'KJUSERNL','Null',
+"                                         'KJUSERCR','Row-S (SS)',
+"                                         'KJUSERCW','Row-X (SX)',
+"                                         'KJUSERPR','Share',
+"                                         'KJUSERPW','S/Row-X (SSX)',
+"                                         'KJUSEREX','Exclusive',
+"                                          request_level) || ' |' ||
+"       DECODE(SUBSTR(dl.request_level,1,8),'KJUSERNL','Null',
+"                                           'KJUSERCR','Row-S (SS)',
+"                                           'KJUSERCW','Row-X (SX)',
+"                                           'KJUSERPR','Share',
+"                                           'KJUSERPW','S/Row-X (SSX)',
+"                                           'KJUSEREX','Exclusive',
+"                                           request_level) || ' |' ||
+"       DECODE(SUBSTR(dl.state,1,8),'KJUSERGR','Granted',
+"                                   'KJUSEROP','Opening',
+"                                   'KJUSERCA','Cancelling',
+"                                   'KJUSERCV','Converting') || ' |' ||
+"       SUBSTR(sw.event,1,30) || '| ' ||
+"       sw.seconds_in_wait || '|'
+" FROM gv$ges_enqueue dl,gv$process p,gv$session s,gv$session_wait sw
+" WHERE blocked = 1
+"   AND (dl.inst_id = p.inst_id AND dl.pid = p.spid)
+"   AND (p.inst_id = s.inst_id AND p.addr = s.paddr)
+"   AND (s.inst_id = sw.inst_id AND s.sid = sw.sid)
+" ORDER BY sw.seconds_in_wait DESC;
+"PROMPT ___Macro_separator(6)___
+"SELECT '| ' ||
+"       l.inst_id || '| ' ||
+"       l.sid || '|' ||
+"       l.addr || '|' ||
+"       l.type || '| ' ||
+"       l.id1 || '| ' ||
+"       l.id2 || '|' ||
+"       DECODE(l.block,0,'blocked',
+"                      1,'blocking',
+"                      2,'global') || '|' ||
+"       SUBSTR(sw.event,1,12) || '| ' ||
+"       sw.seconds_in_wait || '|'
+" FROM gv$lock l,gv$session_wait sw
+" WHERE (l.sid = sw.sid AND l.inst_id = sw.inst_id)
+"   AND l.block IN (0,1)
+" ORDER BY l.type,l.inst_id,l.sid;
+"PROMPT ___Macro_separator(7)___
+"SELECT DISTINCT '| ' ||
+"       lh.inst_id || '| ' ||
+"       s.sid || '|' ||
+"       s.username || '|' ||
+"       p.username || '|' ||
+"       lh.name || '|'
+" FROM gv$latchholder lh,gv$session s,gv$process p
+" WHERE (lh.sid = s.sid AND lh.inst_id = s.inst_id)
+"   AND (s.inst_id = p.inst_id AND s.paddr = p.addr)
+" ORDER BY 1;
+"PROMPT ___Macro_separator(8)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       SUBSTR(name,1,30) || '| ' ||
+"       ROUND((gets - misses) / DECODE(gets,0,1,gets),3) || '| ' ||
+"       ROUND(sleeps / DECODE(misses,0,1,misses),3) || '|'
+" FROM gv$latch
+" WHERE ROUND((gets - misses) / DECODE(gets,0,1,gets),3) < .99
+"   AND gets != 0
+" ORDER BY ROUND((gets - misses) / DECODE(gets,0,1,gets),3);
+"PROMPT ___Macro_separator(9)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       SUBSTR(name,1,30) || '| ' ||
+"       ROUND((immediate_gets/
+"              DECODE(immediate_gets+immediate_misses,0,1,
+"                     immediate_gets+immediate_misses)),3) || '| ' ||
+"       ROUND(sleeps/DECODE(immediate_misses,0,1,
+"                           immediate_misses),3) || '|'
+" FROM gv$latch
+" WHERE ROUND((immediate_gets/
+"              DECODE(immediate_gets+immediate_misses,0,1,
+"                     immediate_gets+immediate_misses)),3) < .99
+"   AND immediate_gets + immediate_misses > 0
+" ORDER BY ROUND((immediate_gets/DECODE(immediate_gets+immediate_misses,0,1,
+"                                       immediate_gets+immediate_misses)),3);
+"PROMPT ___Macro_separator(10)___
+"SELECT '| ' ||
+"       b1.inst_id || '| ' ||
+"       b2.value || '| ' ||
+"       b1.value || '| ' ||
+"       ((b1.value / DECODE(b2.value,0,1,b2.value)) * 10) || '|'
+" FROM gv$sysstat b1,gv$sysstat b2
+" WHERE b1.name = 'global cache cr block receive time'
+"   AND b2.name = 'global cache cr blocks received'
+"   AND b1.inst_id = b2.inst_id;
+"PROMPT ___Macro_separator(11)___
+"SELECT '| ' ||
+"       b1.inst_id || '| ' ||
+"       (b1.value + b2.value) || '| ' ||
+"       b3.value || '| ' ||
+"       (b3.value / DECODE(b1.value+b2.value,0,1,b1.value+b2.value) * 10) || '|'
+" FROM gv$sysstat b1,gv$sysstat b2,gv$sysstat b3
+" WHERE b1.name = 'global lock sync gets'
+"   AND b2.name = 'global lock async gets'
+"   AND b3.name = 'global lock get time'
+"   AND b1.inst_id = b2.inst_id
+"   AND b2.inst_id = b3.inst_id;
+"PROMPT ___Macro_separator(12)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       resource_name || '| ' ||
+"       current_utilization || '| ' ||
+"       max_utilization || '| ' ||
+"       initial_allocation || '|'
+" FROM gv$resource_limit
+" WHERE max_utilization > 0
+" ORDER BY inst_id,resource_name;
+}
+if $HDR[13]
+{append $sql
+ {PROMPT ___Macro_separator(13)___
+ "SELECT :1
+ " FROM gv$dlm_traffic_controller
+ " ORDER BY tckt_avail;
+ }
+}
+if $HDR[14]
+{append $sql
+ {PROMPT ___Macro_separator(14)___
+ "SELECT :2
+ " FROM gv$dlm_misc;
+ }
+}
+if $HDR[15]
+{append $sql
+ {PROMPT ___Macro_separator(15)___
+ "SELECT :3
+ " FROM gv$lock_activity;
+ }
+}
+append $sql
+{PROMPT ___Macro_separator(16)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       SUBSTR(name,1,20) || '|' ||
+"       SUBSTR(kind,1,10) || '| ' ||
+"       file# || '|' ||
+"       status || '| ' ||
+"       blocks || '| ' ||
+"       read_pings || '| ' ||
+"       write_pings || '|'
+" FROM (SELECT p.inst_id,p.name,p.kind,p.file#,p.status,
+"              COUNT(p.block#) blocks,
+"              SUM(p.forced_reads) read_pings,
+"              SUM(p.forced_writes) write_pings
+"        FROM gv$ping p,gv$datafile df
+"        WHERE p.file# = df.file# (+)
+"        GROUP BY p.inst_id,p.name,p.kind,p.file#,p.status
+"        ORDER BY SUM(p.forced_writes) DESC)
+" WHERE rownum < 11
+" ORDER BY write_pings DESC;
+"PROMPT ___Macro_separator(17)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       SUBSTR(name,1,20) || '|' ||
+"       SUBSTR(kind,1,10) || '| ' ||
+"       file# || '|' ||
+"       status || '| ' ||
+"       blocks || '| ' ||
+"       read_pings || '| ' ||
+"       write_pings || '|'
+" FROM (SELECT p.inst_id,p.name,p.kind,p.file#,p.status,
+"              COUNT(p.block#) blocks,
+"              SUM(p.forced_reads) read_pings,
+"              SUM(p.forced_writes) write_pings
+"        FROM gv$ping p,gv$datafile df
+"        WHERE p.file# = df.file# (+)
+"        GROUP BY p.inst_id,p.name,p.kind,p.file#,p.status
+"        ORDER BY SUM(p.forced_reads) DESC)
+" WHERE rownum < 11
+" ORDER BY read_pings DESC;
+"PROMPT ___Macro_separator(18)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       SUBSTR(name,1,20) || '|' ||
+"       SUBSTR(kind,1,10) || '| ' ||
+"       file# || '|' ||
+"       status || '| ' ||
+"       blocks || '| ' ||
+"       read_pings || '| ' ||
+"       write_pings || '|'
+" FROM (SELECT p.inst_id,p.name,p.kind,p.file#,p.status,
+"              COUNT(p.block#) blocks,
+"              SUM(p.forced_reads) read_pings,
+"              SUM(p.forced_writes) write_pings
+"        FROM gv$false_ping p,gv$datafile df
+"        WHERE p.file# = df.file# (+)
+"        GROUP BY p.inst_id,p.name,p.kind,p.file#,p.status
+"        ORDER BY SUM(p.forced_writes) DESC)
+" WHERE rownum < 11
+" ORDER BY write_pings DESC;
+"PROMPT ___Macro_separator(19)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       SUBSTR(name,1,30) || '|' ||
+"       value || ' |' ||
+"       SUBSTR(description,1,60) || '|'
+" FROM gv$parameter
+" WHERE isdefault = 'FALSE'
+" ORDER BY inst_id,name;
+"PROMPT ___Macro_separator(20)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       SUBSTR(event,1,25) || '| ' ||
+"       time_waited || '| ' ||
+"       total_waits || '| ' ||
+"       total_timeouts || '|'
+" FROM (SELECT inst_id,event,time_waited,total_waits,total_timeouts
+"        FROM gv$system_event
+"        WHERE event NOT IN ('rdbms ipc message','smon timer','pmon timer',
+"               'SQL*Net message from client',
+"               'lock manager wait for remote message',
+"               'ges remote message','gcs remote message','gcs for action',
+"               'client message','pipe get','Null event','PX Idle Wait',
+"               'single-task message','PX Deq: Execution Msg',
+"               'KXFQ: kxfqdeq - normal deqeue','listen endpoint status',
+"               'slave wait','wakeup time manager')
+"        ORDER BY time_waited DESC)
+" WHERE rownum < 11
+" ORDER BY time_waited DESC;
+"PROMPT ___Macro_separator(21)___
+"SELECT '| ' ||
+"       p.inst_id || '| ' ||
+"       s.sid || '| ' ||
+"       s.serial# || '| ' ||
+"       p.pid || '| ' ||
+"       p.spid || '|' ||
+"       SUBSTR(p.program,1,25) || '|' ||
+"       SUBSTR(s.username,1,15) || ' |' ||
+"       p.username || '|' ||
+"       SUBSTR(sw.event,1,30) || '| ' ||
+"       sw.seconds_in_wait || '|'
+" FROM gv$process p,gv$session s,gv$session_wait sw
+" WHERE (p.inst_id = s.inst_id AND p.addr = s.paddr)
+"   AND (s.inst_id = sw.inst_id AND s.sid = sw.sid)
+" ORDER BY p.inst_id,s.sid;
+"PROMPT ___Macro_separator(22)___
+"SELECT '| ' ||
+"       inst_id || '|' ||
+"       name || '| ' ||
+"       value || '|'
+" FROM gv$sysstat
+" WHERE value > 0
+" ORDER BY inst_id,name;
+"PROMPT ___Macro_separator(23)___
+"SELECT '| ' ||
+"       sw.inst_id || '| ' ||
+"       sw.sid || '| ' ||
+"       sw.seconds_in_wait || '|' ||
+"       REPLACE(REPLACE(REPLACE(sa.sql_text,
+"        '|', '&#124;'),
+"        '<', '&lt;'),
+"        '>', '&gt;') || ' |'
+" FROM gv$session_wait sw,gv$session s,gv$sqlarea sa
+" WHERE sw.sid = s.sid (+)
+"   AND sw.inst_id = s.inst_id (+)
+"   AND s.sql_address = sa.address
+"   AND sw.event NOT IN
+"       ('rdbms ipc message','smon timer','pmon timer',
+"        'SQL*Net message from client','lock manager wait for remote message',
+"        'ges remote message','gcs remote message','gcs for action',
+"        'client message','pipe get','Null event','PX Idle Wait',
+"        'single-task message','PX Deq: Execution Msg',
+"        'KXFQ: kxfqdeq - normal deqeue','listen endpoint status',
+"        'slave wait','wakeup time manager')
+"   AND sw.seconds_in_wait > 0
+" ORDER BY sw.seconds_in_wait DESC;
+"PROMPT ___Macro_separator(24)___
+"SELECT DISTINCT '|' ||
+"       SUBSTR(host_name,1,12) || ' |' ||
+"       SUBSTR(p.name,1,20) || ' |' ||
+"       p.value || ' |'
+" FROM gv$instance i,gv$parameter p
+" WHERE p.inst_id = i.inst_id (+)
+"   AND p.name LIKE '%_dump_dest'
+"   AND p.name != 'core_dump_dest';
+}
+call separator(1)
+call writeSql(bindSql($sql,$col1,$col2,$col3),2)
+call separator(0,'Diagnostics')
+
+=pod
+
+Retrieves C<hanganalyze> and C<systemstate> dumps. This is only performed
+for databases associated with the current Oracle home.
+
+=cut
+
+if $DATABASE_LOCAL
+{for $cnt (2,$CLUSTER_REPEAT)
+ {if $CLUSTER_SLEEP
+  {debug ' Inside RAC diagnostics, waiting ',$CLUSTER_SLEEP,\
+         ' seconds before taking next dump'
+   sleep $CLUSTER_SLEEP
+  }
+  var $cnt = get_dumps(\%hit,$cnt)
+  write $TOP
+ }
+
+=pod
+
+Collects related trace files. This is performed for databases associated
+with the current Oracle home only.
+
+=cut
+
+ debug ' Inside RAC diagnostics, collecting hang analysis trace files'
+ prefix
+ {write '---+ Hang Analyze/System State Trace Files'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              security risks. To prevent them, access the file outside the \
+              browser or use the link to save them and use an adequate viewer.'
+  write '|*Trace File*|'
+ }
+ var $tot = 0
+ loop $fil (keys(%hit,'NA'))
+ {if testFile('r',$fil)
+  {var $lnk = encode($fil)
+   var $siz = getSize($fil)
+   if $siz
+   {output d,concat('diag',basename($fil))
+    if ${CUR.LAST}->write_data($fil)
+     var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+    call $[OUT]->end_report(${CUR.LAST})
+   }
+   write '|',$lnk,'|'
+  }
+ }
+ if expr('<',$tot,expr('*',getSetting('CLUSTER_MAX',10),1048576))
+ {suspend report
+  report ssd
+  call analyze_ssd(keys(%hit,'NA'))
+  if isCreated(true)
+  {var $ssd = getFile()
+   resume report
+   write '| |'
+   write '|*Analysis*|'
+   write '|[[',$ssd,'][_blank][System State]]|'
+  }
+  else
+   resume report
+ }
+ if hasOutput(true)
+  write $TOP
+}
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>.
+
+=begin credits
+
+=over 10
+
+=item RDA 4.5:  Bob Caldwell, Michael Polaski.
+
+=item RDA 4.6:  Bob Caldwell.
+
+=item RDA 4.28: Bob Caldwell, Michael Polaski.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

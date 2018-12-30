@@ -1,0 +1,1056 @@
+<sdp_diaglet platform="linux" product="DB10R1" set="A200DB10R1_lin" title="Oracle Database 10g R1 (10.1.0) Preinstall (Linux)" type="A">
+<sdp_meta id="$Id: A200DB10R1_lin.xml,v 2.18 2012/05/14 08:02:47 mschenke Exp $" type="version"/>
+<sdp_meta author="KRA" change="Improve Oracle Linux-related rules" date="20120514" type="history"/>
+<sdp_content set="A200DB10R1_lin" title="Oracle Database 10g R1 (10.1.0) Preinstall (Linux)" type="check">
+<sdp_group>
+
+<sdp_rule id="A00010" mode="VERIFY" name="OS Certified?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP,$OS_ARC,$OS_BIT
+var $BOOK_32 = "Oracle Database Installation Guide 10g Release 1 (10.1) for \
+  UNIX Systems: AIX-Based Systems, hp HP-UX PA-RISC (64-bit), hp Tru64 UNIX, \
+  Linux x86, and Solaris Operating System (SPARC)"
+var $BOOK_64 = "Oracle Database Installation Guide 10g Release 1 (10.1.0.3) \
+  for Linux x86-64"
+if expr('==',$OS_BIT,32)
+{var $BOOK = $BOOK_32
+ call setHcveResult(check($OS_TYP,\
+   'Asianux',check(lc($OS_NAM),\
+     'koumel',   'Adequate',\
+     'trinity',  'Adequate',\
+                 'Not certified [Asianux version]'),\
+   'Oracle',check(lc($OS_NAM),\
+     'october',  'Adequate',\
+                 'Not certified [Oracle version]'),\
+   'Red Hat',check(lc($OS_NAM),\
+     'nahant',   'Adequate',\
+     'taroon',   cmp_kernel('RH EL3','2.4.21-15'),\
+     'pensacola',cmp_kernel('RH AS2.1','2.4.9-34'),\
+     'derry',    cmp_kernel('RH AS2.1-ia64'),\
+     'destin',   cmp_kernel('RH ASDE2.1'),\
+     'panama',   cmp_kernel('RH ES2.1'),\
+                 'Not certified [Red Hat version]'),\
+   'SuSE',check($OS_NAM,\
+     'SLES-8',   cmp_kernel('SuSE 8','2.4.21-138'),\
+     'SLES-9',   cmp_kernel('SuSE 9','2.6.5-7.5'),\
+                 'Not certified [SuSE version]'),\
+   'Check certification'))
+}
+elsif !match($OS_ARC,'Itanium')
+{var $BOOK = $BOOK_64
+ call setHcveResult(check($OS_TYP,\
+   'Oracle',check(lc($OS_NAM),\
+     'october',  'Adequate',\
+                 'Not certified [Oracle version]'),\
+   'Red Hat',check(lc($OS_NAM),\
+     'nahant',   cmp_kernel('RH EL4','2.6.9-11'),\
+     'taroon',   cmp_kernel('RH EL3','2.4.21-27'),\
+                 'Not certified [Red Hat version]'),\
+   'SuSE',check($OS_NAM,\
+     'SLES-8',   cmp_kernel('SuSE 8','2.4.21-278'),\
+     'SLES-9',   cmp_kernel('SuSE 9','2.6.5-7.139'),\
+                 'Not certified [SuSE version]'),\
+   'Check certification'))
+}
+else
+{var $BOOK = $BOOK_64
+ call setHcveResult(check($OS_TYP,\
+   'Asianux',check(lc($OS_NAM),\
+     'koumel',   'Adequate',\
+     'trinity',  'Adequate',\
+                 'Not certified [Asianux version]'),\
+   'Oracle',check(lc($OS_NAM),\
+     'october',  'Adequate',\
+                 'Not certified [Oracle version]'),\
+   'Red Hat',check(lc($OS_NAM),\
+     'nahant',   cmp_kernel('RH EL4','2.6.9-11'),\
+     'taroon',   cmp_kernel('RH EL3','2.4.21-15'),\
+                 'Not certified [Red Hat version]'),\
+   'SuSE',check($OS_NAM,\
+     'SLES-8',   cmp_kernel('SuSE 8','2.4.21-278'),\
+     'SLES-9',   cmp_kernel('SuSE 9','2.6.5-7.139'),\
+                 'Not certified [SuSE version]'),\
+   'Check certification'))
+}
+call setHcveVariable('$BOOK','$BOOK_32','$BOOK_64')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the correct version of Linux required for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The correct version of Linux is installed on your server.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not certified ...|You do not have the correct version of Linux installed on your server. For the certified versions of Linux, see the ${'BOOK} and Certification in My Oracle Support.|
+|Check certification|For less common operating systems, it is possible that they may be certified and not verified by this rule. Please verify that your operating system is certified.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00020" mode="VERIFY" name="User in ``/etc/passwd``?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  not(testFile('r','/etc/passwd')),\
+    'Can not read /etc/passwd',\
+  grepFile('/etc/passwd',\
+           concat('^',$usr = first(command('/usr/bin/id -nu')),':'),\
+           'f'),\
+    'userOK',\
+    concat($usr,' not in /etc/passwd.')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user name of the user who runs this script is in the ``/etc/passwd`` file.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="userOK" result="PASSED"><![CDATA[The ``/etc/passwd`` file contains the user. No action is required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``/etc/passwd`` file does not contain the user or else the file has no read permissions. Add the user to the ``/etc/passwd`` file if the user does not exist in the file.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00030" mode="VERIFY" name="Group in ``/etc/group``?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  not(testFile('r','/etc/group')),\
+    'Can not read /etc/group',\
+  grepFile('/etc/group',concat('^',command('/usr/bin/id -ng'),':'),'f'),\
+    'GroupOK',\
+    'Group not in /etc/group'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the group to which the user belongs exists in the ``/etc/group`` file.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="GroupOK" result="PASSED"><![CDATA[The ``/etc/group`` file contains the group of the user. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[ALERT:
+The ``/etc/group`` file does not contain the group of the user. Add the group to the ``/etc/group`` file.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00040" mode="RECORD" name="Enter ORACLE_HOME">
+<sdp_command default="$ORACLE_HOME" type="PROMPT" variable="$ORACLE_HOME"><![CDATA[Planned ORACLE_HOME location]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the planned Oracle home directory.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00050" mode="VERIFY" name="ORACLE_HOME Valid?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00040" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires ORACLE_HOME.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),    'OHNotSpecified',\
+  not(testDir('d',$ORACLE_HOME)),'OHnotvalid',\
+  not(testDir('l',$ORACLE_HOME)),'OHexists',\
+                                 'OHsymlink'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the Oracle home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="OHexists|OHsymlink" result="PASSED"><![CDATA[The Oracle home directory exists. No action required]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[No ``ORACLE_HOME`` value was provided for verification.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[ALERT:
+There is something wrong with the Oracle home directory. Verify the following:
+|*Return Value*|*Action*|
+|OHnotvalid|Ensure that you provided the correct location or that this directory was created and then run this script again.|
+|OHsymlink|ORACLE_HOME is a symbolic link|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00060" mode="VERIFY" name="O_H Permissions OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00040" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires ORACLE_HOME.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),    'OHNotSpecified',\
+  not(testDir('d',$ORACLE_HOME)),'OHNotExist',\
+  not(testDir('r',$ORACLE_HOME)),'NoReadPerm',\
+  not(testDir('w',$ORACLE_HOME)),'NoWritePerm',\
+  not(testDir('x',$ORACLE_HOME)),'NoExecutePerm',\
+                                 'CorrectPerms'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user has the correct privileges to install Oracle Database 10g in the Oracle home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="CorrectPerms" result="PASSED"><![CDATA[The permissions for the Oracle home directory are correct. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[No ``ORACLE_HOME`` value was provided for verification.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoReadPerm|Ensure that the install user has read permissions for the Oracle home directory|
+|NoWritePerm|Ensure that the install user has write permissions for the Oracle home directory|
+|NoExecutePerm|Ensure that the install user has execute permissions for the Oracle home directory|
+|OHNotExist|The Oracle home directory does not exist. Create the Oracle home mount point and ensure that the permissions are set correctly (``chmod 755``)|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00070" mode="VERIFY" name="Umask Set to 022?">
+<sdp_command type="RDA"><![CDATA[import $BOOK
+call setHcveResult(cond(expr('==','022',command('"umask"')),\
+  'UmaskOK',\
+  'UmaskNotOK')) # Force shell
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``umask`` value is set correctly for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="UmaskOK" result="PASSED"><![CDATA[The ``umask`` value is set correctly for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The ``umask`` value is not set correctly. Set the ``umask`` to 022 before installing Oracle Database 10g. For more information, see the ${'BOOK}.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00080" mode="VERIFY" name="LDLIBRARYPATH Unset?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  defined(getEnv('LD_LIBRARY_PATH')),'IsSet','UnSet'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``LD_LIBRARY_PATH`` environment variable is not set.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="UnSet" result="PASSED"><![CDATA[The ``LD_LIBRARY_PATH`` environment variable is not set. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``LD_LIBRARY_PATH`` environment variable is set in your environment and must be unset before installing Oracle Database 10g.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00100" mode="VERIFY" name="Other O_Hs in PATH?">
+<sdp_command type="RDA"><![CDATA[var @pth = split(':',getEnv('PATH'))
+loop $lin (grepFile(catFile('/etc','oratab'),'#|^$','v'))
+{var $pat = concat('^',quote(replace(field(':',1,$lin),'\/+$')),'(\/.*)?$')
+ if grep(@pth,$pat)
+  return setHcveResult('OratabEntryInPath')
+}
+call setHcveResult('NoneFound')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``PATH`` variable does not contain any references to other Oracle home directories based on the ``/etc/oratab`` entries.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NoneFound" result="PASSED"><![CDATA[The ``PATH`` does not contain any of the Oracle home directories found in ``/etc/oratab``. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``PATH`` variable contains one or more references to Oracle home directories found in the ``/etc/oratab`` file. Remove the references from the ``PATH`` variable before installing Oracle Database 10g.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00110" mode="VERIFY" name="oraInventory Permissions">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  not(testFile('f','/etc/oraInst.loc')),\
+    'oraInventoryNotFound',\
+  not(testFile('wr',$INV_LOC = \
+    value(grepFile('/etc/oraInst.loc','^inventory_loc','f')))),\
+    'oraInventoryNotOK',\
+    'oraInventoryOK'))
+call setHcveVariable('$INV_LOC')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user installing Oracle Database 10g has sufficient privileges for the ``oraInventory`` directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="oraInventoryOK|oraInventoryNotFound" result="PASSED"><![CDATA[Either the user, who is logged in, has sufficient privileges for the ``oraInventory`` directory to install Oracle Database 10g or this is the first Oracle product to be installed on the system. In this case, the installer creates the ``oraInventory`` directory. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The user, who is logged in, cannot access (write and read) ``oraInventory`` while installing Oracle Database 10g. Verify that the user can write to the directory specified in the ``/etc/oraInst.loc`` file.
+|*Return Value*|*Action*|
+|oraInventoryNotOK|Make sure that the install user has write permissions to ${`INV_LOC}|
+|oraInventoryNotFound|The ``/etc/oraInst.loc`` file was not found. This is not a problem if it is the first Oracle installation on the system.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00120" mode="VERIFY" name="Temp Adequate?">
+<sdp_command type="RDA"><![CDATA[
+var ($flg,$tmp,@tbl) = (true,{'/tmp','/tmp'})
+loop $key ('TEMP','TMPDIR')
+{if getEnv($key)
+  var $tmp->{$key} = last
+}
+loop $key (keys(%tmp))
+{if !testDir('d',$tmp->{$key})
+  call push(@tbl,concat($key,' invalidDir'))
+ else
+ {if !testDir('w',$tmp->{$key})
+   call push(@tbl,concat($key,' NoWrite'))
+  if and($flg,expr('>=',get_df($tmp->{$key}),409600))
+   var $flg = false
+ }
+}
+if $flg
+{loop $key (keys(%tmp))
+  call push(@tbl,concat($key,' tooSmall'))
+}
+call setHcveParameter('RULE.A00120',$tmp)
+call setHcveVariable('$TMPDIR')
+var $TMPDIR = getEnv('TMPDIR','/var/tmp')
+if expr('<',get_df($TMPDIR),204800)
+ call push(@tbl,concat('TMPDIR lessThan200'))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'TempSpaceOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that there is sufficient space available for storing temporary files during the Oracle Database 10g installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="TempSpaceOK" result="PASSED"><![CDATA[There is sufficient temporary disk space available for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The temporary space is not configured correctly.
+|*Return Value*|*Action*|
+|/tmp invalidDir|ALERT - ``/tmp`` is not a valid directory. ``/tmp`` needs to be a directory.|
+|/tmp NoWrite|ALERT - The user does not have write permissions to the ``/tmp`` directory.|
+|/tmp tooSmall|ALERT - There is less than the needed 400 MB of free space in the ``/tmp`` directory.|
+|TEMP invalidDir|ALERT - ``TEMP`` is set to ${`RULE.A00120.TEMP} in the environment; however, ${`RULE.A00120.TEMP} is an invalid directory. Take appropriate action.|
+|TEMP NoWrite|ALERT - ``TEMP`` is set to ${`RULE.A00120.TEMP} in the environment; however, the user does not have write permissions to ${`RULE.A00120.TEMP}.|
+|TEMP tooSmall|ALERT - ``TEMP`` is set to ${`RULE.A00120.TEMP} in the environment; however, ${`RULE.A00120.TEMP} has less than the required 400 MB of free space. Make sure your temporary space has at least 400 MB of free space.|
+|TMPDIR invalidDir|ALERT - ``TMPDIR`` is set to ${`RULE.A00120.TMPDIR} in the environment; however, ${`RULE.A00120.TMPDIR} is an invalid directory. Take appropriate action.|
+|TMPDIR NoWrite|ALERT - ``TMPDIR`` is set to ${`RULE.A00120.TMPDIR} in the environment; however, the user does not have write permissions to ${`RULE.A00120.TMPDIR}.|
+|TMPDIR tooSmall|ALERT - ``TMPDIR`` is set to ${`RULE.A00120.TMPDIR} in the environment; however, ${`RULE.A00120.TMPDIR} has less than the required 400 MB of free space. Make sure your temporary space has at least 400 MB of free space.|
+|TMPDIR lessThan200|ALERT - ${`TMPDIR} has less than the required 200 MB of free space. Make sure your ${`TMPDIR} has at least 200 MB of free space.|
+Note: The ``runInstaller`` (OUI) uses or checks for temporary space by checking for the ``TEMP`` environment variable first, then the ``TMP`` environment variable, and finally the ``/tmp`` mount point.
+%BR%The operating system also requires additional space by creating files under ``/tmp`` or using the ``TMPDIR`` environment variable if it finds it.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00130" mode="RECORD" name="Swap (in MB)">
+<sdp_command type="RDA"><![CDATA[if !testFile('x','/usr/bin/free')
+ return setHcveResult('SWAPNotDetermined')
+var $swp = field('\s+',1,grepCommand('/usr/bin/free -mt','Swap','f'))
+call setHcveResult(cond(isNumber($swp),$swp,'SWAPNotSet'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule shows the amount of free swap space.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00140" mode="VERIFY" name="RAM (in MB)">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(nvl(\
+  field('\s+',1,grepCommand('/usr/bin/free -m','Mem','f')),\
+  0))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient physical memory (MB) to install Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="512" result="PASSED"><![CDATA[You have sufficient physical memory (MB) installed to install Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[ALERT:
+You do not have sufficient physical memory (MB) in your system to install Oracle Database 10g.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00150" mode="VERIFY" name="Swap OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00130" minimum="RECORD" result="FAILED"><![CDATA[Requires amount of swap space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_BIT
+var $swp = "%A00130%"
+var $mem = "%A00140%"
+if not(isNumber($swp))
+ return setHcveResult('SwapNotDetermined')
+elsif expr('<',$swp,1024)
+ return setHcveResult('InsufficientSwap')
+elsif not(isNumber($mem))
+ return setHcveResult('MemoryNotDetermined')
+#Checks 32-bit swap
+elsif expr('==',$OS_BIT,32)
+{if expr('<',$mem,8192)
+ {if expr('<',$swp,$mem)
+   return setHcveResult('InsufficientSwap')
+  else
+   return setHcveResult('SwapOK')
+ }
+ else
+ {if expr('<',$swp,expr('*',0.75,$mem))
+   return setHcveResult('InsufficientSwap')
+  else
+   return setHcveResult('SwapOK')
+ }
+}
+#Checks 64-bit swap
+else
+{if expr('<',$swp,$mem)
+  return setHcveResult('InsufficientSwap')
+ else
+  call setHcveResult('SwapOK')
+}
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the total amount of swap space is greater than or equal to the amount recommended for Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="SwapOK" result="PASSED"><![CDATA[The amount of swap space meets the minimum requirement for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The amount of swap space is less than the amount recommended by the ${'BOOK}. Verify the requirements and adjust your system accordingly.
+|*Return Value*|*Action*|
+|SwapNotDetermined|ALERT- A Swap to Memory ratio cannot be determined because swap is not set up or you do not have execute permissions to determine swap.|
+|MemoryNotDetermined|ALERT- A Swap to Memory ratio cannot be determined because the amount of physical memory was not determined.|
+|InsufficientSwap|ALERT- Oracle Database 10g requires swap space be at least 1GB or based on the amount RAM, whichever is greater.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00160" mode="VERIFY" name="Disk Space OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00040" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires ORACLE_HOME.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+call setHcveVariable('$ORACLE_HOME')
+if !length($ORACLE_HOME)
+ return setHcveResult('OHNotSpecified')
+if !testDir('d',$ORACLE_HOME)
+ return setHcveResult('OHNotValid')
+var $dsk = expr('/',get_df($ORACLE_HOME),1024)
+call setHcveResult(cond(expr('>=',$dsk,2764.8), 'DiskSpaceOK',\
+                        expr('>=',$dsk,1536),   'OnlySpaceForOne',\
+                        expr('>=',$dsk,1024),   'ClientOnly',\
+                                                'NoSpace'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the amount of disk space in the Oracle home directory is sufficient for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="DiskSpaceOK" result="PASSED"><![CDATA[The Oracle home directory has sufficient disk space to install Oracle Database 10g software, create a database, and install Companion CD products. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[No ``ORACLE_HOME`` value was provided for verification.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The Oracle home directory has insufficient disk space for installing any type of Oracle Database 10g architecture. Verify the specifications.
+|*Return Value*|*Action*|
+|OnlySpaceForOne|${`ORACLE_HOME} has sufficient free disk space to install the Oracle Database 10g software but not enough space to create a database.|
+|ClientOnly|${`ORACLE_HOME} has sufficient free disk space to perform a client installation only.|
+|NoSpace|${`ORACLE_HOME} has insufficient free disk space for an Oracle Database 10g installation.|
+|OHNotValid|Disk space calculations cannot be performed because ${`ORACLE_HOME} is not a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00170" mode="VERIFY" name="Kernel Parameters OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00140" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires amount of RAM in MB.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_ARC
+var @tbl = ()
+var $SHMMAXREQD     = expr('*',%A00140%,524288)
+if match($OS_ARC,'Itanium')
+ var $SHMMAXLIMIT   = 4294967295
+else
+ var $SHMMAXLIMIT   = 2147483648
+var $SEMMNIREQD     = 128
+var $SEMMSLREQD     = 250
+var $SEMMNSREQD     = 32000
+var $SEMOPMREQD     = 100
+var $SHMMAXREQD     = min($SHMMAXLIMIT,$SHMMAXREQD)
+var $SHMMNIREQD     = 4096
+var $SHMALLREQD     = 2097152
+var $FILEMAXREQD    = 65536
+call setHcveVariable('$SHMMAXREQD','$SHMMNIREQD','$SHMALLREQD','$SEMMNIREQD',\
+                     '$SEMMSLREQD','$SEMMNSREQD','$SEMOPMREQD','$FILEMAXREQD')
+macro chk_minimum
+{var (\@tbl,$nam,$max,$val) = @arg
+ if !defined($val)
+  call push(@tbl,concat($nam,'Undef'))
+ if expr('<',$val,$max)
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+var ($lin) = grepFile('/proc/sys/kernel/sem','.','f')
+var ($msl,$mns,$opm,$mni) = split('\s+',$lin,4)
+call chk_minimum(\@tbl,'SEMMNI',$SEMMNIREQD,$mni)
+call chk_minimum(\@tbl,'SEMMSL',$SEMMSLREQD,$msl)
+call chk_minimum(\@tbl,'SEMMNS',$SEMMNSREQD,$mns)
+call chk_minimum(\@tbl,'SEMOPM',$SEMOPMREQD,$opm)
+call chk_minimum(\@tbl,'SHMMAX',$SHMMAXREQD,\
+                 grepFile('/proc/sys/kernel/shmmax','.','f'))
+call chk_minimum(\@tbl,'SHMMNI',$SHMMNIREQD,\
+                 grepFile('/proc/sys/kernel/shmmni','.','f'))
+call chk_minimum(\@tbl,'SHMALL',$SHMALLREQD,\
+                 grepFile('/proc/sys/kernel/shmall','.','f'))
+call chk_minimum(\@tbl,'FILEMAX',$FILEMAXREQD,\
+                 grepFile('/proc/sys/fs/file-max','.','f'))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'KernelOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the kernel parameters are set satisfactorily for Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="KernelOK" result="PASSED" syntax="wiki"><![CDATA[The kernel parameters are set according to the ${'BOOK}. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The kernel parameters are not set according to the ${'BOOK}. For the recommended values, see the ${'BOOK}.
+|*Return Value*|*Action*|
+|SHMMAXUndef|SHMMAX is not defined and must be set to ${SHMMAXREQD}|
+|SHMMAXTooSmall|Increase the kernel parameter SHMMAX to ${SHMMAXREQD}|
+|SHMMNIUndef|SHMMNI is not defined and must be set to ${SHMMNIREQD} or more|
+|SHMMNITooSmall|Increase the kernel parameter SHMMNI to at least ${SHMMNIREQD}|
+|SHMALLUndef|SHMALL is not defined and must be set to ${SHMALLREQD} or more|
+|SHMALLTooSmall|Increase the kernel parameter SHMALL to at least ${SHMALLREQD}|
+|SEMMNIUndef|SEMMNI is not defined and must be set to ${SEMMNIREQD}|
+|SEMMNITooSmall|Increase the kernel parameter SEMMNI to at least ${SEMMNIREQD}|
+|SEMMSLUndef|SEMMSL is not defined and must be set to ${SEMMSLREQD}|
+|SEMMSLTooSmall|Increase the kernel parameter SEMMSL to at least ${SEMMSLREQD}|
+|SEMMNSUndef|SEMMNS is not defined and must be set to ${SEMMNSREQD}|
+|SEMMNSTooSmall|Increase the kernel parameter SEMMNS to at least ${SEMMNSREQD}|
+|SEMOPMUndef|SEMOPM is not defined and must be set to ${SEMOPMREQD}|
+|SEMOPMTooSmall|Increase the kernel parameter SEMOPM to at least ${SEMOPMREQD}|
+|FILEMAXUndef|FILE-MAX is not defined and must be set to ${FILEMAXREQD}|
+|FILEMAXTooSmall|Increase the kernel parameter FILE-MAX to at least ${FILEMAXREQD}|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00180" mode="VERIFY" name="Got Software Tools?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+macro find_exe
+{var (\@tbl,$exe,$ref) = @arg
+ if findCommand($exe)
+ {var $cmd = readLink(last,last)
+  if !compare('eq',$cmd,$ref)
+   call push(@tbl,concat(ucfirst($exe),'Elsewhere'))
+ }
+ else
+  call push(@tbl,concat(ucfirst($exe),'NotFound'))
+}
+call find_exe(\@tbl,'ar','/usr/bin/ar')
+call find_exe(\@tbl,'ld','/usr/bin/ld')
+call find_exe(\@tbl,'nm','/usr/bin/nm')
+call find_exe(\@tbl,'make','/usr/bin/make')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'ld_nm_ar_make_found'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required assembly tools for the installation of Oracle Database 10g exist.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ld_nm_ar_make_found" result="PASSED"><![CDATA[All required assembly tools for the Oracle Database 10g installation were found. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required assembly tools for the Oracle Database 10g installation were not found. Check your installation.
+|*Return Value*|*Action*|
+|ArNotFound|``ar`` is not found in ``PATH``.|
+|ArElsewhere|``ar`` is not in ``/usr/bin`` as required.|
+|LdNotFound|``ld`` is not found in ``PATH``.|
+|LdElsewhere|``ld`` is not in ``/usr/bin`` as required.|
+|NmNotFound|``nm`` is not found in ``PATH``.|
+|NmElsewhere|``nm`` is not in ``/usr/bin`` as required.|
+|MakeNotFound|``make`` is not found in ``PATH``.|
+|MakeElsewhere|``make`` is not in ``/usr/bin`` as required.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00190" mode="VERIFY" name="ulimits OK?">
+<sdp_command type="RDA"><![CDATA[var @tbl =()
+macro get_ulimit_unl
+{var (\@tbl,$nam,$pat) = @arg
+ var ($lin) = grepLastFile(concat('^',$pat),'if')
+ var ($lmt) = match($lin,'\s(\S+)\s*(kbytes)?$')
+ if !defined($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif compare('ne',$lmt,'unlimited')
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+macro get_ulimit_val
+{var (\@tbl,$nam,$pat,$ref) = @arg
+ var ($lin) = grepLastFile(concat('^',$pat),'if')
+ var ($lmt) = match($lin,'\s(\S+)\s*(kbytes)?$')
+ if !length($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif compare('ne',$lmt,'unlimited')
+ {if match($lin,'kbytes',true)
+   var $lmt = expr('*',$lmt,1024)
+  if expr('<',$lmt,$ref)
+   call push(@tbl,concat($nam,'TooSmall'))
+ }
+}
+var $shl = shell('SHELL')
+call loadCommand(concat($shl,check($shl,'csh',' -f -c "limit"',\
+                                              ' -c "ulimit -a"')))
+call get_ulimit_unl(\@tbl,'Time','cpu\s?time')
+call get_ulimit_unl(\@tbl,'File','file\s?size')
+call get_ulimit_val(\@tbl,'Data','data(\sseg)?\s?size',1048576)
+call get_ulimit_val(\@tbl,'Stack','stack\s?size',32768)
+call get_ulimit_val(\@tbl,'NoFiles','(descriptors|nofile|open files)',65536)
+call get_ulimit_val(\@tbl,'Memory',\
+  '(memoryuse|(max memory|resident set)\ssize)',2045680)
+call get_ulimit_val(\@tbl,'Maxuproc',\
+  '^(maxproc|max user processes|nproc|processes)',16384)
+call get_ulimit_val(\@tbl,'Vmemory',\
+  '(process size|virtual memory|vmemoryuse)',4194304)
+call get_ulimit_val(\@tbl,'MaxLockMem',\
+  '(locked address space|max locked memory|memorylocked)',3145728)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'ulimitOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the ``ulimit`` settings are adequate for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ulimitOK" result="PASSED"><![CDATA[The ``ulimit`` settings are adequate for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Review the ``ulimit`` settings and check the recommended values from the ${'BOOK} before installing the software.
+|*Return Value*|*Action*|
+|TimeNotDefined|ulimit(TIME) is not defined|
+|TimeTooSmall|Increase the ulimit(TIME) to unlimited|
+|FileNotDefined|ulimit(FILE) is not defined|
+|FileTooSmall|Increase the ulimit(FILE) to unlimited|
+|DataNotDefined|ulimit(DATA) is not defined|
+|DataTooSmall|Increase the ulimit(DATA) to a minimum of 1048576|
+|StackNotDefined|ulimit(STACK) is not defined|
+|StackTooSmall|Increase the ulimit(STACK) to a minimum of 32768|
+|NoFilesNotDefined|ulimit(NOFILES) is not defined|
+|NoFilesTooSmall|Increase the ulimit(NOFILES) to a minimum of 65536|
+|MaxuprocNotDefined|ulimit(MAXUPROC) is not defined|
+|MaxuprocTooSmall|Increase the ulimit(MAXUPROC) to a minimum of 16384|
+|MemNotDefined|ulimit(MEMORY) is not defined|
+|MemTooSmall|Increase the ulimit(MEMORY) to a minimum of 2045680|
+|VmemoryNotDefined|ulimit(VMEMORY) is not defined|
+|VmemoryTooSmall|Increase the ulimit(VMEMORY) to a minimum of 4194304|
+|MaxLockMemNotDefined|ulimit(MAXLOCKMEM) is not defined|
+|MaxLockMemTooSmall|Note: This applies for Red Hat Enterprise Linux 3 when using VLM only. Increase the ulimit(MAXLOCKMEM) to a minimum of 3145728.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00200" mode="VERIFY" name="OL4 RPMs OK?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP,$OS_BIT,$OS_ARC
+var @tbl = ()
+if !match($OS_TYP,'Oracle')
+ call setHcveResult('NotOracle')
+elsif !match($OS_NAM,'october',true)
+ call setHcveResult('NotOL4')
+#Check for OL4 x86 RPMs
+elsif expr('==',$OS_BIT,32)
+{call cmp_os_pkg(\@tbl,'binutils',['2.15.92.0.2','10','EL4'])
+ call cmp_os_pkg(\@tbl,'compat-db',['4.1.25','9'])
+ call cmp_os_pkg(\@tbl,'compat-libstdc++-296',['2.96','132.7.2'])
+ call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3','47.3'])
+ call cmp_os_pkg(\@tbl,'control-center',['2.8.0','12'])
+ call cmp_os_pkg(\@tbl,'gcc',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'gcc-c++',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'glibc',['2.3.4','2'])
+ call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4','2'])
+ call cmp_os_pkg(\@tbl,'gnome-libs',['1.4.1.2.90','44.1'])
+ call cmp_os_pkg(\@tbl,'libaio',['0.3.96','0'])
+ call cmp_os_pkg(\@tbl,'libstdc++',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'libstdc++-devel',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'make',['3.80','5'])
+ call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','11.2'],undef,undef,\
+                                     '(RH|rh)?(EL|el)\d.*$')
+ call cmp_os_pkg(\@tbl,'pdksh',['5.2.14','30'])
+ call cmp_os_pkg(\@tbl,'sysstat',['5.0.5','1'])
+ call cmp_os_pkg(\@tbl,'xscreensaver',['4.18','5.2'])
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OL4rpmsOK'))
+}
+#Check for OL4 Itanium RPMs
+elsif expr('==',$OS_BIT,64)
+{if match($OS_ARC,'Itanium')
+ {call cmp_os_pkg(\@tbl,'binutils',['2.15.92.0.2','13'])
+  call cmp_os_pkg(\@tbl,'compat-db',['4.1.25','9'])
+  call cmp_os_pkg(\@tbl,'control-center',['2.8.0','12'])
+  call cmp_os_pkg(\@tbl,'gcc',['3.4.3','22.1'])
+  call cmp_os_pkg(\@tbl,'gcc-c++',['3.4.3','22.1'])
+  call cmp_os_pkg(\@tbl,'glibc',['2.3.4','2.9'])
+  call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4','2.9'])
+  call cmp_os_pkg(\@tbl,'make',['3.80','5'])
+  call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','11.2'],undef,\
+                                      undef,'(RH|rh)?(EL|el)\d.*$')
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OL4rpmsOK'))
+ }
+ #Check for OL4 x86_64 RPMs
+ else
+ {call cmp_os_pkg(\@tbl,'binutils',['2.15.92.0.2','13'],'x86_64')
+  call cmp_os_pkg(\@tbl,'compat-db',['4.1.25','9'],'x86_64')
+  call cmp_os_pkg(\@tbl,'control-center',['2.8.0','12'],'x86_64')
+  call cmp_os_pkg(\@tbl,'gcc',['3.4.3','22.1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'gcc-c++',['3.4.3','22.1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc',['2.3.4','2.9'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4','2.9'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.4','2.9'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.4','2.9'],'i386')
+  call cmp_os_pkg(\@tbl,'glibc-headers',['2.3.4','2.9'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-kernheaders',['2.4','9.1.87'],'x86_64')
+  call cmp_os_pkg(\@tbl,'gnome-libs',['1.4.1.2.90','44.1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'libstdc++',['3.4.3','22.1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'libstdc++-devel',['3.4.3','22.1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'make',['3.80','5'],'x86_64')
+  call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','11.2'],'x86_64',undef,\
+                                      '(RH|rh)?(EL|el)\d.*$')
+  call cmp_os_pkg(\@tbl,'pdksh',['5.2.14','30'],'x86_64')
+  call cmp_os_pkg(\@tbl,'sysstat',['5.0.5','1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'xfree86-libs',['4.3.0','78'],'i386')
+  call cmp_os_pkg(\@tbl,'xscreensaver',['4.18','5.2'],'x86_64')
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OL4rpmsOK'))
+ }
+}
+else
+ call setHcveResult('RpmsNotSpecified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the correct versions of the required RPMs are installed on the Oracle Linux 4 system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="OL4rpmsOK" result="PASSED"><![CDATA[The correct ``binutils`` (x86, x86-64, Itanium), ``compat-db`` (x86, x86-64, Itanium), ``compat-libstdc++-296`` (x86), ``compat-libstdc++-33`` (x86), ``control-center`` (x86, x86-64, Itanium), ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, x86-64, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-common`` (x86, x86-64, Itanium), ``glibc-devel`` (x86-64), ``glibc-headers`` (x86-64), ``glibc-kernheaders`` (x86-64), ``gnome-libs`` (x86, x86-64), ``libaio`` (x86), ``libstdc++`` (x86, x86-64), ``libstdc++-devel`` (x86, x86-64), ``make`` (x86, x86-64, Itanium), ``openmotif21`` (x86, x86-64, Itanium), ``pdksh`` (x86, x86-64), ``sysstat`` (x86, x86-64), ``xfree86-libs`` (x86-64), and ``xscreensaver`` (x86, x86-64) packages are installed on your Enterprise Linux 4 system. No action required.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotOL4|NotOracle" result="SKIPPED"><![CDATA[This rule is only for Oracle Linux 4]]></sdp_action>
+<sdp_action condition="=~" minimum="RpmsNotSpecified" result="SKIPPED"><![CDATA[RPMS have not been specified for this specific version of Oracle Linux 4]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You have incorrect versions of ``binutils`` (x86, x86-64, Itanium), ``compat-db`` (x86, x86-64, Itanium), ``compat-libstdc++-296`` (x86), ``compat-libstdc++-33`` (x86), ``control-center`` (x86, x86-64, Itanium), ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, x86-64, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-common`` (x86, x86-64, Itanium), ``glibc-devel`` (x86-64), ``glibc-headers`` (x86-64), ``glibc-kernheaders`` (x86-64), ``gnome-libs`` (x86, x86-64), ``libaio`` (x86), ``libstdc++`` (x86, x86-64), ``libstdc++-devel`` (x86, x86-64), ``make`` (x86, x86-64, Itanium), ``openmotif21`` (x86, x86-64, Itanium), ``pdksh`` (x86, x86-64), ``sysstat`` (x86, x86-64), ``xfree86-libs`` (x86-64), or ``xscreensaver`` (x86, x86-64) installed on your system. Make sure that the correct versions are installed. See Knowledge Article 169706.1.
+|*Return Value*|*Action*|
+|... found|The output shows the version that was detected. For the required versions, see Knowledge Article 169706.1|
+|... not installed|This indicates that a required RPM is not installed|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00203" mode="VERIFY" name="RHEL21 RPMs OK?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP,$OS_BIT,$OS_ARC
+var @tbl = ()
+if !match($OS_TYP,'Red Hat')
+ call setHcveResult('NotRedHat')
+elsif !match($OS_NAM,'(pensacola|panama|derry)',true)
+ call setHcveResult('NotRHEL21')
+#Check RHEL2.1 x86 RPMs
+elsif expr('==',$OS_BIT,32)
+{call cmp_os_pkg(\@tbl,'gcc',['2.96','128'])
+ call cmp_os_pkg(\@tbl,'gcc-c++',['2.96','128'])
+ call cmp_os_pkg(\@tbl,'glibc',['2.2.4','32'])
+ call cmp_os_pkg(\@tbl,'libstdc++',['2.96','128']) 
+ call cmp_os_pkg(\@tbl,'make',['3.79','1'])
+ call cmp_os_pkg(\@tbl,'openmotif',['2.1.30','11'])
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RHEL21rpmsOK'))
+}
+#Check RHEL2.1 Itanium RPMs
+elsif match($OS_ARC,'Itanium')
+{call cmp_os_pkg(\@tbl,'gcc',['2.96','129.7.2'])
+ call cmp_os_pkg(\@tbl,'gcc-c++',['2.96','129.7.2'])
+ call cmp_os_pkg(\@tbl,'glibc',['2.2.4','32.18'])
+ call cmp_os_pkg(\@tbl,'libaio',['0.3.92','1'])
+ call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.92','1'])
+ call cmp_os_pkg(\@tbl,'libstdc++',['2.96','129.7.2'])
+ call cmp_os_pkg(\@tbl,'libstdc++-devel',['2.96','129.7.2'])
+ call cmp_os_pkg(\@tbl,'make',['3.79','1.8'])
+ call cmp_os_pkg(\@tbl,'openmotif',['2.1.30','11'])
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RHEL21rpmsOK'))
+}
+else
+ call setHcveResult('RpmsNotSpecified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the correct versions of the required RPMs are installed on the Red Hat Enterprise Linux 2.1 system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="RHEL21rpmsOK" result="PASSED"><![CDATA[The correct ``gcc`` (x86, Itanium), ``gcc-c++`` (x86, Itanium), ``glibc`` (x86, Itanium), ``libaio`` (Itanium), ``labaio-devel`` (Itanium), ``libstdc++`` (x86, Itanium), ``libstdc++-devel`` (Itanium), ``make`` (x86, Itanium), and ``openmotif21`` (x86, Itanium) packages are installed on your RHEL 2.1 system. No action required.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotRHEL21|NotRedHat" result="SKIPPED"><![CDATA[This rule only applies to Red Hat 2.1.]]></sdp_action>
+<sdp_action condition="=~" minimum="RpmsNotSpecified" result="SKIPPED"><![CDATA[RPMs have not been specified for this specific version of Red Hat 2.1.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You have missing or incorrect versions of ``gcc`` (x86, Itanium), ``gcc-c++`` (x86, Itanium), ``glibc`` (x86, Itanium), ``libaio`` (Itanium), ``labaio-devel`` (Itanium), ``libstdc++`` (x86, Itanium), ``libstdc++-devel`` (Itanium), ``make`` (x86, Itanium), or ``openmotif21`` (x86, Itanium) packages on your system. Make sure that the correct versions are installed.
+For the required versions, see Knowledge Article 169706.1.
+|*Return Value*|*Action*|
+|... found|The output shows the version that was detected. For the required versions, see Knowledge Article 169706.1|
+|... not installed|This indicates that a required RPM is not installed|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00204" mode="VERIFY" name="RHEL3 RPMs OK?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP,$OS_BIT,$OS_ARC
+var @tbl = ()
+if !match($OS_TYP,'Red Hat')
+ call setHcveResult('NotRedHat')
+elsif !match($OS_NAM,'taroon',true)
+ call setHcveResult('NotRHEL3')
+#Check RHEL 3 x86 RPMs
+elsif expr('==',$OS_BIT,32)
+{call cmp_os_pkg(\@tbl,'compat-db',['4.0.14','5'])
+ call cmp_os_pkg(\@tbl,'compat-gcc',['7.3','2.96.128'])
+ call cmp_os_pkg(\@tbl,'compat-gcc-c++',['7.3','2.96.128'])
+ call cmp_os_pkg(\@tbl,'compat-libstdc++',['7.3','2.96.128'])
+ call cmp_os_pkg(\@tbl,'compat-libstdc++-devel',['7.3','2.96.128'])
+ call cmp_os_pkg(\@tbl,'gcc',['3.2.3','34'])
+ call cmp_os_pkg(\@tbl,'gcc-c++',['3.2.3','34'])
+ call cmp_os_pkg(\@tbl,'glibc',['2.3.2','95.20'])
+ call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.2','95.20'])
+ call cmp_os_pkg(\@tbl,'libaio',['0.3.96','3'],'i386')
+ call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.96','3'],'i386')
+ call cmp_os_pkg(\@tbl,'libstdc++-devel',['3.2.3','34'])
+ call cmp_os_pkg(\@tbl,'make',['3.79','1'])
+ call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','8'])
+ call cmp_os_pkg(\@tbl,'setarch',['1.3','1'])
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RHEL3rpmsOK'))
+}
+#Check RHEL 3 Itanium RPMs
+elsif expr('==',$OS_BIT,64)
+{if match($OS_ARC,'Itanium')
+ {call cmp_os_pkg(\@tbl,'compat-db',['4.0.14','5'])
+  call cmp_os_pkg(\@tbl,'compat-gcc',['7.3','2.96.128'])
+  call cmp_os_pkg(\@tbl,'compat-gcc-c++',['7.3','2.96.128'])
+  call cmp_os_pkg(\@tbl,'compat-libstdc++',['7.3','2.96.128'])
+  call cmp_os_pkg(\@tbl,'compat-libstdc++-devel',['7.3','2.96.128'])
+  call cmp_os_pkg(\@tbl,'gcc',['3.2.3','47'])
+  call cmp_os_pkg(\@tbl,'gcc-c++',['3.2.3','20'])
+  call cmp_os_pkg(\@tbl,'glibc',['2.3.2','95.3'])
+  call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.2','95.3'])
+  call cmp_os_pkg(\@tbl,'make',['3.79','1'])
+  call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','8'])
+  call cmp_os_pkg(\@tbl,'setarch',['1.3','1'])
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RHEL3rpmsOK'))
+ }
+ #Check RHEL 3 x86_64 RPMs
+ else
+ {call cmp_os_pkg(\@tbl,'compat-db',['4.0.14','5'],'x86_64')
+  call cmp_os_pkg(\@tbl,'compat-gcc',['7.3','2.96.128'],'i386')
+  call cmp_os_pkg(\@tbl,'compat-gcc-c++',['7.3','2.96.128'],'i386')
+  call cmp_os_pkg(\@tbl,'compat-libstdc++',['7.3','2.96.128'],'i386')
+  call cmp_os_pkg(\@tbl,'compat-libstdc++-devel',['7.3','2.96.128'],'i386')
+  call cmp_os_pkg(\@tbl,'gcc',['3.2.3','34'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc',['2.3.2','95.20'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.2','95.20'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.2','95.20'],'i386')
+  call cmp_os_pkg(\@tbl,'gnome-libs',['1.4.1.2.90','34.1'],'i386')
+  call cmp_os_pkg(\@tbl,'libaio',['0.3.96','3'],'x86_64')
+  call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.96','3'],'x86_64')
+  call cmp_os_pkg(\@tbl,'make',['3.79','1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','8'],'i386')
+  call cmp_os_pkg(\@tbl,'setarch',['1.3','1'],'x86_64')
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RHEL3rpmsOK'))
+ }
+}
+else
+ call setHcveResult('RpmsNotSpecified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the correct versions of the required RPMs are installed on a Red Hat Enterprise Linux 3 system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="RHEL3rpmsOK" result="PASSED"><![CDATA[The correct ``compat-db`` (x86, x86-64, Itanium), ``compat-gcc`` (x86, x86-64, Itanium), ``compat-gcc-c++`` (x86, x86-64, Itanium), ``compat-libstdc++`` (x86, x86-64, Itanium), ``compat-libstdc++-devel`` (x86, x86-64, Itanium), ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-devel`` (x86, x86-64, Itanium), ``gnome-libs`` (x86-64), ``libaio`` (x86, x86-64), ``libaio-devel`` (x86, x86-64), ``libstdc++-devel`` (x86), ``make`` (x86, x86-64, Itanium), ``openmotif21`` (x86, x86-64, Itanium), and ``setarch`` (x86, x86-64, Itanium) packages are installed on your Red Hat Enterprise Linux 3 system. No action required.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotRHEL3|NotRedHat" result="SKIPPED"><![CDATA[This rule is for Red Hat Linux 3 only]]></sdp_action>
+<sdp_action condition="=~" minimum="RpmsNotSpecified" result="SKIPPED"><![CDATA[No RPMs are specified for this particular version of Red Hat 3.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You have missing or incorrect versions of ``compat-db`` (x86, x86-64, Itanium), ``compat-gcc`` (x86, x86-64, Itanium), ``compat-gcc-c++`` (x86, x86-64, Itanium), ``compat-libstdc++`` (x86, x86-64, Itanium), ``compat-libstdc++-devel`` (x86, x86-64, Itanium), ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-devel`` (x86, x86-64, Itanium), ``gnome-libs`` (x86-64), ``libaio`` (x86, x86-64), ``libaio-devel`` (x86, x86-64), ``libstdc++-devel`` (x86), ``make`` (x86, x86-64, Itanium), ``openmotif21`` (x86, x86-64, Itanium), or ``setarch`` (x86, x86-64, Itanium) on your system. Make sure that the correct versions are installed. See Knowledge Article 169706.1.
+|*Return Value*|*Action*|
+|... found|The output shows the version that was detected. For the required versions, see Knowledge Article 169706.1|
+|... not installed|This indicates that a required RPM is not installed|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00205" mode="VERIFY" name="RHEL4 RPMs OK?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP,$OS_BIT,$OS_ARC
+var @tbl = ()
+if !match($OS_TYP,'Red Hat')
+ call setHcveResult('NotRedHat')
+elsif !match($OS_NAM,'nahant',true)
+ call setHcveResult('NotRHEL4')
+#Check RHEL 4 x86 RPMs
+elsif expr('==',$OS_BIT,32)
+{call cmp_os_pkg(\@tbl,'binutils',['2.15.92.0.2','10','EL4'])
+ call cmp_os_pkg(\@tbl,'compat-db',['4.1.25','9'])
+ call cmp_os_pkg(\@tbl,'compat-libstdc++-296',['2.96','132.7.2'])
+ call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3','47.3'])
+ call cmp_os_pkg(\@tbl,'control-center',['2.8.0','12'])
+ call cmp_os_pkg(\@tbl,'gcc',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'gcc-c++',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'glibc',['2.3.4','2'])
+ call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4','2'])
+ call cmp_os_pkg(\@tbl,'gnome-libs',['1.4.1.2.90','44.1'])
+ call cmp_os_pkg(\@tbl,'libaio',['0.3.96','0'])
+ call cmp_os_pkg(\@tbl,'libstdc++',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'libstdc++-devel',['3.4.3','9','EL4'])
+ call cmp_os_pkg(\@tbl,'make',['3.80','5'])
+ call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','11'],undef,undef,\
+                                     '(RH|rh)?(EL|el)\d.*$')
+ call cmp_os_pkg(\@tbl,'pdksh',['5.2.14','30'])
+ call cmp_os_pkg(\@tbl,'sysstat',['5.0.5','1'])
+ call cmp_os_pkg(\@tbl,'xscreensaver',['4.18','5','rhel4'])
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RHEL4rpmsOK'))
+}
+#Check RHEL 4 x86_64 RPMs
+elsif and(expr('==',$OS_BIT,64),not(match($OS_ARC,'Itanium')))
+{call cmp_os_pkg(\@tbl,'binutils',['2.15.92.0.2','13'],'x86_64')
+ call cmp_os_pkg(\@tbl,'compat-db',['4.1.25','9'],'x86_64')
+ call cmp_os_pkg(\@tbl,'control-center',['2.8.0','12'],'x86_64')
+ call cmp_os_pkg(\@tbl,'gcc',['3.4.3','22.1'],'x86_64')
+ call cmp_os_pkg(\@tbl,'gcc-c++',['3.4.3','22.1'],'x86_64')
+ call cmp_os_pkg(\@tbl,'glibc',['2.3.4','2.9'],'x86_64')
+ call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4','2.9'],'x86_64')
+ call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.4','2.9'],'x86_64')
+ call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.4','2.9'],'i386')
+ call cmp_os_pkg(\@tbl,'glibc-headers',['2.3.4','2.9'],'x86_64')
+ call cmp_os_pkg(\@tbl,'glibc-kernheaders',['2.4','9.1.87'],'x86_64')
+ call cmp_os_pkg(\@tbl,'gnome-libs',['1.4.1.2.90','44.1'],'x86_64')
+ call cmp_os_pkg(\@tbl,'libstdc++',['3.4.3','22.1'],'x86_64')
+ call cmp_os_pkg(\@tbl,'libstdc++-devel',['3.4.3','22.1'],'x86_64')
+ call cmp_os_pkg(\@tbl,'make',['3.80','5'],'x86_64')
+ call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','11'],'x86_64',undef,\
+                                      '(RH|rh)?(EL|el)\d.*$')
+ call cmp_os_pkg(\@tbl,'pdksh',['5.2.14','30'],'x86_64')
+ call cmp_os_pkg(\@tbl,'sysstat',['5.0.5','1'],'x86_64')
+ call cmp_os_pkg(\@tbl,'xfree86-libs',['4.3.0','78'],'i386')
+ call cmp_os_pkg(\@tbl,'xscreensaver',['4.18','5','rhel4'],'x86_64')
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RHEL4rpmsOK'))
+}
+else
+ call setHcveResult('RpmsNotSpecified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the correct versions of the required RPMs are installed on a Red Hat Enterprise Linux 4 system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="RHEL4rpmsOK" result="PASSED"><![CDATA[The correct ``binutils`` (x86, x86-64), ``compat-db`` (x86, x86-64), ``compat-libstdc++-296`` (x86), ``compat-libstdc++-33`` (x86), ``control-center`` (x86, x86-64), ``gcc`` (x86, x86-64), ``gcc-c++`` (x86, x86-64), ``glibc`` (x86, x86-64), ``glibc-common`` (x86, x86-64), ``glibc-devel`` (x86-64), ``glibc-headers`` (x86-64), ``glibc-kernheaders`` (x86-64), ``gnome-libs`` (x86, x86-64), ``libaio`` (x86), ``libstdc++`` (x86, x86-64), ``libstdc++-devel`` (x86, x86-64), ``make`` (x86, x86-64), ``openmotif21`` (x86, x86-64), ``pdksh`` (x86, x86-64), ``sysstat`` (x86, x86-64), ``xfree86-libs`` (x86-64), and ``xscreensaver`` (x86, x86-64) packages are installed on your Red Hat Enterprise Linux 4 system. No action required.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotRHEL4|NotRedHat" result="SKIPPED"><![CDATA[This rule is for Red Hat Enterprise Linux 4 only.]]></sdp_action>
+<sdp_action condition="=~" minimum="RpmsNotSpecified" result="SKIPPED"><![CDATA[There are no RPMs specified for your specific version of Red Hat 4.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You have incorrect versions of ``binutils`` (x86, x86-64), ``compat-db`` (x86, x86-64), ``compat-libstdc++-296`` (x86), ``compat-libstdc++-33`` (x86), ``control-center`` (x86, x86-64), ``gcc`` (x86, x86-64), ``gcc-c++`` (x86, x86-64), ``glibc`` (x86, x86-64), ``glibc-common`` (x86, x86-64), ``glibc-devel`` (x86-64), ``glibc-headers`` (x86-64), ``glibc-kernheaders`` (x86-64), ``gnome-libs`` (x86, x86-64), ``libaio`` (x86), ``libstdc++`` (x86, x86-64), ``libstdc++-devel`` (x86, x86-64), ``make`` (x86, x86-64), ``openmotif21`` (x86, x86-64), ``pdksh`` (x86, x86-64), ``sysstat`` (x86, x86-64), ``xfree86-libs`` (x86-64), and ``xscreensaver`` (x86, x86-64) installed on your system. Make sure that the correct versions are installed. See Knowledge Article 169706.1.
+|*Return Value*|*Action*|
+|... found|The output shows the version that was detected. For the required versions, see Knowledge Article 169706.1|
+|... not installed|This indicates that a required RPM is not installed|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00208" mode="VERIFY" name="SLES8 RPMs OK?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP,$OS_BIT,$OS_ARC
+var @tbl = ()
+if !match($OS_TYP,'SuSE')
+ call setHcveResult('NotSuSE')
+elsif !match($OS_NAM,'SLES-8')
+ call setHcveResult('NotSLES8')
+#Check SLES 8 x86 RPMs
+elsif expr('==',$OS_BIT,32)
+{call cmp_os_pkg(\@tbl,'gcc',['3.2.2','38'])
+ call cmp_os_pkg(\@tbl,'gcc-c++',['3.2.2','38'])
+ call cmp_os_pkg(\@tbl,'glibc',['2.2.2','124'])
+ call cmp_os_pkg(\@tbl,'make',['3.79','1'])
+ call cmp_os_pkg(\@tbl,'openmotif',['2.2.2','124'])
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'SLES8rpmsOK'))
+}
+#Check SLES 8 Itanium RPMs
+elsif expr('==',$OS_BIT,64)
+{if match($OS_ARC,'Itanium')
+ {call cmp_os_pkg(\@tbl,'gcc',['3.3.3','43'])
+  call cmp_os_pkg(\@tbl,'gcc-c++',['3.3.3','43'])
+  call cmp_os_pkg(\@tbl,'glibc',['2.2.5','230'])
+  call cmp_os_pkg(\@tbl,'glibc-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'glibc-devel-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'libaio',['0.3.98','18'])
+  call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.98','18'])
+  call cmp_os_pkg(\@tbl,'make',['3.79','1.328'])
+  call cmp_os_pkg(\@tbl,'openmotif',['2.2.2','522'])
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'SLES8rpmsOK'))
+ }
+ #Check SLES 8 x86_64 RPMs
+ else
+ {call cmp_os_pkg(\@tbl,'gcc',['3.3.3','43'],'x86_64')
+  call cmp_os_pkg(\@tbl,'gcc-c++',['3.3.3','43'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc',['2.2.5','213'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'glibc-devel-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'libaio',['0.3.96','3'],'x86_64')
+  call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.96','3'],'x86_64')
+  call cmp_os_pkg(\@tbl,'make',['3.79','1'],'x86_64')
+  call cmp_os_pkg(\@tbl,'openmotif',['2.2.2','124'],'x86_64')
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'SLES8rpmsOK'))
+ }
+}
+else
+ call setHcveResult('RpmsNotSpecified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the correct versions of the required RPMs are installed on a SuSE Linux Enterprise Server 8 system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="SLES8rpmsOK" result="PASSED"><![CDATA[The correct ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, x86-64, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-32bit`` (x86-64, Itanium), ``glibc-devel-32bit`` (x86-64, Itanium), ``libaio`` (x86-64, Itanium), ``libaio-devel`` (x86-64, Itanium), ``make`` (x86, x86-64, Itanium), and ``openmotif`` (x86, x86-64, Itanium) packages are installed on your SuSE Linux Enterprise Server 8 system. No action required.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotSLES8|NotSuSE" result="SKIPPED"><![CDATA[This rule only applies to SuSE Linux Enterprise Server 8.]]></sdp_action>
+<sdp_action condition="=~" minimum="RpmsNotSpecified" result="SKIPPED"><![CDATA[There are no RPMs specified for your specific version of SuSE 8.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You have incorrect versions of ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, x86-64, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-32bit`` (x86-64, Itanium), ``glibc-devel-32bit`` (x86-64, Itanium), ``libaio`` (x86-64, Itanium), ``libaio-devel`` (x86-64, Itanium), ``make`` (x86, x86-64, Itanium), or ``openmotif`` (x86, x86-64, Itanium) installed on your SuSE Linux Enterprise Server 8 system. Make sure that the correct versions are installed. See Knowledge Article 169706.1
+|*Return Value*|*Action*|
+|... found|The output shows the version that was detected. For the required versions, see Knowledge Article 169706.1|
+|... not installed|This indicates that a required RPM is not installed|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00209" mode="VERIFY" name="SLES9 RPMs OK?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP,$OS_BIT,$OS_ARC
+var @tbl = ()
+if !match($OS_TYP,'SuSE')
+ call setHcveResult('NotSuSE')
+elsif !match($OS_NAM,'SLES-9')
+ call setHcveResult('NotSLES9')
+#Check SLES 9 x86 RPMs
+elsif expr('==',$OS_BIT,32)
+{call cmp_os_pkg(\@tbl,'gcc',['3.3.3','43'])
+ call cmp_os_pkg(\@tbl,'gcc-c++',['3.3.3','43'])
+ call cmp_os_pkg(\@tbl,'glibc',['2.3.3','98'])
+ call cmp_os_pkg(\@tbl,'libaio',['0.3.98','18'])
+ call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.98','18'])
+ call cmp_os_pkg(\@tbl,'make',['3.80'])
+ call cmp_os_pkg(\@tbl,'openmotif-libs',['2.2.2','519.1'])
+ call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'SLES9rpmsOK')) 
+}
+#Check SLES 9 Itanium RPMs
+elsif expr('==',$OS_BIT,64)
+{if match($OS_ARC,'Itanium')
+ {call cmp_os_pkg(\@tbl,'binutils',['2.15.90.0.1.1','32.5'])
+  call cmp_os_pkg(\@tbl,'gcc',['3.3.3','43.28'])
+  call cmp_os_pkg(\@tbl,'gcc-c++',['3.3.3','43.28'])
+  call cmp_os_pkg(\@tbl,'glibc',['2.3.3','98.38'])
+  call cmp_os_pkg(\@tbl,'glibc-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'glibc-devel-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'libaio',['0.3.98','18.3'])
+  call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.98','18.3'])
+  call cmp_os_pkg(\@tbl,'make',['3.80','184.1'])
+  call cmp_os_pkg(\@tbl,'openmotif-libs',['2.2.2','519.4'])
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'SLES9rpmsOK'))
+ }
+ #Check SLES 9 x86_64 RPMs
+ else
+ {call cmp_os_pkg(\@tbl,'gcc',['3.3.3','43'],'x86_64')
+  call cmp_os_pkg(\@tbl,'gcc-c++',['3.3.3','43'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc',['2.3.3','98'],'x86_64')
+  call cmp_os_pkg(\@tbl,'glibc-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'glibc-devel-32bit',['8.1','9'])
+  call cmp_os_pkg(\@tbl,'libaio',['0.3.98','18'],'x86_64')
+  call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.98','.18'],'x86_64')
+  call cmp_os_pkg(\@tbl,'make',['3.80'],'x86_64')
+  call cmp_os_pkg(\@tbl,'openmotif-libs',['2.2.2','519.1'],'x86_64')
+  call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'SLES9rpmsOK'))
+ }
+}
+else
+ call setHcveResult('RpmsNotSpecified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the correct versions of the required RPMs are installed on a SuSE Linux Enterprise Server 9 system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="SLES9rpmsOK" result="PASSED"><![CDATA[The correct ``binutils`` (Itanium), ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, x86-64, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-32bit`` (x86-64, Itanium), ``glibc-devel-32bit`` (x86-64, Itanium), ``libaio`` (x86, x86-64, Itanium), ``libaio-devel`` (x86, x86-64, Itanium), ``make`` (x86, x86-64, Itanium), and ``openmotif-libs`` (x86, x86-64, Itanium) packages are installed on your SuSE Linux Enterprise Server 9 system. No action required.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotSLES9|NotSuSE" result="SKIPPED"><![CDATA[This rule is for SuSE Enterprise Server 9 only.]]></sdp_action>
+<sdp_action condition="=~" minimum="RpmsNotSpecified"><![CDATA[There are no RPMs specified for your specific version of SLES 9.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You have incorrect versions of ``binutils`` (Itanium), ``gcc`` (x86, x86-64, Itanium), ``gcc-c++`` (x86, x86-64, Itanium), ``glibc`` (x86, x86-64, Itanium), ``glibc-32bit`` (x86-64, Itanium), ``glibc-devel-32bit`` (x86-64, Itanium), ``libaio`` (x86, x86-64, Itanium), ``libaio-devel`` (x86, x86-64, Itanium), ``make`` (x86, x86-64, Itanium), or ``openmotif-libs`` (x86, x86-64, Itanium) packages installed on your SuSE Linux Enterprise Server 9 system. Make sure that the correct versions are installed. See Knowledge Article 169706.1.
+|*Return Value*|*Action*|
+|... found|The output shows the version that was detected. For the required versions, see Knowledge Article 169706.1|
+|... not installed|This indicates that a required RPM is not installed|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00212" mode="VERIFY" name="Patch 3006854 Installed?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_BIT
+call setHcveResult(cond(\
+  or(not(match($OS_NAM,'taroon',true)),not(expr('==',$OS_BIT,32))),\
+    'NotRequired',\
+  and(grepFile('/etc/ld.so.preload',quote('/etc/libcwait.so'),'f'),\
+      testFile('e','/etc/libcwait.so')),\
+    'Installed',\
+    'Not Installed'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for patch 3006854. This is required for Red Hat Application Server/Enterprise Server 3.0 only.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Installed" result="PASSED"><![CDATA[Patch 3006854 is installed.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotRequired" result="SKIPPED"><![CDATA[Patch 3006854 is only applicable to Red Hat Enterprise Linux 3 32-bit.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[See the following table for the necessary action to take:
+|*Return Value*|*Action*|
+|Not Installed|Install patch 3006854.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00213" mode="VERIFY" name="LD_ASSUME_KERNEL Set?">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP,$OS_NAM
+var $LD_KER = getEnv('LD_ASSUME_KERNEL')
+call setHcveResult(cond(\
+  not(match($OS_TYP,'Red Hat')),     'NotRedHat',\
+  not(match($OS_NAM,'taroon',true)), 'NotRHEL3',\
+  not(defined($LD_KER)),             'NotSet',\
+  compare('eq','2.4.19',$LD_KER),    'SetOK',\
+                                     'SetButNotOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``LD_ASSUME_KERNEL`` environment variable is set as needed to install Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="SetOK" result="PASSED"><![CDATA[The ``LD_ASSUME_KERNEL`` environment variable is set correctly for RHEL3.]]></sdp_action>
+<sdp_action condition="=~" minimum="NotRHEL3|NotRedHat" result="SKIPPED"><![CDATA[This rule only applies to Red Hat Enterprise Linux 3.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``LD_ASSUME_KERNEL`` environment variable is either not set or is not set to 2.4.19. Set the environment variable to the correct value.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00214" mode="VERIFY" name="ip_local_port_range OK?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+if !testFile('f','/proc/sys/net/ipv4/ip_local_port_range')
+ return setHcveResult('iplocalNotFound')
+macro chk_port_range
+{var (\@tbl,$min,$max) = @arg
+ if !?$min
+  return push(@tbl,'iplocalNotFound')
+ if !?$max
+  return push(@tbl,'iplocalNotFound')
+ if !expr('==',$min,9000)
+  call push(@tbl,'LowValue')
+ if !expr('==',$max,65500)
+  call push(@tbl,'HighValue')
+}
+call chk_port_range(\@tbl,split('\s+',\
+  grepFile('/proc/sys/net/ipv4/ip_local_port_range','\d+','f'),2))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RangeOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``ip_local_port_range`` kernel parameter is adequate for Oracle Database 10g Release 1.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="RangeOK" result="PASSED"><![CDATA[The values defined in ``/proc/sys/net/ipv4/ip_local_port_range`` are adequate for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The values in ``/proc/sys/net/ipv4/ip_local_port_range`` are not set as recommended for installing Oracle Database 10g. Change the values according to the latest recommendations:
+%BR%``$ /bin/echo 9000 65500 > /proc/sys/net/ipv4/ip_local_port_range``
+
+|*Return Value*|*Action*|
+|LowValue|The recommended low end value for ``ip_local_port_range`` is 9000|
+|HighValue|The recommended high end value for ``ip_local_port_range`` is 65500|
+|iplocalNotFound|``ip_local_port_range`` is not present in the ``/proc/sys/net/ipv4`` directory as required|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00220" mode="VERIFY" name="Tainted Kernel?">
+<sdp_command type="RDA"><![CDATA[if !testFile('x','/sbin/lsmod')
+ return setHcveResult('Cannot run /sbin/lsmod')
+call loadCommand('/sbin/lsmod')
+call setHcveResult(cond(\
+  grepLastFile('not tainted','if'), 'NotTainted',\
+  grepLastFile('taint','if'),       'Tainted',\
+                                    'NotVerifiable'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule determines if the kernel contains tainted modules.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="NotTainted|NotVerifiable" result="PASSED"><![CDATA[The Linux kernel is not tainted. No action is required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The Linux kernel is tainted. For clarification about what action is required, see Knowledge Article 225710.1.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00230" mode="VERIFY" name="Other OUI Up?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  grepCommand('/bin/ps -ef','runInstaller','i'),'AnotherOUIup','NoOtherOUI'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for another active ``runInstaller`` process on the system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NoOtherOUI" result="PASSED"><![CDATA[No other ``runInstaller`` process is running. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Stop the other instance of ``runInstaller`` that is active on your system.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

@@ -1,0 +1,183 @@
+# S364OIF.def: Collects Oracle Identity Federation 10g Information
+# $Id: S364OIF.def,v 1.11 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S364OIF.def,v 1.11 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S364OIF - Collects Oracle Identity Federation 10g Information
+
+=head1 DESCRIPTION
+
+This module collects information about Oracle Identity Federation.
+The following reports can be generated and are regrouped under 
+C<Oracle Identity Federation>:
+
+=cut
+
+echo tput('bold'),'Processing OIF module ...',tput('off')
+
+# Initialization
+var $OIF_HOME  = getSetting('OIF_ORACLE_HOME','')
+var $TAIL      = getSetting('RDA_TAIL')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle Identity Federation'
+
+# Load the common macros
+run library()
+
+=head2 Configuration Files
+
+Gets Oracle Identity Federation configuration files. The files F<data-store.xml>
+and F<config.xml> are collected with some security key attributes obsfucated.
+
+=cut
+
+debug ' Inside the OIF module, collecting the configuration files'
+var $dir = catDir($OIF_HOME,'fed')
+pretoc '2: Configuration Files'
+pretoc '3: $OH/fed/conf'
+loop $nam ('attr-config.xml',\
+           'cacert-store.xml',\
+           'config.xml',\
+           'cot.xml',\
+           'data-store.xml')
+{if testFile('r',$fil = catFile($dir,'conf',$nam))
+ {report $nam
+  write '---+ Display of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  call statFile('b',$fil)
+  if compare('eq',$nam,'config.xml')
+  {call createBuffer('rda','F',$fil)
+   call filterBuffer('rda','%R:PASSWORD%','si',\
+                     '<property name="pkcs12walletsign">','</property>',\
+                     '<property name="pkcs12pwdsign">','</property>',\
+                     '<property name="pkcs12walletenc">','</property>',\
+                     '<property name="pkcs12pwdenc">','</property>')
+   call writeBuffer('rda')
+   call deleteBuffer('rda')
+  }
+  elsif compare('eq',$nam,'data-store.xml')
+  {call createBuffer('rda','F',$fil)
+   call filterBuffer('rda','%R:PASSWORD%','si',\
+                     '<param setter="setPassword">','</param>')
+   call writeBuffer('rda')
+   call deleteBuffer('rda')
+  }
+  else
+   call writeFile($fil)
+  write $TOP
+  toc '4:[[',getFile(),'][rda_report][',encode($nam),']]'
+ }
+}
+unpretoc
+
+call sort_files(3,0,\
+  catFile($dir,'conf','aamanager','authn-mappings.xml'),\
+  catFile($dir,'conf','aamanager','handler-mappings.xml'),\
+  catFile($dir,'conf','adminmanager','handler-mappings.xml'),\
+  catFile($dir,'conf','armanager','authn-mappings.xml'),\
+  catFile($dir,'conf','armanager','handler-mappings.xml'),\
+  catFile($dir,'conf','authnauthmanager','authn-mappings.xml'),\
+  catFile($dir,'conf','authnauthmanager','handler-mappings.xml'),\
+  catFile($dir,'conf','idpmanager','authn-mappings.xml'),\
+  catFile($dir,'conf','idpmanager','handler-mappings.xml'),\
+  catFile($dir,'conf','monitormanager','handler-mappings.xml'),\
+  catFile($dir,'conf','spmanager','authn-mappings.xml'),\
+  catFile($dir,'conf','spmanager','handler-mappings.xml'),\
+  catFile($dir,'conf','usermanager','authn-mappings.xml'),\
+  catFile($dir,'conf','usermanager','handler-mappings.xml'),\
+  catFile($dir,'monitor','conf','configuration.xml'))
+unpretoc
+
+=head2 shareid - shareidconfig.xml
+
+Displays the F<shareid-config.xml> file with some security key attributes
+obfuscated.
+
+=cut
+
+var $fil = catFile($dir,'shareid','oblix','config','shareid-config.xml')
+if testFile('r',$fil)
+{toc '2:ShareID Module'
+ report shareid
+ write '---+ Display of shareid-config.xml file'
+ write '---## Information Taken from ',encode($fil)
+ call createBuffer('rda','F',$fil)
+ call filterBuffer('rda','%R:PASSWORD%','si',\
+                   'AdminPassword="','"',\
+                   'BindPassword="','"',\
+                   'KeystorePassword="','"',\
+                   'MasterAdminPassword="','"',\
+                   'RequesterPassword="','"',\
+                   'SigningKeyPassword="','"',\
+                   '<Encryption TripleDesKey="','" />')
+ call writeBuffer('rda')
+ write $TOP
+ call deleteBuffer('rda')
+ toc '3:[[',getFile(),'][rda_report][shareidconfig.xml]]'
+}
+
+=head2 sasso - sasso_config.xml
+
+Displays the F<sasso_config.xml> file.
+
+=cut
+
+if testFile('r',catFile($OIF_HOME,'sso','conf','sasso_config.xml'))
+{toc '2:Oracle Single Sign-On'
+ var $fil = lastFile()
+ report sasso
+ write '---+ Display of shareid-config.xml file'
+ write '---## Information Taken from ',encode($fil)
+ call writeFile($fil)
+ write $TOP
+ toc '3:[[',getFile(),'][rda_report][sasso_config.xml]]'
+}
+
+=head2 Log Files
+
+Gets Oracle Identity Federation log files.
+
+=cut
+
+debug ' Inside the OIF module, collecting the log files'
+pretoc '2: Log Files'
+call sort_files(3,$TAIL,\
+  catFile($dir,'log','federation.log'),\
+  catFile($dir,'log','federation-error.log'),\
+  catFile($dir,'log','federation-init.log'),\
+  catFile($dir,'log','federation-msg.log'),\
+  catFile($dir,'log','federation-install.log'),\
+  catFile($dir,'log','federation-uninstall.log'),\
+  grepDir(catDir($dir,'monitor','log'),'.','ip'))
+unpretoc 2
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.23: Jay Tomlinson.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

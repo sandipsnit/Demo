@@ -1,0 +1,48 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Configuration Wizard Help: Configure JMS File Stores</title>
+<LINK REL=StyleSheet HREF="blaf.css" TYPE="text/css" MEDIA=screen>
+</head>
+<body>
+<H1>Configure JMS File Stores</H1>
+<p>A JMS file store is a disk-based file in which persistent messages can be saved.</p>
+<p>Review the current settings for JMS file stores, and modify them as required.
+Default values might vary based on the domain source that you selected earlier.</p>
+ <p><strong>Note</strong>: The wizard provides two display modes: a concise tabular view of all the defined components, and an individual view in which each component is represented by a tab. To toggle the view mode between table and tab views, click <strong>Switch Display</strong>.</p>
+ <p> The following table describes the fields in this screen. The fields marked with an asterisk (*) are mandatory fields.</p>
+ <table>
+ <tr>
+ <th>Field</th>
+      <th>Description</th>
+    </tr>
+ <tr>
+ <td><strong>Name*</strong></td>
+      <td>Enter a name for the JMS file store.<p class="list_para">The name must be a string of characters and can include spaces. The name of the JMS file store must be unique among all component names within the domain.</p></td>
+    </tr>
+ <tr>
+ <td><strong>Directory</strong></td>
+      <td>Enter the path of the directory (in your system) in which the JMS file store resides.</td>
+    </tr>
+ <tr>
+ <td><strong>Synchronous write policy</strong></td>
+      <td>Select one of the following synchronous write policies to determine how the file store writes data to the disk:<ul>
+<li class="list_para"> <strong>Cache-Flush</strong>: Transactions cannot be completed until all their write operations have been flushed to the disk.</li>
+      <li class="list_para"><strong>Direct-Write</strong>: Write operations are performed directly to the disk. This policy is supported on Solaris and Windows. If this policy is active on an unsupported platform, the file store switches automatically to the cache-flush policy.
+	 <p class="list_para"><strong>Note</strong>: The direct-write policy is reliable in Solaris systems, but Windows systems might leave transaction data in the on-disk cache without writing it to the disk immediately. This is  considered  unreliable, because a power failure can cause loss of on-disk cache data, possibly resulting in lost or duplicate messages. For reliable writes using the direct-write policy on Windows, either disable all write caching for the disk (enabled by default), or use a disk with a battery-backed cache. Some file systems, however, do not allow this value to be changed (for example, a RAID system that has a reliable cache).</p>
+      </li>
+      <li class="list_para"><strong>Disabled</strong>: Transactions are complete as soon as the writes are cached in memory. When this policy is active, completion of transactions does not depend on waiting for writes to reach the disk.</li>
+      </ul>
+	  <p class="list_para">This setting affects performance, scalability, and reliability.</p>
+      <p class="list_para"><strong>Note</strong>: If the JMS file store is used exclusively for paging nonpersistent messages to the disk, the synchronous write policy is ignored.</p></td>
+    </tr>
+ </table>
+
+<p>After making the required  selections and entries, click <strong>Next</strong>.</p>
+
+<p class="body">For more information, see the Oracle Fusion Middleware documentation library on the <a href="http://www.oracle.com/technology/documentation/index.html" target="_blank">Oracle Technology Network</a>.</p>
+<p class="copyright">Copyright &copy; 2009, 2011, Oracle and/or its affiliates. All rights reserved.</p>
+</body>
+</html>
+

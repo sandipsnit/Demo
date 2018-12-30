@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+    <!--
+        extension points
+    -->
+    <extension-point id="debugModelPresentation"
+                     name="DebugModelPresentation"
+                     schema="schema/debugModelPresentation.exsd"/>
+
+    <!--
+        ALSB Launch Client
+    -->
+    <extension point="org.eclipse.wst.server.core.clients">
+        <client id="com.bea.alsb.debug.ui.clients.testconsole"
+                name="%testConsoleClientName"
+                description="%testConsoleClientDescription"
+                class="com.bea.alsb.debug.ui.internal.launch.ALSBClientDelegate"/>
+    </extension>
+    
+    <!-- 
+       ALSB Debug Model Presentation
+    -->
+    <extension point="org.eclipse.debug.ui.debugModelPresentations">
+       <debugModelPresentation id="com.bea.alsb.debug.core"
+                               class="com.bea.alsb.debug.ui.internal.presentation.AlsbDebugModelPresentation" />
+    </extension>
+
+    <extension point="org.eclipse.core.runtime.adapters">
+        <factory adaptableType="com.bea.alsb.debug.core.internal.model.IAlsbVariable"
+                 class="com.bea.alsb.debug.ui.internal.presentation.AlsbElementAdapterFactory">
+           <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider"/>
+        </factory>
+    </extension>
+
+    <!--
+       XML Debug Model Presentation
+    -->
+    <extension point="com.bea.alsb.debug.ui.debugModelPresentation">
+       <variableModelPresentation id="com.bea.alsb.debug.xml"
+                                  class="com.bea.alsb.debug.ui.xml.XmlDebugModelPresentation"/>
+    </extension>
+    
+    <!--
+        Breakpoint properties menu action.
+    -->
+    <extension point="org.eclipse.ui.popupMenus">
+       <objectContribution id="com.bea.alsb.debug.core.AlsbBreakpointActions"
+                           objectClass="com.bea.alsb.debug.core.breakpoints.AlsbBreakpoint">
+           <action
+                  class="com.bea.alsb.debug.ui.breakpoints.AlsbBreakpointPropertiesAction"
+                  enablesFor="1"
+                  id="com.bea.alsb.debug.ui.breakpoints.AlsbBreakpointProperties"
+                  label="%breakpointPropertiesMenuActionName"
+                  menubarPath="additions">
+           </action>                           
+       </objectContribution>
+    </extension>
+    
+    <!--
+        Alsb breakpoint properties page.
+    -->
+    <extension point="org.eclipse.ui.propertyPages">
+       <page name="%breakpointPropertiesPropertyPageName"
+             class="com.bea.alsb.debug.ui.breakpoints.AlsbBreakpointPage"
+             id="com.bea.alsb.debug.ui.breakpoints.propertypages.AlsbBreakpoints">
+         <enabledWhen>
+            <or>
+               <instanceof value="com.bea.alsb.debug.core.breakpoints.AlsbBreakpoint"/>
+               <adapt type="com.bea.alsb.debug.core.breakpoints.AlsbBreakpoint"/>
+            </or>
+         </enabledWhen>
+      </page>
+    </extension>
+
+    <!--
+        Adds an 'ALSB Debugger' section to the server editor's overview page.
+    -->
+    <extension point="org.eclipse.wst.server.ui.editorPageSections">
+       <section
+             class="com.bea.alsb.debug.ui.internal.launch.AlsbDebuggerServerEditorSection"
+             id="com.bea.alsb.debug.ui.section1"
+             order="50"
+             insertionId="org.eclipse.wst.server.editor.overview.left"
+             typeIds="com.bea.weblogic1036.server">
+       </section>
+    </extension>
+    
+    <!--
+       Defines the tabs for the ALSB debugger launch configuration tab group.
+    -->
+    <extension point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+       <launchConfigurationTabGroup
+             class="com.bea.alsb.debug.ui.internal.launch.AlsbLaunchConfigurationTabGroup"
+             id="com.bea.alsb.debug.ui.internal.launch.launchConfigurationTabGroup1"
+             type="com.bea.alsb.debug.core.launchConfigurationType.standalone">
+       </launchConfigurationTabGroup>
+    </extension>
+    
+    <!--
+        Defines the image used for the ALSB launch configuration in the Eclipse debug view.
+    -->
+    <extension point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+       <launchConfigurationTypeImage
+             configTypeID="com.bea.alsb.debug.core.launchConfigurationType.standalone"
+             icon="icons/alsb_perspective.gif"
+             id="com.bea.alsb.debug.ui.launchConfigurationTypeImage1">
+       </launchConfigurationTypeImage>
+    </extension>
+</plugin>

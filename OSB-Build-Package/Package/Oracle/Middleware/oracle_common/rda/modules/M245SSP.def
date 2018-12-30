@@ -1,0 +1,434 @@
+# M245SSP.def: Collects System Service Processor Information
+# $Id: M245SSP.def,v 1.4 2012/04/25 16:43:58 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M245SSP.def,v 1.4 2012/04/25 16:43:58 mschenke Exp $
+#
+# Change History
+# 20120425  MSC  Fix the block duplication.
+
+=head1 NAME
+
+M245SSP - Collects System Service Processor Information
+
+=head1 DESCRIPTION
+
+This module collects information for System Service Processor used to control
+the Sun Enterprise 10000 server.
+
+=cut
+
+use Buffer
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('ssp')
+
+#------------------------------------------------------------------------------
+# XPLR_ssp section
+#------------------------------------------------------------------------------
+
+section XPLR_ssp
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing SSP sections ...')
+if !testFile('d','/var/opt/SUNWssp')
+ return log_info('Not a SSP system')
+
+pretoc '2:System Service Processor'
+
+# Define the summary descriptors
+var %DUP = (\
+ CB  => ['control board',            'ssp/board_id/board_id-bcb.out'],\
+ CP  => ['centerplane',              'ssp/board_id/board_id-bcp.out'],\
+ CSB => ['centerplane support board','ssp/board_id/board_id-bcsb.out'],\
+ DOM => ['Domain',                   'ssp/check_host.out'],\
+ IO  => ['i/o board',                'ssp/board_id/board_id-bio.out'],\
+ MEM => ['memory board',             'ssp/board_id/board_id-bmem.out'],\
+ PRO => ["\012Control Board",        'ssp/cb_prom-r.out'],\
+ SB  => ['system board',             'ssp/board_id/board_id-bsb.out'])
+
+# Adjust the environment
+var %env = (\
+ LD_LIBRARY_PATH => '/opt/SUNWssp/lib:/usr/openwin/lib:/usr/lib',\
+ PATH            => join(':',${PATH},'/opt/SUNWssp/bin'),\
+ SCOTTY_LIBRARY  => '/opt/SUNWssp/library/scotty',\
+ SSPBIN          => '/opt/SUNWssp/bin',\
+ SSPETC          => '/etc/opt/SUNWssp',\
+ SSPLOGGER       => '/var/opt/SUNWssp/adm',\
+ SSPVAR          => '/var/opt/SUNWssp',\
+ TCLLIBPATH      => '/opt/SUNWssp/library/tcl ,\
+                     /opt/SUNWssp/library/tk ,\
+                     /opt/SUNWssp/library/scotty',\
+ TCL_LIBRARY     => '/opt/SUNWssp/library/tcl',\
+ TK_LIBRARY      => '/opt/SUNWssp/library/tk')
+loop $key (keys(%env))
+ var $env{$key} = setEnv($key,$env{$key})
+
+=head2 ssp_cmd - Overview
+
+Gathers the System Service Processor used to control the Sun Enterprise 10000
+server information using the following commands:
+
+=over 2
+
+=item o C</opt/SUNWssp/bin/board_id -b cb -n ${NUM}>
+
+=item o C</opt/SUNWssp/bin/board_id -b cp -n ${NUM}>
+
+=item o C</opt/SUNWssp/bin/board_id -b csb -n ${NUM}>
+
+=item o C</opt/SUNWssp/bin/board_id -b io -n ${NUM}>
+
+=item o C</opt/SUNWssp/bin/board_id -b mem -n ${NUM}>
+
+=item o C</opt/SUNWssp/bin/board_id -b sb -n ${NUM}>
+
+=item o C</opt/SUNWssp/bin/cb_prom -r -h ${HST}>
+
+=item o C</opt/SUNWssp/bin/check_host>
+
+=item o C</opt/SUNWssp/bin/domain_status>
+
+=item o C</opt/SUNWssp/bin/domain_status -m>
+
+=item o C</opt/SUNWssp/bin/fan>
+
+=item o C</opt/SUNWssp/bin/hostinfo -F>
+
+=item o C</opt/SUNWssp/bin/hostinfo -S>
+
+=item o C</opt/SUNWssp/bin/hostinfo -h>
+
+=item o C</opt/SUNWssp/bin/hostinfo -p>
+
+=item o C</opt/SUNWssp/bin/hostinfo -t>
+
+=item o C</opt/SUNWssp/bin/power>
+
+=item o C</opt/SUNWssp/bin/showfailover>
+
+=item o C</opt/SUNWssp/bin/sys_clock>
+
+=item o C</opt/SUNWssp/bin/sys_id -d>
+
+=item o C</usr/bin/ls -lia /tftpboot >
+
+=back
+
+=cut
+
+report ssp_cmd
+title '---+!! System Service Processor Commands'
+title $TOC
+
+# Describe the basic commands
+var @cmd = (\
+  ['ssp/domain_status',\
+   '/opt/SUNWssp/bin/domain_status',undef,\
+   '---+ Domain Status',\
+   false],\
+  ['ssp/showfailover',\
+   '/opt/SUNWssp/bin/showfailover',undef,\
+   '---+ Failover Status',\
+   false])
+var $ver = get_pkg_version('SUNWsspr')
+if compare('VALID',$ver,'3.5')
+ call push(@cmd,\
+   ['ssp/domain_status-m',\
+    '/opt/SUNWssp/bin/domain_status','-m',\
+    '---+ Dynamic Reconfiguration (DR) Model Running',\
+    false])
+
+# Add collections when running on the main SSP
+var $flg = or(\
+  not(grepCommand('/opt/SUNWssp/bin/domain_status 2>&1',\
+    'domain_status: This command must run on the main SSP.','f')),\
+  grepFile(${ENV.INITTAB:'/etc/inittab'},'^sp:234:respawn:.*ssp_startup.sh'))
+if !$flg
+{loop $lin (command('/usr/bin/ps -u root'))
+ {if match(field('\s+',3,$lin),'^(cbs|edd|straps)$')
+  {var $flg = true
+   break
+  }
+ }
+}
+if $flg
+{debug ' Inside SSP collection, collecting main SSP information ',\
+       '(will take around 9 mins ...)'
+
+ # Control board details
+ for $num (0,1)
+  call push(@cmd,\
+    concat('---+ Control Board Details for Board #',$num),\
+    [concat('ssp/board_id/board_id-bcb_',$num),\
+     '/opt/SUNWssp/bin/board_id',concat('-b cb -n ',$num),\
+     concat('---++ Control Board (',$num,')'),\
+     true,\
+     'CB',\
+     $num,\
+     $DUP{'CB'}],\
+    [concat('ssp/board_id/board_id-bcp_',$num),\
+     concat('/opt/SUNWssp/bin/board_id',concat('-b cp -n ',$num),\
+     '---++ Centerplane (',$num,')'),\
+     true,\
+     'CP',\
+     $num,\
+     $DUP{'CP'}],\
+    [concat('ssp/board_id/board_id-bcsb_',$num),\
+     '/opt/SUNWssp/bin/board_id',concat('-b csb -n ',$num),\
+     concat('---++ Centerplane Support Board (',$num,')'),\
+     true,\
+     'CSB',\
+     $num,\
+     $DUP{'CSB'}])
+
+ # PROM information
+ loop $lin (grepFile('/var/opt/SUNWssp/.ssp_private/cb_config','^#','fv'))
+ {var $cb0 = trim(field('\:',2,$lin))
+  var $cb1 = trim(field('\:',4,$lin))
+  loop $num ($cb0,$cb1)
+   call push(@cmd,\
+     [concat('ssp/cb_prom-r_',$num),\
+      '/opt/SUNWssp/bin/cb_prom',concat('-r -h ',$num),\
+      concat('---+ Control Board Flash PROM (',$num,')'),\
+      false,\
+      'PRO',\
+      $num,\
+      $DUP{'PRO'}])
+ }
+
+ # Domain information
+ loop $lin (grepFile('/var/opt/SUNWssp/.ssp_private/domain_config','^#','v'))
+ {var $hst = trim(field('\:',0,$lin))
+  call push(@cmd,\
+    concat('---+ Domain Information ',$hst),\
+    [concat('ssp/sys_id-d.domain/',$hst),\
+     '/opt/SUNWssp/bin/sys_id','-d',\
+     concat('---++ SSP IDPROM (',$hst,')'),\
+     false,\
+     'DOM',\
+     $hst],\
+    [concat('ssp/check_host_',$hst),\
+     '/opt/SUNWssp/bin/check_host',undef,\
+     concat('---++ Status (',$hst,')'),\
+     false,\
+     'DOM',\
+     $hst,\
+     $DUP{'DOM'}])
+ }
+ call push(@cmd,\
+   ['ssp/hostinfo/hostinfo-F',\
+    '/opt/SUNWssp/bin/hostinfo','-F',\
+    '---+ Fan Configuration and Status'],\
+   ['ssp/fan',\
+    '/opt/SUNWssp/bin/fan',undef,\
+    '---+ Fan Power and Speed'],\
+   ['ssp/ls-lia_tftpboot',\
+    '/usr/bin/ls','-lia /tftpboot',\
+    '---+ Long Listing of ``/tftpboot`` Directory'])
+
+ # Module details
+ for $num (0,15)
+  call push(@cmd,\
+    ['','',concat('---+ Module Details for Board #',$num)],\
+    [concat('ssp/board_id/board_id-bio_',$num),\
+     '/opt/SUNWssp/bin/board_id',concat('-b io -n ',$num),\
+     concat('---++ I/O Module (',$num,')'),\
+     true,\
+     'IO',\
+     $num,\
+     $DUP{'IO'}],\
+    [concat('ssp/board_id/board_id-bmem_',$num),\
+     '/opt/SUNWssp/bin/board_id',concat('-b mem -n ',$num),\
+     concat('---++ Memory Module (',$num,')'),\
+     true,\
+     'MEM',\
+     $num,\
+     $DUP{'MEM'}],\
+    [concat('ssp/board_id/board_id-bsb_',$num),\
+     '/opt/SUNWssp/bin/board_id',concat('-b sb -n ',$num),\
+     concat('---++ System Board Module (',$num,')'),\
+     true,\
+     'SB',\
+     $num,\
+     $DUP{'SB'}])
+ call push(@cmd,\
+   ['ssp/power',\
+    '/opt/SUNWssp/bin/power',undef,\
+    '---+ Power Supplies'],\
+   ['ssp/hostinfo/hostinfo-p',\
+    '/opt/SUNWssp/bin/hostinfo','-p',\
+    '---+ Power Supply Readings'],\
+   ['ssp/hostinfo/hostinfo-S',\
+    '/opt/SUNWssp/bin/hostinfo','-S',\
+    '---+ Signature Block Contents for each Configured Processor'],\
+   ['ssp/hostinfo/hostinfo-h',\
+    '/opt/SUNWssp/bin/hostinfo','-h',\
+    '---+ State and Signature of each Configured Processor'],\
+   ['ssp/sys_clock',\
+    '/opt/SUNWssp/bin/sys_clock',undef,\
+    '---+ System Clock Frequencies'],\
+   ['ssp/hostinfo/hostinfo-t',\
+    '/opt/SUNWssp/bin/hostinfo','-t',\
+    '---+ Temperature Information (Celsius)'])
+}
+
+# Generate the report
+loop $rec (@cmd)
+{if !ref($rec)
+   write $rec
+ elsif !testFile('f',$rec->[1])
+  call log_warning(concat($rec->[1],' not found'))
+ elsif !testFile('x',$rec->[1])
+  call log_warning(concat('Cannot execute ',$rec->[1]))
+ else
+ {var ($cmd,$key) = (join(' ',quote($rec->[1],'x'),$rec->[2]),$rec->[5])
+  prefix
+  {write $rec->[3]
+   write '---## Using: ',encode($cmd)
+   if $rec->[7]
+   {call addBlock('E','T',$rec->[7,1])
+    call writeComment($rec->[7,0],' ',$rec->[6])
+   }
+  }
+  if ?$key
+  {if compare('eq',$key,'DOM')
+    var $bkp = setEnv('SUNW_HOSTNAME',$rec->[6])
+   if $rec->[7]
+    call collectCommand({nam=>$rec->[0],\
+       out=>{blk=>true,flt=>true,idx=>true,rpt=>${CUR.REPORT},\
+             dup=>['T',last->[1]]},\
+       err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+       },$cmd)
+   else
+    call collectCommand({nam=>$rec->[0],\
+      out=>{blk=>true,flt=>true,idx=>true,rpt=>${CUR.REPORT}},\
+      err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+      },$cmd)
+   if compare('eq',$key,'DOM')
+    setEnv('SUNW_HOSTNAME',$bkp)
+  }
+  else
+  {call collectCommand({nam=>$rec->[0],\
+     out=>{blk=>true,flt=>true,idx=>true,rpt=>${CUR.REPORT}},\
+     err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+     },$cmd)
+  }
+  if hasOutput(true)
+   write $TOP
+  if $rec->[4]
+   sleep 10
+ }
+}
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Overview]]'
+
+=head2 ssp_files - Key Files
+
+the following System Service Processor-related files:
+
+=over 2
+
+=item o F<~ssp/.postrc>
+
+=item o F</var/opt/SUNWssp/*.out*>
+
+=item o F</var/opt/SUNWssp/.ssp_private/cb_config>
+
+=item o F</var/opt/SUNWssp/.ssp_private/domain_config>
+
+=item o F</var/opt/SUNWssp/.ssp_private/ssp_resource>
+
+=item o F</var/opt/SUNWssp/.ssp_private/ssp_to_domain_hosts>
+
+=item o F</var/opt/SUNWssp/.ssp_private/main_ssp_name>
+
+=item o F</var/tmp/autoconfig.log>
+
+=item o F</var/opt/SUNWssp/etc/${PLATFORM}/*>
+
+=item o F</var/opt/SUNWssp/etc/${PLATFORM}/${SUNW_HOSTNAME}/*>
+
+=item o F</var/opt/SUNWssp/adm/*> (Recursive)
+
+=item o F</var/opt/SUNWssp/etc/*> (Recursive)
+
+=item o F</var/opt/SUNWssp/data/*> (Recursive)
+
+=back
+
+=cut
+
+debug ' Inside SSP collection, collecting key files'
+report ssp_files
+prefix
+{write '---+!! System Service Processor Files'
+ write '   * Links point to files that have been collected in their original \
+            format. Opening them directly in your browser can present \
+            risks. To prevent them, access the file outside the browser or \
+            use the link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+var ($hom) = field(':',5,grepFile('/etc/passwd','^ssp:'))
+call do_collect_fil(\
+  ['ssp/postrc',        catFile($hom,'.postrc')],\
+  ['ssp',               '/var/opt/SUNWssp','\.out'],\
+  ['ssp/cb_config',     '/var/opt/SUNWssp/.ssp_private/cb_config'],\
+  ['ssp/domain_config', '/var/opt/SUNWssp/.ssp_private/domain_config'],\
+  ['ssp/ssp_resource',  '/var/opt/SUNWssp/.ssp_private/ssp_resource'],\
+  ['ssp/ssp_to_domain_hosts',\
+                        '/var/opt/SUNWssp/.ssp_private/ssp_to_domain_hosts'],\
+  ['ssp/main_ssp_name', '/var/opt/SUNWssp/.ssp_private/main_ssp_name'],\
+  ['ssp/autoconfig.log','/var/tmp/autoconfig.log'])
+call do_collect_dir('ssp/SUNWssp-adm','/var/opt/SUNWssp/adm',true)
+call do_collect_dir('ssp/SUNWssp-etc','/var/opt/SUNWssp/etc',true)
+call do_collect_dir('ssp/SUNWssp-data','/var/opt/SUNWssp/data',true)
+if $flg
+{if grepFile('/var/opt/SUNWssp/.ssp_private/cb_config','^#','fv')
+ {var $plt = trim(field('\:',0,last))
+  call do_collect_dir(concat('ssp/etc/',$plt),\
+                      catDir('/var/opt/SUNWssp/etc',$plt))
+ }
+ loop $lin (grepFile('/var/opt/SUNWssp/.ssp_private/domain_config','^#','v'))
+ {var $hst = field('\:',0,$lin)
+  call do_collect_dir(concat('ssp/etc/',$hst),\
+                      catDir('/var/opt/SUNWssp/etc',$plt,$hst))
+ }
+}
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Key Files]]'
+}
+
+# Restore the environment
+loop $key (keys(%env))
+ call setEnv($key,$env{$key})
+
+# Adjust the table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

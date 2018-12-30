@@ -1,0 +1,1616 @@
+# M110EXA.def: Performs Exadata Multi-run Collections
+# $Id: M110EXA.def,v 1.20 2012/05/22 09:50:06 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M110EXA.def,v 1.20 2012/05/22 09:50:06 mschenke Exp $
+#
+# Change History
+# 20120522  KRA  Extend EXA_switches section.
+
+=head1 NAME
+
+M110EXA - Performs Exadata Multi-run Collections
+
+=head1 DESCRIPTION
+
+This module regroups multi-run collections specific to the Exadata.
+
+=cut
+
+use Buffer
+use Mrc
+use Remote
+
+# Initialization
+var @COMMON_SECTIONS = ('EXA_diskmon','EXA_fdisk','EXA_ib_check',\
+                        'EXA_imageinfo','EXA_pci','EXA_rdmadev','EXA_scsi',\
+                        'EXA_serial')
+var @ROOT_SECTIONS = ('EXA_bios','EXA_cli64','EXA_ib_cmds','EXA_ib_logs',\
+                      'EXA_ib_netinfo','EXA_ib_prtconf','EXA_ilom_cmds',\
+                      'EXA_ipmi','EXA_nano_magnum','EXA_prdserial','EXA_raid',\
+                      'EXA_switches','EXA_temp','EXA_topology')
+keep @COMMON_SECTIONS,@ROOT_SECTIONS
+
+var $TAIL    = ${EXA_TRACE_TAIL:1000}
+var $TIMEOUT = ${RDA_TIMEOUT:0}
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+keep $TAIL,$TIMEOUT,$TOC,$TOP
+
+# Load the common macros
+run library()
+
+# Load the common variables and define common macros
+section begin
+
+var $TYPE = ${EXA_TYPE:'_All_'}
+
+macro do_collect
+{var ($typ,$ttl,$dbg,$tbl,$lvl) = @arg
+ import $TOP,$TYPE
+
+ if !?$lvl
+  var $lvl = 4
+ if match($TYPE,$typ)
+ {debug ' Inside EXA module, gathering ',$dbg,' information'
+  var $flg = true
+  loop $key (keys($tbl))
+  {var $rec = $tbl->{$key}
+   call $[OUT]->add_report('C',$key,0)
+   prefix
+   {write '---+ ',$rec->[-1]
+    write '---## Using: ',encode($rec->[0])
+   }
+   call writeCommand($rec->[0])
+   if hasOutput(true)
+   {if $flg
+    {call validate(true)
+     if length($ttl)
+      toc $ttl
+     var $flg = false
+    }
+    write $TOP
+    toc $lvl,':[[',getFile(),'][rda_report][',$rec->[1],']]'
+   }
+  }
+ }
+ else
+  call validate(true)
+}
+
+=head1 EXADATA MULTI-RUN COLLECTIONS
+
+=head2 bios - BIOS Information
+
+Collects the BIOS information using the
+C<ipmitool sunoem cli 'show /SYS/MB/BIOS'> command (applicable for
+C<FlashDrives> collection).
+
+=cut
+
+section EXA_bios
+
+if match($TYPE,'^_(All|FlashDrives)_')
+{debug ' Inside EXA module, gathering bios information'
+ report bios
+ var $cmd = concat(cond(${OS.linux},  '/usr/bin/ipmitool',\
+                        ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                                      'ipmitool'),\
+                   " sunoem cli 'show /SYS/MB/BIOS'")
+ prefix
+ {write '---+ BIOS Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][BIOS Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 diskmon_log - Diskmon.log
+
+Displays the content of the diskmon log. By default, it is limited to the last
+30000 lines, but the number of lines can be increased to include more lines
+(applicable for C<CellBrownout> collection).
+
+=cut
+
+section EXA_diskmon
+
+if match($TYPE,'^_(All|CellBrownout)_')
+{debug ' Inside EXA module, getting diskmon log file'
+ report diskmon_log
+ var ($hom,$sid) = ()
+ run ASMinit(\$hom,\$sid)
+ call tail_file(catDir($hom,'log',${RDA.NODE},'diskmon'),'diskmon.log',\
+   ${EXA_ALERT_TAIL:30000})
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Diskmon.log]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 MegaCli64 Information
+
+Collects the output of the following variants of the
+F</opt/MegaRAID/MegaCli/MegaCli64> command (applicable for C<FailedDrives>
+collection):
+
+=head3 adpallinfo - ADP All Information
+
+Gets the C<-AdpAllInfo -aALL> information.
+
+=head3 adpbbucmd - BBU Command
+
+Gets the C<-adpbbucmd -aALL> information.
+
+=head3 adpeventlog - ADP Events
+
+Gets the C<-AdpEventLog -GetEvents -f E<lt>filE<gt> -aALL> information.
+
+=head3 cfgdsply - Configuration Display
+
+Gets the C<-cfgdsply -aALL> information.
+
+=head3 fwtermlog - FwTerm Log
+
+Gets the C<-fwtermlog -dsply -aALL> information.
+
+=head3 ldinfo - LD Information
+
+Gets the C<-LDInfo -LALL -aALL> information.
+
+=head3 ldpdinfo - LdPd Information
+
+Gets the C<-LdPdInfo -aALL> information.
+
+=head3 pdlist - PD List
+
+Gets the C<-PDList -aALL> information.
+
+=head3 pdlist_short - PD Short List
+
+Gets the C<-PDList -aALL> information.
+
+=cut
+
+section EXA_cli64
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, running megacli64 commands'
+ var %tbl = (\
+  adpallinfo   => [' -AdpAllInfo -aALL',\
+                   'ADP All Information'],\
+  adpbbucmd    => [' -adpbbucmd -aALL',\
+                   'BBU Command','BBU Command Information'],\
+  adpeventlog  => [' -AdpEventLog -GetEvents -f :1 -aALL',\
+                   'ADP Events'],\
+  cfgdsply     => [' -cfgdsply -aALL',\
+                   'Configuration Display'],\
+  fwtermlog    => [' -fwtermlog -dsply -aALL',\
+                   'FwTerm Log','FwTerm Log Information'],\
+  ldinfo       => [' -LDInfo -LALL -aALL',\
+                   'LD Information'],\
+  ldpdinfo     => [' -LdPdInfo -aALL',\
+                   'LdPd Information'],\
+  pdlist       => [' -PDList -aALL',\
+                   'PD List'],\
+  pdlist_short => [' -PDList -aALL',\
+                   'PD Short List'])
+ var $flg = true
+ loop $key (keys(%tbl))
+ {var $rec = $tbl{$key}
+  var $cmd = concat('/opt/MegaRAID/MegaCli/MegaCli64',$rec->[0])
+  report $key
+  title '---+ ',$rec->[-1]
+  title '---## Using: ',encode($cmd)
+  if compare('eq',$key,'pdlist_short')
+  {var ($cnt,@dev,@nam,@slt,@sta) = (0)
+   if grepCommand($cmd,'(Slot Number|Device Id|Firmware state|Inquiry)','r')
+   {loop $lin (last)
+    {if match($lin,'Slot Number')
+      var $slt[incr($cnt)] = field('\s+',2,$lin)
+     elsif match($lin,'Device Id')
+      var $dev[$cnt] = field('\s+',2,$lin)
+     elsif match($lin,'Firmware state')
+      var $sta[$cnt] = field('\s+',2,$lin)
+     elsif match($lin,'Inquiry')
+      var $nam[$cnt] = join(' ',splice(split('\s+',$lin,7),2,4))
+    }
+   }
+   prefix
+    write '| *Slot* | *Device* |*Name*|*Status*|'
+   for $off (1,$cnt)
+    write sprintf('| %02d | %02d |%s |%s |',\
+                  $slt[$off],$dev[$off],$nam[$off],$sta[$off])
+  }
+  elsif compare('eq',$key,'adpeventlog')
+  {var $tmp = getTemp('out','.txt')
+   var $cmd = bind($cmd,quote($tmp,'x'))
+   call command($cmd)
+   call writeTail($tmp,$TAIL)
+   call unlinkTemp('out')
+  }
+  else
+   call writeCommand($cmd)
+  if hasOutput(true)
+  {if $flg
+   {call validate(true)
+    toc '3:MegaCli64 Information'
+    var $flg = false
+   }
+   write $TOP
+   toc '4:[[',getFile(),'][rda_report][',$rec->[1],']]'
+  }
+ }
+}
+else
+ call validate(true)
+
+=head2 fdisk - Disk Partition Information
+
+Collects the disk partition information using the C</sbin/fdisk -l> command
+(applicable for C<FailedDrives> collection).
+
+=cut
+
+section EXA_fdisk
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, running fdisk command'
+ report fdisk
+ var $cmd = '/sbin/fdisk -l'
+ prefix
+ {write '---+ Disk Partition Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Disk Partition Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 InfiniBand Information
+
+Collects the output of the following commands (applicable for C<Network> and
+C<NetworkCabling> collections):
+
+=head3 checkboot - Checkboot Information
+
+Gets the F<checkboot> information.
+
+=head3 ibcheckstate - State Check
+
+Gets the C<ibcheckstate -v> information.
+
+=head3 ibdiagnet - Diagnet Overview
+
+Gets the F<ibdiagnet> information.
+
+=head3 ibdiagnet_opt - Diagnet Details
+
+Gets the C<ibdiagnet -c 1000 -r> information.
+
+=head3 ibhosts - Hosts
+
+Gets the F<ibhosts> information.
+
+=head3 iblinkinfo - Link
+
+Gets the C<iblinkinfo.pl -l -R> information.
+
+=head3 ibnetdiscover - Netdiscover
+
+Gets the F<ibnetdiscover> information.
+
+=head3 ibswitches - Switches
+
+Gets the F<ibswitches> information.
+
+=head3 listlinkup - Linkup
+
+Gets the F<listlinkup> information.
+
+=head3 sminfo - SM Information
+
+Gets the F<sminfo> information.
+
+=cut
+
+section EXA_ib_cmds
+
+call do_collect('^_(All|Network(Cabling)?)_',\
+  '3:InfiniBand Information','InfiniBand',\
+  {checkboot     => ['checkboot',\
+                     'Checkboot Information'],\
+   ibcheckstate  => ['/usr/sbin/ibcheckstate -v',\
+                     'State Check','InfiniBand State Check'],\
+   ibdiagnet     => ['/usr/bin/ibdiagnet',\
+                     'Diagnet Overview'],\
+   ibdiagnet_opt => ['/usr/bin/ibdiagnet -c 1000 -r',\
+                     'Diagnet Details'],\
+   ibhosts       => ['/usr/sbin/ibhosts',\
+                     'Hosts','InfiniBand Hosts Information'],\
+   iblinkinfo    => ['/usr/sbin/iblinkinfo.pl -l -R',\
+                     'Link','InfiniBand Link Information'],\
+   ibnetdiscover => ['/usr/sbin/ibnetdiscover',\
+                     'Netdiscover','InfiniBand Netdiscover Information'],\
+   ibswitches    => ['/usr/sbin/ibswitches',\
+                     'Switches','InfiniBand Switches Information'],\
+   listlinkup    => ['listlinkup',\
+                     'Linkup','Linkup Information'],\
+   sminfo        => ['/usr/sbin/sminfo',\
+                     'SM Information']})
+
+=head2 ib_check - Infinicheck Results
+
+Collects the output of C</opt/oracle.SupportTools/ibdiagtools/infinicheck
+-g /opt/oracle.SupportTools/onecommand/dbs_ib_group> command (applicable for
+C<Network> and C<NetworkCabling> collections).
+
+=cut
+
+section EXA_ib_check
+
+if match($TYPE,'^_(All|Network(Cabling)?)_')
+{debug ' Inside EXA module, running infinicheck'
+ report ib_check
+ var $cmd = '/opt/oracle.SupportTools/ibdiagtools/infinicheck -g \
+             /opt/oracle.SupportTools/onecommand/dbs_ib_group'
+ prefix
+ {write '---+ Infinicheck'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Infinicheck Results]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 InfiniBand Log Files
+
+Gathers InfiniBand-related log files (applicable for C<Network> and
+C<NetworkCabling> collections).
+
+=cut
+
+section EXA_ib_logs
+
+if match($TYPE,'^_(All|Network(Cabling)?)_')
+{debug ' Inside EXA module, gathering InfiniBand log files'
+ call validate(true)
+ toc '3:IB Log Files'
+ call sort_files(4,$TAIL,grepDir('/tmp','^ibdiagnet\.','ip'),\
+                         grepDir('/var/log','^opensm','ip'),\
+                         '/var/log/boot.log',\
+                         '/var/log/secure')
+}
+else
+ call validate(true)
+
+=head2 netinfo - Network Information
+
+Collects the network information using the C</usr/bin/ibdiagnet -c 1000>
+command (applicable for C<IbSwitch> collection).
+
+=cut
+
+section EXA_ib_netinfo
+
+if match($TYPE,'^_(All|IbSwitch)_')
+{debug ' Inside EXA module, gathering network information'
+ report netinfo
+ var $cmd = '/usr/bin/ibdiagnet -c 1000'
+ prefix
+ {write '---+ Network Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Network Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 prtconf - Port Configuration
+
+Collects the port error counters and configuration information using the
+C<ibqueryerrors.pl -rR -s LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait>
+command (applicable for C<IbSwitch> collection).
+
+=cut
+
+section EXA_ib_prtconf
+
+if match($TYPE,'^_(All|IbSwitch)_')
+{debug ' Inside EXA module, gathering port configuration'
+ report prtconf
+ var $cmd = '/usr/sbin/ibqueryerrors.pl -rR -s \
+             LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait'
+ prefix
+ {write '---+ Port Error Counters and Configuration Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Port Configuration]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 dns - Name Server Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related name server information
+using the C<ipmitool sunoem cli 'show /SP/clients/dns'> command (applicable for
+C<Ilom> collection).
+
+=head2 event - Events Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related events information using
+the C<ipmitool sel list> command (applicable for C<Ilom> collection).
+
+=head2 lan - LAN Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related LAN information using the
+C<ipmitool lan print> command (applicable for C<Ilom> collection).
+
+=head2 mac - Machine Details
+
+Gets the Integrated Lights Out Manager (ILOM)-related machine details using the
+C<ipmitool mc info> command (applicable for C<Ilom> collection).
+
+=head2 network - Network Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related network information using
+the C<ipmitool sunoem cli 'show /SP/network'> command (applicable for C<Ilom>
+collection).
+
+=head2 sdr - SDR Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related SDR information using the
+C<ipmitool sdr> command (applicable for C<Ilom> collection).
+
+=head2 sensor - Sensor Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related sensor information using
+the C<ipmitool sensor> command (applicable for C<Ilom> collection).
+
+=head2 sysinfo - System Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related system information using
+the C<ipmitool sunoem cli 'show /SYS'> command (applicable for C<Ilom>
+collection).
+
+=cut
+
+section EXA_ilom_cmds
+
+if match($TYPE,'^_(All|Ilom)_')
+{debug ' Inside EXA module, getting information from the compute nodes'
+ var %nod = ()
+ var $cmd = cond(${OS.linux},  '/usr/bin/ipmitool',\
+                 ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                 '')
+ var $nod{${RDA.HOST}} = 1
+
+ # Collect from remote compute nodes
+ if and($REM_NODE = ${EXA_COLLECT_NODE},length($NODES = ${EXA_NODES:''}))
+ {var $NODE_PAUSE  = ${EXA_NODE_WAIT_PWD:30}
+  var $NODE_USERID = ${EXA_NODE_LOGIN:''}
+
+  # Definition for exec_command function
+  set $def_exec_cmd
+  {exec_command()
+  "{ LIM="$1"
+  "  shift 1
+  "  if [ "$LIM" -gt 0 ]
+  "  then
+  "    "$@" 2>/dev/null &
+  "    PID=$!
+  "    while [ $LIM -gt 0 ]
+  "    do
+  "      /bin/sleep 2
+  "      if /bin/ps -l -p $PID 2>/dev/null | /bin/egrep " $PID  *$$ " \
+            >/dev/null 2>&1
+  "      then
+  "        LIM=`/usr/bin/expr $LIM - 2`
+  "      else
+  "        return
+  "      fi
+  "    done
+  "    if /bin/ps -l -p $PID 2>/dev/null | /bin/egrep " $PID  *$$ " \
+          >/dev/null 2>&1
+  "    then
+  "      /bin/kill -15 $PID 2>/dev/null
+  "      /bin/sleep 5
+  "      /bin/kill -9 $PID 2>/dev/null
+  "      echo "---# RDA:SET TIMEOUT:***Execution Timeout***"
+  "    fi
+  "  else
+  "    "$@" 2>/dev/null
+  "  fi
+  "}
+  }
+
+  # Define parsing macros
+  macro set_done
+  {var ($buf,$nod) = @arg
+   import %acc
+   keep %acc
+
+   var $acc{$nod} = '|Collection Completed| '
+  }
+
+  # Node section begin marker
+  set $job_node_begin
+  {echo "---# RDA:BEGIN SECTION:3:${NODE} Information"
+  }
+
+  # Node section end marker
+  set $job_node_end
+  {echo "---# RDA:END SECTION"
+  }
+
+  # Job to mark the end of a node collection
+  set $job_end
+  {echo "---# RDA:BEGIN"
+  "echo "Collection Ended"
+  "echo "---# RDA:END MACRO set_done:${NODE}"
+  "
+  }
+
+=head2 dns - Name Server Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related name server information
+from the remote compute nodes using the
+C<ipmitool sunoem cli 'show /SP/clients/dns'> command (applicable for C<Ilom>
+collection).
+
+=cut
+
+  set $cfg_ilom_dns
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} sunoem cli 'show /SP/clients/dns'
+  "echo "---# RDA:END REPORT:4|Name Server|Name Server Information|Using: \
+             ${CMD} sunoem cli 'show /SP/clients/dns'|ilom_dns"
+  }
+
+=head2 event - Events Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related events information from
+the remote compute nodes using the C<ipmitool sel list> command (applicable for
+C<Ilom> collection).
+
+=cut
+
+  set $cfg_ilom_event
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} sel list
+  "echo "---# RDA:END REPORT:4|Events|Events Information|Using: \
+             ${CMD} sel list|ilom_event"
+  }
+
+=head2 lan - LAN Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related LAN information from the
+remote compute nodes using the C<ipmitool lan print> command (applicable for
+C<Ilom> collection).
+
+=cut
+
+  set $cfg_ilom_lan
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} lan print
+  "echo "---# RDA:END REPORT:4|LAN|LAN Information|Using: \
+             ${CMD} lan print|ilom_lan"
+  }
+
+=head2 mac - Machine Details
+
+Gets the Integrated Lights Out Manager (ILOM)-related machine details from the
+remote compute nodes using the C<ipmitool mc info> command (applicable for
+C<Ilom> collection).
+
+=cut
+
+  set $cfg_ilom_mac
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} mc info
+  "echo "---# RDA:END REPORT:4|Machine|Machine Details|Using: \
+             ${CMD} mc info|ilom_mac"
+  }
+
+=head2 network - Network Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related network information from
+the remote compute nodes using the C<ipmitool sunoem cli 'show /SP/network'>
+command (applicable for C<Ilom> collection).
+
+=cut
+
+  set $cfg_ilom_network
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} sunoem cli 'show /SP/network'
+  "echo "---# RDA:END REPORT:4|Network|Network Information|Using: \
+             ${CMD} sunoem cli 'show /SP/network'|ilom_network"
+  }
+
+=head2 sdr - SDR Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related SDR information from the
+remote compute nodes using the C<ipmitool sdr> command (applicable for C<Ilom>
+collection).
+
+=cut
+
+  set $cfg_ilom_sdr
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} sdr
+  "echo "---# RDA:END REPORT:4|SDR|SDR Information|Using: ${CMD} sdr|ilom_sdr"
+  }
+
+=head2 sensor - Sensor Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related sensor information from
+the remote compute nodes using the C<ipmitool sensor> command (applicable for
+C<Ilom> collection).
+
+=cut
+
+  set $cfg_ilom_sensor
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} sensor
+  "echo "---# RDA:END REPORT:4|Sensor|Sensor Information|Using: \
+             ${CMD} sensor|ilom_sensor"
+  }
+
+=head2 sysinfo - System Information
+
+Gets the Integrated Lights Out Manager (ILOM)-related system information from
+the remote compute nodes using the C<ipmitool sunoem cli 'show /SYS'> command
+(applicable for C<Ilom> collection).
+
+=cut
+
+  set $cfg_ilom_sysinfo
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} ${CMD} sunoem cli 'show /SYS'
+  "echo "---# RDA:END REPORT:4|System|System Information|Using: \
+             ${CMD} sunoem cli 'show /SYS'|ilom_sysinfo"
+  }
+
+  # Define the collection code
+  if compare('eq',$NODE_USERID,'root')
+   var $cod = join("\012\012",\
+     $def_exec_cmd,$job_node_begin,$cfg_ilom_dns,$cfg_ilom_event,$cfg_ilom_lan,\
+     $cfg_ilom_mac,$cfg_ilom_network,$cfg_ilom_sdr,$cfg_ilom_sensor,\
+     $cfg_ilom_sysinfo,$job_node_end,$job_end)
+  else
+   var $cod = ''
+
+  # Collect remote node information in threads
+  if length($cod)
+  {var ($cnt,$pwd,@nod,%acc,%buf,%slp,%tim,%tmp) = (0)
+
+   # Initialize the remote sessions
+   loop $nod (split('\|',$NODES))
+   {next !match($nod,'^[\w\-\.]+$')
+    call addRemoteSession('EXA',$nod,$NODE_USERID)
+    if and(defined($pwd),not(hasPassword('host',$nod,$NODE_USERID)))
+     call setPassword('host',$nod,$NODE_USERID,$pwd)
+    if needPassword('EXA')
+    {var $pwd = askPassword(concat('Enter ',$NODE_USERID,'@',$nod,' password:'))
+     call setPassword('host',$nod,$NODE_USERID,$pwd)
+     if needPassword('EXA')
+     {var $acc{$nod} = '|Skipped due to connection problems| '
+      var $tim{$nod} = 0
+      call endRemoteSession('EXA')
+      next
+     }
+    }
+    var $slp{$nod} = cond(needPause('EXA'),$NODE_PAUSE,1)
+    call endRemoteSession('EXA')
+    call push(@nod,$nod)
+   }
+
+   # Collect node specific information using remote session
+   call $[REM]->set_timeout($dur = expr('*',25,$TIMEOUT))
+   loop $nod (@nod)
+   {var $nod{$nod} = 1
+    var $acc{$nod} = '|Collection Incomplete| '
+    var $buf{$nod} = $res = getTemp($tmp{$nod} = concat('NODE',incr($cnt)))
+    var $tim{$nod} = 0
+    var $key = concat('EXA_NODE_COLLECT_STATUS_',$tmp{$nod})
+    call setSetting($key)
+    thread($cod,$nod,$cmd,$key,$res)
+    {var ($cod,$nod,$cmd,$key,$res) = @arg
+     import $NODE_USERID,$TIMEOUT
+
+     debug '  - Getting node information from ',$nod
+     call addRemoteSession('EXA',$nod,$NODE_USERID)
+     var $ret = rcollect('EXA',$cod,$res,\
+       {CMD => $cmd,\
+        NODE => $nod,\
+        TIMEOUT => $TIMEOUT\
+       })
+     if !hasRemoteTimeout('EXA')
+      call setSetting($key,$ret,'N','Remote collection exit code')
+     call endRemoteSession('EXA')
+     debug '  - Data collection ended for ',$nod
+    }
+    sleep $slp{$nod}
+   }
+   sleep 3
+   echo 'The remote compute node data collection can take more than ',$dur,\
+        ' seconds. Do not interrupt the data collection.'
+   wait $dur
+  }
+ }
+
+ # Generate the node reports from both local and remote
+ loop $nod (keys(%nod))
+ {if compare('eq',$nod,${RDA.HOST})
+  {pretoc '3:',$nod,' Information'
+   call do_collect('^_(All|Ilom)_','','ILOM',\
+     {dns     => [concat($cmd," sunoem cli 'show /SP/clients/dns'"),\
+                  'Name Server','Name Server Information'],\
+      event   => [concat($cmd,' sel list'),'Events','Events Information'],\
+      lan     => [concat($cmd,' lan print'),'LAN','LAN Information'],\
+      mac     => [concat($cmd,' mc info'),'Machine','Machine Details'],\
+      network => [concat($cmd," sunoem cli 'show /SP/network'"),\
+                  'Network','Network Information'],\
+      sdr     => [concat($cmd,' sdr'),'SDR','SDR Information'],\
+      sensor  => [concat($cmd,' sensor'),'Sensor','Sensor Information'],\
+      sysinfo => [concat($cmd," sunoem cli 'show /SYS'"),\
+                  'System','System Information']},4)
+   unpretoc
+  }
+  else
+  {if getSetting(concat('EXA_NODE_COLLECT_STATUS_',$tmp{$nod}))
+    var $acc{$nod} = concat('|Connection error (',last,')| ')
+   else
+   {call writeRemoteResult($buf{$nod} = new('Buffer','R',$buf{$nod}),$nod)
+    call $buf{$nod}->close
+   }
+   call unlinkTemp($tmp{$nod})
+  }
+ }
+
+=head2 node_summary - Compute Node Collection Summary
+
+Displays the remote compute node list and their accessibility.
+
+=cut
+
+ if and($REM_NODE,length($NODES))
+ {debug ' Inside EXA module, producing the compute node collection summary'
+  report node_summary
+  prefix
+  {write '---+ Remote Compute Node Collection Summary'
+   write '|*Node*|*Collection Status*| *Execution Timeout*|'
+  }
+  loop $key (keys(%acc))
+   write '|',$key,$acc{$key},$tim{$key},'|'
+  if isCreated(true)
+  {call validate(true)
+   toc '3:[[',getFile(),'][rda_report][Compute Node Collection Summary]]'
+  }
+  else
+   echo 'No remote compute nodes found'
+ }
+}
+else
+ call validate(true)
+
+=head2 imageinfo - Image Information
+
+Gets the image information (applicable for C<FailedDrives> collection).
+
+=cut
+
+section EXA_imageinfo
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, getting image information'
+ report imageinfo
+ title '---+!! Image Information'
+ title $TOC
+ if testFile('x',$fil = '/opt/oracle.cellos/imageinfo')
+ {var $cmd = concat($fil,' -all')
+  prefix
+   write '---## Using: ',encode($cmd)
+  call writeCommand($cmd)
+ }
+ else
+ {write '---+ Mount Information'
+  write grepCommand('mount',' / ')
+  write '---+ Files in /opt/oracle.cellos/patch/history Directory'
+  call statDir('at','/opt/oracle.cellos/patch/history')
+ }
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Image Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 ipmitool - IPMI Information
+
+Collects the Intelligent Platform Management Interface (IPMI) information using
+the C<ipmitool sel elist> command (applicable for C<FailedDrives>
+collection).
+
+=cut
+
+section EXA_ipmi
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, running ipmitool command'
+ report ipmitool
+ var $cmd = concat(cond(${OS.linux},  '/usr/bin/ipmitool',\
+                        ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                                      'ipmitool'),' sel elist')
+ prefix
+ {write '---+ Intelligent Platform Management Interface (IPMI) Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][IPMI Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 Nano Magnum Information
+
+Collects the output of the following commands (applicable for C<Network> and
+C<NetworkCabling> collections):
+
+=head3 dcsport - DCS Port Information
+
+Gets the C<dcsport -printconnectors> information.
+
+=head3 envtest - Environment Test
+
+Gets the F<env_test> information.
+
+=head3 nm2info - Nano Magnum 2 Information
+
+Gets the F<nm2info> information.
+
+=cut
+
+section EXA_nano_magnum
+
+call do_collect('^_(All|Network(Cabling)?)_',\
+  '3:Nano Magnum Information','nano magnum switches',\
+  {dcsport => ['dcsport -printconnectors',\
+               'DCS Port Information'],\
+   envtest => ['env_test',\
+               'Environment Test'],\
+   nm2info => ['nm2info',\
+               'Nano Magnum 2 Information']})
+
+=head2 lspci_conf - PCI Devices Configuration
+
+Collects the Peripheral Component Interconnect (PCI) devices configuration
+using the C</sbin/lspci -xxxx> command (applicable for C<FailedDrives>
+collection).
+
+=cut
+
+section EXA_pci
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, running lspci -xxxx command'
+ report lspci_conf
+ var $cmd = '/sbin/lspci -xxxx'
+ prefix
+ {write '---+ PCI Devices Configuration Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][PCI Devices Configuration]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 prdserial - Product Serial Number
+
+Collects the product serial number using the
+C<ipmitool sunoem cli 'show /SYS product_serial_number'> command (applicable
+for C<FlashDrives> collection).
+
+=cut
+
+section EXA_prdserial
+
+if match($TYPE,'^_(All|FlashDrives)_')
+{debug ' Inside EXA module, gathering product serial number'
+ report prdserial
+ var $cmd = concat(cond(${OS.linux},  '/usr/bin/ipmitool',\
+                        ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                                      'ipmitool'),\
+                   " sunoem cli 'show /SYS product_serial_number'")
+ prefix
+ {write '---+ Product Serial Number'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Product Serial Number]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 raid_status - RAID Status
+
+Gathers Redundant Array of Inexpensive Disks (RAID)-related information
+(applicable for C<FailedDrives> collection).
+
+=cut
+
+section EXA_raid
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, getting raid information'
+ report raid_status
+ var $cmd = '/opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0'
+ prefix
+ {write '---+ RAID Status Information'
+  write '---## Using: ',encode($cmd)
+ }
+ if loadCommand($cmd)
+ {if grepLastFile('Product Name','f')
+   write '|*Controller*|',field(':',1,first(last)),' |'
+  if grepCommand('/opt/MegaRAID/MegaCli/MegaCli64 PDList -a0','Online','c')
+   write '|*Number of Physical Disks online*| ',last,'|'
+  if grepLastFile('Degrade','f')
+   write '|*',replace(trim(last),'\s+:\s+','*| '),'|'
+  if grepLastFile('Failed Disks','f')
+   write '|*',replace(trim(last),'\s+:\s+','*| '),'|'
+  if hasOutput(true)
+  {call validate(true)
+   write $TOP
+   toc '3:[[',getFile(),'][rda_report][RAID Status]]'
+  }
+ }
+}
+else
+ call validate(true)
+
+=head2 rdmadev - RDMA Devices
+
+Collects the RDMA devices information using the F</usr/bin/ibv_devinfo> command.
+
+=cut
+
+section EXA_rdmadev
+
+if match($TYPE,'^_(All|Cell(Brownout|Failure)|(Failed|Flash)Drives|IbSwitch|\
+                   Ilom|Network(Cabling)?|SickCell)_')
+{debug ' Inside EXA module, gathering rdma devices information'
+ report rdmadev
+ var $cmd = '/usr/bin/ibv_devinfo'
+ prefix
+ {write '---+ RDMA Devices Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][RDMA Devices]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 lsscsi - SCSI Devices
+
+Collects the Small Computer System Interface (SCSI) devices information using
+the F</usr/bin/lsscsi> command (applicable for C<FailedDrives> collection).
+
+=cut
+
+section EXA_scsi
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, running lsscsi command'
+ report lsscsi
+ var $cmd = '/usr/bin/lsscsi'
+ prefix
+ {write '---+ SCSI Devices Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  toc '3:[[',getFile(),'][rda_report][SCSI Devices]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 serial - Serial Numbers
+
+Collects the serial numbers using the F</var/log/cellos/SerialNumbers> file
+(applicable for C<FailedDrives> collection).
+
+=cut
+
+section EXA_serial
+
+if match($TYPE,'^_(All|FailedDrives)_')
+{debug ' Inside EXA module, getting serial numbers'
+ report serial
+ var $fil = '/var/log/cellos/SerialNumbers'
+ prefix
+ {write '---+ Display of SerialNumbers File'
+  write '---## Information Taken from ',encode($fil)
+ }
+ call writeFile($fil)
+ if hasOutput(true)
+ {call validate(true)
+  toc '3:[[',getFile(),'][rda_report][Serial Numbers]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 temp - Temperature Information
+
+Collects the temperature information using the
+C<ipmitool sunoem cli 'show /SYS/T_AMB value'> command (applicable for
+C<FlashDrives> collection).
+
+=cut
+
+section EXA_temp
+
+if match($TYPE,'^_(All|FlashDrives)_')
+{debug ' Inside EXA module, gathering temperature information'
+ report temp
+ var $cmd = concat(cond(${OS.linux},  '/usr/bin/ipmitool',\
+                        ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                                      'ipmitool'),\
+                   " sunoem cli 'show /SYS/T_AMB value'")
+ prefix
+ {write '---+ Temperature Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Temperature Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 topology - Topology
+
+Collects the output of the
+C</opt/oracle.SupportTools/ibdiagtools/verify-topology -t fattree> command
+(applicable for C<IbSwitch>, C<Network>, and C<NetworkCabling> collections).
+
+=cut
+
+section EXA_topology
+
+if match($TYPE,'^_(All|IbSwitch|Network(Cabling)?)_')
+{debug ' Inside EXA module, gathering topology information'
+ report topology
+ var $cmd = '/opt/oracle.SupportTools/ibdiagtools/verify-topology -t fattree'
+ prefix
+ {write '---+ Topology Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Topology]]'
+ }
+}
+else
+ call validate(true)
+
+=head1 SWITCH COLLECTIONS
+
+Collects the following Exadata-related information from the switches
+(applicable for C<IbSwitch> collection).
+
+=cut
+
+section EXA_switches
+
+if and(match($TYPE,'^_(All|IbSwitch)_'),${EXA_COLLECT_SWITCH})
+{debug ' Inside EXA module, getting information from the remote switches'
+ if !loadCommand('/usr/sbin/ibswitches')
+  echo 'Unable to get the switch information'
+ else
+ {var $SWITCH_PAUSE  = ${EXA_SWITCH_WAIT_PWD:30}
+  var $SWITCH_USERID = ${EXA_SWITCH_LOGIN:''}
+
+  # Define parsing macros
+  macro write_switch_list
+  {var ($buf,$dat) = @arg
+   var ($rpt,$lim) = split('\|',$dat,2)
+
+   var $rpt = $[OUT]->add_report('F',$rpt,0)
+   prefix $rpt
+   {write {$rpt} '---+ Log Files'
+    write {$rpt} '   * Last ',$lim,' log file lines collected'
+    write {$rpt} '   * Links point to files that have been collected in their \
+                       original format. Opening them directly in your browser \
+                       can present risks. To prevent them, access the file \
+                       outside the browser or use the link to save them and \
+                       use an adequate viewer.'
+    write {$rpt} '|*File Name*|'
+   }
+   while ?$lnk = $buf->get_line
+    write {$rpt} '|',$lnk,'|'
+   if $rpt->is_created(true)
+    toc '4:[[',$rpt->get_report,'][rda_report][Log Files]]'
+   end $rpt
+  }
+
+  # Definition for exec_command function
+  set $def_exec_cmd
+  {exec_command()
+  "{ LIM="$1"
+  "  shift 1
+  "  if [ "$LIM" -gt 0 ]
+  "  then
+  "    "$@" 2>/dev/null &
+  "    PID=$!
+  "    while [ $LIM -gt 0 ]
+  "    do
+  "      /bin/sleep 2
+  "      if /bin/ps -l -p $PID 2>/dev/null | /bin/egrep " $PID  *$$ " \
+            >/dev/null 2>&1
+  "      then
+  "        LIM=`/usr/bin/expr $LIM - 2`
+  "      else
+  "        return
+  "      fi
+  "    done
+  "    if /bin/ps -l -p $PID 2>/dev/null | /bin/egrep " $PID  *$$ " \
+          >/dev/null 2>&1
+  "    then
+  "      /bin/kill -15 $PID 2>/dev/null
+  "      /bin/sleep 5
+  "      /bin/kill -9 $PID 2>/dev/null
+  "      echo "---# RDA:SET TIMEOUT:***Execution Timeout***"
+  "    fi
+  "  else
+  "    "$@" 2>/dev/null
+  "  fi
+  "}
+  }
+
+  # Define parsing macros
+  macro set_swt_done
+  {var ($buf,$swt) = @arg
+   import %acc
+   keep %acc
+
+   var $acc{$swt} = '|Collection Completed| '
+  }
+
+  # Switch section begin marker
+  set $job_swt_begin
+  {echo "---# RDA:BEGIN SECTION:3:${SWITCH} Information"
+  }
+
+  # Switch section end marker
+  set $job_swt_end
+  {echo "---# RDA:END SECTION"
+  }
+
+  # Job to mark the end of a switch collection
+  set $job_end
+  {echo "---# RDA:BEGIN"
+  "echo "Collection Ended"
+  "echo "---# RDA:END MACRO set_swt_done:${SWITCH}"
+  "
+  }
+
+=head2 dsk_free - Free Space
+
+Collects the output of the C<df -h> command.
+
+=cut
+
+  set $cfg_dsk_free
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /bin/df -h
+  "echo "---# RDA:END REPORT:4|Free Space|Free Space|Using: /bin/df -h|dsk_free"
+  }
+
+=head2 env_test - Environment Test
+
+Collects the output of the F</usr/local/bin/env_test> command.
+
+=cut
+
+  set $cfg_env_tst
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/local/bin/env_test
+  "echo "---# RDA:END REPORT:4|Environment Test|Environment Test|\
+             Using: /usr/local/bin/env_test|env_test"
+  }
+
+=head2 group - Group Information
+
+Collects the output of the C</usr/sbin/saquery MCMR> command.
+
+=cut
+
+  set $cfg_group
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/saquery MCMR
+  "echo "---# RDA:END REPORT:4|Group Information|Group Information|\
+             Using: /usr/sbin/saquery MCMR|group"
+  }
+
+=head2 hosts - Hosts Information
+
+Collects the output of the F</usr/sbin/ibhosts> command.
+
+=cut
+
+  set $cfg_hosts
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/ibhosts
+  "echo "---# RDA:END REPORT:4|Hosts|Hosts Information|\
+             Using: /usr/sbin/ibhosts|hosts"
+  }
+
+=head2 ibdiagnet - IB Diagnet
+
+Collects the output of the C</usr/bin/ibdiagnet -skip dup_guids -pm> command.
+
+=cut
+
+  set $cfg_ibdiagnet
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/bin/ibdiagnet -skip dup_guids -pm
+  "echo "---# RDA:END REPORT:4|IB Diagnet|IB Diagnet Information|\
+             Using: /usr/bin/ibdiagnet -skip dup_guids -pm|ibdiagnet"
+  }
+
+=head2 ibstat - IB Status
+
+Collects the output of the F</usr/sbin/ibstat> command.
+
+=cut
+
+  set $cfg_ibstat
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/ibstat
+  "echo "---# RDA:END REPORT:4|IB Status|IB Status|\
+             Using: /usr/sbin/ibstat|ibstat"
+  }
+
+=head2 iblinkinfo - Link
+
+Collects the output of the C</usr/sbin/iblinkinfo.pl -R> command.
+
+=cut
+
+  set $cfg_iblinkinfo
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/iblinkinfo.pl -R
+  "echo "---# RDA:END REPORT:4|Link|Link Information|\
+             Using: /usr/sbin/iblinkinfo.pl -R|iblinkinfo"
+  }
+
+=head2 ibnetdiscover - Netdiscover
+
+Collects the output of the F</usr/sbin/ibnetdiscover> command.
+
+=cut
+
+  set $cfg_ibnetdiscover
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/ibnetdiscover
+  "echo "---# RDA:END REPORT:4|Netdiscover|Netdiscover Information|\
+             Using: /usr/sbin/ibnetdiscover|ibnetdiscover"
+  }
+
+=head2 listlinkup - Linkup
+
+Collects the output of the F</usr/local/bin/listlinkup> command.
+
+=cut
+
+  set $cfg_linkup
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/local/bin/listlinkup
+  "echo "---# RDA:END REPORT:4|Linkup|Linkup Information|\
+             Using: /usr/local/bin/listlinkup|listlinkup"
+  }
+
+=head2 master - Master Information
+
+Collects the output of the C</usr/local/bin/getmaster -l> command.
+
+=cut
+
+  set $cfg_master
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/local/bin/getmaster -l
+  "echo "---# RDA:END REPORT:4|Master Information|Master Information|\
+             Using: /usr/local/bin/getmaster -l|master"
+  }
+
+=head2 member - Member Information
+
+Collects the output of the C</usr/sbin/saquery -m> command.
+
+=cut
+
+  set $cfg_member
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/saquery -m
+  "echo "---# RDA:END REPORT:4|Member Information|Member Information|\
+             Using: /usr/sbin/saquery -m|member"
+  }
+
+=head2 sensor_health - Sensor Health
+
+Collects the output of the F</usr/local/bin/showunhealthy> command.
+
+=cut
+
+  set $cfg_sensor_health
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/local/bin/showunhealthy
+  "echo "---# RDA:END REPORT:4|Sensor Health|Sensor Health|\
+             Using: /usr/local/bin/showunhealthy|sensor_health"
+  }
+
+=head2 sminfo - SM Information
+
+Collects the output of the F</usr/sbin/sminfo> command.
+
+=cut
+
+  set $cfg_sminfo
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/sminfo
+  "echo "---# RDA:END REPORT:4|SM Information|SM Information|\
+             Using: /usr/sbin/sminfo|sminfo"
+  }
+
+=head2 switches - Switch Information
+
+Collects the output of the F</usr/sbin/ibswitches> command.
+
+=cut
+
+  set $cfg_switches
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/sbin/ibswitches
+  "echo "---# RDA:END REPORT:4|Switches|Switch Information|\
+             Using: /usr/sbin/ibswitches|switches"
+  }
+
+=head2 version - Switch Version
+
+Collects the output of the F</usr/local/bin/version> command.
+
+=cut
+
+  set $cfg_ver
+  {echo "---# RDA:BEGIN"
+  "exec_command ${TIMEOUT:-0} /usr/local/bin/version
+  "echo "---# RDA:END REPORT:4|Switch Version|Switch Version|\
+             Using: /usr/local/bin/version|version"
+  }
+
+=head2 switchlogs - Log Files
+
+Collects the last lines of the switch-related log files.
+
+=cut
+
+  set $log_switch
+  {echo "---# RDA:BEGIN LIST"
+  "for fil in `/bin/ls /var/log/messages; \
+               /bin/ls /var/log/opensm.log; \
+               /bin/ls /var/log/opensm-subnet.lst; \
+               /bin/ls /tmp/ibdiagnet*`
+  "do
+  "  echo "---# RDA:BEGIN"
+  "  /usr/bin/tail -${TAIL} "$fil"
+  "  echo "---# RDA:END DATA:$fil"
+  "done
+  "echo "---# RDA:END LIST write_switch_list:switchlogs|${TAIL}"
+  }
+
+  # Define the collection code
+  if compare('eq',$SWITCH_USERID,'root')
+   var $cod = check($TYPE,\
+     '^_IbSwitch_',join("\012\012",\
+       $def_exec_cmd,$job_swt_begin,$cfg_dsk_free,$cfg_env_tst,$cfg_group,\
+       $cfg_hosts,$cfg_ibdiagnet,$cfg_iblinkinfo,$cfg_ibnetdiscover,\
+       $cfg_ibstat,$cfg_linkup,$cfg_master,$cfg_member,$cfg_sensor_health,\
+       $cfg_sminfo,$cfg_switches,$cfg_ver,$log_switch,$job_swt_end,$job_end),\
+     '^_All_',join("\012\012",\
+       $def_exec_cmd,$job_swt_begin,$cfg_dsk_free,$cfg_env_tst,$cfg_group,\
+       $cfg_hosts,$cfg_ibdiagnet,$cfg_iblinkinfo,$cfg_ibnetdiscover,\
+       $cfg_ibstat,$cfg_linkup,$cfg_master,$cfg_member,$cfg_sensor_health,\
+       $cfg_sminfo,$cfg_switches,$cfg_ver,$log_switch,$job_swt_end,$job_end),\
+     '')
+  else
+   var $cod = ''
+
+  # Collect remote switch information in threads
+  if length($cod)
+  {pretoc '2:Switch'
+   var ($cnt,$pwd,@swt,%acc,%buf,%slp,%swt,%tim,%tmp) = (0)
+
+   # Initialize the remote sessions
+   loop $lin (grepLastFile('\".*?\s36P\sQDR\sd.*?\"'))
+   {var $swt = undef
+    if match($lin,'\".*?\s36P\sQDR\s(.*?)\"')
+     var ($swt) = last
+    next !?$swt
+    next match($swt,'^(\(|localhost$)')
+    if !match($swt,quote(${RDA.DOMAIN}),true)
+     var $swt = join(".",$swt,${RDA.DOMAIN})
+    call addRemoteSession('EXA',$swt,$SWITCH_USERID)
+    if and(defined($pwd),not(hasPassword('host',$swt,$SWITCH_USERID)))
+     call setPassword('host',$swt,$SWITCH_USERID,$pwd)
+    if needPassword('EXA')
+    {var $pwd = askPassword(concat('Enter ',$SWITCH_USERID,'@',$swt,\
+                                   ' password:'))
+     call setPassword('host',$swt,$SWITCH_USERID,$pwd)
+     if needPassword('EXA')
+     {var $acc{$swt} = '|Skipped due to connection problems| '
+      var $tim{$swt} = 0
+      call endRemoteSession('EXA')
+      next
+     }
+    }
+    var $slp{$swt} = cond(needPause('EXA'),$SWITCH_PAUSE,1)
+    call endRemoteSession('EXA')
+    var $swt{$swt} = 1
+   }
+
+   # Collect switch specific information using remote session
+   call $[REM]->set_timeout($dur = expr('*',25,$TIMEOUT))
+   loop $swt (@swt = keys(%swt))
+   {var $acc{$swt} = '|Collection Incomplete| '
+    var $buf{$swt} = $res = getTemp($tmp{$swt} = concat('SWITCH',incr($cnt)))
+    var $tim{$swt} = 0
+    var $key = concat('EXA_SWITCH_COLLECT_STATUS_',$tmp{$swt})
+    call setSetting($key)
+    thread($cod,$swt,$key,$res)
+    {var ($cod,$swt,$key,$res) = @arg
+     import $SWITCH_USERID,$TAIL,$TIMEOUT
+
+     debug '  - Getting switch information from ',$swt
+     call addRemoteSession('EXA',$swt,$SWITCH_USERID)
+     var $ret = rcollect('EXA',$cod,$res,\
+       {SWITCH  => $swt,\
+        TAIL    => $TAIL,\
+        TIMEOUT => $TIMEOUT\
+       })
+     if !hasRemoteTimeout('EXA')
+      call setSetting($key,$ret,'N','Remote collection exit code')
+     call endRemoteSession('EXA')
+     debug '  - Data collection ended for ',$swt
+    }
+    sleep $slp{$swt}
+   }
+   sleep 3
+   echo 'The remote switch data collection can take more than ',$dur,\
+        ' seconds. Do not interrupt the data collection.'
+   wait $dur
+
+   # Generate the remote switch reports
+   loop $swt (@swt)
+   {if getSetting(concat('EXA_SWITCH_COLLECT_STATUS_',$tmp{$swt}))
+     var $acc{$swt} = concat('|Connection error (',last,')| ')
+    else
+    {call writeRemoteResult($buf{$swt} = new('Buffer','R',$buf{$swt}),$swt)
+     call $buf{$swt}->close
+    }
+    call unlinkTemp($tmp{$swt})
+   }
+
+=head2 swt_summary - Switch Collection Summary
+
+Displays the switch list and their accessibility.
+
+=cut
+
+   debug ' Inside EXA module, producing the switch collection summary'
+   report swt_summary
+   prefix
+   {write '---+ Switch Collection Summary'
+    write '|*Switch*|*Collection Status*| *Execution Timeout*|'
+   }
+   loop $key (keys(%acc))
+    write '|',$key,$acc{$key},$tim{$key},'|'
+   if isCreated(true)
+   {call validate(true)
+    toc '3:[[',getFile(),'][rda_report][Switch Collection Summary]]'
+   }
+   else
+    echo 'No switches found'
+   unpretoc
+  }
+ }
+}
+else
+ call validate(true)
+
+=head1 SEE ALSO
+
+L<S280EXA|modules::S280EXA>,
+L<library|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.25:  Jean-Marc Gaudron, Ericka Washington.
+
+=item RDA 4.26:  Jean-Marc Gaudron, Sathyanarayanan Mohankalyan,
+Ericka Washington.
+
+=item RDA 4.27:  Ericka Washington.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

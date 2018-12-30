@@ -1,0 +1,938 @@
+# TLna.def: Runs the Network Advisor
+# $Id: TLna.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TLna.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+TLna - Network Advisor
+
+=head1 DESCRIPTION
+
+Net Advisor is a tool that provides advice on resolving network layer errors
+encountered using Oracle Net Services.
+
+The tool assesses information produced in a network trace file. It notes which
+naming methods were used in attempting to resolve a given service name and
+provides an overview of the network configuration. Net Advisor identifies
+conflicts or issues in the network setup of the client, and suggests what to
+check or which actions to take for the issues found.
+
+This tool supports the C<LDAP>, C<ONAMES>, and C<LOCAL> naming methods
+currently, and analyzes C<TNS-12154> and C<TNS-12541> errors.
+
+=head1 REQUIREMENTS
+
+Must have a valid Oracle Networking trace file.
+
+=head1 USAGE
+
+This tool takes a corresponding trace file as input and can be used in two
+different ways:
+
+=over 3
+
+=item a)
+
+Runs through RDA setup. It requests the user to enter the absolute path of
+the trace file.
+
+<rda> -vT na
+
+=item b)
+
+Runs from the command line. The input can be given in the command line using
+the following syntax:
+
+<rda> -vT na:absolute_path_of_trace_file
+
+=back
+
+The tool generates a report with findings. The reports can be viewed in the
+C<External Data Collections> submenu of the final RDA output package also.
+If it is not disabled, you can refresh the section with the following command:
+
+<rda> -vdCRP LOAD
+
+=cut
+
+echo tput('bold'),'Diagnosing TNS-12154 or TNS-12541 errors ...',tput('off')
+
+# Initialisation
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+call setAbbr('NA')
+
+# --- Macros for managing conditions ------------------------------------------
+
+# Add basic rules
+macro add_basic_rules
+{call setDataValue('Rules',createData(\
+  'Basic',list(\
+    createData(\
+     'nam','NAMESDEFDOMAIN',\
+     'dsc','Names Default Domain',\
+     'typ','SUMMARY',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','NAMESDEFDOMAIN')),\
+    createData(\
+     'nam','NAMESDIRECTORY',\
+     'dsc','Names Directory',\
+     'typ','SUMMARY',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','NAMESDIRECTORY')),\
+    createData(\
+     'nam','PFILE',\
+     'dsc','Parameter File',\
+     'typ','SUMMARY',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','PFILE')),\
+    createData(\
+     'nam','SERVICENAME',\
+     'dsc','Service Name (Entered)',\
+     'typ','SUMMARY',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','SERVICENAME')),\
+    createData(\
+     'nam','TRACELVL',\
+     'dsc','Trace Level',\
+     'typ','SUMMARY',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','TRACELVL')),\
+    createData(\
+     'nam','TRACENAME',\
+     'dsc','Trace Name',\
+     'typ','SUMMARY',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','TRACENAME')),\
+    createData(\
+     'nam','LOCAL',\
+     'dsc','LOCAL Adapter',\
+     'typ','METHOD',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','LOCALSWITCH')),\
+    createData(\
+     'nam','ONAMES',\
+     'dsc','ONAMES Adapter',\
+     'typ','METHOD',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','ONAMESSWITCH')),\
+    createData(\
+     'nam','LDAP',\
+     'dsc','LDAP Adapter',\
+     'typ','METHOD',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','LDAPSWITCH')),\
+    createData(\
+     'nam','TNS12541',\
+     'dsc','TNS12541',\
+     'typ','METHOD',\
+     'adp','COMMON',\
+     'cmd','CMD_CHECK',\
+     'op1',createData('typ','parsed','val','TNS12541'))),\
+  'Naming',list()))
+}
+
+# Build naming method rules
+macro add_naming_rules
+{var ($pat) = @arg
+ var $top = getDataValue('Rules')
+
+ # Add LDAP rules
+ if match('LDAP',$pat)
+ {# Simple Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','QUERYDIRDISTINQUISHNAME',\
+    'dsc','Distinquished Name (Queried)',\
+    'typ','SUMMARY',\
+    'adp','LDAP',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','QUERYDIRDISTINQUISHNAME')))
+  # Complex Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','COND_T_OPENSYNCCONN_T_LDAPOPENFAIL',\
+    'dsc','Verify LDAP configuration with operating system commands.',\
+    'typ','ISSUE',\
+    'adp','LDAP',\
+    'cmd','CMD_AND',\
+    'op1',createData('typ','parsed','val','OPENSYNCCONN'),\
+    'op2',createData('typ','parsed','val','LDAPOPENFAIL')))
+  # Complex Rule 2
+  call addDataValue($top,'Naming',createData(\
+    'nam','COND_T_OPENSYNCCONN_T_LDAPQUERYUNSUCCESSFUL',\
+    'dsc','The LDAP configuration is incorrect. Check the configuration and \
+           structure of the LDAP environment.',\
+    'typ','ISSUE',\
+    'adp','LDAP',\
+    'cmd','CMD_AND3',\
+    'op1',createData('typ','notstatus',\
+                     'val','COND_T_OPENSYNCCONN_T_LDAPOPENFAIL'),\
+    'op2',createData('typ','parsed','val','OPENSYNCCONN'),\
+    'op3',createData('typ','parsed','val','LDAPQUERYUNSUCCESSFUL')))
+  # Complex Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','LDAPORANOTEXIST',\
+    'dsc','Create or relocate the LDAP.ORA file.',\
+    'typ','ISSUE',\
+    'adp','LDAP',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','notparsed','val','OPENSYNCCONN')))
+  # Complex Rule 4
+  call addDataValue($top,'Naming',createData(\
+    'nam','COND_T_QUERYDIRDIST_T_QUERYUNSUCCESS_T_SVCNOTFND',\
+    'dsc','The LDAP configuration is incorrect. Check the configuration and \
+           structure of the LDAP environment.',\
+    'typ','ISSUE',\
+    'adp','LDAP',\
+    'cmd','CMD_AND3',\
+    'op1',createData('typ','parsed','val','QUERYDIRDISTINQUISHNAME'),\
+    'op2',createData('typ','parsed','val','LDAPQUERYUNSUCCESSFUL'),\
+    'op3',createData('typ','notparsed','val','OPENSYNCCONN')))
+ }
+
+ # Add LOCAL rules
+ if match('LOCAL',$pat)
+ {# Simple Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','SYNTAXERRTNSNAMES',\
+    'dsc','Syntax errors were detected in the configuration.',\
+    'typ','ISSUE',\
+    'adp','LOCAL',\
+    'cmd','CMD_EQUAL',\
+    'op1',createData('typ','item','val','SYNTAXERRTNSNAMES'),\
+    'op2',createData('typ','value','val','NL-00427')))
+  # Simple Rule 2
+  call addDataValue($top,'Naming',createData(\
+    'nam','LOCALQUERYNAME',\
+    'dsc','Service Name (Queried)',\
+    'typ','SUMMARY',\
+    'adp','LOCAL',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','LOCALQUERYNAME')))
+  # Simple Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','NAMESDEFDOMAIN',\
+    'dsc','Names Default Domain',\
+    'typ','NONISSUE',\
+    'adp','LOCAL',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','NAMESDEFDOMAIN')))
+  # Simple Rule 4
+  call addDataValue($top,'Naming',createData(\
+    'nam','ALIASDOM',\
+    'dsc','alias.domain',\
+    'typ','NONE',\
+    'adp','LOCAL',\
+    'cmd','CMD_EQUAL',\
+    'op1',createData('typ','lc','val','ALIASDOM'),\
+    'op2',createData('typ','lc','val','QUALIFIEDSERVICENAME')))
+  # Simple Rule 5
+  call addDataValue($top,'Naming',createData(\
+    'nam','LOCALQUERYUNSUCCESSFUL',\
+    'dsc','The service could not be resolved using local naming method.',\
+    'typ','ISSUE',\
+    'adp','LOCAL',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','LOCALQUERYUNSUCCESSFUL')))
+  # Simple Rule 6
+  call addDataValue($top,'Naming',createData(\
+    'nam','NAMESUCCESSFULLYQUERIED',\
+    'dsc','Name successfully queried',\
+    'typ','NONISSUE',\
+    'adp','LOCAL',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','NAMESUCCESSFULLYQUERIED')))
+  # Complex Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','COND_F_ALDOM_T_DOM',\
+    'dsc','A problem with configuration has been encountered. One or more .ora \
+           files must be corrected.',\
+    'typ','ADVICE',\
+    'adp','LOCAL',\
+    'cmd','CMD_AND',\
+    'op1',createData('typ','notstatus','val','ALIASDOM'),\
+    'op2',createData('typ','status','val','NAMESDEFDOMAIN')))
+  # Complex Rule 2
+  call addDataValue($top,'Naming',createData(\
+    'nam','COND_T_ALDOM_F_DOM',\
+    'dsc','There was a problem with the alias that was used for the \
+           connection. A possible configuration change must be made.',\
+    'typ','ADVICE',\
+    'adp','LOCAL',\
+    'cmd','CMD_AND',\
+    'op1',createData('typ','notstatus','val','NAMESDEFDOMAIN'),\
+    'op2',createData('typ','status','val','ALIASDOM')))
+  # Complex Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','COND_NOSERVICE_DOMSET_DIRSET',\
+    'dsc','A problem with configuration has been encountered.',\
+    'typ','ADVICE',\
+    'adp','LOCAL',\
+    'cmd','CMD_AND',\
+    'op1',createData('typ','notstatus','val','SERVICENAME'),\
+    'op2',createData('typ','status','val','NAMESDEFDOMAIN'),\
+    'op3',createData('typ','status','val','NAMESDIRECTORY')))
+  # Complex Rule 4
+  call addDataValue($top,'Naming',createData(\
+    'nam','COND_T_ALDOM_DIFFDOMS',\
+    'dsc','There is mismatch of domain definitions.',\
+    'typ','ADVICE',\
+    'adp','LOCAL',\
+    'cmd','CMD_DIFF',\
+    'op1',createData('typ','lc','val','SERVICENAMEDOMAIN'),\
+    'op2',createData('typ','lc','val','NAMESDEFDOMAIN')))
+  # Complex Rule 5
+  call addDataValue($top,'Naming',createData(\
+    'nam','TNSNAMES',\
+    'dsc','tnsnames.ora',\
+    'typ','SUMMARY',\
+    'adp','LOCAL',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','TNSNAMESLOADSTATUS')))
+  # Complex Rule 6
+  call addDataValue($top,'Naming',createData(\
+    'nam','LOCALQUERYNAMENOTFOUND',\
+    'dsc','The service could not be resolved using local naming method.',\
+    'typ','ISSUE',\
+    'adp','LOCAL',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','LOCALQUERYNAME')))
+ }
+
+ # Add ONAMES rules
+ if match('ONAMES',$pat)
+ {var $dom = getDataValue('Items','NAMESDEFDOMAIN')
+  if getDataValue('Items','SERVICENAME')
+   call set_item('ONAMESQUERYNAME',cond($dom,concat(last,'.',$dom),last))
+  # Simple Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','ONAMESHOST',\
+    'dsc','Names Host',\
+    'typ','SUMMARY',\
+    'adp','ONAMES',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','ONAMESHOST')))
+  # Simple Rule 2
+  call addDataValue($top,'Naming',createData(\
+    'nam','ONAMESPORT',\
+    'dsc','Names Port',\
+    'typ','SUMMARY',\
+    'adp','ONAMES',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','ONAMESPORT')))
+  # Simple Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','NAMESPREFSERVER',\
+    'dsc','Names Preferred Server',\
+    'typ','SUMMARY',\
+    'adp','ONAMES',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','NAMESPREFSERVER')))
+  # Simple Rule 4
+  call addDataValue($top,'Naming',createData(\
+    'nam','NS12541',\
+    'dsc','The server running the nameserver refused the connection.',\
+    'typ','ISSUE',\
+    'adp','ONAMES',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','NS12541')))
+  # Simple Rule 5
+  call addDataValue($top,'Naming',createData(\
+    'nam','NS12545',\
+    'dsc','Hostname resolution failure occured. Use OS commands and modify \
+           configuration to resolve.',\
+    'typ','ISSUE',\
+    'adp','ONAMES',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','NS12545')))
+  # Complex Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','ONAMESQUERYNAME',\
+    'dsc','Service Name (Queried)',\
+    'typ','SUMMARY',\
+    'adp','ONAMES',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','status','val','ONAMESQUERYNAME')))
+  # Complex Rule 2
+  call addDataValue($top,'Naming',createData(\
+    'nam','ONAMESSVROK_ONAMESQUERYUNSUCCESSFUL',\
+    'dsc','Use the NAMESCTL utility to diagnose and correct the problem.',\
+    'typ','ISSUE',\
+    'adp','ONAMES',\
+    'cmd','CMD_AND3',\
+    'op1',createData('typ','notstatus','val','NS12541'),\
+    'op2',createData('typ','notstatus','val','NS12545'),\
+    'op3',createData('typ','parsed','val','ONAMESQUERYUNSUCCESSFUL')))
+  # Complex Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','ONAMESQUERYUNSUCCESSFUL',\
+    'dsc','ONAMES query was unsuccessful.',\
+    'typ','ADVICE',\
+    'adp','ONAMES',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','status',\
+                     'val','ONAMESSVROK_ONAMESQUERYUNSUCCESSFUL')))
+ }
+
+ # Add TNS-12541 rules
+ if match('TNS12541',$pat)
+ {# Simple Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','RET12541',\
+    'dsc','RET12541',\
+    'adp','RET12541',\
+    'typ','NONISSUE',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','RET12541')))
+  # Simple Rule 2
+  call addDataValue($top,'Naming',createData(\
+    'nam','NSPTRD',\
+    'dsc','Redirect Packet',\
+    'adp','TNS12541',\
+    'typ','ISSUE',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','NSPTRD')))
+  # Simple Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','NSPTRS',\
+    'dsc','Resend Packet',\
+    'adp','TNS12541',\
+    'typ','ISSUE',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','NSPTRS')))
+  # Simple Rule 4
+  call addDataValue($top,'Naming',createData(\
+    'nam','LOOKINGUPIP',\
+    'dsc','Looking up Host Address',\
+    'adp','TNS12541',\
+    'typ','SUMMARY',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','LOOKINGUPIP')))
+  # Simple Rule 5
+  call addDataValue($top,'Naming',createData(\
+    'nam','PORTRESOLVEDTO',\
+    'dsc','Port Resolved To',\
+    'adp','TNS12541',\
+    'typ','SUMMARY',\
+    'cmd','CMD_CHECK',\
+    'op1',createData('typ','parsed','val','PORTRESOLVEDTO')))
+  # Complex Rule 1
+  call addDataValue($top,'Naming',createData(\
+    'nam','RET12541_noNSPTRD_noNT',\
+    'dsc','TCP could not make a physical connection to the destination server',\
+    'adp','TNS12541',\
+    'typ','ISSUE',\
+    'cmd','CMD_AND3',\
+    'op1',createData('typ','status','val','RET12541'),\
+    'op2',createData('typ','notstatus','val','NSPTRD'),\
+    'op3',createData('typ','notstatus','val','NT')))
+  # Complex Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','RET12541_NSPTRD_noNT',\
+    'dsc','TCP could not make a physical connection to the destination server  \
+           using Shared Servers.',\
+    'adp','TNS12541',\
+    'typ','ISSUE',\
+    'cmd','CMD_AND3',\
+    'op1',createData('typ','status','val','RET12541'),\
+    'op2',createData('typ','status','val','NSPTRD'),\
+    'op3',createData('typ','notstatus','val','NT')))
+  # Complex Rule 3
+  call addDataValue($top,'Naming',createData(\
+    'nam','RET12541_noNSPTRD_NT',\
+    'dsc','TCP could not make a physical connection to the destination server  \
+           on NT',\
+    'adp','TNS12541',\
+    'typ','ISSUE',\
+    'cmd','CMD_AND3',\
+    'op1',createData('typ','status','val','RET12541'),\
+    'op2',createData('typ','notstatus','val','NSPTRD'),\
+    'op3',createData('typ','status','val','NT')))
+  # Complex Rule 4
+  call addDataValue($top,'Naming',createData(\
+    'nam','RET12541_NSPTRD_NT',\
+    'dsc','TCP could not make a physical connection to the NT destination  \
+           server.',\
+    'adp','TNS12541',\
+    'typ','ISSUE',\
+    'cmd','CMD_AND3',\
+    'op1',createData('typ','status','val','RET12541'),\
+    'op2',createData('typ','status','val','NSPTRD'),\
+    'op3',createData('typ','status','val','NT')))
+ }
+}
+
+# Macro to eval a set of rules
+macro eval_rules
+{var ($set) = @arg
+
+ # Define the operand macro
+ macro get_operand
+ {var ($key,$obj) = @arg
+
+  if $obj
+  {var $typ = getDataValue($obj,'typ')
+   var $val = getDataValue($obj,'val')
+   if compare('eq',$typ,'item')
+    return getDataValue('Items',$val)
+   if compare('eq',$typ,'lc')
+    return lc(getDataValue('Items',$val))
+   if compare('eq',$typ,'parsed')
+    return existsData('Items',$val)
+   if compare('eq',$typ,'status')
+    return getDataValue('Status',$val)
+   if compare('eq',$typ,'value')
+    return $val
+   if compare('eq',$typ,'notparsed')
+    return missingData('Items',$val)
+   if compare('eq',$typ,'notstatus')
+    return not(getDataValue('Status',$val))
+   die 'Invalid operand type ',$typ,' in condition ',$key
+  }
+  return undef
+ }
+
+ # Allow to force a true status for debugging
+ var $flg = cond(getSetting('NA_DEBUG_ALL'),true,false)
+
+ # Eval the conditions
+ loop $rul (getDataValue('Rules',$set))
+ {var $nam = getDataValue($rul,'nam')
+  var $cmd = getDataValue($rul,'cmd')
+  var $op1 = get_operand($nam,getDataValue($rul,'op1'))
+  var $op2 = get_operand($nam,getDataValue($rul,'op2'))
+  var $op3 = get_operand($nam,getDataValue($rul,'op3'))
+  var $val = check($cmd,'^CMD_CHECK$',   $op1,\
+                        '^CMD_AND3$',    and($op1,$op2,$op3),\
+                        '^CMD_AND$',     and($op1,$op2),\
+                        '^CMD_DIFF$',    compare('ne',$op1,$op2),\
+                        '^CMD_EQUAL$',   compare('eq',$op1,$op2),\
+                        '^CMD_DEFINED$', defined($op1),\
+                        '^CMD_IN$',      scalar(match($op1,$op2)),\
+                        '^CMD_KEEP$',    getDataValue('Status',$nam),\
+                        '^CMD_MISSING$', not(defined($op1)),\
+                        '^CMD_OR3$',     or($op1,$op2,$op3),\
+                        '^CMD_OR$',      or($op1,$op2),\
+                        '^CMD_OUT$',     not(match($op1,$op2)),\
+                                         false)
+  call setDataValue('Status',$nam,cond($val,true,$flg))
+  debug '  Eval condition ',$nam,' to ',cond($val,'TRUE','FALSE')
+ }
+}
+
+# Get rules
+macro get_rules
+{var ($adp,$typ,$flg) = @arg
+ loop $rul (getDataValue('Rules','Basic'),getDataValue('Rules','Naming'))
+ {next !and(match(getDataValue($rul,'adp'),$adp),\
+            match(getDataValue($rul,'typ'),$typ))
+  var $nam = getDataValue($rul,'nam')
+  if or($flg,getDataValue('Status',$nam))
+   var $tbl{$nam} = 1
+ }
+ return keys(%tbl)
+}
+
+# --- Macros for producing the report -----------------------------------------
+
+macro get_format
+{var ($fmt,$adp,$typ,$key,$sta) = @arg
+ if xmlData(xmlFind($fmt,concat('Adapter name="^',$adp,\
+                                '$"/Format type="^',$typ,'$" name="^',$key,\
+                                '$" status="',cond($sta,'T','F'),'"')))
+  return resolveData('Items',replace(last,"\012",'',true))
+ return ''
+}
+
+macro get_profile
+{var ($fmt) = @arg
+ loop $rul (getDataValue('Rules','Basic'),getDataValue('Rules','Naming'))
+ {next compare('ne',getDataValue($rul,'typ'),'SUMMARY')
+  var $nam = getDataValue($rul,'nam')
+  if get_format($fmt,getDataValue($rul,'adp'),'SUMMARY',$nam,\
+                getDataValue('Status',$nam))
+   call setDataValue('Profile',getDataValue($rul,'dsc'),last)
+ }
+ return getDataKeys('Profile')
+}
+
+# --- Parsing macros ----------------------------------------------------------
+
+# Capture the parameter file name
+macro parse_load_pfile
+{var ($lin) = parseBuffer()
+ if match($lin,'pfile source (.*)')
+ {var ($fil) = (last)
+  call setDataValue('Items','PFILE',$fil)
+ }
+ return -1
+}
+ 
+# Capture the tnsnames file name
+macro parse_load_tnsnames
+{var ($sta) = @arg
+ var ($lin) = parseBuffer()
+ if match($lin,'load of names file (.*)')
+ {var ($fil) = (last)
+  call setDataValue('Items','TNSNAMES',$fil)
+ }
+ return set_item('TNSNAMESLOADSTATUS',$sta)
+}
+
+# Capture the tnsnames file name
+macro parse_names_server
+{var ($srv) = @arg
+
+ var $str = replace($srv,' ','',true)
+ if match($str,'\(host=(\w+[\-\.\w]*)\)',true)
+  call set_item('ONAMESHOST',last)
+ if match($str,'\(port=(\d+)\)',true)
+  call set_item('ONAMESPORT',last)
+ return set_item('NAMESPREFSERVER',$srv)
+}
+
+# Interrupt the parsing when another error is found
+macro set_error
+{var (\$err,$txt) = @arg
+
+ var $err = $txt
+ call set_item($err,1)
+ call parseQuit()
+}
+
+# Store an item
+macro set_item
+{var ($key,$val,$flg) = @arg
+ 
+ if or($flg,missingData('Items',$key))
+  call setDataValue('Items',$key,$val)
+ return -1
+}
+ 
+# --- Main code ---------------------------------------------------------------
+
+# Obtain the input trace file
+if getSetting('TST_ARGS')
+ var $fil = last
+else
+{call setTempSetting('NA_SETUP_PHASE','file')
+ call requestSetting('TLna')
+ var $fil = getSetting('NA_TRACE_FILE')
+}
+call setAbbr(concat('NA_',replace(basename($fil,'.trc'),'[_\W]+','_',true)))
+
+# Open the file
+if !createBuffer('TRC','R',$fil)
+ die 'The input file does not exist or is not readable'
+
+# Define the parser rules
+debug 'Creating the parsing rules ...'
+call parseReset()
+call parseInfo('TOP','ini','CHK')
+
+call parsePattern('CHK','TRACE CONFIGURATION INFORMATION FOLLOWS',\
+       code($bad = false,1))
+call parseInfo('CHK','end',cond($bad,parseQuit(),parseKeep()))
+call parseInfo('CHK','max',30)
+
+call parseBegin('TOP','LOG CONFIGURATION INFORMATION FOLLOWS','LOG','GRP1')
+call parseEnd('LOG','LOG CONFIGURATION INFORMATION ENDS')
+call parseInfo('LOG','beg',$bad = $false)
+call parseInfo('LOG','end',$top = getPos('TRC'))
+
+call parseBegin('TOP','PARAMETER SOURCE INFORMATION FOLLOWS','PAR','GRP1')
+call parseEnd('PAR','PARAMETER SOURCE INFORMATION ENDS')
+call parseInfo('PAR','beg',$bad = false)
+call parseInfo('PAR','buf',2)
+call parseInfo('PAR','end',$top = getPos('TRC'))
+call parseBegin('PAR','PARAMETER TABLE HAS THE FOLLOWING CONTENTS','TBL')
+call parsePattern('PAR',\
+       'Parameter source loaded successfully',\
+          parse_load_pfile())
+
+call parseEnd('TBL','PARAMETER SOURCE INFORMATION ENDS')
+call parsePattern('TBL',\
+       'NAMES.DIRECTORY_PATH = (.*)#i',\
+         set_item('NAMESDIRECTORY',parseHit(0)),\
+       'NAMES.DEFAULT_DOMAIN = (.*)#i',\
+         set_item('NAMESDEFDOMAIN',parseHit(0)),\
+       'NAMES.PREFERRED_SERVERS = (.*)#i',\
+         parse_names_server(parseHit(0)))
+
+call parseBegin('TOP','TRACE CONFIGURATION INFORMATION FOLLOWS','TRC','GRP1')
+call parseEnd('TRC','TRACE CONFIGURATION INFORMATION ENDS')
+call parseInfo('TRC','beg',$bad = false)
+call parseInfo('TRC','end',$top = getPos('TRC'))
+call parsePattern('TRC',\
+       'New trace stream is (.*)',set_item('TRACENAME',parseHit(0)),\
+       'New trace level is (.*)', set_item('TRACELVL',parseHit(0)))
+
+call parsePattern('TOP',\
+       'nnfun2a: address for name \"(.*)\" not found',\
+         set_item('SERVICENAME',parseHit(0)),\
+       'local names file is (.*)',\
+         set_item('LOCALNAMESFILE',parseHit(0)),\
+       'system names file is (.*)',\
+         set_item('SYSTEMNAMESFILE',parseHit(0)),\
+       'ORA\-12541',\
+         set_error(\$err,'TNS12541'))
+
+call parseBegin('TOP','Switching to TNSNAMES adapter','LOC','GRP2')
+call parseInfo('LOC','beg',set_item('LOCALSWITCH',1))
+call parseInfo('LOC','buf',2)
+call parseBegin('LOC','tnsnames.ora TABLE HAS THE FOLLOWING CONTENTS','TNS')
+call parsePattern('LOC',\
+       'nncpldf_load_addrfile: (success|failure)',\
+         parse_load_tnsnames(parseHit(0)),\
+       '(NL\-00427)',\
+         set_item('SYNTAXERRTNSNAMES',parseHit(0)),\
+       'Error querying (.*) of attribute A.SMD errcode 406',\
+         set_item('LOCALQUERYNAME',parseHit(0)),\
+       'Query unsuccessful, skipping to next adapter',\
+         code(set_item('LOCALQUERYUNSUCCESSFUL',1),1),\
+       'Name successfully queried',\
+         set_item('NAMESUCCESSFULLYQUERIED',1),\
+       'local names file is (.*)',\
+         set_item('LOCALNAMESFILE',parseHit(0)),\
+       'system names file is (.*)',\
+         set_item('SYSTEMNAMESFILE',parseHit(0)),\
+       'ORA\-12541',\
+         set_error(\$err,'TNS12541'),\
+       'skipping to next adapter',1)
+
+call parseEnd('TNS','\-\-\- END')
+call parsePattern('TNS',\
+       '\[.*\].*:(.*) = \(DESCRIPTION',\
+         code(addDataValue('tnslist',parseHit(0)),-1))
+
+call parseBegin('TOP','Switching to ONAMES adapter','NAM','GRP2')
+call parseInfo('NAM','beg',set_item('ONAMESSWITCH',1))
+call parsePattern('NAM',\
+       'ns=12541',\
+         set_item('NS12541',1),\
+       'ns=12545',\
+         set_item('NS12545',1),\
+       'hostname lookup failure',\
+         set_item('HOSTLOOKUPFAIL',1),\
+       'Query unsuccessful, skipping to next adapter',\
+         code(set_item('ONAMESQUERYUNSUCCESSFUL',1),1),\
+       'skipping to next adapter',1)
+
+call parseBegin('TOP','Switching to LDAP adapter','LDP','GRP2')
+call parseInfo('LDP','beg',set_item('LDAPSWITCH',1))
+call parsePattern('LDP',\
+       'Opening sync conn to ((.*):(.*))',code(\
+         set_item('OPENSYNCCONN',parseHit(0)),\
+         set_item('LDAPHOST',parseHit(1)),\
+         set_item('LDAPPORT',parseHit(2))),\
+       'bind call returns (.*)',\
+         set_item('BINDCALLRTNS',parseHit(0)),\
+       'ldap_open failed (.*)',\
+         set_item('LDAPOPENFAIL',parseHit(0)),\
+       'nnflrne: Quering the directory for distinguished name (.*)',\
+         set_item('QUERYDIRDISTINQUISHNAME',parseHit(0)),\
+       'nnfgrne: Query unsuccessful, skipping to (.*)',\
+         code(set_item('LDAPQUERYUNSUCCESSFUL',parseHit(0)),1),\
+       'skipping to next adapter',1)
+
+call parseBegin('TOP','Switching to (.*) adapter','OTH','GRP2')
+call parseEnd('OTH','skipping to next adapter')
+
+# Parse the trace file
+debug 'Parsing the trace file ...'
+var $bad = true
+var $err = 'TNS12154'
+var $top = undef
+call parse('TRC')
+if $bad
+ die 'Network Advisor cannot analyze such a file'
+
+# Treat the error
+if compare('eq',$err,'TNS12541')
+{# Define specific parsing rules
+ call parseInfo('TOP','ini','ALT')
+ call parsePattern('ALT',\
+        '(returning 12541)',\
+          set_item('RET12541',parseHit(0),true),\
+        '(NSPTRD)',\
+          set_item('NSPTRD',parseHit(0),true),\
+        '(NSPTRS)',\
+          set_item('NSPTRS',parseHit(0),true),\
+        '(looking up IP addr for host: |host IP address: )(.*)',\
+          set_item('LOOKINGUPIP',parseHit(1),true),\
+        'port resolved to (.*)',\
+          set_item('PORTRESOLVEDTO',parseHit(0),true))
+
+ # Reparse the log part
+ debug 'Parsing the trace file for TNS-12541 ...'
+ call setPos('TRC',$top)
+ call parse('TRC')
+
+ # Determine if the listener is a Windows server
+ var $flg = check(getDataValue('Items','TRACENAME'),\
+                  '^\s*/',0,'^\s*\w\:\\',1,'\\',1,or(isWindows(),isCygwin()))
+ if !getSetting('TST_ARGS')
+ {call setTempSetting('NA_SETUP_PHASE','os')
+  call setTempSetting('NA_WINDOWS',$flg)
+  call requestSetting('TLna')
+  var $flg = getSetting('NA_WINDOWS')
+ }
+ call setDataValue('Status','NT',$flg)
+}
+else
+{# Reject assessment with missing service
+ if missingData('Items','SERVICENAME')
+  die 'No relevant information found in the trace file'
+
+ # Extract additional items
+ if getDataValue('tnslist')
+ {var @tbl = last
+  var $svc = lc(getDataValue('Items','SERVICENAME'))
+
+  # Extract service name domain
+  if match($svc,'\.(.*)$')
+   call set_item('SERVICENAMEDOMAIN',last)
+
+  # Look for service name without domain in sqlnet.ora
+#  loop $val (@tbl)
+#  {if compare('eq',lc($val),$svc)
+#   {call set_item('TNSALIAS',$val)
+#    break
+#   }
+#  }
+
+  # Look for domain qualified service name in sqlnet.ora
+  if getDataValue('Items','NAMESDEFDOMAIN')
+  {var $dom = lc(last)
+   var $svc = concat($svc,'.',$dom)
+   call set_item('QUALIFIEDSERVICENAME',$svc)
+   var $pat = concat(quote($dom),'$')
+   loop $val (@tbl)
+   {var $str = lc($val)
+    if or(match($str,$pat),compare('eq',$str,$svc))
+    {call set_item('ALIASDOM',$val)
+     break
+    }
+   }
+  }
+ }
+}
+
+# Build and evaluating the conditions
+debug 'Applying basic rules ...'
+call add_basic_rules()
+call eval_rules('Basic')
+if compare('eq',$err,'TNS12541')
+ var @adp = ('TNS12541')
+else
+ var @adp = get_rules('COMMON','^METHOD$')
+
+debug 'Applying naming method rules ...'
+call add_naming_rules(join('|',@adp))
+call eval_rules('Naming')
+
+# Allow to debug output generation
+if getSetting('NA_DEBUG_DUMP')
+ call dump(getData())
+
+# Load output formats
+debug 'Loading the output formats ...'
+var $xml = xmlLoadFile(getGroupFile('D_RDA_DATA','TLna.txt'))
+var ($fmt) = xmlFind($xml,'Network_Advisor/Formats')
+
+# Produce the report
+debug 'Producing the report ...'
+report res
+write '<!-- Network Advisor Trace File:',$fil,' -->'
+write '---+!! Network Advisor Assessment'
+write $TOC
+write get_format($fmt,'COMMON','SECTION',$err,true)
+write get_format($fmt,'COMMON','SECTION',$err,false)
+
+prefix
+{write '---+ Trace File Profile'
+ write "The following table describes general information about the trace \
+        file used in the analysis.%BR%&nbsp;"
+ write '|*Property*|*Value*|'
+}
+loop $key (get_profile($fmt))
+ write '|',$key,' |',getDataValue('Profile',$key),' |'
+if hasOutput(true)
+ write $TOP
+
+if @adp
+{if compare('eq',$err,'TNS12154')
+ {write '---+ Naming Methods'
+  write "The trace file indicates the following naming methods were used in \
+         attempting to resolve the service name.%BR%&nbsp;"
+  write '|*Type*|*Description*|'
+  loop $adp (@adp)
+   write '|', $adp,' |',get_format($fmt,'COMMON','METHOD',$adp,true),' |'
+  write $TOP
+ }
+
+ var $pat = concat('^',getSetting('NA_REPORT','ISSUE'),'$')
+ loop $adp (@adp)
+ {write get_format($fmt,$adp,'SECTION','TITLE',true)
+  write get_format($fmt,$adp,'SECTION','TITLE',false)
+  prefix
+   write '|*Finding*|*Advice*|'
+  loop $key (get_rules($adp,$pat,true))
+  {var $sta  = getDataValue('Status',$key)
+   var $fmt1 = get_format($fmt,$adp,'FINDING',$key,$sta)
+   var $fmt2 = get_format($fmt,$adp,'ADVICE',$key,$sta)
+   if or($fmt1,$fmt2)
+    write '|',resolveData('Items',$fmt1),' |',resolveData('Items',$fmt2),' |'
+  }
+  if !hasOutput(true)
+   write 'No findings%BR%'
+  write $TOP
+ }
+}
+else
+{write
+ write '**No findings have been extracted from the trace file.**'
+}
+call log('NA',$err)
+call renderFile()
+echo 'Result file: ',last
+
+# Close the file
+call deleteBuffer('TRC')
+
+=head1 SEE ALSO
+
+L<S919LOAD|modules::S919LOAD>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.7:  Cameron Melvin.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

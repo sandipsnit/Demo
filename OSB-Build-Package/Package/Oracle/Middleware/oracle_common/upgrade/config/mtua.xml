@@ -1,0 +1,276 @@
+<?xml version="1.0" standalone='yes'?>
+<!DOCTYPE UpgradeCfg [
+<!ELEMENT UpgradeCfg ((Install)*,(PatchSet)*,(Plugin)*)>
+<!ATTLIST UpgradeCfg MinimumVersion CDATA #REQUIRED>
+<!ATTLIST UpgradeCfg MaximumVersion CDATA #REQUIRED>
+<!ELEMENT Plugin (Install)*>
+<!ATTLIST Plugin Class CDATA #REQUIRED>
+<!ATTLIST Plugin DisplayName CDATA #REQUIRED>
+<!ATTLIST Plugin ShortName CDATA #REQUIRED>
+<!ATTLIST Plugin ComponentType CDATA #IMPLIED>
+<!ATTLIST Plugin ApplicationName CDATA #IMPLIED>
+<!ATTLIST Plugin ConfiguredParamR10 CDATA #IMPLIED>
+<!ATTLIST Plugin ConfigFile CDATA #IMPLIED>
+<!ATTLIST Plugin VerifyClass CDATA #IMPLIED>
+<!ATTLIST Plugin VerifyURL CDATA #IMPLIED>
+<!ATTLIST Plugin VerifyPort CDATA #IMPLIED>
+<!ELEMENT Install (#PCDATA)>
+<!ATTLIST Install Id CDATA #REQUIRED>
+<!ELEMENT PatchSet (#PCDATA)>
+<!ATTLIST PatchSet Id CDATA #REQUIRED>
+]>
+
+
+<UpgradeCfg MinimumVersion="10.1.2"
+            MaximumVersion="11.1.1.6">
+
+<!-- The following is the 10.1.2 install id -->
+<Install Id="oracle.iappserver.iapptop"></Install>
+
+<!-- The following is the 10.1.2 Companion CD install id -->
+<Install Id="oracle.as.companioncd.webserverservices"></Install>
+
+<!-- The following is the 10.1.2 Standalone Web Cache install id -->
+<Install Id="oracle.calypso.standalone"></Install>
+
+<!-- The following is the 10.1.3 install id -->
+<Install Id="oracle.as.j2ee.top"></Install>
+
+<!-- The following is the 10.1.2 IM install id -->
+<Install Id="oracle.iappserver.infrastructure"></Install>
+
+<!-- The following is the 10.1.4 IM install id -->
+<Install Id="oracle.iappserver.security.fed"></Install>
+
+<!-- The following is the 10.1.4 OVD install id -->
+<Install Id="oracle.ovd.vde"></Install>
+<Install Id="oracle.ovd.top.patch"></Install>
+
+<!-- The following is the 10.1.3 ODI install id -->
+<Install Id="oracle.odi.main"></Install>
+
+<!-- The following is the 10.1.2 patchset install id -->
+<PatchSet Id="oracle.iappserver.patchset"/>
+
+<!-- The following is the 10.1.3 patchset install id -->
+<PatchSet Id="oracle.as.j2ee.patchset"/>
+
+<Plugin DisplayName="Oracle HTTP Server"
+        ShortName="OHS"
+        Class="oracle.ias.upgrade.config.ohs.OhsConfigUpgrade"
+        ConfiguredParamR10="Apache.LaunchSuccess"
+        VerifyClass="oracle.ias.upgrade.uvp.HTTPServer"
+        VerifyURL=""
+        VerifyPort="http"
+        ComponentType="OHS"
+        ConfigFile="httpd.conf">
+<Install Id="oracle.apache"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Web Cache"
+        ShortName="WebCache"
+        Class="oracle.ias.upgrade.config.webcache.WebcacheConfigUpgrade"
+        ConfiguredParamR10="WebCache.LaunchSuccess"
+        VerifyClass="oracle.ias.upgrade.uvp.HTTPServer"
+        VerifyURL=""
+        VerifyPort="http_listen"
+        ComponentType="WebCache">
+<Install Id="oracle.calypso"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle mod_plsql"
+        ShortName="Modplsql"
+        Class="oracle.ias.upgrade.config.modplsql.ConfigUpgradeImp"
+        ConfiguredParamR10="Apache.LaunchSuccess"
+        ComponentType="OHS"
+        ConfigFile="moduleconf/plsql.conf">
+<Install Id="oracle.webdb.modplsql"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Net Services"
+        ShortName="Net"
+        Class="oracle.ias.upgrade.config.net.NetConfigUpgrade">
+<Install Id="oracle.rsf.net_rsf"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Business Intelligence Discoverer"
+	 ShortName="Discoverer" 
+	 Class="oracle.ias.upgrade.config.discoverer.DiscoConfigUpgrade" 
+	 ConfiguredParamR10="Discoverer.LaunchSuccess"
+	 ComponentType="Discoverer"
+        VerifyURL="/discoverer/viewer"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        ApplicationName="discoverer">
+<Install Id="oracle.discoverer.ias" /> 
+</Plugin>
+
+<Plugin DisplayName="Oracle Portal"
+        ShortName="Portal"
+        Class="oracle.ias.upgrade.config.portal.ConfigUpgradeImp"
+	 ConfiguredParamR10="Portal.LaunchSuccess"
+        VerifyURL="/portal/pls/portal"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        ComponentType="OHS"
+        ConfigFile="moduleconf/portal.conf"
+        ApplicationName="portal">
+<Install Id="oracle.webdb"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Reports"
+        ShortName="Reports"
+        Class="oracle.ias.upgrade.config.reports.ReportsConfigUpgrade"
+        ConfiguredParamR10="Reports.LaunchSuccess"
+        ComponentType="ReportsServerComponent"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyURL="/reports/rwservlet/help?command=getserverinfo"
+        ApplicationName="reports">
+<Install Id="oracle.developer.reports.runtime"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Forms Services"
+        ShortName="Forms"
+        Class="oracle.ias.upgrade.config.forms.FormsConfigUpgrade"
+        ConfiguredParamR10="Forms.LaunchSuccess"
+        ComponentType="FormsComponent"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyURL="/forms/frmservlet"
+        ApplicationName="formsapp">
+<Install Id="oracle.developer.forms.runtime"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Identity Federation"
+	 ShortName="OIF"
+	 Class="oracle.ias.upgrade.config.oif.OIFConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyURL="/fed/idp/metadata"
+	 ApplicationName="OIF">
+<Install Id="oracle.iappserver.security.fed"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Virtual Directory"
+	 ShortName="OVD"
+        Class="oracle.ias.upgrade.config.ovd.OvdConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.LDAPComponent"
+        VerifyPort="ldap"
+        ComponentType="OVD">
+<Install Id="oracle.ovd.vde"/>
+<Install Id="oracle.ovd.top.patch"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Directory Integration Platform"
+        ShortName="DIP"
+        Class="oracle.ias.upgrade.config.dip.DIPConfigUpgrade"
+        ConfiguredParamR10="DIP.LaunchSuccess"
+        ApplicationName="DIP">
+<Install Id="oracle.oid.server"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Access Manager"
+        ShortName="OAM"
+        Class="oracle.ias.upgrade.config.oam.OAMConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.OamApp"
+        VerifyPort="http"
+        VerifyURL="/oam/server/HeartBeat?lbr-oam="
+        ApplicationName="oam_server">
+<Install Id="oracle.oam.server"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Adaptive Access Manager"
+        ShortName="OAAM"
+        Class="oracle.ias.upgrade.config.oaam.OAAMConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.TextApp"
+        VerifyPort="http"
+        VerifyURL="/oaam_server/ping"
+        ApplicationName="oaam_server">
+<Install Id="oracle.oaam.suite"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Adaptive Access Manager Offline"
+        ShortName="OAAM"
+        Class="oracle.ias.upgrade.config.oaam.OAAMConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.TextApp"
+        VerifyPort="http"
+        VerifyURL="/oaam_offline/ping" 
+        ApplicationName="oaam_offline">
+<Install Id="oracle.oaam.suite"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Identity Manager"
+        ShortName="OIM"
+        Class="oracle.iam.upgrade.config.oim.OIMConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyPort="http"
+        VerifyURL="/oim/faces/pages/USelf.jspx"
+        ApplicationName="oim">
+<Install Id="oracle.oim.server"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Data Integrator"
+        ShortName="ODI"
+        Class="oracle.ias.upgrade.config.odi.ODIConfigUpgrade">
+<Install Id="oracle.odi.main"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle WebCenter Content"
+        ShortName="UCM"
+        Class="oracle.ias.upgrade.config.ucm.IdcConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyPort="http"
+        ApplicationName="Oracle Universal Content Management - Content Server">
+<Install Id="oracle.contentserver11"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle WebCenter Content: Records"
+        ShortName="URM"
+        Class="oracle.ias.upgrade.config.ucm.IdcConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyPort="http"
+        VerifyURL="/urm/"
+        ApplicationName="Oracle Universal Records Management">
+<Install Id="oracle.urm"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle WebCenter Content: Inbound Refinery"
+        ShortName="URMIBR"
+        Class=""
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyPort="http"
+        ApplicationName="Oracle Universal Content Management - Inbound Refinery">
+<Install Id="oracle.urm"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Business Intelligence Enterprise Edition" 
+        ShortName="BIEE" 
+        Class="oracle.ias.upgrade.config.oraclebi.OracleBIConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.WebApp"
+        VerifyPort="http"
+        VerifyURL="/analytics"
+        ApplicationName="analytics">
+<Install Id="oracle.bi.server"/>
+</Plugin>
+
+<Plugin DisplayName="Oracle Business Intelligence Publisher" 
+        ShortName="BIP" 
+        Class="oracle.ias.upgrade.config.bip.OracleBIPConfigUpgrade"
+        VerifyClass="oracle.ias.upgrade.uvp.BipApp"
+        VerifyPort="http"
+        VerifyURL="/xmlpserver"
+        ApplicationName="bipublisher">
+<Install Id="oracle.bi.publisher"/>
+</Plugin>
+
+<!-- The following entry is used to detect whether some IM
+     components are installed in both 10g and 11g instances
+     without actually invoking a plugin. -->
+
+<Plugin DisplayName="Oracle Internet Directory"
+        ShortName="OID"
+        Class=""
+	 ConfiguredParamR10="OID.LaunchSuccess"
+        VerifyClass="oracle.ias.upgrade.uvp.LDAPComponent"
+        VerifyPort="ldap"
+	 ComponentType="OID">
+<Install Id="oracle.oid"/>
+</Plugin>
+
+</UpgradeCfg>

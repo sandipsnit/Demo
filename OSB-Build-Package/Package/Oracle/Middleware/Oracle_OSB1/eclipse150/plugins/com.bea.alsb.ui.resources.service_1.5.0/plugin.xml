@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+	<extension point="org.eclipse.ui.newWizards">
+		<category id="com.bea.alsb.new" name="%ALSBCategory_name">
+		</category>
+        <wizard id="com.bea.alsb.ui.wizards.proxy"
+              	category="com.bea.alsb.new"
+              	icon="icons/new_proxy_service.gif"              
+              	name="%NewProxyServiceWizard_name"
+              	class="com.bea.alsb.ui.resources.service.wizard.ProxyServiceWizard"
+              	finalPerspective="com.bea.alsb.ui.perspectives.aqualogic"
+              	preferredPerspectives="com.bea.alsb.ui.perspectives.aqualogic"
+              	project="false">
+           <description>%NewProxyServiceWizard_description</description>
+        </wizard>
+        <wizard id="com.bea.alsb.ui.wizards.biz"
+              	category="com.bea.alsb.new"
+              	icon="icons/new_business_service.gif"              
+              	name="%NewBusinessServiceWizard_name"
+              	class="com.bea.alsb.ui.resources.service.wizard.BusinessServiceWizard"
+              	finalPerspective="com.bea.alsb.ui.perspectives.aqualogic"
+              	preferredPerspectives="com.bea.alsb.ui.perspectives.aqualogic"
+              	project="false">
+           <description>%NewBusinessServiceWizard_description</description>
+        </wizard>
+	</extension>
+	
+	<extension point="org.eclipse.ui.navigator.navigatorContent">
+         <commonWizard type="new" 
+                      menuGroupId="com.bea.alsb.new"
+                      wizardId="com.bea.alsb.ui.wizards.proxy">
+            <enablement>
+                <or>
+                    <adapt type="org.eclipse.core.resources.IResource">
+				        <test forcePluginActivation="true"
+				              property="org.eclipse.core.resources.projectNature"
+				              value="com.bea.alsb.core.natures.alsb.project"/>
+				    </adapt>
+                </or>
+            </enablement>
+        </commonWizard>
+        <commonWizard type="new" 
+                      menuGroupId="com.bea.alsb.new"
+                      wizardId="com.bea.alsb.ui.wizards.biz">
+            <enablement>
+                <or>
+                	<adapt type="org.eclipse.core.resources.IResource">
+				        <test forcePluginActivation="true"
+				              property="org.eclipse.core.resources.projectNature"
+				              value="com.bea.alsb.core.natures.alsb.project"/>
+				    </adapt>
+                </or>
+            </enablement>
+        </commonWizard>
+	</extension>
+	
+	<extension point="org.eclipse.ui.editors">
+        <editor
+              class="com.bea.alsb.ui.resources.service.editor.ServiceEditor"
+              contributorClass="com.bea.alsb.ui.resources.common.AlsbEditorActionBarContributer"
+              default="true"
+              extensions="biz"
+              icon="icons/icon_business_service.gif"
+              id="com.bea.alsb.ui.editors.biz"
+              name="%BusinessServiceEditor_name">
+            <contentTypeBinding contentTypeId="com.bea.alsb.core.resources.biz.content-type"/>
+        </editor>
+        <editor
+              class="com.bea.alsb.ui.resources.service.editor.ServiceEditor"
+              contributorClass="com.bea.alsb.ui.resources.common.AlsbEditorActionBarContributer"
+              default="true"
+              extensions="proxy"
+              icon="icons/icon_proxy_service.gif"
+              id="com.bea.alsb.ui.editors.proxy"
+              name="%ProxyServiceEditor_name">
+            <contentTypeBinding contentTypeId="com.bea.alsb.core.resources.proxy.content-type"/>
+        </editor>
+	</extension>
+	
+	<!--
+            Action for generating WSDL from service
+    -->
+    <extension point="org.eclipse.ui.popupMenus">
+        <!-- object contribution for .proxy resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.proxy"
+        					nameFilter="*.proxy"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.generateWsdl.proxy"
+                    class="com.bea.alsb.ui.resources.service.actions.GenerateWsdlAction"
+                    enablesFor="1"
+                    label="%GenerateWsdl_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+        
+        <!-- object contribution for .biz resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.biz"
+        					nameFilter="*.biz"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.generateWsdl.biz"
+                    class="com.bea.alsb.ui.resources.service.actions.GenerateWsdlAction"
+                    enablesFor="1"
+                    label="%GenerateWsdl_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+    </extension>
+    
+    <!--
+            Action for generating jarred WSDL from service
+    -->
+    <extension point="org.eclipse.ui.popupMenus">
+        <!-- object contribution for .proxy resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.proxy"
+        					nameFilter="*.proxy"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.effectiveWsdl.proxy"
+                    class="com.bea.alsb.ui.resources.service.actions.ExportWsdlAction"
+                    enablesFor="1"
+                    label="%ExportWsdl_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+        
+        <!-- object contribution for .biz resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.biz"
+        					nameFilter="*.biz"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.effectiveWsdl.biz"
+                    class="com.bea.alsb.ui.resources.service.actions.ExportWsdlAction"
+                    enablesFor="1"
+                    label="%ExportWsdl_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+    </extension>
+    
+    <!--
+            action for service navigation
+    -->
+    <extension point="org.eclipse.ui.popupMenus">
+        <!-- object contribution for proxy resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.proxy"
+        					nameFilter="*.proxy"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.navigateToOrigin.proxy"
+                    class="com.bea.alsb.ui.resources.service.actions.NavigateToOriginAction"
+                    enablesFor="1"
+                    label="%NavigateToOrigin_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+        
+        <!-- object contribution for biz resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.biz"
+        					nameFilter="*.biz"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.navigateToOrigin.biz"
+                    class="com.bea.alsb.ui.resources.service.actions.NavigateToOriginAction"
+                    enablesFor="1"
+                    label="%NavigateToOrigin_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+    </extension>
+    
+    <!--
+            action for creating proxy from existing service
+    -->
+    <extension point="org.eclipse.ui.popupMenus">
+        <!-- object contribution for proxy resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.proxy"
+        					nameFilter="*.proxy"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.generateProxy.proxy"
+                    class="com.bea.alsb.ui.resources.service.actions.GenerateProxyServiceAction"
+                    enablesFor="1"
+                    label="%GenerateProxyFromService_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+        
+        <!-- object contribution for biz resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.biz"
+        					nameFilter="*.biz"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.generateProxy.biz"
+                    class="com.bea.alsb.ui.resources.service.actions.GenerateProxyServiceAction"
+                    enablesFor="1"
+                    label="%GenerateProxyFromService_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+    </extension>
+    
+    <!--
+            action for creating biz from existing service
+    -->
+    <extension point="org.eclipse.ui.popupMenus">
+        <!-- object contribution for proxy resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.proxy"
+        					nameFilter="*.proxy"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.generateBiz.proxy"
+                    class="com.bea.alsb.ui.resources.service.actions.GenerateBusinessServiceAction"
+                    enablesFor="1"
+                    label="%GenerateBusinessFromService_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+        
+        <!-- object contribution for biz resources -->
+        <objectContribution id="com.bea.alsb.ui.popup.popupMenu.biz"
+        					nameFilter="*.biz"
+                            objectClass="org.eclipse.core.resources.IFile">
+	        <filter name="projectNature" value="com.bea.alsb.core.natures.alsb"/>
+            <action id="com.bea.alsb.ui.generateBiz.biz"
+                    class="com.bea.alsb.ui.resources.service.actions.GenerateBusinessServiceAction"
+                    enablesFor="1"
+                    label="%GenerateBusinessFromService_name"
+                    menubarPath="com.bea.alsb.ui.common.popup/ALSBpopupGroup"/>
+        </objectContribution>
+    </extension>
+    
+
+    <extension
+	   point="org.eclipse.ui.perspectiveExtensions">
+	   <perspectiveExtension targetID="com.bea.alsb.ui.perspectives.aqualogic">
+	      <newWizardShortcut id="com.bea.alsb.ui.wizards.proxy"/>
+	      <newWizardShortcut id="com.bea.alsb.ui.wizards.biz"/>
+	   </perspectiveExtension>
+	</extension>
+</plugin>

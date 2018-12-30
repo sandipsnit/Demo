@@ -1,0 +1,432 @@
+# S373BPEL.def: Collects Oracle BPEL Process Manager Information
+# $Id: S373BPEL.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S373BPEL.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S373BPEL - Collects Oracle BPEL Process Manager Information
+
+=head1 DESCRIPTION
+
+This module collects the Oracle BPEL Process Manager-related information.
+
+The following reports can be generated and are regrouped under C<Oracle BPEL
+Process Manager>:
+
+=cut
+
+echo tput('bold'),'Processing BPEL module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $BPEL_HOME   = getSetting('BPEL_HOME','')
+var $BPEL_AUTO   = getSetting('BPEL_DB_AUTO',1)
+var $BPEL_LOCAL  = getSetting('BPEL_LOCAL')
+var $TAIL        = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle BPEL Process Manager'
+
+# Load the common macros
+run library()
+run DBinfo()
+
+=head2 rep_info - Repository Information
+
+Collects the repository information from the Oracle BPEL Process Manager
+database.
+
+=cut
+
+# Define a database connection macro
+macro set_db
+{var ($sid) = @arg
+ var $usr = uc(getSetting('BPEL_LOGIN','ORABPEL'))
+
+ # Determine the user password
+ if compare('eq',$usr,'/')
+  var ($usr,$pwd) = ('','')
+ elsif hasSqlPassword($usr,$sid)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+
+ # Change the database context
+ var $old = setSqlLogin($usr,$pwd,$sid,getSetting('BPEL_SYSDBA'))
+ var $env = cond(getSetting('BPEL_SWITCH'),setSqlSid($sid))
+ var $try = setSqlFailure(0)
+
+ # Test the database connection
+ call testSql()
+
+ # Return the previous context
+ return (true,$old,$env,$try)
+}
+
+# Get the SID from config file
+if $BPEL_AUTO
+{var @tbl = ()
+ var $J2EE_TOP = getSetting('J2EE_TOP',catDir($ORACLE_HOME,'j2ee'))
+
+ # Get the container list
+ if testFile('r',catFile($ORACLE_HOME,'opmn','conf','opmn.xml'))
+ {var $top = xmlLoadFile(lastFile())
+  loop $xml (xmlFind($top,\
+               'opmn/process-manager/ias-instance/ias-component/process-type \
+                module-id="OC4J"'))
+   var @tbl = (@tbl,xmlValue($xml,'id'))
+ }
+ elsif testDir('d',catDir($J2EE_TOP,'home'))
+  var @tbl = ('home')
+
+ # Get the database connection details
+ var $sid = undef
+ loop $itm (@tbl)
+ {next !testFile('r',catFile($J2EE_TOP,$itm,'config','data-sources.xml'))
+  var $top = xmlLoadFile(lastFile())
+  if xmlFind($top,'data-sources/managed-data-source \
+                   jndi-name="jdbc/BPELServerDataSource$"')
+  {var $con = xmlValue(last,'connection-pool-name')
+   if xmlFind($top,concat('data-sources/connection-pool name="',$con,\
+                          '"/connection-factory'))
+   {var $sid = replace(xmlValue(last,'url'),'^.*@')
+    if match($sid,'^//([\w\-\.]+:{1}\d+/{1}.*)$')
+    {# Pattern for service name, eg: //hostname:port/service
+     var $sid = replace(last,'/','::')
+    }
+    elsif match($sid,'ldap',true)
+    {echo tput('reverse'),'Warning:'
+     echo "RDA does not support database connection using LDAP. Run the setup \
+           again in\012advanced mode to provide the connection details. You \
+           can use the\012following command:"
+     echo '<rda> -SCRP -p advanced BPEL',tput('off')
+     var ($BPEL_LOCAL,$flg) = (true)
+     break
+    }
+    var ($flg,$old,$env,$try) = set_db($sid)
+    break
+   }
+  }
+ }
+}
+elsif $BPEL_LOCAL
+ var $flg = true
+elsif getSetting('BPEL_SID')
+ var ($flg,$old,$env,$try) = set_db(last)
+else
+ var ($BPEL_LOCAL,$flg) = (true)
+
+# Collect the repository information
+if $flg
+{debug ' Inside BPEL module, gathering the repository information'
+ report rep_info
+ var $TTL = '---+!! Business Process Execution Language Repository Information'
+ var @DBG = ('',\
+             '  - Getting tablespace information',\
+             '  - Getting free space in default tablespaces for ORABPEL',\
+             '  - Getting extents of default tablespaces for ORABPEL',\
+             '  - Getting total number of invalid objects for ORABPEL',\
+             '  - Getting list of invalid objects for ORABPEL',\
+             '  - Getting total number of rows in Cube_Instance table',\
+             '  - Getting total number of rows in Cube_Scope table',\
+             '  - Getting total number of rows in Scope_Activation table',\
+             '  - Getting total number of rows in Dlv_Message table',\
+             '  - Getting total number of rows in Dlv_Subscription table',\
+             '  - Getting total number of rows in Audit_Trail table',\
+             '  - Getting total number of rows in Audit_Details table',\
+             '  - Getting total number of rows in Sync_Trail table',\
+             '  - Getting total number of rows in Sync_Store table',\
+             '  - Getting total number of rows in Test_Details table',\
+             '  - Getting total number of rows in Document_Ci_Ref table',\
+             '  - Getting total number of rows in Native_Correlation table',\
+             '  - Getting total number of rows in Xml_Document table',\
+             '  - Getting total number of rows in Document_Dlv_Msg_Ref table',\
+             '  - Getting total number of rows in Attachment table',\
+             '  - Getting total number of rows in Attachment_Ref table',\
+             '  - Getting total number of rows in Ci_Indexes table')
+ var @TTL = ('',\
+             '---+ Tablespace Information',\
+             '---+ Free Space in Default Tablespaces for ORABPEL',\
+             '---+ Extents of Default Tablespaces for ORABPEL',\
+             '---+ Total Number of Invalid Objects for ORABPEL',\
+             '---+ List of Invalid Objects for ORABPEL',\
+             '---+ Number of Rows in Cube_Instance Table',\
+             '---+ Number of Rows in Cube_Scope Table',\
+             '---+ Number of Rows in Scope_Activation Table',\
+             '---+ Number of Rows in Dlv_Message Table',\
+             '---+ Number of Rows in Dlv_Subscription Table',\
+             '---+ Number of Rows in Audit_Trail Table',\
+             '---+ Number of Rows in Audit_Details Table',\
+             '---+ Number of Rows in Sync_Trail Table',\
+             '---+ Number of Rows in Sync_Store Table',\
+             '---+ Number of Rows in Test_Details Table',\
+             '---+ Number of Rows in Document_Ci_Ref Table',\
+             '---+ Number of Rows in Native_Correlation Table',\
+             '---+ Number of Rows in Xml_Document Table',\
+             '---+ Number of Rows in Document_Dlv_Msg_Ref Table',\
+             '---+ Number of Rows in Attachment Table',\
+             '---+ Number of Rows in Attachment_Ref Table',\
+             '---+ Number of Rows in Ci_Indexes Table')
+ var @HDR = ('',\
+             '|*Username*|*Created*|*Default Tablespace*|*Temp Tablespace*|',\
+             '|*Default Tablespace*|*Free Tablespace (MiB)*|',\
+             '|*Tablespace Name*|*Initial Extent*|*Next Extent*|*Pct Increase*|\
+               *Allocation Type*|*Segment Space Management*|\
+               *Extent Management*|',\
+             '| *Count*|',\
+             '|*Owner*|*Object Name*|*Object Type*|*Status*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|')
+ set $sql
+ {SELECT '|' ||
+ "       username || ' |' ||
+ "       TO_CHAR(created,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       default_tablespace || ' |' ||
+ "       temporary_tablespace || ' |'
+ " FROM dba_users
+ " WHERE username = 'ORABPEL';
+ "PROMPT ___Macro_separator(2)___
+ "SELECT '|' ||
+ "       tablespace_name || ' | ' ||
+ "       SUM(bytes) / 1048576 || '|'
+ " FROM dba_free_space
+ " WHERE tablespace_name IN (
+ "        SELECT default_tablespace
+ "         FROM dba_users
+ "         WHERE username = 'ORABPEL')
+ " GROUP BY tablespace_name
+ " ORDER BY tablespace_name;
+ "PROMPT ___Macro_separator(3)___
+ "SELECT '|' ||
+ "       tablespace_name || ' | ' ||
+ "       initial_extent || '| ' ||
+ "       next_extent || '| ' ||
+ "       pct_increase || '|' ||
+ "       allocation_type || ' |' ||
+ "       segment_space_management || ' |' ||
+ "       extent_management || ' |'
+ " FROM dba_tablespaces
+ " WHERE tablespace_name IN (
+ "        SELECT default_tablespace
+ "         FROM dba_users
+ "         WHERE username = 'ORABPEL')
+ " ORDER BY tablespace_name;
+ "PROMPT ___Macro_separator(4)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM all_objects
+ " WHERE status = 'INVALID'
+ "   AND owner = 'ORABPEL';
+ "PROMPT ___Macro_separator(5)___
+ "SELECT '|' ||
+ "       owner || ' |' ||
+ "       object_name || ' |' ||
+ "       object_type || ' |' ||
+ "       status || ' |'
+ " FROM all_objects
+ " WHERE status = 'INVALID'
+ "   AND owner = 'ORABPEL';
+ "PROMPT ___Macro_separator(6)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM cube_instance;
+ "PROMPT ___Macro_separator(7)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM cube_scope;
+ "PROMPT ___Macro_separator(8)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM scope_activation;
+ "PROMPT ___Macro_separator(9)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM dlv_message;
+ "PROMPT ___Macro_separator(10)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM dlv_subscription;
+ "PROMPT ___Macro_separator(11)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM audit_trail;
+ "PROMPT ___Macro_separator(12)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM audit_details;
+ "PROMPT ___Macro_separator(13)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM sync_trail;
+ "PROMPT ___Macro_separator(14)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM sync_store;
+ "PROMPT ___Macro_separator(15)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM test_details;
+ "PROMPT ___Macro_separator(16)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM document_ci_ref;
+ "PROMPT ___Macro_separator(17)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM native_correlation;
+ "PROMPT ___Macro_separator(18)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM xml_document;
+ "PROMPT ___Macro_separator(19)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM document_dlv_msg_ref;
+ "PROMPT ___Macro_separator(20)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM attachment;
+ "PROMPT ___Macro_separator(21)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM attachment_ref;
+ "PROMPT ___Macro_separator(22)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM ci_indexes;
+ }
+ call separator(1)
+ call writeSql($sql)
+ call separator(0,'Repository Information')
+}
+
+# Restore the previous context
+if !$BPEL_LOCAL
+{if defined($env)
+  call setSqlSid($env)
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+}
+
+=head2 perms - System Classes File Permissions
+
+Collects the owner and group permissions of the files under BPEL system
+classes.
+
+=cut
+
+debug ' Inside BPEL module, gathering system classes file permissions'
+var $dir = catDir($BPEL_HOME,'system','classes')
+if testDir('d',$dir)
+{report perms
+ prefix
+  write '---+ BPEL System Classes File Permissions'
+ loop $fil ($dir,grepDir($dir,'^\.+$','drv'))
+ {if testDir('d',$fil)
+   call statDir('an',$fil)
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][System Classes File Permissions]]'
+}
+
+=head2 clock_chk - Clock Issue
+
+The BPEL PM product requires a monotonically increasing time. RDA produces this
+report when it detects an occurrence of time going backwards. It only performs
+this test when the Perl has access to the high resolution clock.
+
+=cut
+
+debug ' Inside BPEL module, checking for monotonically increasing time \
+        (can take time)'
+report clock_chk
+prefix
+ write '---+ Clock Issue'
+var $cnt = getSetting('BPEL_CLOCK',1000000)
+var $ret = extern('TimeChk','check_clock',check($cnt,'\D',1000000,$cnt))
+if replace($ret,'Not available:.*\n')
+ write last
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Clock Issue]]'
+
+=head2 Configuration and Log Files
+
+When present, this report collects the Oracle BPEL Process Manager
+configuration and log files.
+
+=cut
+
+debug ' Inside BPEL module, collecting configuration and log files'
+if !testDir('d',$BPEL_HOME)
+{if or(testDir('d',catDir($ORACLE_HOME,'bpel')),\
+       testDir('d',catDir($ORACLE_HOME,'integration','orabpel')))
+  var $BPEL_HOME = lastDir()
+}
+if $BPEL_HOME
+{pretoc '2:Configuration and Log Files'
+ var @tbl = ()
+ var $dir = catDir($BPEL_HOME,'domains')
+ loop $pth (grepDir($dir,'^\.+$','vp'))
+  var @tbl = (@tbl,grepDir(catDir($pth,'config'),'\.xml','dir'))
+ call sort_files(3,$TAIL,\
+   grepDir($dir,'^domain\.log','dir'),\
+   grepDir($dir,'^domain\.xml$','dir'),\
+   catFile($BPEL_HOME,'domains','default','config',\
+           'quartz-config.properties'),\
+   catFile($BPEL_HOME,'domains','default','config',\
+           'resources_jdbc_quartz.properties'),\
+   grepDir(catDir($BPEL_HOME,'system','config'),'\.(properties|xml)$','dir'),\
+   grepDir(catDir($BPEL_HOME,'system','services','config'),'\.xml$','dir'),\
+   catFile($BPEL_HOME,'utilities','ant-orabpel.properties'),\
+   @tbl)
+ unpretoc
+}
+unpretoc
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>, L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.10: Sunil Hingorani, Selva Parthasarathy.
+
+=item RDA 4.12: Selva Parthasarathy, Anirudh Pucha, Wes Root, Bernd Wachowius.
+
+=item RDA 4.16: Marcus Lachmanez, Martin Littlecott.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

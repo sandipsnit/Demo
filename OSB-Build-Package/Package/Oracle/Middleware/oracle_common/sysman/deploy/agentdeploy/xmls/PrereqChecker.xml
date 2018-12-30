@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+
+<!--  $Header: PrereqChecker.xml 22-feb-2008.02:01:32 spramani Exp $ -->
+
+<!-- 
+ Copyright (c) 2007, 2008, Oracle. All rights reserved.  
+
+   NAME
+     PrereqChecker.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   spramani    02/20/08 - multi startup optimization
+   spramani    10/31/07 - shared rem prereq
+   supchoud    10/15/07 - 
+   spramani    10/10/07 - 
+   spramani    10/09/07 - 
+   supchoud    05/02/07 - 
+   spramani    03/26/07 - prereq checker xml
+   spramani    03/26/07 - Creation
+
+-->
+
+<prov:agentDeployment id = "PrereqChecker" version="1.0.0" xmlns:prov="http://www.oracle.com/sysman/prov/deployment">
+    <!-- 
+         1. This is the first snd second step of agent push installation. The deployer class will get the deploymentment with id
+            "localPrereq/remotePrereq" and will pick up all the actions under it to be executed according to the 'order' attribute 
+            of action tag. 
+         2. criticality 2 is the action with highest priority; critcality with 0 is the action with lowest priority 
+         3. An action with  jndiUpdateRequired= true will update the action status to jndi , otherwise not
+         4. order determines in what order the actions in a deployment will be executed
+         5. scope tells on what all nodes we need the action to be executed
+         6. Cleanup is a deployment (defined in PrereqChecker.xml )that is called at the end of anyother deployment. 
+    -->
+    <!-- for local prereq -->
+    <prov:deployment id="localPrereq" shared="false">
+            <prov:action id="LocalPrereq" critical="0" jndiUpdateRequired="true" order="100" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_LOCAL_PREREQ"/>
+    </prov:deployment>  
+    <prov:deployment id="localPrereq" shared="true">
+            <prov:action id="LocalPrereq" toStartDeployOnRestOnSuccess="true" critical="0" jndiUpdateRequired="true" order="100" scope="masterNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_LOCAL_PREREQ"/>
+            <prov:action id="LocalPrereqOnRest" critical="0" jndiUpdateRequired="true" order="200" scope="restNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_LOCAL_PREREQ"/>
+    </prov:deployment>  
+    <!-- For Remote Prereqs -->
+    <prov:deployment id="remotePrereq" shared="false">
+             <prov:action id="InitSetup" critical="1" jndiUpdateRequired="false" order="0" scope="allNode" hidden="true" resourceID=""/>
+             <prov:action id="RemotePrereq" critical="1" jndiUpdateRequired="true" order= "100" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_REMOTE_PREREQ"/>
+             <prov:action id="CollectLog" critical="2" jndiUpdateRequired="true" order="200" scope="allNode" hidden="true" resourceID="ACTION_DISPLAY_NAME_COLLECT_LOG"/>
+    </prov:deployment> 
+    <prov:deployment id="remotePrereq" shared="true">
+             <prov:action id="InitSetup"  toStartDeployOnRestOnSuccess="true" critical="1" jndiUpdateRequired="false" order="0" scope="masterNode" hidden="true" resourceID=""/>
+             <prov:action id="FindJREVersion" critical="1" jndiUpdateRequired="false" order="50" scope="restNode" hidden="true" resourceID=""/>
+             <prov:action id="RemotePrereq" critical="1" jndiUpdateRequired="true" order= "100" scope="allNode" hidden="false" resourceID="ACTION_DISPLAY_NAME_REMOTE_PREREQ"/>
+             <prov:action id="CollectLog" critical="2" jndiUpdateRequired="true" order="200" scope="allNode" hidden="true" resourceID="ACTION_DISPLAY_NAME_COLLECT_LOG"/>
+    </prov:deployment> 
+</prov:agentDeployment>

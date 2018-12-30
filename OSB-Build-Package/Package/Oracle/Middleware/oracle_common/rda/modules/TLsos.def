@@ -1,0 +1,167 @@
+# TLsos.def: Collects siga/sosreport/sysreport Report
+# $Id: TLsos.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TLsos.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+TLsos - Collects F<siga>/F<sosreport>/F<sysreport> Report
+
+=head1 DESCRIPTION
+
+This tool executes F<siga>/F<sosreport>/F<sysreport> on Linux systems. The tool
+can be executed only as root user. It collects the information and changes the
+owner of the generated report to the owner of report directory. If you execute
+this tool before any RDA collection, it creates the output directory with the
+permissions of the root user.
+
+It removes any reports older than 15 days from the output directory.
+
+The command execution may display some prompts. Ignore them.
+
+=head1 USAGE
+
+  <rda> -T sos
+
+=cut
+
+echo tput('bold'),'Processing SOS tool ...',tput('off')
+
+# Verify prerequisites
+if !match(getOsName(),'linux')
+{echo 'This tool is specific to Linux systems.'
+ return
+}
+if !match(id(),'^uid=0\(')
+{echo 'This tool can be run only as root user.'
+ return
+}
+
+# Create the output directory if it does not exist and purge old reports
+call setAbbr('SOS')
+call purge('C','.',15,0,true)
+
+# Execute the relevant command
+if testFile('x','/usr/sbin/sosreport')
+{debug ' Inside OS module, gathering sosreport information'
+ var $rpt = 'sosreport'
+ var $tmp = newTemp('sos','.txt')
+ if setDebug()
+ {echo 'The tool execution is done in debug mode.'
+  echo tput('bold'),'Ignore any message to input any data.',tput('off')
+  echo 'The output file will be transferred to the RDA output directory.'
+  sleep 5
+  output | concat('/usr/sbin/sosreport -k rpm.rpmva=off 2>&1 | tee ',\
+                  quote($tmp,'x'))
+ }
+ else
+  output | concat('/usr/sbin/sosreport -k rpm.rpmva=off >',quote($tmp,'x'),\
+                  ' 2>&1')
+ write ''
+ write $rpt
+ write '1'
+ close
+ call loadFile($tmp)
+ var $flg = false
+ loop $lin (getLines())
+ {if $flg
+  {var $fil = trim($lin)
+   break
+  }
+  var $flg = match($lin,'^Your sosreport has been generated and saved in:$')
+ }
+}
+elsif testFile('x','/usr/sbin/sysreport')
+{debug ' Inside OS module, gathering sysreport information'
+ var $rpt = 'sysreport'
+ var $tmp = newTemp('sos','.txt')
+ if setDebug()
+ {echo 'The tool execution is done in debug mode.'
+  echo tput('bold'),'Ignore any message to input any data.',tput('off')
+  echo 'The output file will be transferred to the RDA output directory.'
+  sleep 5
+  output | concat('/usr/sbin/sysreport -norpm 2>&1 | tee ',quote($tmp,'x'))
+ }
+ else
+  output | concat('/usr/sbin/sysreport -norpm >',quote($tmp,'x'),' 2>&1')
+ write ''
+ write $rpt
+ close
+ var ($lin) = grepFile($tmp,'^(Please send.*to your support|Please mail.*to)',\
+                       'f')
+ if match($lin,'^Please send\s*(.*?)\s*to your support')
+  var ($fil) = last
+ elsif match($lin,'^Please mail\s*(.*?)\s*to')
+  var ($fil) = last
+}
+elsif testFile('x','/usr/bin/siga')
+{debug ' Inside OS module, gathering siga information'
+ var $tmp = newTemp('sos','.txt')
+ var $rpt = 'siga'
+ if setDebug()
+ {echo 'The tool execution is done in debug mode.'
+  echo 'The output file will be transferred to the RDA output directory.'
+  sleep 5
+  call command(concat('/usr/bin/siga no 2>&1 | tee ',quote($tmp,'x')))
+ }
+ else
+  call command(concat('/usr/bin/siga no >',quote($tmp,'x'),' 2>&1'))
+ call loadFile($tmp)
+ var $flg = false
+ loop $lin (getLines())
+ {if $flg
+  {var $fil = trim($lin)
+   if testFile('r',$fil)
+    break
+  }
+  else
+   var $flg = match($lin,'^ You will find the output here:')
+ }
+}
+else
+{echo 'RDA did not find /usr/sbin/sosreport, /usr/sbin/sysreport, or \
+       /usr/bin/siga.'
+ return
+}
+call unlinkTemp('sos')
+
+# Transfer the result file to the report directory
+if $fil
+{var $src = basename($fil)
+ var (undef,$suf) = split('\.',$src,2)
+ var $dst = concat(${CUR.PREFIX},$rpt,'.',$suf)
+ if transfer(dirname($fil),$src,${OUT.C},$dst)
+ {var $own = getOwner(${OUT.C})
+  if compare('eq',$own,'0')
+   echo 'The owner of the output directory is root. Modify the owner of that \
+         directory if you do not plan to make the subsequent RDA executions \
+         as root user.'
+  else
+   call command(concat('chown ',$own,' ',catFile(${OUT.C},$dst)))
+ }
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.16: Shinya Narahara, Takeshi Watanabe.
+
+=item RDA 4.17: Shinya Narahara.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

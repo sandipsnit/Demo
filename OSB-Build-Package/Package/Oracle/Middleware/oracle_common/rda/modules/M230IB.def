@@ -1,0 +1,143 @@
+# M230IB.def: Collects InfiniBand Information
+# $Id: M230IB.def,v 1.9 2012/06/05 13:33:13 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M230IB.def,v 1.9 2012/06/05 13:33:13 mschenke Exp $
+#
+# Change History
+# 20120605  JGS  Implement do_exec macro usage.
+
+=head1 NAME
+
+M230IB - Collects InfiniBand Information
+
+=head1 DESCRIPTION
+
+This module collects configuration and diagnostic data for InfiniBand
+networks and cards.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('ib')
+
+#------------------------------------------------------------------------------
+# XPLR_ib section
+#------------------------------------------------------------------------------
+
+section XPLR_ib
+
+call log_run('Processing IB sections ...')
+
+=head2 ib - InfinBand Information
+
+Gathers the InfiniBand information using the following commands:
+
+=over 2
+
+=item o F</usr/sbin/dladm show-ib>
+
+=item o C</usr/sbin/fwflash -l - c IB>
+
+=item o F</usr/sbin/ibaddr>
+
+=item o C</usr/sbin/ibcheckerrors -N>
+
+=item o F</usr/sbin/ibcheckstate>
+
+=item o F</usr/sbin/ibcheckwidth>
+
+=item o C</usr/sbin/ibdatacounters -N>
+
+=item o F</usr/sbin/iblinkinfo.pl>
+
+=item o F</usr/sbin/ibnetdiscover>
+
+=item o F</usr/sbin/ibnodes>
+
+=item o F</usr/sbin/ibstat>
+
+=item o F</usr/bin/rds-info>
+
+=back
+
+=cut
+
+debug ' Inside IB collection, gathering the Infiniband information'
+report ib
+title '---+!! Infiniband Information'
+title $TOC
+call do_exec(\
+  ['ib/dladm_show-ib',\
+   '/usr/sbin/dladm','show-ib',\
+   '---+ Physical Link Information'],\
+  ['ib/fwflash_l_c_IB',\
+   '/usr/sbin/fwflash','-l -c IB',\
+   '---+ GUIDs and Curent Firmware Version'],\
+  ['ib/ibaddr',\
+   '/usr/sbin/ibaddr',undef,\
+   '---+ Addresses'],\
+  ['ib/ibdatacounters_N',\
+   '/usr/sbin/ibdatacounters','-N',\
+   '---+ Data Counters'],\
+  ['ib/ibcheckerrors_N',\
+   '/usr/sbin/ibcheckerrors','-N',\
+   '---+ Connectivity and Port Counter Errors'],\
+  ['ib/ibcheckstate',\
+   '/usr/sbin/ibcheckstate',undef,\
+   '---+ Ports which are Up but not Active'],\
+  ['ib/ibcheckwidth',\
+   '/usr/sbin/ibcheckwidth',undef,\
+   '---+ Active Link Widths'],\
+  ['ib/iblinkinfo',\
+   '/usr/sbin/iblinkinfo.pl',undef,\
+   '---+ Link Speed and Connection for Active Ports and Switches'],\
+  ['ib/ibnetdiscover',\
+   '/usr/sbin/ibnetdiscover',undef,\
+   '---+ Topology'],\
+  ['ib/ibnodes',\
+   '/usr/sbin/ibnodes',undef,\
+   '---+ Nodes'],\
+  ['ib/ibstat',\
+   '/usr/sbin/ibstat',undef,\
+   '---+ Device Statuses'],\
+  ['ib/rds-info',\
+   '/usr/bin/rds-info',undef,\
+   '---+ Reliable Datagram Sockets Kernel Module'])
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][InfiniBand Information]]'
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.25: Chris Beal.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,188 @@
+<!--  $Header: oracle_bi_cc.xml 17-sep-2007.01:49:23 ckannusa Exp $ -->
+
+<!-- 
+ Copyright (c) 2007, Oracle. All rights reserved.  
+
+   NAME
+     cc.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   ckannusa    09/05/07 - 
+   vdwaram     07/24/07 - 
+   ckannusa    05/13/07 - 
+   ckannusa    05/22/07 - 
+   vdwaram     05/08/07 - 
+   msathe      04/23/07 - bi cluster controlelr metadata
+   msathe      04/23/07 - Creation
+
+-->
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="1.0" TYPE="oracle_bi_cc" CATEGORY_PROPERTIES="VersionCategory">
+   <Display>
+      <Label NLSID="bi_analyticsNLSID">Oracle BI Cluster Controller</Label>
+      <ShortName NLSID="bi_analyticsShortName">bi_cc</ShortName>
+      <Description NLSID="bi_analyticsDescription">bi_cc</Description>
+   </Display>
+   <Metric NAME="Response" TYPE="TABLE">
+    <Display>
+      <Label NLSID="network_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="network_response_status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+	<Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+	<Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property> 
+  	<Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property> 
+        <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/getStatus.pl</Property>
+        <Property NAME="args" SCOPE="GLOBAL">%BIHome%/server/Bin/nqsclustercontroller</Property>
+    </QueryDescriptor>
+   </Metric>
+   
+   <Metric NAME="Resources" TYPE="TABLE">
+    <Display>
+      <Label NLSID="nlsid_Resources">Resources</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="CPU" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="resources_cpu">CPU (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Memory" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="resources_memory">Memory (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+	<Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+	<Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+	<Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property> 
+  	<Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property> 
+        <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/procResUsage.pl</Property>
+        <Property NAME="args" SCOPE="GLOBAL">%BIHome% /server/Bin/nqsclustercontroller </Property>
+    </QueryDescriptor>
+   </Metric>
+   <Metric NAME="BIClusterControllerConfig" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_CC_CONFIG">
+      <ColumnDescriptor NAME="PRODUCT_VERSION" COLUMN_NAME="PRODUCT_VERSION" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ENABLE_CONTROLLER" COLUMN_NAME="ENABLE_CONTROLLER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PRIMARY_CONTROLLER"
+                        COLUMN_NAME="PRIMARY_CONTROLLER" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SECONDARY_CONTROLLER"
+                        COLUMN_NAME="SECONDARY_CONTROLLER" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SERVERS" COLUMN_NAME="SERVERS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MASTER_SERVER" COLUMN_NAME="MASTER_SERVER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SERVER_POLL_SECONDS"
+                        COLUMN_NAME="SERVER_POLL_SECONDS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CONTROLLER_POLL_SECONDS"
+                        COLUMN_NAME="CONTROLLER_POLL_SECONDS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CLIENT_SERVER_PORT"
+                        COLUMN_NAME="CLIENT_SERVER_PORT" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CLIENT_CONTROLLER_PORT"
+                        COLUMN_NAME="CLIENT_CONTROLLER_PORT" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MONITOR_CONTROLLER_PORT"
+                        COLUMN_NAME="MONITOR_CONTROLLER_PORT" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MONITOR_SERVER_PORT"
+                        COLUMN_NAME="MONITOR_SERVER_PORT" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SCHEDULERS" COLUMN_NAME="SCHEDULERS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--CLUSTER-->
+      <ColumnDescriptor NAME="SSL" COLUMN_NAME="SSL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CERTIFICATE_FILE"
+                        COLUMN_NAME="SSL_CERTIFICATE_FILE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_PRIVATE_KEY_FILE"
+                        COLUMN_NAME="SSL_PRIVATE_KEY_FILE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_PK_PASSPHRASE_FILE"
+                        COLUMN_NAME="SSL_PK_PASSPHRASE_FILE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_PK_PASS_PROGRAM"
+                        COLUMN_NAME="SSL_PK_PASS_PROGRAM" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_VERIFY_PEER" COLUMN_NAME="SSL_VERIFY_PEER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CA_CERTIFICATE_DIR"
+                        COLUMN_NAME="SSL_CA_CERTIFICATE_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CA_CERTIFICATE_FILE"
+                        COLUMN_NAME="SSL_CA_CERTIFICATE_FILE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_TRUSTED_PEER_DNS"
+                        COLUMN_NAME="SSL_TRUSTED_PEER_DNS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CERT_VER_DEPTH"
+                        COLUMN_NAME="SSL_CERT_VER_DEPTH" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CIPHER_LIST" COLUMN_NAME="SSL_CIPHER_LIST"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadini.pl" "%ConfigFile%" "Cluster configuration" "%AttributeDefFile%" "V#CLUSTER@ENABLE_CONTROLLER|PRIMARY_CONTROLLER|SECONDARY_CONTROLLER|SERVERS|MASTER_SERVER|SERVER_POLL_SECONDS|CONTROLLER_POLL_SECONDS|CLIENT_SERVER_PORT|CLIENT_CONTROLLER_PORT|MONITOR_CONTROLLER_PORT|MONITOR_SERVER_PORT|SCHEDULERS|SSL|SSL_CERTIFICATE_FILE|SSL_PRIVATE_KEY_FILE|SSL_PK_PASSPHRASE_FILE|SSL_PK_PASSPHRASE_PROGRAM|SSL_VERIFY_PEER|SSL_CA_CERTIFICATE_DIR|SSL_CA_CERTIFICATE_FILE|SSL_TRUSTED_PEER_DNS|SSL_CERT_VERIFICATION_DEPTH|SSL_CIPHER_LIST|"  "%BIHome%"</Property>         
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>
+   <InstanceProperties>
+      <InstanceProperty NAME="BIHome">
+         <Display>
+            <Label NLSID="BI_HOME_LABEL">BI Home</Label>
+         </Display>
+      </InstanceProperty>	
+      <InstanceProperty NAME="Host">
+         <Display>
+            <Label NLSID="NLSID_HOST">Host</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="ConfigFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_configFile">Configuration File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="AttributeDefFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_AttributeDefFile">Attribute Definition File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="SADATADIR" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_SADATADIR">Oracle BI Data Directory</Label>
+         </Display>
+      </InstanceProperty>      
+      
+   </InstanceProperties>
+</TargetMetadata>
+
+

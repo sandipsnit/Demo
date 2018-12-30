@@ -1,0 +1,686 @@
+# S360CRID.def: Collects Oracle Access Manager (COREid) Information
+# $Id: S360CRID.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S360CRID.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S360CRID - Collects Oracle Access Manager (COREid) Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Access Manager (formerly COREid) product-related
+information (for example, installation, configuration, and log files).
+
+The following reports can be generated and are regrouped under C<Oracle Access
+Manager Components>:
+
+=cut
+
+echo tput('bold'),'Processing CRID module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME    = getSetting('ORACLE_HOME')
+var $AM_INSTALL_DIR = getSetting('COREID_AM_INSTALL_DIR','')
+var $AS_INSTALL_DIR = getSetting('COREID_AS_INSTALL_DIR','')
+var $IS_INSTALL_DIR = getSetting('COREID_IS_INSTALL_DIR','')
+var $WG_INSTALL_DIR = getSetting('COREID_WG_INSTALL_DIR','')
+var $WP_INSTALL_DIR = getSetting('COREID_WP_INSTALL_DIR','')
+
+var $CORE = '(^core\.\d+$|core$)'
+var $TAIL = getSetting('COREID_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+# Load the common macros
+run library()
+if isUnix()
+ run COREinfo()
+
+toc '^1:Oracle Access Manager Components'
+
+=head2 Policy Manager Setup Files
+
+Gathers Policy Manager (formerly Access Manager) setup files.
+
+=cut
+
+if and($AM_INSTALL_DIR,\
+       testDir('d',catDir($AM_INSTALL_DIR,'access','oblix')))
+{toc '1+:Policy Manager'
+ var $dir = lastDir()
+ var $cfg = catDir($dir,'config')
+ var $dat = catDir($dir,'data','common')
+
+ debug ' Inside CRID module, Policy Manager setup files'
+ pretoc '2:Setup Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'setup_am.xml'),\
+                 catFile($cfg,'setup.xml'))
+ unpretoc
+
+=head2 Policy Manager Configuration Files
+
+Gathers Policy Manager configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting Policy Manager configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($dir,'apps','common','bin','globalparams.xml'),\
+                 catFile($dir,'apps','common','bin','globalparams.lst'),\
+                 catFile($cfg,'mime_types.xml'),\
+                 catFile($cfg,'obversion.xml'),\
+                 catFile($cfg,'configInfo.xml'),\
+                 catFile($cfg,'configInfo.lst'),\
+                 catFile($cfg,'obnls.xml'),\
+                 catFile($cfg,'obnls.lst'),\
+                 grepDir($cfg,'^np','ip'),\
+                 catFile($cfg,'install_options.txt'),\
+                 grepDir(catDir($cfg,'simple'),'\.pem$','ip'),\
+                 catFile($cfg,'policyservcenparams.xml'),\
+                 catFile($cfg,'frontpageparams.xml'),\
+                 catFile($cfg,'frontpageadminparams.xml'))
+ unpretoc
+
+=head2 Policy Manager Log Configuration File
+
+Gathers the Policy Manager log configuration file.
+
+=cut
+
+ debug ' Inside CRID module, getting Policy Manager log configuration file'
+ pretoc '2:Log Configuration File'
+ call sort_files(3,$TAIL,catFile($cfg,'oblog_config_am.xml'))
+ unpretoc
+
+=head2 Policy Manager Default Log File
+
+Gathers the Policy Manager default log file.
+
+=cut
+
+ debug ' Inside CRID module, getting Policy Manager default log file'
+ pretoc '2:Default Log File'
+ call sort_files(3,$TAIL,catFile($dir,'logs','oblog.log'))
+ unpretoc
+
+=head2 Policy Manager Database Configuration Files
+
+Gathers Policy Manager database configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting Policy Manager database config files'
+ pretoc '2:Database Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'oblix_ds_params.xml'),\
+                 catFile($cfg,'adsi_params.xml'),\
+                 catFile($cfg,'adsi_params.lst'),\
+                 catFile($cfg,'ldap','AppDB.xml'),\
+                 catFile($cfg,'ldap','AppDB.lst'),\
+                 catFile($cfg,'ldap','ConfigDB.xml'),\
+                 catFile($cfg,'ldap','ConfigDB.lst'),\
+                 catFile($cfg,'ldap','GroupDB.xml'),\
+                 catFile($cfg,'ldap','GroupDB.lst'),\
+                 catFile($cfg,'ldap','UserDB.xml'),\
+                 catFile($cfg,'ldap','UserDB.lst'),\
+                 catFile($cfg,'ldap','WebResrcDB.xml'),\
+                 catFile($cfg,'ldap','WebResrcDB.lst'),\
+                 catFile($dat,'ad_exclude_attrs.xml'),\
+                 catFile($dat,'appdbparams.xml'),\
+                 catFile($dat,'appdbparams.lst'),\
+                 catFile($dat,'binaryattrnames.xml'),\
+                 catFile($dat,'binaryattrnames.lst'),\
+                 catFile($dat,'configdbparams.xml'),\
+                 catFile($dat,'configdbparams.lst'),\
+                 catFile($dat,'exclude_attrs.xml'),\
+                 catFile($dat,'exclude_attrs.lst'),\
+                 catFile($dat,'exclude_attrs_config.xml'),\
+                 catFile($dat,'exclude_attrs_config.lst'),\
+                 catFile($dat,'exclude_attrs-ad.xml'),\
+                 catFile($dat,'exclude_oblix_attrs.xml'),\
+                 catFile($dat,'exclude_oblix_attrs.lst'),\
+                 catFile($dat,'groupdbparams.xml'),\
+                 catFile($dat,'groupdbparams.lst'),\
+                 catFile($dat,'ldapappdbparams.xml'),\
+                 catFile($dat,'ldapappdbparams.lst'),\
+                 catFile($dat,'ldapconfigdbparams.xml'),\
+                 catFile($dat,'ldapconfigdbparams.lst'),\
+                 catFile($dat,'ldapuserdbparams.xml'),\
+                 catFile($dat,'ldapuserdbparams.lst'),\
+                 catFile($dat,'oblixssoldif.xml'),\
+                 catFile($dat,'oblixssoldif.lst'),\
+                 catFile($dat,'oblixssoldif_ad.xml'),\
+                 catFile($dat,'oblixssoldif_ad.lst'),\
+                 catFile($dat,'oblixssoldif_ad_dynamic.xml'),\
+                 catFile($dat,'oblixssoldif_ad_dynamic.lst'),\
+                 catFile($dat,'policysetupldifs.xml'),\
+                 catFile($dat,'policysetupldifs.lst'),\
+                 catFile($dat,'replication.xml'),\
+                 catFile($dat,'replication.lst'),\
+                 catFile($dat,'setupldif_wrsc.xml'),\
+                 catFile($dat,'setupldif_wrsc.lst'),\
+                 catFile($dat,'setupldifs.xml'),\
+                 catFile($dat,'setupldifs.lst'),\
+                 catFile($dat,'userdbparams.xml'),\
+                 catFile($dat,'userdbparams.lst'),\
+                 catFile($dat,'WebLogicPoliciesldif.xml'),\
+                 catFile($dat,'WebLogicPoliciesldif.lst'),\
+                 catFile($dat,'WebLogicPoliciesldif_ad.lst'),\
+                 catFile($dat,'WebLogicPoliciesldif_ad.xml'))
+ unpretoc
+}
+
+=head2 Access Server Setup Files
+
+Gathers Access Server setup files.
+
+=cut
+
+if and($AS_INSTALL_DIR,\
+       testDir('d',catDir($AS_INSTALL_DIR,'access','oblix')))
+{if isTocCreated(true)
+  toc '%SPLIT%'
+ toc '1+:Access Server'
+ var $dir = lastDir()
+ var $cfg = catDir($dir,'config')
+ var $dat = catDir($dir,'data','common')
+
+ debug ' Inside CRID module, getting Access Server setup files'
+ pretoc '2:Setup Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'setup.xml'),\
+                 catFile($cfg,'configInfo.xml'))
+ unpretoc
+
+=head2 Access Server Configuration Files
+
+Gathers Access Server configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting Access Server configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($dir,'apps','common','bin','globalparams.xml'),\
+                 catFile($dir,'apps','common','bin','oblixbaseparams.xml'),\
+                 catFile($cfg,'obscoreboard_params.xml'),\
+                 catFile($cfg,'obnls.xml'),\
+                 grepDir($cfg,'^np','ip'),\
+                 catFile($cfg,'install_options.txt'),\
+                 grepDir(catDir($cfg,'simple'),'\.pem$','ip'),\
+                 catFile($cfg,'aaa_server_config.xml'),\
+                 catFile($cfg,'attributePlugin','config.xml'))
+ unpretoc
+
+=head2 Access Server Log Configuration Files
+
+Gathers Access Server log configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting Access Server log configuration files'
+ pretoc '2:Log Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'oblog_config.xml'))
+ unpretoc
+
+=head2 Access Server Default Log File
+
+Gathers the Access Server default log file.
+
+=cut
+
+ debug ' Inside CRID module, getting the Access Server default log file'
+ pretoc '2:Default Log File'
+ call sort_files(3,$TAIL,catFile($dir,'logs','oblog.log'))
+ unpretoc
+
+=head2 Access Server Database Config Files
+
+Gathers Access Server database configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting Access Server database config files'
+ pretoc '2:Database Config Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'adsi_params.xml'),\
+                 catFile($cfg,'ldap','AppDB.xml'),\
+                 catFile($cfg,'ldap','ConfigDB.xml'),\
+                 catFile($cfg,'ldap','WebResrcDB.xml'),\
+                 catFile($dat,'ad_exclude_attrs.xml'),\
+                 catFile($dat,'appdbparams.xml'),\
+                 catFile($dat,'binaryattrnames.xml'),\
+                 catFile($dat,'configdbparams.xml'),\
+                 catFile($dat,'exclude_attrs.xml'),\
+                 catFile($dat,'exclude_attrs_config.xml'),\
+                 catFile($dat,'exclude_attrs-ad.xml'),\
+                 catFile($dat,'exclude_oblix_attrs.xml'),\
+                 catFile($dat,'exclude_user_attrs.xml'),\
+                 catFile($dat,'groupdbparams.xml'),\
+                 catFile($dat,'ldapappdbparams.xml'),\
+                 catFile($dat,'ldapconfigdbparams.xml'),\
+                 catFile($dat,'ldapuserdbparams.xml'),\
+                 catFile($dat,'oblixssoldif.xml'),\
+                 catFile($dat,'oblixssoldif_ad.xml'),\
+                 catFile($dat,'oblixssoldif_ad_dynamic.xml'),\
+                 catFile($dat,'policysetupldifs.xml'),\
+                 catFile($dat,'replication.xml'),\
+                 catFile($dat,'setupldif_wrsc.xml'),\
+                 catFile($dat,'setupldifs.xml'),\
+                 catFile($dat,'userdbparams.xml'))
+ unpretoc
+
+=head2 as_core - Access Server Core Dump Analysis
+
+Analyzes any Access Server core dumps.
+
+=cut
+
+ if getSetting('COREID_AS_CORE')
+ {if isUnix()
+  {debug ' Inside CRID module, analysing WP core dumps'
+   var @dmp = grepDir(getSetting('COREID_AS_CORE_PATH'),$CORE,'dr')
+   if @dmp
+   {# When a debugger is found, analyze the core dumps
+    if can_analyze_core()
+    {var $dbg = last
+     report as_core
+     write '---+!! Core Dump Stack Trace Extraction'
+     write '---## Using: ',encode($dbg)
+     write $TOC
+     call analyze_core(@dmp)
+     toc '2:[[',getFile(),'][rda_report][Core Dump Analysis]]'
+    }
+   }
+  }
+ }
+}
+
+=head2 Identity Server Scripts
+
+Gathers Identity Server scripts for UNIX platforms.
+
+=cut
+
+if and($IS_INSTALL_DIR,\
+       testDir('d',catDir($IS_INSTALL_DIR,'identity','oblix')))
+{if isTocCreated(true)
+  toc '%SPLIT%'
+ toc '1+:Identity Server'
+ var $dir = lastDir()
+ var $cfg = catDir($dir,'config')
+ var $dat = catDir($dir,'data','common')
+ var $ldp = catDir($cfg,'ldap')
+
+ var $adm = catDir($dir,'apps','admin','bin')
+ var $com = catDir($dir,'apps','common','bin')
+ var $grp = catDir($dir,'apps','groupservcenter','bin')
+ var $lst = catDir($dir,'apps','lost_pwd_mgmt','bin')
+ var $obj = catDir($dir,'apps','objservcenter','bin')
+ var $qry = catDir($dir,'apps','querybuilder','bin')
+ var $usr = catDir($dir,'apps','userservcenter','bin')
+
+ if isUnix()
+ {debug ' Inside CRID module, getting Identity Server scripts'
+  pretoc '2:Server Scripts'
+  var $bin = catDir($dir,'apps','common','bin')
+  call sort_files(3,$TAIL,\
+                  catFile($bin,'start_ois_server'),\
+                  catFile($bin,'stop_ois_server'),\
+                  catFile($bin,'restart_ois_server'),\
+                  catFile($bin,'ois_server_watchdog'))
+  unpretoc
+ }
+
+=head2 Identity Server Setup Files
+
+Gathers Identity Server setup files.
+
+=cut
+
+ debug ' Inside CRID module, getting Identity Server setup files'
+ pretoc '2:Setup Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'setup.lst'),\
+                 catFile($cfg,'setup.xml'),\
+                 grepDir($cfg,'^np','ip'),\
+                 catFile($cfg,'install_options.txt'),\
+                 grepDir(catDir($cfg,'simple'),'\.pem$','ip'),\
+                 catFile($cfg,'configInfo.xml'))
+ unpretoc
+
+=head2 Identity Server Log Configuration Files
+
+Gathers Identity Server log configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting Identity Server log configuration files'
+ pretoc '2:Log Configuration Files'
+ call sort_files(3,$TAIL,catFile($cfg,'oblog_config.xml'))
+ unpretoc
+
+=head2 Identity Server Default Log Files
+
+Gathers Identity Server default log files.
+
+=cut
+
+ debug ' Inside CRID module, getting Identity Server log files'
+ pretoc '2:Default Log Files'
+ call sort_files(3,$TAIL,\
+                 grepDir(catDir($dir,'logs'),'^oblog\.log','ip'))
+ unpretoc
+
+=head2 Identity Server Default Audit Files
+
+Gathers Identity Server default audit files.
+
+=cut
+
+ debug ' Inside CRID module, getting Identity Server audit files'
+ pretoc '2:Default Audit Files'
+ call sort_files(3,$TAIL,\
+                 grepDir(catDir($dir,'logs'),'^auditfile\.txt','ip'))
+ unpretoc
+
+=head2 Identity Server Configuration Files
+
+Gathers Identity Server configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting Identity Server configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($adm,'corpdiradminparams.xml'),\
+                 catFile($adm,'frontpageadminparams.xml'),\
+                 catFile($adm,'groupservcenadminparams.xml'),\
+                 catFile($adm,'mime_types.xml'),\
+                 catFile($adm,'objservcenteradminparams.xml'),\
+                 catFile($com,'asynchparams.xml'),\
+                 catFile($com,'audit_info.xml'),\
+                 catFile($com,'bea_wfqs_params.xml'),\
+                 catFile($com,'comm_serverparams.xml'),\
+                 catFile($com,'globalparams.xml'),\
+                 catFile($com,'npctsaparams.xml'),\
+                 catFile($com,'oblixadminparams.xml'),\
+                 catFile($com,'oblixappparams.xml'),\
+                 catFile($com,'oblixbaseparams.xml'),\
+                 catFile($com,'obnavigation.xml'),\
+                 catFile($com,'ois_server_msg.xml'),\
+                 catFile($com,'oblixpppcatalog.lst'),\
+                 catFile($com,'portalidparams.xml'),\
+                 catFile($dir,'apps','corpdir','bin','corpdirparams.xml'),\
+                 catFile($grp,'groupservcenterparams.xml'),\
+                 catFile($grp,'gsc_wf_params-base.xml'),\
+                 catFile($grp,'gsc_wf_params-dirx.xml'),\
+                 catFile($grp,'gsc_wf_params-sw.xml'),\
+                 catFile($grp,'gsc_wf_params.xml'),\
+                 catFile($grp,'gsc_wfqs_params.xml'),\
+                 catFile($grp,'gscaclparams.xml'),\
+                 catFile($lst,'lostpwdparams.xml'),\
+                 catFile($obj,'objservcenterparams.xml'),\
+                 catFile($obj,'osc_wf_params.xml'),\
+                 catFile($obj,'osc_wfqs_params.xml'),\
+                 catFile($qry,'querybuilderparams.xml'),\
+                 catFile($dir,'apps','selector','bin','selectorparams.xml'),\
+                 catFile($usr,'certMgmt.xml'),\
+                 catFile($usr,'usc_wf_params.xml'),\
+                 catFile($usr,'usc_wfqs_params.xml'),\
+                 catFile($usr,'userservcenterparams.xml'),\
+                 catFile($cfg,'obnls.xml'),\
+                 catFile($cfg,'obscoreboard_params.xml'),\
+                 catFile($cfg,'obversion.xml'),\
+                 catFile($dir,'obversion.xml'),\
+                 catFile($cfg,'ois_server_config.xml'),\
+                 catFile($dir,'ois_server_config.xml'),\
+                 grepDir(catDir($dir,'lang'),'^ois_server_msg\.xml$','ir'),\
+                 catFile($IS_INSTALL_DIR,'identity','AccessServerSDK',\
+                         'oblix','lib','ois_server_config.xml'))
+                 
+ unpretoc
+
+=head2 Identity Server Application Registry Files
+
+Gathers Identity Server application registry files.
+
+=cut
+
+ debug ' Inside CRID module, getting IS application registry files'
+ pretoc '2:Application Registry Files'
+ call sort_files(3,$TAIL,\
+                 catFile($adm,'adminreg.xml'),\
+                 catFile($com,'oblixbasereg.xml'),\
+                 catFile($dir,'apps','corpdir','bin','corpdirreg.xml'),\
+                 catFile($grp,'groupservcenterreg.xml'),\
+                 catFile($dir,'apps','help','bin','helpreg.xml'),\
+                 catFile($lst,'lostpwdmgmtreg.xml'),\
+                 catFile($obj,'objservcenterreg.xml'),\
+                 catFile($qry,'querybuilderreg.xml'),\
+                 catFile($dir,'apps','selector','bin','selectorreg.xml'),\
+                 catFile($usr,'userservcenterreg.xml'))
+ unpretoc
+
+=head2 Identity Server Database Configuration Files
+
+Gathers Identity Server database configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting IS database configuration files'
+ pretoc '2:Database Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'adsi_params.xml'),\
+                 grepDir($ldp,'^AccessDB.*\.xml$','ip'),\
+                 grepDir($ldp,'^AppDB.*\.xml$','ip'),\
+                 grepDir($ldp,'^ConfigDB.*\.xml$','ip'),\
+                 grepDir($ldp,'^GenericOCLocator.*\.xml$','ip'),\
+                 grepDir($ldp,'^GroupOCLocator.*\.xml$','ip'),\
+                 grepDir($ldp,'^PersonOCLocator.*\.xml$','ip'),\
+                 grepDir($ldp,'^WFLocator.*\.xml$','ip'),\
+                 grepDir($ldp,'^WebResLocator.*\.xml$','ip'),\
+                 grepDir($ldp,'^WebResrcDB.*\.xml$','ip'),\
+                 grepDir($ldp,'^WorkflowDB.*\.xml$','ip'),\
+                 grepDir($ldp,'^failover.*\.xml$','ip'),\
+                 catFile($dat,'accessdbparams.xml'),\
+                 catFile($dat,'ad_exclude_attrs.xml'),\
+                 catFile($dat,'appdbparams.xml'),\
+                 catFile($dat,'basedbparams.xml'),\
+                 catFile($dat,'binaryattrnames.xml'),\
+                 catFile($dat,'configdbparams.xml'),\
+                 catFile($dat,'exclude_attrs-ad.xml'),\
+                 catFile($dat,'exclude_attrs-base.xml'),\
+                 catFile($dat,'exclude_attrs'),\
+                 catFile($dat,'exclude_attrs_config.xml'),\
+                 catFile($dat,'exclude_oblix_attrs.xml'),\
+                 catFile($dat,'exclude_user_attrs.xml'),\
+                 catFile($dat,'groupdbparams.xml'),\
+                 catFile($dat,'ldapaccessdbparams.xml'),\
+                 catFile($dat,'ldapappdbparams.xml'),\
+                 catFile($dat,'ldapconfigdbparams.xml'),\
+                 catFile($dat,'ldaposdreferentialintegrityparams.xml'),\
+                 catFile($dat,'ldapreferentialintegrityparams.xml'),\
+                 catFile($dat,'objectdbparams.xml'),\
+                 catFile($dat,'oblixobjclasses.xml'),\
+                 catFile($dat,'overridedbprofile.xml'),\
+                 catFile($dat,'replication.xml'),\
+                 catFile($dat,'userdbparams.xml'),\
+                 catFile($dat,'workflowdbparams.xml'))
+ unpretoc
+
+=head2 is_core - Identity Server Core Dump Analysis
+
+Analyzes any Identity Server core dump files.
+
+=cut
+
+ if getSetting('COREID_IS_CORE')
+ {if isUnix()
+  {debug ' Inside CRID module, analyzing Identity Server core dumps'
+   var @dmp = grepDir(getSetting('COREID_IS_CORE_PATH'),$CORE,'dr')
+   if @dmp
+   {# When a debugger is found, analyze the core dumps
+    if can_analyze_core()
+    {var $dbg = last
+     report is_core
+     write '---+!! Core Dump Stack Trace Extraction'
+     write '---## Using: ',encode($dbg)
+     write $TOC
+     call analyze_core(@dmp)
+     toc '2:[[',getFile(),'][rda_report][Core Dump Analysis]]'
+    }
+   }
+  }
+ }
+}
+
+=head2 WebGate Configuration Files
+
+Gathers WebGate configuration files.
+
+=cut
+
+if and($WG_INSTALL_DIR,\
+       testDir('d',catDir($WG_INSTALL_DIR,'access','oblix')))
+{if isTocCreated(true)
+  toc '%SPLIT%'
+ toc '1+:WebGate'
+ var $dir = lastDir()
+ var $cfg = catDir($dir,'config')
+
+ debug ' Inside CRID module, getting WebGate configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'mime_types.xml'),\
+                 catFile($cfg,'obnls.xml'),\
+                 grepDir($cfg,'^np','ip'),\
+                 catFile($cfg,'install_options.txt'),\
+                 grepDir(catDir($cfg,'simple'),'\.pem$','ip'),\
+                 catFile($dir,'apps','webgate','webgate.lst'),\
+                 catFile($dir,'apps','webgate','webgatestatic.lst'),\
+                 catFile($dir,'lib','ObAccessClient.xml'))
+ unpretoc
+
+=head2 WebGate Log Configuration File
+
+Gathers the WebGate log configuration file.
+
+=cut
+
+ debug ' Inside CRID module, getting WebGate log configuration file'
+ pretoc '2:Log Configuration File'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'oblog_config_wg.xml'))
+ unpretoc
+
+=head2 WebGate Default Log File
+
+Gathers the WebGate default log file.
+
+=cut
+
+ debug ' Inside CRID module, getting the WebGate default log file'
+ pretoc '2:Default Log Files'
+ call sort_files(3,$TAIL,catFile($dir,'logs','oblog.log'))
+ unpretoc
+}
+
+=head2 WebPass Component Configuration Files
+
+Gathers WebPass component configuration files.
+
+=cut
+
+if and($WP_INSTALL_DIR,\
+       testDir('d',catDir($WP_INSTALL_DIR,'identity','oblix')))
+{if isTocCreated(true)
+  toc '%SPLIT%'
+ toc '1+:WebPass'
+ var $dir = lastDir()
+ var $cfg = catDir($dir,'config')
+
+ debug ' Inside CRID module, getting WebPass component configuration files'
+ pretoc '2:Component Configuration File'
+ call sort_files(3,$TAIL,\
+                 catFile($dir,'apps','webpass','bin','webpass.xml'))
+ unpretoc
+
+=head2 WebPass Log Configuration Files
+
+Gathers WebPass log configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting WebPass log configuration files'
+ pretoc '2:Log Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($cfg,'oblog_config_wp.xml'))
+ unpretoc
+
+=head2 WebPass Log Files
+
+Gathers WebPass log files.
+
+=cut
+
+ debug ' Inside CRID module, getting WebPass log files'
+ pretoc '2:Log Files'
+ call sort_files(3,$TAIL,\
+                 grepDir(catDir($dir,'logs'),'^oblog\.log','p'))
+ unpretoc
+
+=head2 WebPass Configuration Files
+
+Gathers WebPass configuration files.
+
+=cut
+
+ debug ' Inside CRID module, getting WebPass configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(3,$TAIL,\
+                 catFile($dir,'apps','admin','bin','mime_types.lst'),\
+                 catFile($dir,'apps','admin','bin','mime_types.xml'),\
+                 catFile($dir,'apps','common','bin','globalparams.xml'),\
+                 catFile($cfg,'config.xml'),\
+                 grepDir($cfg,'^np','ip'),\
+                 catFile($cfg,'install_options.txt'),\
+                 grepDir(catDir($cfg,'simple'),'\.pem$','ip'),\
+                 catFile($cfg,'obnls.xml'))
+ unpretoc
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>, L<COREinfo.def|modules::COREinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.5:  Paresh Borkar, Mike Campbell, Greg Cook, Kuntal Godbole,
+Raj Mishra, Tumula Naveen, Sandy Ong, Nachiketa Sharma.
+
+=item RDA 4.12: Vikas Ojha.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

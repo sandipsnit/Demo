@@ -1,0 +1,96 @@
+# S375B2B.def: Collects Oracle Business to Business Information
+# $Id: S375B2B.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S375B2B.def,v 2.5 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S375B2B - Collects Oracle Business to Business Information
+
+=head1 DESCRIPTION
+
+This module collects the Oracle Business to Business-related diagnostic
+information.
+
+The following reports can be generated and are regrouped under
+C<Oracle Business to Business>:
+
+=cut
+
+echo tput('bold'),'Processing B2B module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('B2B_ORACLE_HOME','')
+var $TAIL        = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle Business to Business'
+
+# Load the common macros
+run library()
+
+=head2 Configuration Files
+
+Gathers Oracle Business to Business-related configuration files.
+
+=cut
+
+debug ' Inside B2B module, collecting the configuration files'
+pretoc '2:Configuration Files'
+call sort_files(3,$TAIL,\
+  grepDir(catDir($ORACLE_HOME,'ip','config'),'^[^\.]','dr'),\
+  grepDir(catDir($ORACLE_HOME,'opmn','conf'),'^[^\.]','dr'))
+unpretoc
+
+=head2 Patch Details
+
+Gathers Oracle Business to Business-related patch details.
+
+=cut
+
+debug ' Inside B2B module, collecting the patch details'
+pretoc '2:Patch Details'
+call sort_files(3,$TAIL,\
+  grepDir(catDir($ORACLE_HOME,'.patchstorage'),'\.log','dir'))
+unpretoc
+
+=head2 Log Files
+
+Gathers Oracle Business to Business-related log files.
+
+=cut
+
+debug ' Inside B2B module, collecting the log files'
+pretoc '2:Log Files'
+call sort_files(3,$TAIL,\
+  grepDir(catDir($ORACLE_HOME,'ip','log'),'^[^\.]','dr'),\
+  grepDir(catDir($ORACLE_HOME,'opmn','logs'),'^[^\.]','dr'))
+unpretoc 2
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.17: Abed Alseheity.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

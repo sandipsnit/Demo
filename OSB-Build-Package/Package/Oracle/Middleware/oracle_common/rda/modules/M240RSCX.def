@@ -1,0 +1,242 @@
+# M240RSCX.def: Collects Remote System Control (RSC) Information
+# $Id: M240RSCX.def,v 1.1 2012/08/10 18:01:15 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M240RSCX.def,v 1.1 2012/08/10 18:01:15 mschenke Exp $
+#
+# Change History
+# 201200706  PRA  Initial version.
+
+=head1 NAME
+
+M240RSCX - Collects Remote System Control (RSC) Information
+
+=head1 DESCRIPTION
+
+This module collects Remote System Control (RSC) information.
+
+=cut
+
+use Mrc
+use Telnet
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('srscextended')
+
+# Get the ping syntax
+var $PING = check(${RDA.OS},'solaris','/usr/sbin/ping %s',\
+                            'linux',  '/bin/ping -c 1 %s',\
+                            'cygwin', '/bin/ping %s 64 1')
+
+#------------------------------------------------------------------------------
+# XPLR_rscx section
+#------------------------------------------------------------------------------
+
+section XPLR_rscx
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing RSCX sections ...')
+
+pretoc '2:Remote System Control (RSC)'
+
+=head2 Remote System Control Information
+
+Gathers Remote System Control (RSC) information using the following commands:
+
+=over 2
+
+=item o C</usr/bin/ls -l ${EXP_SRSCINPUT_CONFIG}>
+
+=back
+
+In addition, gathers Remote System Control (RSC) information from remote host
+using the following commands through telnet:
+
+=over 2
+
+=item o C<consolehistory>
+
+=item o C<loghistory>
+
+=item o C<show>
+
+=item o C<showdate>
+
+=item o C<showenvironment -v>
+
+=item o C<usershow>
+
+=item o C<version -v>
+
+=back
+
+=cut
+
+# Treat all requests
+loop $set (split('\|',${XPLR_RSCX_SET}))
+{$hst = getSetting(concat('XPLR_RSCX_HOST_',$set))
+ $usr = 'root'
+ next !?$hst
+
+ # Validate the input parameters
+ debug ' Inside RSCX collection, validating ',$hst,' access'
+ if !match($hst,'^[\w\-\.\:]+$')
+  next log_info(concat('The Remote SC host name or IP "',$hst,\
+                       '"contains invalid characters.'))
+ call command(sprintf($PING,$hst))
+ if status()
+  next log_info(concat('Host ',$hst,' is not reachable.'))
+
+ if !hasPassword('host',$hst,$usr)
+  call setPassword('host',$hst,$usr,\
+    askPassword(concat('Enter ',$usr,' password for Remote SC ',$hst,': ')))
+
+ # Connect to the System Controller
+ var $ctl = new('Telnet',hst=>$hst)
+ if !?$ctl->open
+  next log_warning($ctl->get_info('msg'))
+ if !?$ctl->login($usr,{dis=>'logout',\
+                        pat=>'m/rsc>/'})
+  next log_warning($ctl->get_info('msg'))
+
+ # Describe the Remote Service Controller commands
+ var @cmd = (\
+   ['show.out',\
+    'show',\
+    '---++ Configuration Variables'],\
+   ['consolehistory.out',\
+    'consolehistory',\
+    '---++ Console Messages Logged in RSC Buffers'],\
+   ['showenvironment_-v.out',\
+    'showenvironment -v',\
+    '---++ Environmental Sensors'],\
+   ['loghistory.out',\
+    'loghistory',\
+    '---++ Events Logged in RSC Event Buffer'],\
+   ['version_-v.out',\
+    'version -v',\
+    '---++ Firmware Version'],\
+   ['usershow.out',\
+    'usershow',\
+    '---++ Users Accounts'],\
+   ['showdate.out',\
+    'showdate',\
+    '---++ UTC date and time'])
+
+ # Genererate the report
+ debug ' Inside RSCX collection, gathering ',$hst,' information'
+ report concat('rscx_info_',$hst)
+ title '---+!! Remote System Control (RSC)'
+ title '---## ',$hst,' Information'
+ title $TOC
+ loop $rec (@cmd)
+ {if !ref($rec)
+   write $rec
+  else
+  {prefix
+   {write $rec->[2]
+    write '---## Using: ',encode($rec->[1])
+    call beginBlock(true)
+    call addBlock('E','D',concat('sc/',$hst,'/',$rec->[0]))
+   }
+   if $ctl->collect(${CUR.REPORT},{cmd=>$rec->[1]})
+    call log_warning($ctl->get_info('msg'))
+   if hasOutput(true)
+   {call endBlock()
+    write $TOP
+   }
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',$hst,' Information]]'
+
+ # Close the connection
+ call $ctl->quit
+}
+
+=head2 rscx_input - Input File
+
+Lists the characteristics of the specified input file.
+
+=cut
+
+if testFile('r',catFile(${XPLR_RSCX_CFG}))
+{debug ' Inside RSCX collection, getting input file characteristics'
+ report rscx_input
+ title '---+ Input File Details'
+ call do_exec(\
+   [concat('sc/ls_-l_',replace(lastFile(),'\/','@',true)),\
+    '/usr/bin/ls',concat('-l ',quote(lastFile(),'x')),\
+    '---+ Explorer Input File'])
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][Input File]]'
+}
+
+unpretoc
+
+#------------------------------------------------------------------------------
+# Input file conversion section
+#------------------------------------------------------------------------------
+
+section input
+
+# Define the input file parser macro
+macro parse_input
+{var ($fil,$flg) = @arg
+
+ var @sta = getStat($fil)
+ if !expr('&',$sta[2],077)
+ {# Parse the input file
+  var ($set,@set) = (0)
+  loop $lin (grepFile($fil,'^\s*#','v'))
+  {var ($hst,$pwd) = split('\s+',trim($lin),2)
+   var $usr = 'root'
+   next !?$hst
+   if ?$pwd
+    call setPassword('host',$hst,$usr,$pwd)
+   call push(@set,incr($set))
+   call setTempSetting(concat('XPLR_RSCX_HOST_',$set),$hst)
+  }
+
+  # Save the parsing results
+  if $set
+  {call setTempSetting('XPLR_RSCX_CFG',$fil)
+   call setTempSetting('XPLR_RSCX_SET',join('|',@set))
+   call setTempSetting('xplr_rscx_accept',true)
+  }
+  else
+   call setTempSetting('xplr_rscx_accept',$flg)
+ }
+}
+
+# Parse the input file
+if and(defined($fil = ${ENV.EXP_SRSCINPUT_CONFIG}),\
+       testFile('frs',catFile($fil)))
+ call parse_input(lastFile(),true)
+else
+ call parse_input(catFile(${XPLR_ETC},'srscinput.txt'),false)
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

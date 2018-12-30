@@ -1,0 +1,580 @@
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/rda.pod,v 2.16 2012/05/04 08:16:22 mschenke Exp $
+
+=head1 NAME
+
+rda - Oracle Remote Diagnostic Agent (RDA)
+
+=head1 SYNOPSIS
+
+rda.sh [-bcdflqtvwy] [-SCRP|A|B|D|E|G|H|I|K|L|M|Q|V|T] [-e list] [-m dir]
+[-o out] [-p prof] [-s nam] [mod ...]
+
+rda.cmd [-bcdflqtvwy] [-SCRP|A|B|D|E|G|H|I|K|L|M|Q|V|T] [-e list] [-m dir]
+[-o out] [-p prof] [-s nam] [mod ...]
+
+rda.pl [-bcdflqtvwy] [-SCRP|A|B|D|E|G|H|I|K|L|M|Q|V|T] [-e list] [-m dir]
+[-o out] [-p prof] [-s nam] [mod ...]
+
+See the following sections for additional information about the switches.
+
+=head1 DESCRIPTION
+
+The purpose of RDA is to assist in problem analysis and troubleshooting of
+local and remote databases, file systems, and operating system environments in
+relation to Oracle Products. This tool helps automate the task of gathering
+information about an Oracle environment for the Oracle Support and Development
+teams and customers to analyze the Oracle technology stacks quickly.
+
+For example, if a customer has problems with SQL*NET, then Oracle Support may
+want to view the configuration files and the environment related to the
+problems. This can include information about the operating system, database,
+and file system. The RDA Development team adds content to the tool regularly
+to gather information about more products.
+
+You can run RDA concurrently as long as each execution refers to a different
+setup file. You can share the same report directory if you specify different
+report groups during the setup phase. However, usually the compiled versions of
+the RDA engine do not allow concurrent executions.
+
+For more information about this tool, or to download the latest version, see
+Knowledge Articles 314422.1 and 330363.1.
+
+=head1 COMMAND VARIANTS
+
+=over 8
+
+=item F<rda.sh>
+
+UNIX shell RDA launcher, which attempts to locate Perl in the Oracle home
+directory structure when it is not available in the C<PATH> environment
+variable.
+
+=item F<rda.cmd>
+
+Microsoft RDA launcher, which attempts to locate Perl in the Oracle home
+directory structure.
+
+=item F<rda.com>
+
+VMS RDA launcher, which checks the user environment and locates Perl and Zip.
+
+=item F<rda.pl>
+
+RDA main script, which can be used directly if Perl is available in the C<PATH>
+environment variable (for UNIX), or if the C<.pl> suffix is registered (for
+Windows).
+
+=back
+
+=head1 OPTIONS
+
+=head2 Mode Options
+
+=over 8
+
+=item B<-A>
+
+Adds or deletes database login passwords in the setup file to enable batch
+execution of data collections. Because the passwords are encoded in the file,
+you cannot enter them in the file manually. Typically, you can provide
+C<E<lt>usernameE<gt>/E<lt>passwordE<gt>>, 
+C<E<lt>usernameE<gt>@E<lt>sidE<gt>/E<lt>passwordE<gt>>, or
+C<E<lt>usernameE<gt>@odbc@E<lt>dsnE<gt>/E<lt>passwordE<gt>> as arguments. If an
+asterisk (*) prefixes the user name, then RDA deletes the entry instead of
+adding it. If the password is missing when you add SQL authentication, RDA
+prompts you to specify it interactively.
+
+=item B<-B>
+
+Starts a background data collection process. When forking capability is
+available within the Perl implementation, RDA collects the information in a
+child process with a different session identifier. RDA uses an exclusive lock
+to prevent concurrent executions and redirects standard input and output to
+F</dev/null> by default. However, you can specify an output file with the
+B<-o> option. If you specify the B<-f> option, then RDA issues a halt request
+and the process performs the initial data collection and sample archiving
+tasks only.
+
+=item B<-C>
+
+Collects the diagnostic information for modules specified as arguments.
+When no modules are specified as arguments, the data is collected for all
+configured modules. Unless you specify the B<-f> option, RDA collects the data
+that was previously uncollected only.
+
+To set the trace mode at the module level, prefix the module name with
+C<t:> or C<T:>, respectively for tracing the execution or for tracing both
+the execution and the variable assignment.
+
+=item B<-D>
+
+Deletes the modules that are specified as arguments from the setup. It is
+possible only to delete modules that do not have reports. When you specify the
+B<-f> option, RDA removes the associated reports first.
+
+Note: You cannot delete the modules that are executed at each data
+collection run.
+
+=item B<-E>
+
+Displays an explanation of the error numbers that are specified as arguments.
+
+=item B<-G>
+
+Converts reports or a group of reports to XML format.
+
+=item B<-H>
+
+Sends a halt request to the current background data collection. The collection
+process stops when the current task is complete or at the next wake up.
+
+=item B<-I>
+
+Regenerates the report index. When you specify the B<-f> option, RDA reloads
+the cascading style sheet in the output directory.
+
+=item B<-K>
+
+Kills the current background data collection process. This option is possible
+only in Perl versions with C<fork> and signals implemented.
+
+=item B<-L>
+
+Lists the available data collection modules, tools or test modules, conversion
+groups, setting levels, and profiles. You can restrict the list by specifying
+list types as arguments. When you specify the B<-f> option, RDA displays the
+data collection modules that are always executed.
+
+=item B<-M>
+
+Displays the related manual pages associated with the arguments. You can
+replace the arguments by a B<-p> option, to get profile manual pages. By
+default, RDA displays this manual page. The operating system "pager" mechanism
+must be configured to pause at the end of the page to support multiple
+arguments in interactive mode.
+
+=item B<-P>
+
+Packages all reports that belong to the report group using F<zip>, F<pax>,
+F<tar> or F<jar>. When several commands are available, preference is first
+given to F<zip>, then to F<pax>, and then to F<tar>. When possible, it uses
+F<compress> or F<gzip> to compress tar files.
+
+=item B<-Q>
+
+Displays the setup questions for the modules that are specified as
+arguments. When you specify a higher setting level, you can list additional
+questions. To support multiple arguments in interactive mode, you must
+configure the pager to pause at the end of the file.
+
+=item B<-R>
+
+Generates the HTML reports. By default, RDA generates out-dated and missing
+reports only. When you specify the B<-f> option, RDA generates all reports. RDA
+regenerates the index automatically when reports are produced.
+
+=item B<-S>
+
+Configures all modules that are specified as arguments. When you do not specify
+any module, then RDA configures all available modules. Unless you specify the
+B<-f> option, RDA considers modules that are not yet configured only.
+
+=item B<-T>
+
+Executes tools or test modules that are specified as arguments. When you do not
+specify any module, RDA runs the default modules.
+
+To set the trace mode at the module level, prefix the module name with C<t:> or
+C<T:>, respectively for tracing the execution or for tracing both the execution
+and the variable assignment.
+
+=item B<-V>
+
+Displays the version of the RDA components and previously loaded Perl
+modules. The Perl module list is not exhaustive as additional packages can be
+loaded dynamically during the execution of other functions.
+
+=back
+
+=head2 Modifiers
+
+=over 8
+
+=item B<-b>
+
+Does not back up the setup file. By default, RDA renames the setup file with a
+C<.bak> suffix before rewriting the file.
+
+=item B<-c>
+
+Verifies that RDA was installed correctly and still exists. When you do not
+specify any arguments, RDA verifies file permissions and checksums. Otherwise,
+RDA checks the syntax of the configuration and definition files that are
+specified as arguments. RDA skips all other files. RDA returns a 0 (zero) exit
+status when no errors are detected. Otherwise, it returns a nonzero exit
+status.
+
+=item B<-e key=value[,...]>
+
+Specifies a temporary value for one or more settings. RDA converts the setting
+names automatically to upper case and separates the different assignments by
+commas.
+
+For example, the following value generates new reports in the report group DEMO
+and allows a maximum of 120 seconds for executing each SQL statement.
+
+ -e RPT_GROUP=DEMO,SQL_TIMEOUT=120
+
+You can use this mechanism also to alter the default setting values when making
+noninteractive setups.
+
+=item B<-f>
+
+Sets the force mode, which influences the Background, Collect, Delete, Index,
+List, Report, and Setup modes. For more information about these modes, see the
+I<Mode Options> section.
+
+=item B<-g grp>
+
+Specifies the conversion group for converting reports in XML.
+
+=item B<-h>
+
+Displays the command usage and exits.
+
+=item B<-i>
+
+Reads settings from the standard input. Therefore, this option suppresses all
+interactive dialogs in setup and all user acknowledge requests in the data
+collection or tests.
+
+=item B<-l>
+
+Uses a lock file to prevent concurrent usage of a setup file. RDA derives the
+name of the lock file from the setup file name. RDA generates an error if the
+lock cannot be acquired immediately.
+
+=item B<-m dir>
+
+Specifies the module directory (F<modules> by default).
+
+=item B<-n>
+
+Ignores the content of any existing setup file. This option enables you to
+start a new collection without any manual operation on existing setup files.
+
+=item B<-o out>
+
+Specifies an output file for a background data collection.
+
+=item B<-p prof>
+
+Specifies the setting level and/or the setup profiles to use during the setup
+operations. When you specify both, use a hyphen (-) to separate them. By
+default, RDA considers the B<basic> setting level and all existing modules. Use
+the B<advanced> setting level to specify more settings interactively.
+
+When you specify a new profile at collection time, RDA performs an implicit
+setup of the corresponding modules.
+
+=item B<-q>
+
+Sets the quiet mode.
+
+=item B<-s nam>
+
+Specifies the name of the setup file (I<setup> by default). You can maintain
+multiple setup configurations in the same directory structure. The name of the
+setup file can contain a directory part. That directory must exist and will
+be used as the default location for other files (such as lock files and the
+report directory).
+
+=item B<-v>
+
+Sets the verbose mode.
+
+=item B<-w>
+
+Prevents the current RDA job from running when the background collection daemon
+is active. The process waits until the current daemon task is complete. RDA
+does not update the setup file when you specify this option.
+
+=item B<-x>
+
+Produces a cross reference for the specified arguments or profiles.
+
+=item B<-y>
+
+Accepts all setting defaults in the module configuration. This option
+suppresses all interactive dialogs in setup and all user acknowledge requests
+in the data collection or tests.
+
+=back
+
+=head2 Debugging Options
+
+=over 8
+
+=item B<-d>
+
+Sets the debug mode.
+
+=item B<-t>
+
+Enables tracing of the setup and data collection commands globally.
+
+=back
+
+=head1 SPECIAL USAGE
+
+You can combine the B<-S>, B<-C>, B<-R>, and B<-P> mode flags. Other modes are
+exclusive. Regroup the module names by using a hyphen (-) as separator when
+B<-C>, B<-D>, B<-Q>, or B<-S> mode flags are used.
+
+When you execute the RDA command without specifying any mode or module, RDA
+performs the complete data collection, report generation, and report
+packaging. RDA sets up the data collection at its first execution.
+
+The setup step must be done explicitly for profile based data collection.
+
+By default, RDA creates setup files in the current working directory. Use the
+B<-s> option or the C<RDA_SETUP> environment variable to store the setup files
+in another directory.
+
+=head1 ENVIRONMENT
+
+The following environment variables influence the execution of RDA:
+
+=over 12
+
+=item COLUMNS
+
+Used to adjust the page width when displaying manual pages (78 by default).
+
+=item HOME
+
+User home directory.
+
+=item ORACLE_BASE
+
+Oracle base directory.
+
+=item ORACLE_HOME
+
+Oracle home directory.
+
+=item ORACLE_SID
+
+Oracle system identifier.
+
+=item PAGER
+
+Pager that RDA uses to display the manual pages. RDA uses I<more> by default.
+
+=item PATH
+
+Command execution path.
+
+=item RDA_CONVERT
+
+Alternative location for the XML conversion plugin directory structure
+(F<Convert> by default).
+
+=item RDA_CWD
+
+Alternative working directory for the setup files or for relative paths to
+setup files. When you do not specify this variable, RDA uses the current
+working directory.
+
+=item RDA_DOMAIN
+
+Default domain name used to bypass the domain detection. RDA performs this
+detection at setup when the domain name is not available from the setup file
+and not included in the host name.
+
+=item RDA_EDIT
+
+Specifies a temporary value for one or more settings as for the B<-e> option.
+
+=item RDA_FILTER
+
+Specifies a filter definition file to load when creating a new setup file.
+
+=item RDA_LOCK
+
+Directory where the RDA lock files are stored. By default, they are stored in
+the directory that contains the setup file.
+
+=item RDA_MAN
+
+When specified, it does not use C<Pod::Text> to display manual pages.
+
+=item RDA_NO_7ZIP
+
+When specified, it disables the search and the use of the F<7zip> command.
+
+=item RDA_NO_COMPRESS
+
+When specified, it disables the search and the use of the F<compress> command.
+
+=item RDA_NO_DBD_ORACLE
+
+When set to a nonzero value, disables the usage of C<DBD::Oracle>. The command
+wrappers do not verify that Perl can load this package without errors when a
+value is set.
+
+=item RDA_NO_GZIP
+
+When specified, it disables the search and the use of the F<gzip> command.
+
+=item RDA_NO_JAR
+
+When specified, it disables the search and the use of the F<jar> command.
+
+=item RDA_NO_PAX
+
+When specified, it disables the search and the use of the F<pax> command.
+
+=item RDA_NO_TAR
+
+When specified, it disables the search and the use of the F<tar> command.
+
+=item RDA_NO_ZIP
+
+When specified, it disables the search and the use of the F<zip> command.
+
+=item RDA_PID
+
+Directory where the control files for the background collection are stored.
+By default, they are stored in the directory that contains the setup file.
+
+=item RDA_PROFILE
+
+Specifies the path of an alternative profile definition file. RDA ignores the
+environment variable when the corresponding file does not exist or cannot be
+read.
+
+=item RDA_SETUP
+
+Specifies the setup name to be used when the B<-s> option is not specified. The
+name can contain a directory part. That directory must exist and is used as a
+default location for other files (such as the lock files and the report
+directory).
+
+=item SHELL
+
+For UNIX, the command interpreter (shell) to use.
+
+=item TERM
+
+Terminal name. When supported by the platform, it identifies the escape
+sequences used for controlling the display.
+
+=back
+
+=head1 FILES
+
+For UNIX, F<rda.sh> creates a F<.config> file to cache where Perl is located in
+the Oracle home directory structure.
+
+RDA collects execution events and statistics in an F<RDA.log> file in the
+report directory. Use this file to retrieve the execution history. For
+security reasons, it does not contain any setting or command arguments. The
+report packages contain the F<RDA.log> file to identify further product
+improvements.
+
+The RDA engine can create three lock files. The names are derived from the
+setup file name:
+
+=over 16
+
+=item F<E<lt>setupE<gt>.lck>
+
+To avoid concurrent usage of a setup file (cf. options B<-B> and B<-l>)
+
+=item F<-B-E<lt>setupE<gt>.lck>
+
+To serialize file manipulation tasks between foreground and background RDA
+processes.
+
+=item F<-T-E<lt>setupE<gt>.lck>
+
+To monitor thread execution completion.
+
+=back
+
+The C<RDA_LOCK> environment variable influences the location of the lock files.
+
+=head1 PERL PACKAGES USED
+
+An RDA data collection explicitly calls the following Perl packages:
+
+=over 2
+
+=item o F<strict>
+
+=item o F<vars>
+
+=item o F<Cwd>
+
+=item o F<Exporter>
+
+=item o F<File::Basename>
+
+=item o F<File::Copy>
+
+=item o F<File::Spec>
+
+=item o F<Getopt::Std>
+
+=item o F<IO::File>
+
+=item o F<IO::Handle>
+
+=item o F<POSIX>
+
+=item o F<Socket>
+
+=item o F<Symbol>
+
+=back
+
+The following packages are used but they are not required for the data
+collection:
+
+=over 2
+
+=item o F<Compress::Zlib> (used for accessing archives)
+
+=item o F<DBD::ODBC> (used for alternative ODBC accesses)
+
+=item o F<DBD::Oracle> (used for alternative accesses to Oracle databases)
+
+=item o F<DBI> (used for alternative database accesses)
+
+=item o F<Digest::MD5> (used for checksums)
+
+=item o F<Fcntl> (used in locking context)
+
+=item o F<Sys::Hostname> (used as help for determining the domain name)
+
+=item o F<Term::Cap> (used to enhance the display)
+
+=item o F<Time::HiRes> (used for clock checks)
+
+=item o F<Win32::Console> (used for disabling echo)
+
+=item o F<Win32::ODBC> (used for ODBC accesses)
+
+=back
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

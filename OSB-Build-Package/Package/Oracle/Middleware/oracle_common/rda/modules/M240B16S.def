@@ -1,0 +1,254 @@
+# M240B16S.def: Collects Sun Blade B1600 Server Switch Information
+# $Id: M240B16S.def,v 1.4 2012/05/21 09:13:28 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M240B16S.def,v 1.4 2012/05/21 09:13:28 mschenke Exp $
+#
+# Change History
+# 20120521  JGS  Improve the password management.
+
+=head1 NAME
+
+M240B16S - Collects Sun Blade B1600 Server Switch System Controller Information
+
+=head1 DESCRIPTION
+
+This module collects Switch System Controller (SSC) information in Sun Blade
+B1600 servers.
+
+=cut
+
+use Mrc
+use Telnet
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $NXT = 'm/---More---/'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('b1600switch')
+
+# Get the ping syntax
+var $PING = check(${RDA.OS},'solaris','/usr/sbin/ping %s',\
+                            'linux',  '/bin/ping -c 1 %s',\
+                            'cygwin', '/bin/ping %s 64 1')
+
+#------------------------------------------------------------------------------
+# XPLR_b16s section
+#------------------------------------------------------------------------------
+
+section XPLR_b16s
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing B16S sections ...')
+
+pretoc '2:B1600 System Controller'
+
+=head2 Sun Blade B1600 Switch System Controller Information
+
+Gathers the following Switch System Controller commands through telnet:
+
+=over 2
+
+=item o C<show gvrp configuration>
+
+=item o C<show interfaces status>
+
+=item o C<show interfaces switchport>
+
+=item o C<show ip interface>
+
+=item o C<show logging flash>
+
+=item o C<show logging ram>
+
+=item o C<show running-config>
+
+=item o C<show system>
+
+=item o C<show version>
+
+=item o C<show vlan>
+
+=back
+
+=cut
+
+# Describe the Service Controller commands
+var @cmd = (\
+  '---+ Switch System Controller',\
+  ['show_version.out',\
+   'show version',\
+   '---++ Hardware and Software Version Information'],\
+  ['show_system.out',\
+   'show system',\
+   '---++ System Information'],\
+  ['show_running-config.out',\
+   'show running-config',\
+   '---++ Configuration Information Currently in Use'],\
+  ['show_vlan.out',\
+   'show vlan',\
+   '---++ Virtual Local Area Network (Vlan) Information'],\
+  ['show_interfaces_status.out',\
+   'show interfaces status',\
+   '---++ Status for Ethernet Port, Aggregated Link, or VLAN Interfaces'],\
+  ['show_interfaces_switchport.out',\
+   'show interfaces switchport',\
+   '---++ Advanced Interface Configuration Settings'],\
+  ['show_ip_interface.out',\
+   'show ip interface',\
+   '---++ Settings for All IP Interfaces'],\
+  ['show_logging_ram.out',\
+   'show logging ram',\
+   '---++ Event History in Temporary RAM'],\
+  ['show_logging_flash.out',\
+   'show logging flash',\
+   '---++ Event History in Flash Memory'],\
+  ['show_gvrp_configuration.out',\
+   'show gvrp configuration',\
+   '---++ GARP VLAN Registration Protocol (GVRP) Status'])
+
+# Treat all requests
+loop $set (split('\|',${XPLR_B16S_SET}))
+{$hst = getSetting(concat('XPLR_B16S_HOST_',$set))
+ $usr = getSetting(concat('XPLR_B16S_USER_',$set))
+ next !?$hst
+
+ # Validate the input parameters
+ debug ' Inside B16S collection, validating ',$hst,' access'
+ if !match($hst,'^[\w\-\.\:]+$')
+  next log_info(concat('The B1600 SSC host name or IP "',$hst,\
+                       '"contains invalid characters.'))
+ call command(sprintf($PING,$hst))
+ if status()
+  next log_info(concat('Host ',$hst,' is not reachable.'))
+
+ if !match($usr,'^[\w\-\.]+$')
+  next log_info(concat('The B1600 SSC user name "',$usr,\
+                       '"contains invalid characters.'))
+ if !hasPassword('host',$hst,$usr)
+  call setPassword('host',$hst,$usr,\
+    askPassword(concat('Enter ',$usr,' password for B1600 SSC ',$hst,': ')))
+
+ # Connect to the System Controller
+ var $ctl = new('Telnet',hst=>$hst)
+ if !?$ctl->open
+  next log_warning($ctl->get_info('msg'))
+ if !?$ctl->login($usr,{pat=>'m/Vty-.*/',\
+                        dis=>'quit'})
+  next log_warning($ctl->get_info('msg'))
+
+ # Genererate the report
+ debug ' Inside B16S collection, gathering ',$hst,' information'
+ report concat('b16s_info_',$hst)
+ title '---+!! Sun Blade B1600 Server Switch System Controller'
+ title '---## ',$hst,' Information'
+ title $TOC
+ loop $rec (@cmd)
+ {if !ref($rec)
+   write $rec
+  else
+  {prefix
+   {write $rec->[2]
+    write '---## Using: ',encode($rec->[1])
+    call beginBlock(true)
+    call addBlock('E','D',concat('sc/',$hst,'/',$rec->[0]))
+   }
+   if $ctl->collect(${CUR.REPORT},{cmd=>$rec->[1],nxt=>[$NXT,' ']})
+    call log_warning($ctl->get_info('msg'))
+   if hasOutput(true)
+   {call endBlock()
+    write $TOP
+   }
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',$hst,' Information]]'
+
+ # Close the connection
+ call $ctl->quit
+}
+
+=head2 b16s_input - Input File
+
+Lists the characteristics of the specified input file.
+
+=cut
+
+if testFile('r',catFile(${XPLR_B16S_CFG}))
+{debug ' Inside B16S collection, getting input file characteristics'
+ report b16s_input
+ call do_exec(\
+   [concat('sc/ls_-l_',replace(lastFile(),'\/','@',true)),\
+    '/usr/bin/ls',concat('-l ',quote(lastFile(),'x')),\
+    '---+ Explorer Input File'])
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][Input File]]'
+}
+
+# Adjust the table of content
+unpretoc
+
+#------------------------------------------------------------------------------
+# Input file conversion section
+#------------------------------------------------------------------------------
+
+section input
+
+# Define the input file parser macro
+macro parse_input
+{var ($fil,$flg) = @arg
+
+ var @sta = getStat($fil)
+ if !expr('&',$sta[2],077)
+ {# Parse the input file
+  var ($set,@set) = (0)
+  loop $lin (grepFile($fil,'^\s*#','v'))
+  {var ($hst,$usr,$pwd) = split('\s+',trim($lin),3)
+   next !?$hst
+   if ?$pwd
+    call setPassword('host',$hst,$usr,$pwd)
+   call push(@set,incr($set))
+   call setTempSetting(concat('XPLR_B16S_HOST_',$set),$hst)
+   call setTempSetting(concat('XPLR_B16S_USER_',$set),$usr)
+  }
+
+  # Save the parsing results
+  if $set
+  {call setTempSetting('XPLR_B16S_CFG',$fil)
+   call setTempSetting('XPLR_B16S_SET',join('|',@set))
+   call setTempSetting('xplr_b16s_accept',true)
+  }
+  else
+   call setTempSetting('xplr_b16s_accept',$flg)
+ }
+}
+
+# Parse the input file
+if and(defined($fil = ${ENV.EXP_B1600INPUT_CONFIG}),\
+       testFile('frs',catFile($fil)))
+ call parse_input(lastFile(),true)
+else
+ call parse_input(catFile(${ENV.XPL_ETC},'b1600switchinput.txt'),false)
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

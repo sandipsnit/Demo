@@ -1,0 +1,102 @@
+<?xml version="1.0"?>
+<!--  $Header: emas/sysman/admin/adml/domain-weblogic_j2ee_application-11.0.xml /st_emasgc_11.1as/2 2011/09/22 10:23:03 klmichae Exp $ -->
+
+<!-- 
+ Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     domain_j2ee_application.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   klmichae    09/20/11 - add a rule for application response
+   klmichae    08/02/10 - remove all metric tables
+   scgrover    08/31/09 - Creation
+
+-->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	TableSpace="domain_j2ee_application">
+
+ <!-- this file contains no metrics rules, but is needed to overwrite the rules
+      that we shipped in the previous patchset. -->
+
+ <!-- This metric computes the application response.  This is needed because
+      there are cases where we cannot get the mbeans for an application, so
+      the response will be returned as empty, rather than down -->
+
+ <!-- Response (published) -->
+ <Table Name="Response">
+  <ColumnDef Name="serverName" Type="String" Key="true"/>
+  <ColumnDef Name="appName" Type="String" Key="true"/>
+  <ColumnDef Name="Status" Type="Integer"/>
+  <Select Name="Response_from_server">
+   <TableFrom Name="weblogic_j2eeserver:application"/>
+   <Column Name="serverName" Type="String"/>
+   <Column Name="appName" Type="String"/>
+   <Column Name="Status" Type="Integer"/>
+
+   <!-- Look for the specified server and application -->
+   <Where>
+    <And>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="serverName"/>
+       <Value Name="serverName.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="appName"/>
+       <Value Name="appName.parameter"/>
+      </Condition>
+    </And>
+   </Where>
+  </Select>
+
+  <Select Name="Response_result_count">
+   <TableFrom Name="Response_from_server"/>
+
+   <!-- If the server is down or admin state, we won't get any rows
+        back.  In this case, return 0. -->
+   <Column Name="numRows" Type="Integer">
+    <Aggregation Operator="Count"/>
+    <Default>0</Default>
+   </Column>
+   <Column Name="Status" Type="Integer">
+     <Aggregation Operator="Max" Name="Status"/>
+   </Column>
+  </Select>
+
+  <Select Name="Response_result">
+   <TableFrom Name="Response_result_count"/>
+   <Column Name="serverName" Type="String">
+     <Value Name="serverName.parameter"/>
+   </Column>
+ 
+   <Column Name="appName" Type="String">
+     <Value Name="appName.parameter"/>
+   </Column>
+
+   <Column Name="Status" Type="Integer">
+    <If>
+     <Condition Operator="GT">
+      <ColumnFrom Name="numRows"/>
+      <Value>0</Value>
+     </Condition>
+
+     <Then>
+      <ColumnFrom Name="Status"/>
+     </Then>
+
+     <Else>
+      <Value>0</Value>
+     </Else>
+    </If>
+    <Default>0</Default>
+   </Column>
+  </Select>
+ </Table> 
+
+</Adml>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+	<extension point="org.eclipse.ui.newWizards">
+		<category id="com.bea.alsb.new" name="%ALSBCategory_name">
+		</category>
+        <wizard
+              category="com.bea.alsb.new"
+              class="com.bea.alsb.ui.resources.alert.wizard.AlertWizard"
+              finalPerspective="com.bea.alsb.ui.perspectives.aqualogic"
+              icon="icons/new_alert_destinations.gif"
+              id="com.bea.alsb.ui.wizards.alert"
+              name="%AlertWizard_name"
+              preferredPerspectives="com.bea.alsb.ui.perspectives.aqualogic"
+              project="false">
+           <description>%AlertWizard_description</description>
+        </wizard>
+	</extension>
+	
+	<extension point="org.eclipse.ui.navigator.navigatorContent">
+        <commonWizard type="new" 
+                      menuGroupId="com.bea.alsb.new"
+                      wizardId="com.bea.alsb.ui.wizards.alert">
+            <enablement>
+                <or>
+                    <adapt type="org.eclipse.core.resources.IResource">
+				        <test forcePluginActivation="true"
+				              property="org.eclipse.core.resources.projectNature"
+				              value="com.bea.alsb.core.natures.alsb.project"/>
+				    </adapt>
+                </or>
+            </enablement>
+        </commonWizard>
+	</extension>
+	
+	<extension point="org.eclipse.ui.editors">
+        <editor
+              class="com.bea.alsb.ui.resources.alert.editor.AlertEditor"
+              contributorClass="com.bea.alsb.ui.resources.common.AlsbEditorActionBarContributer"
+              default="true"
+              extensions="alert"
+              icon="icons/icon_alert_destinations.gif"
+              id="com.bea.alsb.ui.editors.alert"
+              name="%AlertEditor_name">
+            <contentTypeBinding contentTypeId="com.bea.alsb.core.resources.alert.content-type"/>
+        </editor>
+	</extension>
+	<extension
+	   point="org.eclipse.ui.perspectiveExtensions">
+	   <perspectiveExtension targetID="com.bea.alsb.ui.perspectives.aqualogic">
+	      <newWizardShortcut id="com.bea.alsb.ui.wizards.alert"/>
+	   </perspectiveExtension>
+	</extension>
+</plugin>

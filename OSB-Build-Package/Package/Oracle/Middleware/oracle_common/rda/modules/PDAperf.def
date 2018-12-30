@@ -1,0 +1,892 @@
+# PDAperf.def: Collects Portal Performance Information
+# $Id: PDAperf.def,v 2.6 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/PDAperf.def,v 2.6 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+PDAperf - Collects Portal Performance Information
+
+=head1 DESCRIPTION
+
+This module collects Portal performance-related information.
+
+=cut
+
+# Initialization
+var ($lvl,$OC4J_USED,$VERSION,@PERF_FILES) = @arg
+import $ORACLE_HOME,$TOC,$TOP
+
+var $ERROR_TAIL      = getSetting('PDA_ERROR_TAIL')
+var $EXPENSIVE_LIMIT = getSetting('PDA_EXPENSIVE_LIMIT')
+var $FULL_URL        = getSetting('PDA_FULL_URL')
+var $MISSING_LIMIT   = getSetting('PDA_MISSING_LIMIT')
+var $SIZE_LIMIT      = getSetting('PDA_SIZE_LIMIT')
+
+keep $KEEP_BLOCK
+
+var $CNT = 0
+var $OH  = quote($ORACLE_HOME)
+var $OH1 = concat('^',$OH,'[\\\/]')
+var $OH2 = concat('^',$OH,'\b')
+
+# Index variables
+var $lvl = nvl($lvl,2)
+var $det = $lvl
+incr $det,2
+
+=head2 Performance Analysis
+
+Provides a summary of the performance information logged by C<mod_plsql>.
+
+=cut
+
+debug ' Inside PDA module, analyzing the performance'
+
+# Define parsing macros
+macro extract_time
+{var ($val) = @arg
+ var ($tim) = match($val,'^(\d+)')
+ return $tim
+}
+
+macro split_time
+{var (\%tbl,$key) = @arg
+ var $tim = concat($key,'Time')
+ var ($tbl{$key},$tbl{$tim}) = split(',',$tbl{$key})
+ var $tbl{$tim} = extract_time($tbl{$tim})
+}
+
+# Define the reporting macros
+macro fmt_average
+{var ($val,$tot) = @arg
+ if $tot
+  return sprintf('%d',expr('/',$val,$tot))
+ return 0
+}
+
+macro fmt_percent
+{var ($val,$tot) = @arg
+ if $tot
+  return sprintf('%3.2f%%',expr('/',expr('*',100,$val),$tot))
+ return '0.00%'
+}
+
+macro write_url_stat
+{var (\%tbl,$ttl,$flg) = @arg
+ import $cnt,%tb_det,%tb_dur,%tb_req,%tb_url,$TOP
+ prefix
+ {write '---+ URL Summary - Sorted by ',$ttl
+  if $flg
+   write '| *%Total Time*| *Req Time*| *Proc Time*| *DB Proc Time*| \
+            *Cache Time*| *Session Time*| *ConnPool Time*| *Tidy Time*| \
+            *Page Calls Time*| *Desc Time*| *Perceived*| *Unaccounted*|\
+            *URL/Proc*|'
+  else
+   write '| *Count*| *Volume*| *%Total Time*| *Average Time*| *%Public*| \
+            *%Desc*| *Error Count*|*URL*|'
+ }
+ loop $url (keys(%tbl,'ND'))
+ {if $flg
+  {var $val = $tb_req{$url}
+   decr $val,$tb_det{concat('cacheTime_',$url)}
+   decr $val,$tb_det{concat('connPoolTime_',$url)}
+   decr $val,$tb_det{concat('cookieTime_',$url)}
+   decr $val,$tb_det{concat('describeTime_',$url)}
+   decr $val,$tb_det{concat('pageCallsTime_',$url)}
+   decr $val,$tb_det{concat('procTime_',$url)}
+   decr $val,$tb_det{concat('sessionTidyTime_',$url)}
+   decr $val,$tb_det{concat('streamTime_',$url)}
+   write '| ',fmt_percent($tb_req{$url},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_req{$url},$tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('procTime_',$url)},$tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('dbProcTime_',$url)},$tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('cacheTime_',$url)},$tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('cookieTime_',$url)},$tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('connPoolTime_',$url)},$tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('sessionTidyTime_',$url)},\
+                     $tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('pageCallsTime_',$url)},$tb_url{$url}),\
+                     '| ',\
+         fmt_average($tb_det{concat('describeTime_',$url)},$tb_url{$url}),'| ',\
+         fmt_average($tb_det{concat('reqUserTime_',$url)},$tb_url{$url}),'| ',\
+         fmt_average($val,$tb_url{$url}),'|',$url,' |'
+  }
+  else
+   write '| ',$tb_url{$url},'| ',\
+         fmt_percent($tb_url{$url},$cnt),'| ',\
+         fmt_percent($tb_req{$url},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_req{$url},$cnt),'| ',\
+         fmt_percent($tb_det{concat('public_',$url)},$tb_url{$url}),'| ',\
+         fmt_percent($tb_det{concat('describe_',$url)},$tb_url{$url}),'| ',\
+         nvl($rep_total_urlerrors,0),'|',$url,' |'
+ }
+ if hasOutput(true)
+  write $TOP
+}
+
+pretoc $lvl,':Performance Analysis'
+incr $lvl
+loop $PERF_FILE (@PERF_FILES)
+{incr $CNT
+ # Treat the error file
+ if createBuffer('pda','T',$PERF_FILE,$ERROR_TAIL)
+ {# Skip the first line when the buffer does not contain the whole file
+  if expr('>',last,0)
+  {call getLine('pda')
+   var $src = sprintf(\
+     'last %3.1f MiB of %s',expr('/',$ERROR_TAIL,1048576),$PERF_FILE)
+  }
+  else
+   var $src = $PERF_FILE
+
+  # Initialize reports
+  pretoc $lvl,':',replace($PERF_FILE,$OH2,'$OH')
+  report concat('pls_expensive',$CNT)
+  prefix
+  {write '---+!! Expense Summary'
+   write '| *Line No*|*Time* |*IP Addr*|*Status*| *Req Time*| *Proc Time*| \
+            *DB Proc Time*| *Cache Time*| *Cookie Time*| *Tidy Time*| \
+            *ConnPool Time*| *Page Calls Time*| *Bytes*| *Describe Time*| \
+            *Missing Time*|*URL*|'
+  }
+  suspend pls_expensive
+  report concat('pls_ignored',$CNT)
+  prefix
+  {write '---+!! Ignored Errors'
+   write '---## Information Taken from ',encode($src)
+   write '<verbatim>'
+  }
+  suspend pls_ignored
+  report concat('pls_invalid_cookies',$CNT)
+  prefix
+  {write '---+!! Invalid Cookies'
+   write '---## Information Taken from ',encode($src)
+   write '<verbatim>'
+  }
+  suspend pls_invalid_cookies
+  report concat('pls_missing_time',$CNT)
+  prefix
+  {write '---+!! Missing Time'
+   write '---## Information Taken from ',encode($src)
+   write '| *Line No*|*Time* |*IP Addr*|*Status*| *Req Time*| *Proc Time*| \
+            *DB Proc Time*| *Cache Time*| *Cookie Time*| *Tidy Time*| \
+            *ConnPool Time*| *Page Calls Time*| *Bytes*| *Describe Time*| \
+            *Missing Time*|*URL*|'
+  }
+  suspend pls_missing_time
+  report concat('pls_parser_errors',$CNT)
+  prefix
+  {write '---+!! Parser Errors'
+   write '---## Information Taken from ',encode($src)
+   write '<verbatim>'
+  }
+  suspend pls_parser_errors
+  report concat('pls_unknown_missing_time',$CNT)
+  prefix
+  {write '---+!! Unknown Missing Time'
+   write '---## Information Taken from ',encode($src)
+   write '| *Line No*|*Time* |*IP Addr*|*Status*| *Req Time*| *Proc Time*| \
+            *DB Proc Time*| *Cache Time*| *Cookie Time*| *Tidy Time*| \
+            *ConnPool Time*| *Page Calls Time*| *Bytes*| *Describe Time*| \
+            *Missing Time*|*URL*|'
+  }
+  suspend pls_unknown_missing_time
+
+  # Parse the error file
+  var $num = 0
+  while true
+  {# Read the next line
+   var $lin = chomp(getLine('pda'))
+   break !defined($lin)
+   incr $num
+
+   # Ignore blank line
+   next !$lin
+
+   # Ignore some messages upfront
+   if $OC4J_USED
+   {next !match($lin,'\[module=PortalServlet\b')
+    var $lin = replace($lin,'\[module=PortalServlet[^\]]*]',' ')
+   }
+   next match($lin,'(IAS/PM/PROC_READY|\
+                    "OraDAV:|\
+                    "File does not exist|\
+                    " client stopped connection |\
+                    " still did not exit, |\
+                    "User not authorized|\
+                    "had to be described|\
+                    "Proxy log On failed|\
+                    "Stale Connection|\
+                    "Cleanup Thread Started|\
+                    "Cleanup Thread Exiting|\
+                    "is deprecated|\
+                    "No DAD configuration found|\
+                    "Using default charset)')
+
+   # Ignore begin messages
+   next match($lin,'\s+\[info\].*mod_plsql:\s+(Setting Charset|\
+                                               DBCharSet is|\
+                                               Setting Language|\
+                                               Setting Territory|\
+                                               Deinitialized|\
+                                               Cleanup Thread|\
+                                               Caching is enabled|\
+                                               Found duplicate session|\
+                                               Removing session cache)')
+
+   # Decode the error log line
+   var ($pre,%tbl) = split('\s+(\w+)=',replace($lin,'\s{2,}',' ',true))
+
+   # Check if this is a connection pool cleanup entry
+   if match($lin,'conncleanup')
+    incr $tb_cnt{'connCleanup'}
+
+   # Ignore blank lines or lines with less fields than needed
+   if missing($tbl{'status'})
+   {# Check if this is a mod_plsql error message
+    if match($lin,'mod_plsql:')
+    {if match($lin,'Cookie:')
+     {# Treat an invalid error
+      resume pls_invalid_cookies
+      write $num,' : ',$lin
+      suspend pls_invalid_cookies
+     }
+     else
+     {# Treat a PL/SQL error stack
+      var $stk = field('mod_plsql:\s*',1,$lin)
+      while true
+      {# Read the next line
+       var $pos = getPos('pda')
+       var $lin = chomp(getLine('pda'))
+       break !defined($lin)
+       # Detect the next record
+       if match($lin, '^\[')
+       {# Unread the last line
+        call setPos('pda',$pos)
+        break
+       }
+       incr $num
+       # Add the line to the error stack
+       var $stk = join("\012",$stk,$lin)
+      }
+      incr $tb_err{$stk}
+      next
+     }
+    }
+
+    # Reject the line
+    next match($lin,'Connection reset by peer|Broken pipe:')
+    resume pls_ignored
+    write $num,' : ',$lin
+    suspend pls_ignored
+    next
+   }
+
+   # Get URL and IP address
+   if $OC4J_USED
+   {# Ignore nonmodplsql lines
+    if !match($lin,'portal\:\s+\[perf(\-repos)?\]')
+    {resume pls_ignored
+     write $num,' : unknown input ',$lin
+     suspend pls_ignored
+     next
+    }
+
+    # Transform the URL to allow for cumulative stats
+    if compare('eq',$tbl{'url'},'session')
+     var $url = field('\?',0,$tbl{'referer'})
+    else
+     var $url = field('\?',0,$tbl{'url'})
+    if match($url,'^\w+:')
+    {var (undef,undef,undef,$url) = split('\/',$url,4)
+     var $url = concat('/',$url)
+    }
+    if match($url,'/page/')
+     var $url = '/page/'
+    elsif match($url,'/docs/')
+     var $url = '/docs/'
+    elsif match($url,'/url/')
+     var $url = '/url/'
+    elsif !$FULL_URL
+    {if match($url,'^[^\.]*\.([^\/]*)')
+      var ($url) = (last)
+    }
+
+    # Determine the IP address
+    var $adr = $tbl{'ipAddr'}
+   }
+   else
+   {# Ignore nonmodplsql lines
+    if !match($lin,'\[info].*mod_plsql:\s+\[perf\]')
+    {resume pls_ignored
+     write $num,' : unknown input ',$lin
+     suspend pls_ignored
+     next
+    }
+
+    # Transform the URL to allow for cumulative stats
+    var ($adr,$url) = \
+     match($pre,'mod_plsql:\s+\[perf\]\s+(\d+\.\d+\.\d+\.\d+\s+)?(.*)$')
+    if match($url,'/docs/')
+     var $url = '/docs/'
+    elsif match($url,'/url/')
+     var $url = '/url/'
+    elsif !$FULL_URL
+    {if match($url,'^[^\.]*\.(.*)$')
+      var ($url) = (last)
+    }
+
+    # Determine the IP address
+    if !$adr
+     var ($adr) = match($pre,'\[client\s+(\d+\.\d+\.\d+\.\d+)')
+   }
+
+   # Parse some fields
+   loop $key ('cacheTime','dbProcTime','procTime','reqTime','reqUserTime',\
+              'sessionTidyTime','streamTime')
+    var $tbl{$key} = extract_time($tbl{$key})
+   loop $key ('connNSSO','connRO','connSU','cookie','describe','pageCalls')
+    call split_time(\%tbl,$key)
+
+   # Make sure that negative numbers do not mess up our calculations
+   if or(expr('<',$tbl{'cacheTime'},0),\
+         expr('<',$tbl{'dbProcTime'},0),\
+         expr('<',$tbl{'describeTime'},0),\
+         expr('<',$tbl{'reqTime'},0),\
+         expr('<',$tbl{'streamTime'},0))
+   {resume pls_parser_errors
+    write $num,': Negative time in ',$lin
+    suspend pls_parser_errors
+    next
+   }
+
+   # Update the status count
+   var $sta = $tbl{'status'}
+   incr $tb_sta{$sta}
+   if expr('>=',$sta,400)
+    incr $tb_det{concat('errors_',$url)}
+
+   # Update the connection pooling information
+   var $sta = $tbl{'connSU'}
+   if compare('eq',$sta,'HIT')
+    incr $tb_cnt{'connSU_hit'}
+   elsif compare('eq',$sta,'NEW')
+    incr $tb_cnt{'connSU_new'}
+   elsif compare('eq',$sta,'(null)')
+    incr $tb_cnt{'connSU_null'}
+   else
+    incr $tb_cnt{'connSU_unknown'}
+
+   var $sta = $tbl{'connRO'}
+   if compare('eq',$sta,'HIT')
+    incr $tb_cnt{'connRO_hit'}
+   elsif compare('eq',$sta,'NEW')
+    incr $tb_cnt{'connRO_new'}
+   elsif compare('eq',$sta,'(null)')
+    incr $tb_cnt{'connRO_null'}
+   else
+    incr $tb_cnt{'connRO_unknown'}
+
+   var $sta = $tbl{'connSSO'}
+   if compare('eq',$sta,'HIT')
+    incr $tb_cnt{'connSSO_hit'}
+   elsif compare('eq',$sta,'NEW')
+    incr $tb_cnt{'connSSO_new'}
+   elsif compare('eq',$sta,'(null)')
+    incr $tb_cnt{'connSSO_null'}
+   else
+    incr $tb_cnt{'connSSO_unknown'}
+
+   var $tbl{'connPoolTime'} = 0
+   incr $tbl{'connPoolTime'},$tbl{'connNSSOTime'}
+   incr $tbl{'connPoolTime'},$tbl{'connROTime'}
+   incr $tbl{'connPoolTime'},$tbl{'connSUTime'}
+   incr $tb_dur{'connPoolTime'},$tbl{'connPoolTime'}
+
+   # Update the session cache information
+   var $sta = $tbl{'cookie'}
+   if compare('eq',$sta,'CREATE')
+   {incr $tb_cnt{'sessionCache_create'}
+    incr $tb_dur{'sessionCache_create'},$tbl{'cookieTime'}
+   }
+   elsif compare('eq',$sta,'HIT')
+   {incr $tb_cnt{'sessionCache_hit'}
+    incr $tb_dur{'sessionCache_read'},$tbl{'cookieTime'}
+   }
+   elsif compare('eq',$sta,'MISS')
+   {incr $tb_cnt{'sessionCache_miss'}
+    incr $tb_dur{'sessionCache_decrypt'},$tbl{'cookieTime'}
+   }
+   elsif compare('eq',$sta,'(null)')
+    incr $tb_cnt{'sessionCache_null'}
+   else
+   {resume pls_parser_errors
+    write $num,': Unknown session cache status in ',$lin
+    suspend pls_parser_errors
+   }
+   incr $tb_dur{'sessionCache'},$tbl{'cookieTime'}
+
+   # Update the PLSQL cache information
+   var $sta = $tbl{'cache'}
+   if compare('eq',$sta,'HIT,EXPIRES')
+   {incr $tb_cnt{'plsqlCache_hitexpires'}
+    incr $tb_dur{'plsqlCache_hitexpires'},$tbl{'cacheTime'}
+   }
+   elsif compare('eq',$sta,'HIT,PING')
+   {incr $tb_cnt{'plsqlCache_hitping'}
+    incr $tb_dur{'plsqlCache_hitping'},$tbl{'cacheTime'}
+   }
+   elsif compare('eq',$sta,'MISS,NEW')
+   {incr $tb_cnt{'plsqlCache_missnew'}
+    incr $tb_dur{'plsqlCache_missnew'},$tbl{'cacheTime'}
+   }
+   elsif compare('eq',$sta,'MISS,STALE')
+   {incr $tb_cnt{'plsqlCache_missstale'}
+    incr $tb_dur{'plsqlCache_missstale'},$tbl{'cacheTime'}
+   }
+   elsif compare('eq',$sta,'(null)')
+   {incr $tb_cnt{'plsqlCache_null'}
+    incr $tb_dur{'plsqlCache_null'},$tbl{'cacheTime'}
+   }
+   else
+   {resume pls_parser_errors
+    write $num,': Unknown plsql cache status in ',$lin
+    suspend pls_parser_errors
+   }
+
+   # Update "Total" statistics
+   incr $tb_url{$url}
+   incr $tb_req{$url},$tbl{'reqTime'}
+   if compare('eq',$tbl{'describe'},'Yes')
+   {incr $tb_det{concat('describe_',$url)}
+    incr $tb_det{concat('describeTime_',$url)},$tbl{'describeTime'}
+   }
+   incr $tb_det{concat('cacheTime_',$url)},$tbl{'cacheTime'}
+   incr $tb_det{concat('connPoolTime_',$url)},$tbl{'connPoolTime'}
+   incr $tb_det{concat('cookieTime_',$url)},$tbl{'cookieTime'}
+   incr $tb_det{concat('dbProcTime_',$url)},nvl($tbl{'dbProcTime'},'-1')
+   incr $tb_det{concat('pageCallsTime_',$url)},$tbl{'pageCallsTime'}
+   incr $tb_det{concat('procTime_',$url)},$tbl{'procTime'}
+   incr $tb_det{concat('sessionTidyTime_',$url)},$tbl{'sessionTidyTime'}
+   incr $tb_det{concat('streamTime_',$url)},$tbl{'streamTime'}
+   if $tbl{'reqUserTime'}
+   {incr $tb_det{concat('reqUserTime_',$url)},$tbl{'reqUserTime'}
+    incr $tb_dur{'reqUserTime'},$tbl{'reqUserTime'}
+   }
+   if compare('eq',$tbl{'user'},'PUBLIC')
+    incr $tb_det{concat('public_',$url)}
+
+   # Update the Oracle error code list
+   var $err = $tbl{'oraError'}
+   if and($err,compare('ne',$err,'(null)'))
+   {var $key = concat('oraerr_',$url)
+    if !match($tb_det{$key},concat('\b',$err,'\b'))
+     var $tb_det{$key} = join(', ',$tb_det{$key},concat('ORA-',$err))
+   }
+
+   # Update the processing time
+   incr $tb_dur{'cacheTime'},$tbl{'cacheTime'}
+   incr $tb_dur{'dbProcTime'},$tbl{'dbProcTime'}
+   incr $tb_dur{'describeTime'},$tbl{'describeTime'}
+   incr $tb_dur{'pageCallsTime'},$tbl{'pageCallsTime'}
+   incr $tb_dur{'procTime'},$tbl{'procTime'}
+   incr $tb_dur{'reqTime'},$tbl{'reqTime'}
+   incr $tb_dur{'streamTime'},$tbl{'streamTime'}
+   incr $tb_dur{'sessionTidyTime'},$tbl{'sessionTidyTime'}
+   incr $tb_cnt{'url'}
+
+   # Check if this was an expensive request
+   var $val = $tbl{'reqTime'}
+   decr $val,$tbl{'procTime'}
+   decr $val,$tbl{'cacheTime'}
+   decr $val,$tbl{'cookieTime'}
+   decr $val,$tbl{'sessionTidyTime'}
+   decr $val,$tbl{'connPoolTime'}
+   decr $val,$tbl{'pageCallsTime'}
+   decr $val,$tbl{'describeTime'}
+   decr $val,$tbl{'streamTime'}
+   if expr('>',$tbl{'reqTime'},$EXPENSIVE_LIMIT)
+   {incr $tb_exp{$url}
+    resume pls_expensive
+    write '| ',$num,'|',field('[\[\]]',1,$pre),' |',$adr,' |',\
+          $tbl{'status'},' | ',$tbl{'reqTime'},'| ',$tbl{'procTime'},'| ',\
+          $tbl{'dbProcTime'},'| ',$tbl{'cacheTime'},'| ',\
+          $tbl{'cookieTime'},'| ',$tbl{'sessionTidyTime'},'| ',\
+          $tbl{'connPoolTime'},'| ',$tbl{'pageCallsTime'},'| ',\
+          $tbl{'bytes'},'| ',$tbl{'describeTime'},'| ',$val,'|',$url,' |'
+    suspend pls_expensive
+   }
+
+   # Check if this request has a lot of missing time
+   if expr('>',$val,$MISSING_LIMIT)
+   {resume pls_missing_time
+    write '| ',$num,'|',field('[\[\]]',1,$pre),' |',$adr,' |',\
+          $tbl{'status'},' | ',$tbl{'reqTime'},'| ',$tbl{'procTime'},'| ',\
+          $tbl{'dbProcTime'},'| ',$tbl{'cacheTime'},'| ',\
+          $tbl{'cookieTime'},'| ',$tbl{'sessionTidyTime'},'| ',\
+          $tbl{'connPoolTime'},'| ',$tbl{'pageCallsTime'},'| ',\
+          $tbl{'bytes'},'| ',$tbl{'describeTime'},'| ',$val,'|',$url,' |'
+    suspend pls_missing_time
+
+    # Missing time exists but not related to byte size
+    if expr('<',$tbl{'bytes'},$SIZE_LIMIT)
+    {resume pls_unknown_missing_time
+     write '| ',$num,'|',field('[\[\]]',1,$pre),' |',$adr,' |',\
+           $tbl{'status'},' | ',$tbl{'reqTime'},'| ',$tbl{'procTime'},'| ',\
+           $tbl{'dbProcTime'},'| ',$tbl{'cacheTime'},'| ',\
+           $tbl{'cookieTime'},'| ',$tbl{'sessionTidyTime'},'| ',\
+           $tbl{'connPoolTime'},'| ',$tbl{'pageCallsTime'},'| ',\
+           $tbl{'bytes'},'| ',$tbl{'describeTime'},'| ',$val,'|',$url,' |'
+     suspend pls_unknown_missing_time
+    }
+   }
+  }
+
+  # Write out the global section
+  report concat('pls_summary',$CNT)
+  prefix
+  {write '---+!! Performance Analysis'
+   write '---## Information Taken from ',encode($src)
+  }
+  var $cnt = $tb_cnt{'url'}
+  if !$cnt
+  {write 'No mod_plsql performance records were found in the log file. Either \
+          no mod_plsql records were made, or performance logging is not \
+          enabled (``LogLevel`` should be set to ``info`` in httpd.conf, and \
+          ``logmode`` to ``perf`` for the servlet logging).'
+   if !$OC4J_USED
+   {write
+    write 'For iAS 1.0.2, debugModules should also be set to info in \
+           wdbsvr.app. For iAS 9.0.2.5 and higher, you can optionally set \
+           PlsqlInfoLogging to InfoDebug at the DAD level. This allows for \
+           Portal cookie logging as well.'
+   }
+   if !$VERSION
+   {write
+    write 'The Portal version could not be determined neither from the \
+           Database nor from the Inventory. Therefore, it could not be use to \
+           determine which is the right log file to analyze.'
+   }
+  }
+  else
+  {write $TOC
+   # Session cache information
+   var $tb_dur{'sessionCache'} = 0
+   incr $tb_dur{'sessionCache'},$tb_dur{'sessionCache_create'}
+   incr $tb_dur{'sessionCache'},$tb_dur{'sessionCache_decrypt'}
+   incr $tb_dur{'sessionCache'},$tb_dur{'sessionCache_read'}
+   var $tb_cnt{'sessionCache'} = 0
+   incr $tb_cnt{'sessionCache'},$tb_cnt{'sessionCache_create'}
+   incr $tb_cnt{'sessionCache'},$tb_cnt{'sessionCache_hit'}
+   incr $tb_cnt{'sessionCache'},$tb_cnt{'sessionCache_miss'}
+
+   # Write out global information
+   write '---+ Performance Summary'
+   write "|*Total URL's*| ",$cnt,'|'
+   write '|*Total Request Time*| ',$tb_dur{'reqTime'},' ms|'
+   write '|*Average per Request*| ',\
+         fmt_average($tb_dur{'reqTime'},$cnt),' ms|'
+   write '|*Idle Session Cleanup Count*| ',$tb_cnt{'connCleanup'},'|'
+   write '|*Perceived Time*| ',\
+         fmt_percent($tb_dur{'reqUserTime'},$tb_dur{'reqTime'}),'|'
+   write '|*Time Saved*| ',\
+         expr('-',$tb_dur{'reqTime'},$tb_dur{'reqUserTime'}),' ms|'
+   write $TOP
+   write '---+ Performance Statistics'
+   write '|*Breakup*| *%Req Time*| *Average*| *Total Time*|'
+   write '|Total DBProc Time| ',\
+         fmt_percent($tb_dur{'dbProcTime'},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_dur{'dbProcTime'},$cnt),' ms| ',\
+         nvl($tb_dur{'dbProcTime'},0),' ms|'
+   write '|Total PLSQL Cache Time| ',\
+         fmt_percent($tb_dur{'cacheTime'},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_dur{'cacheTime'},$cnt),' ms| ',\
+         nvl($tb_dur{'cacheTime'},0),' ms|'
+   write '|Total Session Cache Time| ',\
+         fmt_percent($tb_dur{'sessionCache'},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_dur{'sessionCache'},$cnt),' ms| ',\
+         nvl($tb_dur{'sessionCache'},0),' ms|'
+   write '|Total Session Tidy Time| ',\
+         fmt_percent($tb_dur{'sessionTidyTime'},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_dur{'sessionTidyTime'},$cnt),' ms| ',\
+         nvl($tb_dur{'sessionTidyTime'},0),' ms|'
+   write '|Total Connection Pool Time| ',\
+         fmt_percent($tb_dur{'connPoolTime'},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_dur{'connPoolTime'},$cnt),' ms| ',\
+         nvl($tb_dur{'connPoolTime'},0),' ms|'
+   var $val = $tb_dur{'procTime'}
+   decr $val,$tb_dur{'dbProcTime'}
+   write '|Total ProcTime v/s DBProcTime| ',\
+         fmt_percent($val,$tb_dur{'reqTime'}),'| ',\
+         fmt_average($val,$cnt),' ms| ',\
+         $val,' ms|'
+   write '|Total Extra Pagecall Time| ',\
+         fmt_percent($tb_dur{'pageCallsTime'},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_dur{'pageCallsTime'},$cnt),' ms| ',\
+         nvl($tb_dur{'pageCallsTime'},0),' ms|'
+   write '|Total Describe Time| ',\
+         fmt_percent($tb_dur{'describeTime'},$tb_dur{'reqTime'}),'| ',\
+         fmt_average($tb_dur{'describeTime'},$cnt),' ms| ',\
+         nvl($tb_dur{'describeTime'},0),' ms|'
+   var $val = $tb_dur{'reqTime'}
+   decr $val,$tb_dur{'procTime'}
+   decr $val,$tb_dur{'cacheTime'}
+   decr $val,$tb_dur{'sessionCache'}
+   decr $val,$tb_dur{'sessionTidyTime'}
+   decr $val,$tb_dur{'connPoolTime'}
+   decr $val,$tb_dur{'pageCallsTime'}
+   decr $val,$tb_dur{'describeTime'}
+   decr $val,$tb_dur{'streamTime'}
+   write '|Unaccounted Time| ',\
+         fmt_percent($val,$tb_dur{'reqTime'}),'| ',\
+         fmt_average($val,$cnt),' ms| ',\
+         $val,' ms|'
+   write $TOP
+
+   # Write out the status code summary
+   write '---+ Status Code Summary'
+   write '|*Status Code*| *%Percent*| *Count*|'
+   loop $sta (keys(%tb_sta))
+    write '|',$sta,'| ',\
+          fmt_percent($tb_sta{$sta},$cnt),'| ',\
+          $tb_sta{$sta},'|'
+   write $TOP
+
+   # Write out connection pooling information
+   write '---+ Connection Pool Summary'
+   write '|*Breakup*| *%Percent*| *Count*|'
+   var $val = 0
+   incr $val,$tb_cnt{'connSU_hit'}
+   incr $val,$tb_cnt{'connNSSO_hit'}
+   write '|Hits| ',\
+         fmt_percent($val,$cnt),'| ',\
+         $val,'|'
+   var $val = 0
+   incr $val,$tb_cnt{'connSU_new'}
+   incr $val,$tb_cnt{'connNSSO_new'}
+   write '|Creates| ',\
+         fmt_percent($val,$cnt),'| ',\
+         $val,'|'
+   var $val = 0
+   incr $val,$tb_cnt{'connSU_unknown'}
+   incr $val,$tb_cnt{'connRO_unknown'}
+   incr $val,$tb_cnt{'connNSSO_unknown'}
+   write '|Unaccounted| ',\
+         fmt_percent($val,$cnt),'| ',\
+         $val,'|'
+   write $TOP
+
+   # Write out session cache information
+   if $tb_cnt{'sessionCache'}
+   {write '---+ Session Cache Summary'
+    write '|*Breakup*| *%Percent*| *Count*| *Average*| *%Req Time*| \
+            *Total Time*|'
+    write '|Hits| ',\
+          fmt_percent($tb_cnt{'sessionCache_hit'},$tb_cnt{'sessionCache'}),\
+          '| ',nvl($tb_cnt{'sessionCache_hit'},0),'| ',\
+          fmt_average($tb_dur{'sessionCache_read'},\
+                      $tb_cnt{'sessionCache_hit'}),'ms| ',\
+          fmt_percent($tb_dur{'sessionCache_read'},$tb_dur{'reqTime'}),'| ',\
+          nvl($tb_dur{'sessionCache_read'},0),' ms|'
+    write '|Missed (Decrypt)| ',\
+          fmt_percent($tb_cnt{'sessionCache_miss'},\
+                      $tb_cnt{'sessionCache'}),'| ',\
+          nvl($tb_cnt{'sessionCache_miss'},0),'| ',\
+          fmt_average($tb_dur{'sessionCache_decrypt'},\
+                      $tb_cnt{'sessionCache_miss'}),'ms| ',\
+          fmt_percent($tb_dur{'sessionCache_decrypt'},$tb_dur{'reqTime'}),'| ',\
+          nvl($tb_dur{'sessionCache_decrypt'},0),' ms|'
+    write '|New (Create)| ',\
+          fmt_percent($tb_cnt{'sessionCache_create'},\
+                      $tb_cnt{'sessionCache'}),'| ',\
+          nvl($tb_cnt{'sessionCache_create'},0),'| ',\
+          fmt_average($tb_dur{'sessionCache_create'},\
+                      $tb_cnt{'sessionCache_create'}),'ms| ',\
+          fmt_percent($tb_dur{'sessionCache_create'},$tb_dur{'reqTime'}),'| ',\
+          nvl($tb_dur{'sessionCache_create'},0),' ms|'
+    write '|Null Entries| ',\
+          fmt_percent($tb_cnt{'sessionCache_null'},\
+                      $tb_cnt{'sessionCache'}),'| ',\
+          nvl($tb_cnt{'sessionCache_null'},0),'| | | |'
+   }
+   write $TOP
+
+   # Write out PLSQL cache information
+   write '---+ PLSQL Cache Summary'
+   write '|*Breakup*| *%Percent*| *Count*| *Average*| *%Req Time*| \
+           *Total Time*|'
+   write '|Hit,Expires| ',\
+         fmt_percent($tb_cnt{'plsqlCache_hitexpires'},$cnt),'| ',\
+         nvl($tb_cnt{'plsqlCache_hitexpires'},0),'| ',\
+         fmt_average($tb_dur{'plsqlCache_hitexpires'},\
+                     $tb_cnt{'plsqlCache_hitexpires'}),' ms| ',\
+         fmt_percent($tb_dur{'plsqlCache_hitexpires'},$tb_dur{'reqTime'}),'| ',\
+         nvl($tb_dur{'plsqlCache_hitexpires'},0),' ms|'
+   write '|Hit,Ping| ',\
+         fmt_percent($tb_cnt{'plsqlCache_hitping'},$cnt),'| ',\
+         nvl($tb_cnt{'plsqlCache_hitping'},0),'| ',\
+         fmt_average($tb_dur{'plsqlCache_hitping'},\
+                     $tb_cnt{'plsqlCache_hitping'}),' ms| ',\
+         fmt_percent($tb_dur{'plsqlCache_hitping'},$tb_dur{'reqTime'}),'| ',\
+         nvl($tb_dur{'plsqlCache_hitping'},0),' ms|'
+   write '|Miss,New| ',\
+         fmt_percent($tb_cnt{'plsqlCache_missnew'},$cnt),'| ',\
+         nvl($tb_cnt{'plsqlCache_missnew'},0),'| ',\
+         fmt_average($tb_dur{'plsqlCache_missnew'},\
+                     $tb_cnt{'plsqlCache_missnew'}),' ms| ',\
+         fmt_percent($tb_dur{'plsqlCache_missnew'},$tb_dur{'reqTime'}),'| ',\
+         nvl($tb_dur{'plsqlCache_missnew'},0),' ms|'
+   write '|Miss,Stale| ',\
+         fmt_percent($tb_cnt{'plsqlCache_missstale'},$cnt),'| ',\
+         nvl($tb_cnt{'plsqlCache_missstale'},0),'| ',\
+         fmt_average($tb_dur{'plsqlCache_missstale'},\
+                     $tb_cnt{'plsqlCache_missstale'}),' ms| ',\
+         fmt_percent($tb_dur{'plsqlCache_missstale'},$tb_dur{'reqTime'}),'| ',\
+         nvl($tb_dur{'plsqlCache_hitexpires'},0),' ms|'
+   write '|Null Entries| ',\
+         fmt_percent($tb_cnt{'plsqlCache_null'},$cnt),'| ',\
+         nvl($tb_cnt{'plsqlCache_null'},0),'| ',\
+         fmt_average($tb_dur{'plsqlCache_null'},\
+                     $tb_cnt{'plsqlCache_null'}),' ms| ',\
+         fmt_percent($tb_dur{'plsqlCache_null'},$tb_dur{'reqTime'}),'| ',\
+         nvl($tb_dur{'plsqlCache_null'},0),' ms|'
+   write '|Unaccounted| ',\
+         fmt_percent($tb_cnt{'plsqlCache_unknown'},$cnt),'| ',\
+         nvl($tb_cnt{'plsqlCache_unknown'},0),'| ',\
+         fmt_average($tb_dur{'plsqlCache_unknown'},\
+                     $tb_cnt{'plsqlCache_unknown'}),' ms| ',\
+         fmt_percent($tb_dur{'plsqlCache_unknown'},$tb_dur{'reqTime'}),'| ',\
+         nvl($tb_dur{'plsqlCache_unknown'},0),' ms|'
+   write $TOP
+
+   # Dump statistics for each URL
+   prefix
+   {write '---+ URL Summary - Sorted by URL Name'
+    write '|*URL*| *Count*| *%Volume*| *%Total Time*| *Average Time*| \
+            *%Public*| *%Desc*| *Error Count*|'
+   }
+   loop $url (keys(%tb_url))
+   {var $tot = $tb_url{$url}
+    write '|',$url,' | ',\
+          $tot,'| ',\
+          fmt_percent($tot,$cnt),'| ',\
+          fmt_percent($tb_req{$url},$tb_dur{'reqTime'}),'| ',\
+          fmt_average($tb_req{$url},$cnt),'| ',\
+          fmt_percent($tb_det{concat('public_',$url)},$tot),'| ',\
+          fmt_percent($tb_det{concat('describes_',$url)},$tot),'| ',\
+          nvl($tb_det{concat('errors_',$url)},0),'|'
+   }
+   if hasOutput(true)
+    write $TOP
+
+   # Produce the URL statistics
+   call write_url_stat(\%tb_req,'%Total Time')
+   call write_url_stat(\%tb_url,'Volume')
+   call write_url_stat(\%tb_req,'%Total Time (with Time-Breakup Details)',true)
+
+   # Dump error statistics for each URL
+   prefix
+   {write '---+ URL Error Status Summary'
+    write '|*URL/Proc*| *Error Count*| *Error%*|*Oracle Error Codes*|'
+   }
+   loop $url (keys(%tb_url))
+   {var $key = concat('errors_',$url)
+    if $tb_det{$key}
+     write '|',$url,' | ',\
+           $tb_det{$key},'| ',\
+           fmt_percent($tb_det{$key},$tb_url{$url}),'|',\
+           $tb_det{concat('oraerr_',$url)},' |'
+   }
+   if hasOutput(true)
+    write $TOP
+
+   # Write out Expensive URL Summary
+   prefix
+   {write '---+ Expensive URL Summary'
+    write '|*URL*| *Count*|'
+   }
+   loop $key (keys(%tb_exp))
+    write '|',$key,' | ',$tb_exp{$key},'|'
+   if hasOutput(true)
+    write $TOP
+  }
+  if isCreated()
+   toc $det,':[[',getFile(),'][rda_report][Summary]]'
+
+  # Dump error hash
+  report concat('pls_ora_error',$CNT)
+  var $sep = "---+ Summary of URL's and Errors Encountered"
+  loop $key (keys(%tb_err))
+  {write $sep
+   var $sep = '---'
+   write 'Encountered ',$tb_err{$key},' error(s) of type'
+   write '<verbatim>'
+   write $key
+   write '</verbatim>'
+  }
+  if isCreated()
+   toc $det,':[[',getFile(),'][rda_report][URLs and Errors Encountered]]'
+
+  # Finalize reports
+  resume pls_expensive
+  if isCreated()
+   toc $det,':[[',getFile(),'][rda_report][Expense Summary]]'
+
+  resume pls_ignored
+  if isCreated()
+  {write '</verbatim>'
+   toc $det,':[[',getFile(),'][rda_report][Ignored Errors]]'
+  }
+
+  resume pls_invalid_cookies
+  if isCreated()
+  {write '</verbatim>'
+   toc $det,':[[',getFile(),'][rda_report][Invalid Cookies]]'
+  }
+
+  resume pls_missing_time
+  if isCreated()
+   toc $det,':[[',getFile(),'][rda_report][Missing Time]]'
+
+  resume pls_parser_errors
+  if isCreated()
+  {write '</verbatim>'
+   toc $det,':[[',getFile(),'][rda_report][Parser Errors]]'
+  }
+
+  resume pls_unknown_missing_time
+  if isCreated()
+   toc $det,':[[',getFile(),'][rda_report][Unknown Missing Time]]'
+
+  unpretoc
+ }
+}
+unpretoc
+
+=begin credits
+
+=over 10
+
+=item RDA 4.5:  Ersan Eser, Krishna Kumar, Rishi Mehrotra, Meraj Mohammed.
+
+=item RDA 4.6:  Ersan Eser.
+
+=item RDA 4.12: Meraj Mohammed.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

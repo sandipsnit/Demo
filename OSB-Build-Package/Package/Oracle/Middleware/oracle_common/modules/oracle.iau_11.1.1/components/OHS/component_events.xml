@@ -1,0 +1,51 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<AuditConfig componentType="OHS" xmlns="http://xmlns.oracle.com/ias/audit/audit.xsd">
+  <Events componentType="OHS" displayName="" emTargetType="oracle_apache">
+    <Category name="UserSession">
+      <CommonAttributes>
+        <Attribute name="Reason" type="string" maxLength="0">
+          <HelpText>The reason this event occurred</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event name="UserLogin" unusedAttributes="ModuleId ApplicationName Target Roles">
+        <HelpText>Client requests cookie for SSO login session.</HelpText>
+      </Event>
+      <Event name="UserLogout" unusedAttributes="ModuleId ApplicationName Target Roles">
+        <HelpText>Client requests termination of SSO login session.</HelpText>
+      </Event>
+      <Event name="Authentication" unusedAttributes="ModuleId ApplicationName Target Roles">
+        <HelpText>Authentication is checked on a client request to a URI.</HelpText>
+        <Attribute name="SSLConnection" type="string" enumValues="Yes No" maxLength="255">
+          <HelpText>Was SSL connection used by client to transmit request?</HelpText>
+        </Attribute>
+      </Event>
+    </Category>
+    <Category name="Authorization">
+      <CommonAttributes>
+        <Attribute name="Reason" type="string" maxLength="0">
+          <HelpText>The reason this event occurred</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event name="CheckAuthorization" unusedAttributes="ModuleId ApplicationName Target Roles">
+        <HelpText>Authorization is evaluated for a client request to a restricted URI.</HelpText>
+        <Attribute name="AuthorizationType" type="string" enumValues="OHS_Regular_Auth OHS_SSL_Auth" maxLength="255">
+          <HelpText>Access/authorization configuration directive: Regular = 'Require' directive, SSL = 'SSLRequire' directive</HelpText>
+        </Attribute>
+      </Event>
+    </Category>
+  </Events>
+  <Levels>
+    <Level name="ExceptionsOnly">
+    </Level>
+    <Level name="Basic">
+    </Level>
+    <Level name="Enhanced">
+    </Level>
+  </Levels>
+  <FilterPresetDefinitions>
+    <FilterPresetDefinition name="Low" displayName="Low" helpText=" Low level">
+    </FilterPresetDefinition>
+    <FilterPresetDefinition name="Medium" helpText="Medium level">UserLogin.FAILURESONLY,Authentication.FAILURESONLY,CheckAuthorization.FAILURESONLY,UserLogout.FAILURESONLY
+    </FilterPresetDefinition>
+  </FilterPresetDefinitions>
+</AuditConfig>

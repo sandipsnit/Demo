@@ -1,0 +1,253 @@
+# M240ILOM.def: Collects Integrated Lights Out Manager (ILOM) Information
+# $Id: M240ILOM.def,v 1.5 2012/08/27 14:44:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M240ILOM.def,v 1.5 2012/08/27 14:44:43 mschenke Exp $
+#
+# Change History
+# 20120827  JGS  Improve pattern for password file generation.
+
+=head1 NAME
+
+M240ILOM - Collects Integrated Lights Out Manager (ILOM) Information
+
+=head1 DESCRIPTION
+
+This module collects remote information for Integrated Lights Out Manager
+(ILOM) using the Intelligent Platform Management Interface (IPMI) tool.
+
+=cut
+
+use Explorer
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('ilomextended')
+
+# Get the ping syntax
+var $PING = check(${RDA.OS},'solaris','/usr/sbin/ping %s',\
+                            'linux',  '/bin/ping -c 1 %s',\
+                            'cygwin', '/bin/ping %s 64 1')
+
+#------------------------------------------------------------------------------
+# XPLR_ilomextended section
+#------------------------------------------------------------------------------
+
+section XPLR_ilomextended
+
+# Validate the execution context
+if !${XPLR_GLOBAL:1}
+ return
+call log_run('Processing ILOM sections ...')
+
+# Check the patch level on Solaris 10
+if and(${OS.solaris},expr('==',get_osv(),10))
+{var ($ptc,$rev) = check(get_arc(),'sparc',list('119764','03'),\
+                                   'i386', list('119765','03'),\
+                                           list())
+ if !check_patch($ptc,$rev)
+  return log_info(concat(' Patch ',$ptc,'-',$rev,' required'))
+}
+
+# Locate ipmitool
+if $[XPL]->has_ipmitool
+ var $IPMITOOL = last
+else
+ return log_info('Ipmitool is not available')
+
+# Determine the applicable commands
+var @cmd = (\
+  ['ipmitool_chassis_poh',          'chassis poh',\
+   '---+ Power-On Hours Counter'],\
+  ['ipmitool_chassis_power_status', 'chassis power status',\
+   '---+ Chassis Power Status'],\
+  ['ipmitool_chassis_restart_cause','chassis restart_cause',\
+   '---+ Last System Restart Cause'],\
+  ['ipmitool_fru_print',            'fru print',\
+   '---+ Field Replaceable Unit'],\
+  ['ipmitool_mc_getenables',        'mc getenables',\
+   '---+ BMC Enabled Options'],\
+  ['ipmitool_mc_info',              'mc info',\
+   '---+ BMC Hardware'],\
+  ['ipmitool_pef_list',             'pef list',\
+   '---+ Platform Event Filtering Table'])
+if compare('eq','i386',get_arc())
+ call push(@cmd,\
+   ['ipmitool_pef_status',          'pef status',\
+    '---+ Platform Event Filtering Status'])
+call push(@cmd,\
+  ['ipmitool_sdr_elist_full',        'sdr elist full',\
+   '---+ Sensor Data Records'],\
+  ['ipmitool_sel_info',              'sel info',\
+   '---+ System Event Log'],\
+  ['ipmitool_sel_elist',             'sel elist',\
+   '---+ System Event Log Contents'],\
+  ['ipmitool_sensor_list',           'sensor list',\
+   '---+ Sensors and Thresholds'],\
+  ['ipmitool_sunoem_led_get',        'sunoem led get',\
+   '---+ LED Status'],\
+  ['ipmitool_user_list',             'user list',\
+   '---+ Users'],\
+  ['ipmitool_user_summary',          'user summary',\
+   '---+ Users Information Summary'])
+
+pretoc '2:ILOM'
+
+=head2 ILOM Data Collection
+
+Gathers the ILOM information using IPMI tool using the following commands:
+
+=over 2
+
+=item o C<ipmitool -I lanplus chassis poh>
+
+=item o C<ipmitool -I lanplus chassis power status>
+
+=item o C<ipmitool -I lanplus chassis restart_cause>
+
+=item o C<ipmitool -I lanplus fru print>
+
+=item o C<ipmitool -I lanplus mc getenables>
+
+=item o C<ipmitool -I lanplus mc info>
+
+=item o C<ipmitool -I lanplus pef list>
+
+=item o C<ipmitool -I lanplus pef status>
+
+=item o C<ipmitool -I lanplus sdr elist full>
+
+=item o C<ipmitool -I lanplus sel elist>
+
+=item o C<ipmitool -I lanplus sel info>
+
+=item o C<ipmitool -I lanplus sensor list>
+
+=item o C<ipmitool -I lanplus sunoem led get>
+
+=item o C<ipmitool -I lanplus user list>
+
+=item o C<ipmitool -I lanplus user summary>
+
+=back
+
+=cut
+
+# Validate and process all requests
+loop $set (split('\|',${XPLR_ILOM_SET}))
+{var $hst = getSetting(concat('XPLR_ILOM_HOST_',$set))
+ var $prt = getSetting(concat('XPLR_ILOM_PORT_',$set))
+ var $usr = getSetting(concat('XPLR_ILOM_USER_',$set))
+ next !?$hst
+
+ # Validate the input parameters
+ debug ' Inside ILOM collection, validating ',$hst,' access'
+ if !match($hst,'^[\w\-\.\:]+$')
+  next log_info(concat('The ILOM host name or IP "',$hst,\
+                       '"contains invalid characters'))
+ call command(sprintf($PING,$hst))
+ if status()
+  next log_info(concat('Host ',$hst,' is not reachable'))
+ if !match($prt,'^[\d]+$')
+  next log_info('Invalid port value')
+ if or(expr('>',$prt,65535),expr('<',$prt,0))
+  next log_info('Invalid port number')
+ if !match($usr,'^[\w\-\.]+$')
+  next log_info('The ILOM user name contains invalid characters')
+ var $con = concat('-H ',$hst,' -p ',$prt,' -U ',$usr,' -f %s -I lanplus')
+
+ # Run report for each valid host
+ debug ' Inside ILOM collection, generating report for ',$hst
+ report concat('ilom_',$hst)
+ title '---+!! ',$hst,' Information'
+ title $TOC
+ var $pwf = ["%s\012",'host',$hst,$usr,\
+             concat('Enter ',$usr,' password for ILOM ',$hst,': '),'']
+ loop $rec (@cmd)
+ {prefix
+  {write $rec->[2]
+   write '---## Using: ',encode($IPMITOOL),' -I lanplus ',encode($rec->[1])
+  }
+  call collectCommand({nam=>join('/','ilom',$hst,$rec->[0]),pwf=>$pwf,\
+    out=>{blk=>true,flt=>true,idx=>true,rpt=>${CUR.REPORT}},\
+    err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+    },join(' ',$IPMITOOL,$con,$rec->[1]))
+  if hasOutput(true)
+   write $TOP
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',$hst,' Information]]'
+ call log_info(concat('Data gathering complete for ',$hst))
+}
+
+# Adjust the table of content
+unpretoc
+
+#------------------------------------------------------------------------------
+# Input file conversion section
+#------------------------------------------------------------------------------
+
+section input
+
+# Define the input file parser macro
+macro parse_input
+{var ($fil,$flg) = @arg
+
+ var @sta = getStat($fil)
+ if !expr('&',$sta[2],077)
+ {# Parse the input file
+  var ($set,@set) = (0)
+  loop $lin (grepFile($fil,'^\s*#','v'))
+  {var ($hst,$prt,$usr,$pwd) = split('\s+',trim($lin),4)
+   next !?$hst
+   if ?$pwd
+    call setPassword('host',$hst,$usr,$pwd)
+   if !?$prt
+    var $prt = 623
+
+   call push(@set,incr($set))
+   call setTempSetting(concat('XPLR_ILOM_HOST_',$set),$hst)
+   call setTempSetting(concat('XPLR_ILOM_PORT_',$set),$prt)
+   call setTempSetting(concat('XPLR_ILOM_USER_',$set),$usr)
+  }
+
+  # Save the parsing results
+  if $set
+  {call setTempSetting('XPLR_ILOM_CFG',$fil)
+   call setTempSetting('XPLR_ILOM_SET',join('|',@set))
+   call setTempSetting('xplr_ilom_accept',true)
+  }
+  else
+   call setTempSetting('xplr_ilom_accept',$flg)
+ }
+}
+
+# Determine which input file must be parsed
+if and(defined($fil = ${ENV.EXP_ILOMINPUT_CONFIG}),\
+       testFile('frs',catFile($fil)))
+ call parse_input(lastFile(),true)
+else
+ call parse_input(catFile(${XPLR_ETC},'ilominput.txt'),false)
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

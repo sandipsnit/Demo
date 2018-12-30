@@ -1,0 +1,182 @@
+# S990FLTR.def: Controls Report Content Filtering
+# $Id: S990FLTR.def,v 2.5 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S990FLTR.def,v 2.5 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S990FLTR - Control Report Content Filtering
+
+=head1 DESCRIPTION
+
+Adds filter functionality to RDA, which can mask sensitive data like host,
+domain, group and user names, IP addresses, LDAP domain components, and
+network masks.
+
+You can activate the filter by adding the C<Security> profile to your
+profile. For instance,
+
+  <rda> -vdSCRP -p DB10g-Security
+
+RDA offers a default filter configuration based on the system configuration
+but end-users can create their own filter or they can customize the existing
+default filter.
+
+When the setup file exists already, enable the filter with the following
+command:
+
+  <rda> -X Filter enable
+
+If the filter configuration is not performed, then default rules are created.
+
+The filter has a status flag (enabled or disabled), an ordered list of rule
+sets, limits, and substitution formats. When the filter is enabled, RDA applies
+each rule, in the specified order listed, to each generated report.
+
+Each rule set has one or more matching patterns, possible matching options, a
+substitution format, and a replacement string, which tells RDA what strings
+to find in the output and how to substitute them.
+
+The syntax for the filter commands is as follows:
+
+  <rda> -X Filter <commands> <arg1> ...
+
+=head1 FILTER MANAGEMENT COMMANDS
+
+=head2 E<lt>rdaE<gt> -X Filter add set E<lt>nameE<gt> [E<lt>descriptionE<gt>]
+
+Adds a rule set.
+
+=over 4
+
+=item *
+
+If the rule set already exists, then RDA moves the rule set to the end of the
+rule set list and resets the rule set description if present.
+
+=item *
+
+RDA adds a nonexisting rule set to the end of the rule set list with a
+description if present. If the description is not present, then the rule set
+name is taken as the description.
+
+=back
+
+=head2 E<lt>rdaE<gt> -X Filter add pattern E<lt>nameE<gt> E<lt>patternE<gt>
+
+Adds an extra pattern to an existing rule set.
+
+=head2 E<lt>rdaE<gt> -X Filter add format E<lt>nameE<gt> E<lt>substitutionE<gt>
+
+Adds a new substitution format to the filter.
+
+=head2 E<lt>rdaE<gt> -X Filter -f clear
+
+Clears all filtering, which means that filtering is disabled and that the whole
+filter definition is removed.
+
+=head2 E<lt>rdaE<gt> -X Filter delete format E<lt>nameE<gt>
+
+Deletes the substitution format. This works for user-defined substitution
+formats only.
+
+=head2 E<lt>rdaE<gt> -X Filter delete pattern E<lt>nameE<gt> E<lt>offsetE<gt>
+
+Deletes a matching pattern from a rule set. Patterns are referenced by their
+offset (cf. the C<list set> command).
+
+=head2 E<lt>rdaE<gt> -X Filter delete set E<lt>nameE<gt>
+
+Deletes a rule set from the list of rule sets.
+
+=head2 E<lt>rdaE<gt> -X Filter disable
+
+Disables the filtering.
+
+=head2 E<lt>rdaE<gt> -X Filter enable
+
+Enables the filtering. When there is no existing rule set list, it generates
+the default filter configuration based on the system configuration also.
+
+=head2 E<lt>rdaE<gt> -X Filter export
+
+Prints out the entire current filter configuration. The output is a series of
+commands, which can be issued again to recreate the current filter (or parts of
+it) into another RDA setup.
+
+=head2 E<lt>rdaE<gt> -X Filter list formats
+
+Prints all internal and user-defined substitution formats.
+
+=head2 E<lt>rdaE<gt> -X Filter list set [E<lt>nameE<gt>]
+
+Displays the specified rule set and its component. When the name is omitted,
+all rule sets are reported.
+
+=head2 E<lt>rdaE<gt> -X Filter list sets
+
+Prints the ordered rule set list.
+
+=head2 E<lt>rdaE<gt> -X Filter -f reset
+
+Restores the default filter configuration.
+
+=head2 E<lt>rdaE<gt> -X Filter set format E<lt>setE<gt> E<lt>formatE<gt>
+
+Specifies a format for this rule set.
+
+=head2 E<lt>rdaE<gt> -X Filter set options E<lt>setE<gt> E<lt>optionsE<gt>
+
+Defines pattern-matching options. Use C<i> to ignore case.
+
+=head2 E<lt>rdaE<gt> -X Filter set string E<lt>setE<gt> E<lt>stringE<gt>
+
+Sets the replacement string for this rule set.
+
+=head2 E<lt>rdaE<gt> -X Filter set gid [E<lt>minE<gt>]
+
+Defines the minimum group identifier value to consider when generating default
+filtering rules for groups for UNIX. When no argument is given, it resets it to
+the default value (101).
+
+=head2 E<lt>rdaE<gt> -X Filter set uid [E<lt>minE<gt>]
+
+Defines the minimum user identifier value to consider when generating default
+filtering rules for users for UNIX. When no argument is given, it resets it to
+the default value (101).
+
+=head2 E<lt>rdaE<gt> -X Filter [-d] test
+
+Tests the rules for a correct syntax. When the B<-d> option is used, the rules
+are printed to standard output.
+
+=head1 AUTOMATIC FILTERING
+
+When RDA detects the F<.filter> file for UNIX, the F<filter.win> file for
+Windows, or the F<filter.vms> for VMS in the work directory or in the software
+top directory during the generation of a new setup file, it loads the filter
+definition contained in that file.
+
+=head2 E<lt>rdaE<gt> -X Filter save
+
+Saves the current filter definition in a file located in the work directory.
+The file is F<.filter> for UNIX, F<filter.win> for Windows, or F<filter.vms>
+for VMS. It does not write the file if the filter is disabled.
+
+=head2 E<lt>rdaE<gt> -X Filter remove
+
+Removes any filter file from the work directory. The file is F<.filter> on
+UNIX, F<filter.win> for Windows, or F<filter.vms> for VMS.
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

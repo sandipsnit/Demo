@@ -1,0 +1,884 @@
+<?xml version="1.0"?>
+<!--  $Header: emas/sysman/admin/adml/server-oracle_oaam-11.0.xml /st_emasgc_11.1as/4 2010/07/02 11:30:55 kchander Exp $ -->
+<!-- 
+ Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved. 
+
+NAME
+server-oracle_oaam-11.0.xml - <one-line expansion of the name>
+
+    DESCRIPTION
+    <short description of component this file declares/defines>
+
+        NOTES
+        <other useful comments, qualifications, etc.>
+
+            MODIFIED   (MM/DD/YY)
+            kchander    05/12/10 - fix bug 9556771
+            sunilkum    10/15/09 - OAAM server adml rules
+            sunilkum    09/03/09 - OAAM ADML rules
+            sunilkum    09/03/09 - Creation
+
+            -->
+            <Adml xmlns="http://www.oracle.com/iAS/aggregator"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                TableSpace="oracle_oaam">
+
+                <Table Name="Login_Total">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="Login_Total" Type="Integer"/>
+                    <Select Name="OAAM_Login_Metrics_result">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="Login_Total" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>LoginCount_Total</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="Login_Blocked">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="Login_Blocked" Type="Integer"/>
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="Login_Blocked" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>LoginCount_Blocked</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="Login_Failed">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="Login_Failed" Type="Integer"/>
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="Login_Failed" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>LoginCount_Failed</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="Login_Success">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="Login_Success" Type="Integer"/>
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="Login_Success" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>LoginCount_Success</Value>
+                            </Condition>
+                        </Where>
+                    </Select> 
+                </Table>
+                <Table Name="Login_Challenged">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="Login_Challenged" Type="Integer"/>
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="Login_Challenged" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>LoginCount_Challenged</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="AlertCount_Low">
+                    <ColumnDef Name="AlertCount_Low" Type="Integer"/>
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="AlertCount_Low" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>AlertCount_Low</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="AlertCount_Medium">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="AlertCount_Medium" Type="Integer"/>
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="AlertCount_Medium" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>AlertCount_Medium</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="AlertCount_High">
+                    <ColumnDef Name="AlertCount_High" Type="Integer"/>
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="OAMS.OAAM_Counters"/>
+                        <Column Name="AlertCount_High" Type="Integer">
+                            <ColumnFrom Name="count.count"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>AlertCount_High</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="OAAM_Login_Metrics">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="Login_Total" Type="Integer"/>
+                    <ColumnDef Name="Login_Total_delta" Type="Integer"/>
+                    <ColumnDef Name="Login_Total_prev" Type="Integer"/>
+                    <ColumnDef Name="Login_Failed" Type="Integer"/>
+                    <ColumnDef Name="Login_Failed_delta" Type="Integer"/>
+                    <ColumnDef Name="Login_Failed.percent" Type="Double"/>
+                    <ColumnDef Name="Login_Failed.persec" Type="Double"/>
+                    <ColumnDef Name="Login_Blocked" Type="Integer"/>
+                    <ColumnDef Name="Login_Blocked_delta" Type="Integer"/>
+                    <ColumnDef Name="Login_Blocked.percent" Type="Double"/>
+                    <ColumnDef Name="Login_Success" Type="Integer"/>
+                    <ColumnDef Name="Login_Success_delta" Type="Integer"/>
+                    <ColumnDef Name="Login_Success.percent" Type="Double"/>
+                    <ColumnDef Name="Login_Success.persec" Type="Double"/>
+                    <ColumnDef Name="Login_Challenged" Type="Integer"/>
+                    <ColumnDef Name="Login_Challenged_delta" Type="Integer"/>
+                    <ColumnDef Name="Login_Challenged.percent" Type="Double"/>
+                    <!--  <ColumnDef Name="AlertCount_Low" Type="Integer"/>
+                    <ColumnDef Name="AlertCount_Medium" Type="Integer"/>
+                    <ColumnDef Name="AlertCount_High" Type="Integer"/> -->
+                    <Select Name="OAAM_Login_Metrics_result1">
+                        <TableFrom Name="oracle_oaam:Login_Total"/>
+                        <Column Name="Login_Total" Type="Integer">
+                            <ColumnFrom Name="Login_Total" Table="oracle_oaam:Login_Total"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Login_Total_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Login_Total" Table="oracle_oaam:Login_Total"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Login_Total_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Login_Total_prev"/>
+                                    <ColumnFrom Name="Login_Total" Table="oracle_oaam:Login_Total"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Login_Total" Table="oracle_oaam:Login_Total"/>
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Login_Total" Table="oracle_oaam:Login_Total"/>
+                                        <ColumnFrom Name="Login_Total_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                    </Select>
+                    <Select Name="OAAM_Login_Metrics_result2">
+                        <TableFrom Name="OAAM_Login_Metrics_result1"/>
+                        <TableFrom Name="oracle_oaam:Login_Failed"/>
+                        <Column Name="Login_Failed" Type="Integer">
+                            <ColumnFrom Name="Login_Failed" Table="oracle_oaam:Login_Failed"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Login_Failed_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Login_Failed" Table="oracle_oaam:Login_Failed"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Login_Failed_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Login_Failed_prev"/>
+                                    <ColumnFrom Name="Login_Failed" Table="oracle_oaam:Login_Failed"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Login_Failed" Table="oracle_oaam:Login_Failed"/>
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Login_Failed" Table="oracle_oaam:Login_Failed"/>
+                                        <ColumnFrom Name="Login_Failed_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="Login_Failed.percent" Type="Double">
+                            <Expression Operator="Mult">
+                                <Expression Operator="Div">
+                                    <ColumnFrom Name="Login_Failed_delta"/>
+                                    <ColumnFrom Name="Login_Total_delta" Table="OAAM_Login_Metrics_result1"/>
+                                    <Default>0</Default>
+                                </Expression>
+                                <Value>100</Value>
+                            </Expression>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Login_Failed.persec" Type="Double">
+                            <Rate Interval="300000">
+                                <ColumnFrom Name="Login_Failed"/>
+                                <Default>0</Default>
+                            </Rate>
+                        </Column>
+                    </Select>
+                    <Select Name="OAAM_Login_Metrics_result3">
+                        <TableFrom Name="OAAM_Login_Metrics_result1"/>
+                        <TableFrom Name="oracle_oaam:Login_Blocked"/>
+                        <Column Name="Login_Blocked" Type="Integer">
+                            <ColumnFrom Name="Login_Blocked" Table="oracle_oaam:Login_Blocked"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Login_Blocked_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Login_Blocked" Table="oracle_oaam:Login_Blocked"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Login_Blocked_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Login_Blocked_prev"/>
+                                    <ColumnFrom Name="Login_Blocked" Table="oracle_oaam:Login_Blocked"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Login_Blocked" Table="oracle_oaam:Login_Blocked"/>
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Login_Blocked" Table="oracle_oaam:Login_Blocked"/>
+                                        <ColumnFrom Name="Login_Blocked_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="Login_Blocked.percent" Type="Double">
+                            <Expression Operator="Mult">
+                                <Expression Operator="Div">
+                                    <ColumnFrom Name="Login_Blocked_delta"/>
+                                    <ColumnFrom Name="Login_Total_delta" Table="OAAM_Login_Metrics_result1"/>
+                                    <Default>0</Default>
+                                </Expression>
+                                <Value>100</Value>
+                            </Expression>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Login_Blocked.persec" Type="Double">
+                            <Rate Interval="300000">
+                                <ColumnFrom Name="Login_Blocked"/>
+                                <Default>0</Default>
+                            </Rate>
+                        </Column>
+                    </Select>
+
+
+                    <Select Name="OAAM_Login_Metrics_result4">
+                        <TableFrom Name="OAAM_Login_Metrics_result1"/>
+                        <TableFrom Name="oracle_oaam:Login_Challenged"/>
+                        <Column Name="Login_Challenged" Type="Integer">
+                            <ColumnFrom Name="Login_Challenged" Table="oracle_oaam:Login_Challenged"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Login_Challenged_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Login_Challenged" Table="oracle_oaam:Login_Challenged"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Login_Challenged_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Login_Challenged_prev"/>
+                                    <ColumnFrom Name="Login_Challenged" Table="oracle_oaam:Login_Challenged"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Login_Challenged" Table="oracle_oaam:Login_Challenged"/>
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Login_Challenged" Table="oracle_oaam:Login_Challenged"/>
+                                        <ColumnFrom Name="Login_Challenged_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="Login_Challenged.percent" Type="Double">
+                            <Expression Operator="Mult">
+                                <Expression Operator="Div">
+                                    <ColumnFrom Name="Login_Challenged_delta"/>
+                                    <ColumnFrom Name="Login_Total_delta" Table="OAAM_Login_Metrics_result1"/>
+                                    <Default>0</Default>
+                                </Expression>
+                                <Value>100</Value>
+                            </Expression>
+                            <Default>0</Default>
+                        </Column>
+                    </Select>
+
+                    <Select Name="OAAM_Login_Metrics_result6">
+                        <TableFrom Name="OAAM_Login_Metrics_result1"/>
+                        <TableFrom Name="oracle_oaam:Login_Success"/>
+                        <Column Name="Login_Success" Type="Integer">
+                            <ColumnFrom Name="Login_Success" Table="oracle_oaam:Login_Success"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Login_Success_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Login_Success" Table="oracle_oaam:Login_Success"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Login_Success_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Login_Success_prev"/>
+                                    <ColumnFrom Name="Login_Success" Table="oracle_oaam:Login_Success"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Login_Success" Table="oracle_oaam:Login_Success"/>
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Login_Success" Table="oracle_oaam:Login_Success"/>
+                                        <ColumnFrom Name="Login_Success_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="Login_Success.percent" Type="Double">
+                            <Expression Operator="Mult">
+                                <Expression Operator="Div">
+                                    <ColumnFrom Name="Login_Success_delta"/>
+                                    <ColumnFrom Name="Login_Total_delta" Table="OAAM_Login_Metrics_result1"/>
+                                    <Default>0</Default>
+                                </Expression>
+                                <Value>100</Value>
+                            </Expression>
+                            <Default>0</Default>
+                        </Column>
+
+                        <Column Name="Login_Success.persec" Type="Double">
+                            <Rate Interval="300000">
+                                <ColumnFrom Name="Login_Success"/>
+                                <Default>0</Default>
+                            </Rate>
+                        </Column>
+                    </Select>
+
+                    <Select Name="OAAM_Login_Metrics_result4_1">
+                        <TableFrom Name="OAAM_Login_Metrics_result3"/>
+                        <TableFrom Name="OAAM_Login_Metrics_result4"/>
+                    </Select>
+
+                    <Select Name="OAAM_Login_Metrics_result5">
+                        <TableFrom Name="OAAM_Login_Metrics_result1"/>
+                        <TableFrom Name="OAAM_Login_Metrics_result2"/>
+                    </Select>
+                    <Select Name="OAAM_Login_Metrics_result5_1">
+                        <TableFrom Name="OAAM_Login_Metrics_result5"/>
+                        <TableFrom Name="OAAM_Login_Metrics_result4_1"/>
+                    </Select>
+                    <Select Name="OAAM_Login_Metrics_result6_1">
+                        <TableFrom Name="OAAM_Login_Metrics_result5_1"/>
+                        <TableFrom Name="OAAM_Login_Metrics_result6"/>
+                    </Select>
+
+
+                </Table>
+                <Table Name="OAAM_Models_Execution">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="ActiveThreads" Type="Integer"/>
+                    <ColumnDef Name="AvgExecutionTime" Type="Double"/>
+                    <ColumnDef Name="Completed" Type="Integer"/>
+                    <ColumnDef Name="Completed_delta" Type="Integer"/>
+                    <ColumnDef Name="MaxActive" Type="Integer"/>
+                    <ColumnDef Name="MaxTime" Type="Double"/>
+                    <ColumnDef Name="MinTime" Type="Double"/>
+                    <ColumnDef Name="TotalTime" Type="Double"/>
+                    <Select Name="OAAM_Models_Execution">
+                        <TableFrom Name="OAMS.OAAM"/>
+                        <Column Name="ActiveThreads" Type="Integer">
+                            <ColumnFrom Name="executionTime.active"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="AvgExecutionTime" Type="Double">
+                            <ColumnFrom Name="executionTime.avg"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Completed" Type="Integer">
+                            <ColumnFrom Name="executionTime.completed"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Completed_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Completed"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Completed_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Completed_prev"/>
+                                    <ColumnFrom Name="Completed"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Completed" />
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Completed"/>
+                                        <ColumnFrom Name="Completed_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="MaxActive" Type="Integer">
+                            <ColumnFrom Name="executionTime.maxActive"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MaxTime" Type="Double">
+                            <ColumnFrom Name="executionTime.maxTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MinTime" Type="Double">
+                            <ColumnFrom Name="executionTime.minTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="TotalTime" Type="Double">
+                            <ColumnFrom Name="executionTime.time"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>Models_Execution</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="OAAM_ProcessRules">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="ActiveThreads" Type="Integer"/>
+                    <ColumnDef Name="AvgExecutionTime" Type="Double"/>
+                    <ColumnDef Name="Completed" Type="Integer"/>
+                    <ColumnDef Name="Completed_delta" Type="Integer"/>
+                    <ColumnDef Name="MaxActive" Type="Integer"/>
+                    <ColumnDef Name="MaxTime" Type="Double"/>
+                    <ColumnDef Name="MinTime" Type="Double"/>
+                    <ColumnDef Name="TotalTime" Type="Double"/>
+                    <Select Name="OAAM_Models_Execution">
+                        <TableFrom Name="OAMS.OAAM"/>
+                        <Column Name="ActiveThreads" Type="Integer">
+                            <ColumnFrom Name="executionTime.active"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="AvgExecutionTime" Type="Double">
+                            <ColumnFrom Name="executionTime.avg"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Completed" Type="Integer">
+                            <ColumnFrom Name="executionTime.completed"/>
+                            <Default>0</Default>
+                        </Column>
+                         <Column Name="Completed_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Completed"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Completed_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Completed_prev"/>
+                                    <ColumnFrom Name="Completed"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Completed" />
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Completed"/>
+                                        <ColumnFrom Name="Completed_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="MaxActive" Type="Integer">
+                            <ColumnFrom Name="executionTime.maxActive"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MaxTime" Type="Double">
+                            <ColumnFrom Name="executionTime.maxTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MinTime" Type="Double">
+                            <ColumnFrom Name="executionTime.minTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="TotalTime" Type="Double">
+                            <ColumnFrom Name="executionTime.time"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>ProcessRules</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="OAAM_Rules_Execution">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="ActiveThreads" Type="Integer"/>
+                    <ColumnDef Name="AvgExecutionTime" Type="Double"/>
+                    <ColumnDef Name="Completed" Type="Integer"/>
+                    <ColumnDef Name="Completed_delta" Type="Integer"/>
+                    <ColumnDef Name="MaxActive" Type="Integer"/>
+                    <ColumnDef Name="MaxTime" Type="Double"/>
+                    <ColumnDef Name="MinTime" Type="Double"/>
+                    <ColumnDef Name="TotalTime" Type="Double"/>
+                    <Select Name="OAAM_Models_Execution">
+                        <TableFrom Name="OAMS.OAAM"/>
+                        <Column Name="ActiveThreads" Type="Integer">
+                            <ColumnFrom Name="executionTime.active"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="AvgExecutionTime" Type="Double">
+                            <ColumnFrom Name="executionTime.avg"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Completed" Type="Integer">
+                            <ColumnFrom Name="executionTime.completed"/>
+                            <Default>0</Default>
+                        </Column>
+                         <Column Name="Completed_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Completed"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Completed_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Completed_prev"/>
+                                    <ColumnFrom Name="Completed"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Completed" />
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Completed"/>
+                                        <ColumnFrom Name="Completed_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="MaxActive" Type="Integer">
+                            <ColumnFrom Name="executionTime.maxActive"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MaxTime" Type="Double">
+                            <ColumnFrom Name="executionTime.maxTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MinTime" Type="Double">
+                            <ColumnFrom Name="executionTime.minTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="TotalTime" Type="Double">
+                            <ColumnFrom Name="executionTime.time"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>Rules_Execution</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="OAAM_RunTimes_Execution">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="ActiveThreads" Type="Integer"/>
+                    <ColumnDef Name="AvgExecutionTime" Type="Double"/>
+                    <ColumnDef Name="Completed" Type="Integer"/>
+                    <ColumnDef Name="Completed_delta" Type="Integer"/>
+                    <ColumnDef Name="MaxActive" Type="Integer"/>
+                    <ColumnDef Name="MaxTime" Type="Double"/>
+                    <ColumnDef Name="MinTime" Type="Double"/>
+                    <ColumnDef Name="TotalTime" Type="Double"/>
+                    <Select Name="OAAM_Models_Execution">
+                        <TableFrom Name="OAMS.OAAM"/>
+                        <Column Name="ActiveThreads" Type="Integer">
+                            <ColumnFrom Name="executionTime.active"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="AvgExecutionTime" Type="Double">
+                            <ColumnFrom Name="executionTime.avg"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Completed" Type="Integer">
+                            <ColumnFrom Name="executionTime.completed"/>
+                            <Default>0</Default>
+                        </Column>
+                         <Column Name="Completed_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Completed"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Completed_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Completed_prev"/>
+                                    <ColumnFrom Name="Completed"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Completed" />
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Completed"/>
+                                        <ColumnFrom Name="Completed_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="MaxActive" Type="Integer">
+                            <ColumnFrom Name="executionTime.maxActive"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MaxTime" Type="Double">
+                            <ColumnFrom Name="executionTime.maxTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MinTime" Type="Double">
+                            <ColumnFrom Name="executionTime.minTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="TotalTime" Type="Double">
+                            <ColumnFrom Name="executionTime.time"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>RunTimes_Execution</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="OAAM_UpdateAuthStatus">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="ActiveThreads" Type="Integer"/>
+                    <ColumnDef Name="AvgExecutionTime" Type="Double"/>
+                    <ColumnDef Name="Completed" Type="Integer"/>
+                    <ColumnDef Name="Completed_delta" Type="Integer"/>
+                    <ColumnDef Name="MaxActive" Type="Integer"/>
+                    <ColumnDef Name="MaxTime" Type="Double"/>
+                    <ColumnDef Name="MinTime" Type="Double"/>
+                    <ColumnDef Name="TotalTime" Type="Double"/>
+                    <Select Name="OAAM_Models_Execution">
+                        <TableFrom Name="OAMS.OAAM"/>
+                        <Column Name="ActiveThreads" Type="Integer">
+                            <ColumnFrom Name="executionTime.active"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="AvgExecutionTime" Type="Double">
+                            <ColumnFrom Name="executionTime.avg"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Completed" Type="Integer">
+                            <ColumnFrom Name="executionTime.completed"/>
+                            <Default>0</Default>
+                        </Column>
+                         <Column Name="Completed_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Completed"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Completed_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Completed_prev"/>
+                                    <ColumnFrom Name="Completed"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Completed" />
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Completed"/>
+                                        <ColumnFrom Name="Completed_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="MaxActive" Type="Integer">
+                            <ColumnFrom Name="executionTime.maxActive"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MaxTime" Type="Double">
+                            <ColumnFrom Name="executionTime.maxTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MinTime" Type="Double">
+                            <ColumnFrom Name="executionTime.minTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="TotalTime" Type="Double">
+                            <ColumnFrom Name="executionTime.time"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>UpdateAuthStatus</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table>
+                <Table Name="OAAM_UpdateLog">
+                    <ColumnDef Type="String" Key="true" Name="ServerName"/>
+                    <ColumnDef Name="ActiveThreads" Type="Integer"/>
+                    <ColumnDef Name="AvgExecutionTime" Type="Double"/>
+                    <ColumnDef Name="Completed" Type="Integer"/>
+                    <ColumnDef Name="Completed_delta" Type="Integer"/>
+                    <ColumnDef Name="MaxActive" Type="Integer"/>
+                    <ColumnDef Name="MaxTime" Type="Double"/>
+                    <ColumnDef Name="MinTime" Type="Double"/>
+                    <ColumnDef Name="TotalTime" Type="Double"/>
+                    <Select Name="OAAM_Models_Execution">
+                        <TableFrom Name="OAMS.OAAM"/>
+                        <Column Name="ActiveThreads" Type="Integer">
+                            <ColumnFrom Name="executionTime.active"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="AvgExecutionTime" Type="Double">
+                            <ColumnFrom Name="executionTime.avg"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="Completed" Type="Integer">
+                            <ColumnFrom Name="executionTime.completed"/>
+                            <Default>0</Default>
+                        </Column>
+                         <Column Name="Completed_prev" Type="Integer">
+                            <Previous Index="0" Interval="300000">
+                                <ColumnFrom Name="Completed"/>
+                                <Default>0</Default>
+                            </Previous>
+                        </Column>
+                        <Column Name="Completed_delta" Type="Integer">
+                            <If>
+                                <Condition Operator="GT">
+                                    <ColumnFrom Name="Completed_prev"/>
+                                    <ColumnFrom Name="Completed"/>
+                                </Condition>
+                                <Then>
+                                    <ColumnFrom Name="Completed" />
+                                </Then>
+                                <Else>
+                                    <Expression Operator="Minus">
+                                        <ColumnFrom Name="Completed"/>
+                                        <ColumnFrom Name="Completed_prev"/>
+                                    </Expression>
+                                </Else>
+                            </If>
+                            <Default>
+                                0
+                            </Default>
+                        </Column>
+                        <Column Name="MaxActive" Type="Integer">
+                            <ColumnFrom Name="executionTime.maxActive"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MaxTime" Type="Double">
+                            <ColumnFrom Name="executionTime.maxTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="MinTime" Type="Double">
+                            <ColumnFrom Name="executionTime.minTime"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Column Name="TotalTime" Type="Double">
+                            <ColumnFrom Name="executionTime.time"/>
+                            <Default>0</Default>
+                        </Column>
+                        <Where>
+                            <Condition Type="String" Operator="EQ">
+                                <ColumnFrom Name="Name"/>
+                                <Value>UpdateLog</Value>
+                            </Condition>
+                        </Where>
+                    </Select>
+                </Table> 
+            </Adml>

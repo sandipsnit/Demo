@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean
+            name="JndiProviderForm"
+            type="com.bea.alsb.console.jndi.forms.JndiProviderForm"/>
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+    
+    <action-mappings>
+        <action path="/ViewAllJndiProviders"
+            type="com.bea.alsb.console.jndi.actions.ViewAllJndiProvidersAction" >
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/jndi/ViewAllJndiProviders.jsp"/>
+        </action>
+
+        <action path="/ManageJndiProvider"
+            type="com.bea.alsb.console.jndi.actions.ManageJndiProviderAction">
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/jndi/ViewAllJndiProviders.jsp"/>
+
+            <forward name="view"
+                contextRelative="true"
+                path="jsp/jndi/ViewJndiProvider.jsp"/>
+
+            <forward name="add"
+                contextRelative="true"
+                path="jsp/jndi/EditJndiProvider.jsp"/>
+
+            <forward name="edit"
+                contextRelative="true"
+                path="jsp/jndi/EditJndiProvider.jsp"/>
+
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/jndi/ViewAllJndiProviders.jsp"/>
+
+            <forward name="viewall"
+                path="/ViewAllJndiProviders.do"/>
+
+        </action>
+
+        <action path="/SubmitEditJndiProvider"
+            type="com.bea.alsb.console.jndi.actions.SubmitEditJndiProviderAction"
+            name="JndiProviderForm"
+            attribute="actionform"
+            scope="request"
+            validate="true"
+            input="error">
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/jndi/ViewAllJndiProviders.jsp"/>
+
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/jndi/EditJndiProvider.jsp"/>
+
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/jndi/ViewAllJndiProviders.jsp"/>
+        </action>
+
+        <action path="/ResetJndiProvider"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="/ManageJndiProvider" />
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

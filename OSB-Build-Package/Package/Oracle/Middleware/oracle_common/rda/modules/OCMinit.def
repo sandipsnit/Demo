@@ -1,0 +1,266 @@
+# OCMinit.def: Setup and configures Oracle Configuration Manager
+# $Id: OCMinit.def,v 1.13 2012/01/03 13:34:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OCMinit.def,v 1.13 2012/01/03 13:34:42 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+OCMinit - Module for Setting up and Configuring Oracle Configuration Manager
+
+=head1 DESCRIPTION
+
+This module sets up and configures Oracle Configuration Manager in the
+specified directories.
+
+=cut
+
+call setTrace(getSetting('RDA_TRACE'))
+
+# Initialisation
+var $ORACLE_HOME = getSetting('ORACLE_HOME')
+
+var %STATUS = ()
+
+# Platform specific initialisation
+var $MODE      = cond(isWindows(),'f',\
+                      isCygwin(), 'f',\
+                                  'fx')
+var $TTY       = cond(isWindows(),'2<CON','2<>/dev/tty')
+var $configCCR = ${AS.EXE:'configCCR'}
+var $emCCR     = ${AS.BATCH:'emCCR'}
+var $setupCCR  = ${AS.EXE:'setupCCR'}
+
+# Define global constants
+var %ERRORS = (\
+  'CONFIG',      'configCCR  encountered a failure during OCM configuration \
+                  in an instance home (%s)',\
+  'INSTALLED_MW','Oracle Configuration Manager seems to be already installed \
+                  in the Middleware home',\
+  'INSTALLED_OH','Oracle Configuration Manager seems to be already installed \
+                  in the Oracle home',\
+  'JAVA_HOME',   'Unable to identify a valid JAVA_HOME',\
+  'SETUP_MW',    'setupCCR encountered a failure during OCM setup in the \
+                  Middleware home',\
+  'SETUP_OH',    'setupCCR encountered a failure during OCM setup in the \
+                  Oracle home')
+var %STEPS = (\
+  'CONFIG',    'Configuring OCM in an instance home',\
+  'JAVA_HOME', 'Identifying a valid JAVA_HOME',\
+  'SETUP_MW',  'Executing setupCCR script for the Middleware home',\
+  'SETUP_OH',  'Executing setupCCR script for the Oracle home')
+
+#------------------------------------------------------------------------------
+# Configure OCM in an instance home
+#------------------------------------------------------------------------------
+macro do_config
+{var ($cmd,$stp,$mod,$hom) = @arg
+ import $TTY
+ keep $TTY
+
+ call setEnv('ORACLE_CONFIG_HOME',$hom)
+ if compare('eq',$mod,'D')
+  return exec_step($stp,join(' ',$cmd,'-a','-d',$TTY))
+ return exec_step($stp,join(' ',$cmd,'-a',$TTY))
+}
+
+#------------------------------------------------------------------------------
+# Setup OCM
+#------------------------------------------------------------------------------
+macro do_setup
+{var ($typ,$mod,$hom) = @arg
+ import $MODE,$TTY,$emCCR
+ keep $MODE,$TTY,$emCCR
+
+ var $ccr = catDir($hom,'ccr')
+ if and(testDir('d',$ccr),\
+        testFile($MODE,catFile($ccr,'bin',$emCCR)))
+  return register_error(concat('INSTALLED_',$typ))
+
+ if getEnv('CCR_ENDPOINT')
+ {var $cmd = concat('echo ccr.endpoint=https://',last,'>>',\
+                    catCommand($hom,'ccr','config','ccr.properties'))
+  debug '  - Executing: ',$cmd
+  call command($cmd)
+ }
+
+ if !testDir('d',catDir($hom,'bin'))
+  call setEnv('CCR_DISABLE_CRON_ENTRY','TRUE')
+
+ var $cmd = catCommand($ccr,'bin','setupCCR')
+ if compare('eq',$mod,'D')
+  return exec_step(concat('SETUP_',$typ),\
+                   join(' ',$cmd,'-S','RDA','-V',${RDA.VERSION},'-d',$TTY))
+
+ return exec_step(concat('SETUP_',$typ),\
+                  join(' ',$cmd,'-S','RDA','-V',${RDA.VERSION},$TTY))
+}
+
+#------------------------------------------------------------------------------
+# Execute a step
+#------------------------------------------------------------------------------
+macro exec_step
+{var ($stp,$cmd) = @arg
+ import %STATUS,%STEPS
+ keep %STATUS,%STEPS
+
+ # Execute the command
+ echo nvl($STEPS{$stp},$STEPS{key($stp)},$stp)
+ debug '  Executing: ',$cmd
+ call system($cmd)
+
+ # Register errors and return the completion status
+ if status()
+ {var $STATUS{$stp} = last
+  return false
+ }
+ return true
+}
+
+#------------------------------------------------------------------------------
+# Find where a JDK is installed
+#------------------------------------------------------------------------------
+macro find_jdk
+{import $ORACLE_HOME
+
+ var $JAVA_HOME = getSetting('OCM_JAVA_HOME')
+ if and($JAVA_HOME,testDir('d',catDir($JAVA_HOME,'jre')))
+ {call setEnv('JAVA_HOME',$JAVA_HOME)
+  return $JAVA_HOME
+ }
+ var $JAVA_HOME = getEnv('JAVA_HOME')
+ if and($JAVA_HOME,testDir('d',catDir($JAVA_HOME,'jre')))
+  return $JAVA_HOME
+ if testDir('d',catDir($ORACLE_HOME,'jdk'))
+  return lastDir()
+ call register_error('JAVA_HOME')
+ return ''
+}
+
+#------------------------------------------------------------------------------
+# Register an error in the error stack
+#------------------------------------------------------------------------------
+macro register_error
+{import %STATUS
+ keep %STATUS
+ var ($stp) = @arg
+
+ var $STATUS{$stp} = true
+ return false
+}
+
+#------------------------------------------------------------------------------
+# Main
+#------------------------------------------------------------------------------
+decr $dur1,time()
+if find_jdk()
+{var $JDK_HOME = last
+
+ # Disable initial collection
+ call setEnv('CCR_INSTALL_DEFER_COLLECT','TRUE')
+
+ # Set up OCM in the Oracle home
+ if ?getSetting('OCM_SETUP_DIR_OH')
+  call do_setup('OH',getSetting('OCM_SETUP_MOD_OH'), last)
+
+ # Set up OCM in the Middleware home
+ if ?getSetting('OCM_SETUP_DIR_MW')
+ {var $dir = last
+  var $bea = ${ENV.BEA_HOME:${ORACLE_PARENT:catDir($dir,upDir())}}
+  var $wls = ${ENV.WL_HOME}
+  if !?$wls
+  {loop $fil (grepDir($bea,'^wlserver_\d+(\.\d+)+','np'))
+   {if testDir('d',$fil)
+     var $wls = $fil
+   }
+  }
+  var $bea = setEnv('BEA_HOME', $bea)
+  var $jdk = setEnv('JAVA_HOME',$JDK_HOME)
+  var $wls = setEnv('WL_HOME',  $wls)
+  call do_setup('MW',getSetting('OCM_SETUP_MOD_MW'),$dir)
+  call setEnv('BEA_HOME', $bea)
+  call setEnv('JAVA_HOME',$jdk)
+  call setEnv('WL_HOME',  $wls)
+ }
+
+ # Configure OCM in the specified instance home
+ var $env = setEnv('ORACLE_CONFIG_HOME')
+ loop $key (grepSetting('^OCM_CONFIG_DIR_'))
+ {# Find the corresponding OCM software
+  var ($dir,$uid,$ccr) = (getSetting($key),substr($key,15))
+  if testFile('f',catFile($dir,'bin','opmnctl.bat'))
+  {if grepFile(lastFile(),'^\s*set\s+\ORACLE_HOME\s*=','fi')
+    var $ccr = catDir($ora = value(last),'ccr')
+  }
+  elsif testFile('f',catFile($dir,'bin','opmnctl'))
+  {if grepFile(lastFile(),'^\s*\$OracleHome\s*=','f')
+   {var (undef,$ora) = match(value(last),'([\042\047])(.*?)\1')
+    var $ccr = catDir($ora,'ccr')
+   }
+  }
+
+  # Configure the instance when the OCM is available
+  if testDir('d',$ccr)
+  {if testFile($MODE,catFile($ccr,'bin',$configCCR))
+    call do_config(lastCommand(),concat('CONFIG=',$uid),\
+                   getSetting(concat('OCM_CONFIG_MOD_',$uid)),$dir)
+   elsif testFile($MODE,catFile($ccr,'bin',$setupCCR))
+   {call setEnv('ORACLE_CONFIG_HOME',$dir)
+    call do_setup(concat('CONFIG=',$uid),\
+                  getSetting(concat('OCM_CONFIG_MOD_',$uid)),$ora)
+   }
+  }
+ }
+ call setEnv('ORACLE_CONFIG_HOME',$env)
+
+ # Request a new packaging
+ call setSetting('DO_FINALIZE','S090OCM,S919LOAD,S999END')
+}
+incr $dur1,time()
+
+# Display error stack
+var @err = ()
+loop $key (keys(%STATUS))
+{if $STATUS{$key}
+ {if exists($ERRORS{$key})
+   $msg = $ERRORS{$key}
+  elsif exists($ERRORS{key($key)})
+   $msg = sprintf($ERRORS{key($key)},value($key))
+  else
+   $msg = $key
+  echo 'ERROR: ',$msg
+  call push(@err,$msg)
+ }
+}
+if @err
+ call setSetting('LAST_INFO_S090OCM',\
+   join('%BR% - ','OCM-9005: A setup error occurred: ',@err),\
+   'T','OCM installation error')
+
+# Disable the post treatment
+call setSetting('POST_PACKAGE_S090OCM')
+
+# Log the install details
+call log('OCM','install','M',$dur1,getSetting('LAST_INFO_S090OCM'))
+
+=begin credits
+
+=over 10
+
+=item RDA 4.20: Wes Root
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

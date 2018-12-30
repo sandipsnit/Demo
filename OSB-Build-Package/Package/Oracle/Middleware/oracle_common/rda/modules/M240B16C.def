@@ -1,0 +1,267 @@
+# M240B16C.def: Collects Sun Blade B1600 Server System Controller Information
+# $Id: M240B16C.def,v 1.6 2012/05/21 08:45:07 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M240B16C.def,v 1.6 2012/05/21 08:45:07 mschenke Exp $
+#
+# Change History
+# 20120521  JGS  Improve the password management.
+
+=head1 NAME
+
+M240B16C - Collects Sun Blade B1600 Server System Controller Information
+
+=head1 DESCRIPTION
+
+This module collects System Controller (SC) information in Sun Blade B1600
+servers.
+
+=cut
+
+use Mrc
+use Telnet
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('b1600extended')
+
+# Get the ping syntax
+var $PING = check(${RDA.OS},'solaris','/usr/sbin/ping %s',\
+                            'linux',  '/bin/ping -c 1 %s',\
+                            'cygwin', '/bin/ping %s 64 1')
+
+#------------------------------------------------------------------------------
+# XPLR_b16c section
+#------------------------------------------------------------------------------
+
+section XPLR_b16c
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing B16C sections ...')
+
+pretoc '2:B1600 System Controller'
+
+=head2 Sun Blade B1600 System Controller Information
+
+Gathers the following System Controller commands through telnet:
+
+=over 2
+
+=item o C<showdate>
+
+=item o C<showenvironment -v>
+
+=item o C<showlogs -v CH>
+
+=item o C<showplatform -v>
+
+=item o C<showsc -v>
+
+=item o C<showusers>
+
+=item o C<usershow>
+
+=item o C<consolehistory -v ${SLOT}>
+
+=item o C<showfru ${SLOT}>
+
+=item o C<showlogs ${SLOT}>
+
+=back
+
+=cut
+
+# Treat all requests
+loop $set (split('\|',${XPLR_B16C_SET}))
+{$hst = getSetting(concat('XPLR_B16C_HOST_',$set))
+ $usr = getSetting(concat('XPLR_B16C_USER_',$set))
+ next !?$hst
+
+ # Validate the input parameters
+ debug ' Inside B16C collection, validating ',$hst,' access'
+ if !match($hst,'^[\w\-\.\:]+$')
+  next log_info(concat('The B1600 SC host name or IP "',$hst,\
+                       '"contains invalid characters.'))
+ call command(sprintf($PING,$hst))
+ if status()
+  next log_info(concat('Host ',$hst,' is not reachable.'))
+
+ if !match($usr,'^[\w\-\.]+$')
+  next log_info(concat('The B1600 SC user name "',$usr,\
+                       '"contains invalid characters.'))
+ if !hasPassword('host',$hst,$usr)
+  call setPassword('host',$hst,$usr,\
+    askPassword(concat('Enter ',$usr,' password for B1600 SC ',$hst,': ')))
+
+ # Connect to the System Controller
+ var $ctl = new('Telnet',hst=>$hst)
+ if !?$ctl->open
+  next log_warning($ctl->get_info('msg'))
+ if !?$ctl->login($usr,{chk=>'m/Advanced Lights Out Manager for Blade/',\
+                        dis=>'logout'})
+  next log_warning($ctl->get_info('msg'))
+
+ # Describe the Service Controller commands
+ var @cmd = (\
+   '---+ System Controller',\
+   ['showdate.out',\
+    'showdate',\
+    '---++ UTC date and time'],\
+   ['showlogs_-v_CH.out',\
+    'showlogs -v CH',\
+    '---++ Events Logged'],\
+   ['usershow.out',\
+    'usershow',\
+    '---++ Users Accounts'],\
+   ['showusers.out',\
+    'showusers',\
+    '---++ Users Currently Logged'],\
+   ['showplatform_-v.out',\
+    'showplatform -v',\
+    '---++ Operational Status'],\
+   ['showenvironment_-v.out',\
+    'showenvironment -v',\
+    '---++ Environmental Sensors'])
+
+ # Determine commands for non-empty blades
+ loop $fru ($ctl->command('showplatform -v'))
+ {var ($slt,$sta) = split('\s+',$fru,3)
+  next !match($slt,'^(S\d{1,2}|SSC[0-1])$')
+  next !match($sta,'^(OK|Faulty)$')
+  call push(@cmd,\
+    concat('---+ Blade ',$slt),\
+    [concat('showfru_',$slt,'.out'),\
+     concat('showfru ',$slt),\
+     '---++ Information from FRUID Database'],\
+    [concat('showlogs_',$slt,'.out'),\
+     concat('showlogs ',$slt),\
+     '---++ Logged Events'])
+  if match($slt,'^SSC[0-1]$')
+   call push(@cmd,\
+     [concat('consolehistory_-v_',$slt,'@SWT.out'),\
+      concat('consolehistory -v ',$slt,'/SWT'),\
+      '---++ Switch Console Log'])
+  else
+   call push(@cmd,\
+     [concat('consolehistory_-v_',$slt,'.out'),\
+      concat('consolehistory -v ',$slt),\
+      '---++ Console Log'])
+ }
+
+ # Genererate the report
+ debug ' Inside B16C collection, gathering ',$hst,' information'
+ report concat('b16c_info_',$hst)
+ title '---+!! Sun Blade B1600 Server System Controller'
+ title '---## ',$hst,' Information'
+ title $TOC
+ loop $rec (@cmd)
+ {if !ref($rec)
+   write $rec
+  else
+  {prefix
+   {write $rec->[2]
+    write '---## Using: ',encode($rec->[1])
+    call beginBlock(true)
+    call addBlock('E','D',concat('sc/',$hst,'/',$rec->[0]))
+   }
+   if $ctl->collect(${CUR.REPORT},{cmd=>$rec->[1]})
+    call log_warning($ctl->get_info('msg'))
+   if hasOutput(true)
+   {call endBlock()
+    write $TOP
+   }
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',$hst,' Information]]'
+
+ # Close the connection
+ call $ctl->quit
+}
+
+=head2 b16c_input - Input File
+
+Lists the characteristics of the specified input file.
+
+=back
+
+=cut
+
+if testFile('r',catFile(${XPLR_B16C_CFG}))
+{debug ' Inside B16C collection, getting input file characteristics'
+ report b16c_input
+ call do_exec(\
+   [concat('sc/ls_-l_',replace(lastFile(),'\/','@',true)),\
+    '/usr/bin/ls',concat('-l ',quote(lastFile(),'x')),\
+    '---+ Explorer Input File'])
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][Input File]]'
+}
+
+unpretoc
+
+#------------------------------------------------------------------------------
+# Input file conversion section
+#------------------------------------------------------------------------------
+
+section input
+
+# Define the input file parser macro
+macro parse_input
+{var ($fil,$flg) = @arg
+
+ var @sta = getStat($fil)
+ if !expr('&',$sta[2],077)
+ {# Parse the input file
+  var ($set,@set) = (0)
+  loop $lin (grepFile($fil,'^\s*#','v'))
+  {var ($hst,$usr,$pwd) = split('\s+',trim($lin),3)
+   next !?$hst
+   if ?$pwd
+    call setPassword('host',$hst,$usr,$pwd)
+   call push(@set,incr($set))
+   call setTempSetting(concat('XPLR_B16C_HOST_',$set),$hst)
+   call setTempSetting(concat('XPLR_B16C_USER_',$set),$usr)
+  }
+
+  # Save the parsing results
+  if $set
+  {call setTempSetting('XPLR_B16C_CFG',$fil)
+   call setTempSetting('XPLR_B16C_SET',join('|',@set))
+   call setTempSetting('xplr_b16c_accept',true)
+  }
+  else
+   call setTempSetting('xplr_b16c_accept',$flg)
+ }
+}
+
+# Parse the input file
+if and(defined($fil = ${ENV.EXP_B1600INPUT_CONFIG}),\
+       testFile('frs',catFile($fil)))
+ call parse_input(lastFile(),true)
+else
+ call parse_input(catFile(${XPLR_ETC},'b1600input.txt'),false)
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

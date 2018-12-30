@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AuditConfig componentType="WebServices" xmlns="http://xmlns.oracle.com/ias/audit/audit.xsd">
+  <Events componentType="WebServices" displayName="Oracle Web Services" isLibrary="true">
+    <Category name="WS-Processing">
+      <HelpText>These events relate to WebService Processing</HelpText>
+      <Event name="RequestReceived" shortName="RequestReceived" unusedAttributes="ModuleId Roles">
+        <HelpText>WebService request is received</HelpText>
+        <Attribute enumValues="SOAP/HTTP, SOAP/JMS, NORMALIZED" maxLength="255" name="Protocol" shortName="protocol" type="string">
+          <HelpText>The procotol of the request.</HelpText>
+        </Attribute>
+        <Attribute maxLength="4095" name="Endpoint" shortName="endpoint" type="string">
+          <HelpText>The URI which identifies the endpoint for which the event was triggered.  For example, an HTTP require will record the URL.</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="Operation" shortName="operation" type="string">
+          <HelpText>For SOAP requests, the operation for which the event was triggered.</HelpText>
+        </Attribute>
+        <Attribute maxLength="4095" name="FaultUri" type="string">
+          <HelpText>If processing yielded a fault, the URI of the fault that will be sent.</HelpText>
+        </Attribute>
+      </Event>
+      <Event name="ResponseSent" shortName="ResponseSent" unusedAttributes="ModuleId Roles">
+        <HelpText>WebService response is sent</HelpText>
+        <Attribute enumValues="SOAP/HTTP, SOAP/JMS, NORMALIZED" maxLength="255" name="Protocol" shortName="protocol" type="string">
+          <HelpText>The procotol of the request.</HelpText>
+        </Attribute>
+        <Attribute maxLength="4095" name="Endpoint" shortName="endpoint" type="string">
+          <HelpText>The URI which identifies the endpoint for which the event was triggered.  For example, an HTTP require will record the URL.</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="Operation" shortName="operation" type="string">
+          <HelpText>For SOAP requests, the operation for which the event was triggered.</HelpText>
+        </Attribute>
+        <Attribute maxLength="4095" name="FaultUri" type="string">
+          <HelpText>If processing yielded a fault, the URI of the fault that will be sent.</HelpText>
+        </Attribute>
+      </Event>
+    </Category>
+    <Category name="WS-Fault">
+      <HelpText>These events relate to WebService Fault Message</HelpText>
+      <Event name="SoapFaultEvent" shortName="SoapFaultEvent" unusedAttributes="ModuleId Roles">
+        <HelpText>WebService soap fault is created</HelpText>
+        <Attribute maxLength="4095" name="URI" type="string">
+          <HelpText>The URI of the fault.</HelpText>
+        </Attribute>
+        <Attribute enumValues="OWSM Service" maxLength="255" name="Source" type="string">
+          <HelpText>The source of the fault.</HelpText>
+        </Attribute>
+        <Attribute enumValues="SOAP/HTTP, SOAP/JMS, NORMALIZED" maxLength="255" name="Protocol" shortName="protocol" type="string">
+          <HelpText>The protocol of the request.</HelpText>
+        </Attribute>
+        <Attribute maxLength="4095" name="Endpoint" shortName="endpoint" type="string">
+          <HelpText>The URI which identifies the endpoint for which the event was triggered.  For example, an HTTP require will record the URL.</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="Operation" shortName="operation" type="string">
+          <HelpText>For SOAP requests, the operation for which the event was triggered.</HelpText>
+        </Attribute>
+      </Event>
+    </Category>
+  </Events>
+  <Levels>
+    <Level name="ExceptionsOnly">
+    </Level>
+    <Level name="Basic">
+      <FilterEvent enabled="true" eventName="RequestReceived"/>
+      <FilterEvent enabled="true" eventName="ResponseSent"/>
+      <FilterEvent enabled="true" eventName="SoapFaultEvent"/>
+    </Level>
+    <Level name="Enhanced">
+    </Level>
+  </Levels>
+  <FilterPresetDefinitions>
+    <FilterPresetDefinition displayName="Low" helpText="Low filter preset .To be defined by the component" name="Low">RequestReceived.FAILURESONLY,ResponseSent.FAILURESONLY
+    </FilterPresetDefinition>
+    <FilterPresetDefinition displayName="Medium" helpText="Medium filter preset. To be defined by the component" name="Medium">RequestReceived,ResponseSent,SoapFaultEvent
+    </FilterPresetDefinition>
+  </FilterPresetDefinitions>
+</AuditConfig>

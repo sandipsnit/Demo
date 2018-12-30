@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+                               "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="SimpleForm"
+                   type="com.bea.alsb.console.forms.SimpleForm"/>
+        <form-bean name="ServiceDetailsForm"
+                   type="com.bea.alsb.console.services.forms.EditServiceDetailsForm"/>
+        <form-bean name="ServiceBindingForm"
+                   type="com.bea.alsb.console.services.forms.EditServiceBindingForm"/>
+        <form-bean name="ServiceTransportForm"
+                   type="com.bea.alsb.console.services.forms.EditServiceTransportForm"/>
+        <form-bean name="ServiceSelectorForm"
+                   type="com.bea.alsb.console.services.forms.EditServiceSelectorForm"/>
+        <form-bean name="ServiceMsgContentHandlingForm"
+                   type="com.bea.alsb.console.services.forms.EditServiceMsgContentHandlingForm"/>
+        <form-bean name="BrowserForm"
+                   type="com.bea.alsb.console.forms.ResourceSummaryForm"/>
+        <form-bean name="ServiceSecurityTabForm"
+                   type="com.bea.alsb.console.services.forms.EditServiceSecurityTabForm"/>
+        <form-bean name="ServicePoliciesTabForm"
+                   type="com.bea.alsb.console.services.forms.EditServicePoliciesTabForm"/>
+        <form-bean name="EditOperationalSettingsTabForm"
+                   type="com.bea.alsb.console.services.forms.EditOperationalSettingsTabForm"/>
+        <form-bean name="TransportSpecificDynaActionForm" type="org.apache.struts.action.DynaActionForm" />
+    </form-beans>
+
+    <global-exceptions>
+        <exception key="UNDEFINED"
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+    <action-mappings>
+
+
+        <!--
+                Summary Views  +  related actions
+        -->
+        <action path="/ViewProxyServices"
+                type="com.bea.alsb.console.services.actions.ViewProxyServicesAction"
+                scope="session"
+                validate="false"
+                input="success">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/ViewAllServices.jsp"/>
+        </action>
+
+        <action path="/ViewProxyServicesPgOrSort"
+		        type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/services/ViewAllServices.jsp?isproxy=true"/>
+
+        <action path="/ViewExternalServices"
+            type="com.bea.alsb.console.services.actions.ViewExternalServicesAction"
+            scope="session"
+            validate="false"
+            input="success">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/ViewAllServices.jsp?isproxy=false"/>
+        </action>
+
+        <action path="/ViewExternalServicesPgOrSort"
+		        type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/services/ViewAllServices.jsp"/>
+
+        <action path="/ViewService"
+                type="com.bea.alsb.console.services.actions.ViewServiceAction">
+            <forward name="proxyfailed"
+                     path="ViewProxyServices.do"/>
+            <forward name="externalfailed"
+                     path="ViewExternalServices.do"/>
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/ViewService.jsp"/>
+        </action>
+
+        <action path="/ExportServiceWsdl"
+                type="com.bea.alsb.console.services.actions.ExportWsdlAction">
+        </action>
+
+        <action path="/ViewBinding"
+                type="com.bea.alsb.console.services.actions.ViewBindingAction">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/ViewBinding.jsp" />
+        </action>
+
+        <action path="/CreateNewService"
+                type="com.bea.alsb.console.services.actions.CreateNewServiceAction">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceDetails.jsp"/>
+        </action>
+
+        <!--
+                Edit Wizard
+        -->
+        <action path="/CancelEditService"
+                type="com.bea.alsb.console.services.actions.CancelEditServiceAction">
+            <forward name="proxy"
+                     path="/ViewProxyServices.do"/>
+            <forward name="external"
+                     path="/ViewExternalServices.do"/>
+        </action>
+
+        <action path="/EditServiceDetails"
+                type="com.bea.alsb.console.services.actions.EditServiceDetailsAction"
+                name="ServiceDetailsForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceDetails.jsp"/>
+            <forward name="binding"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceBinding.jsp"/>
+            <forward name="transport"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransport.jsp"/>
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+        </action>
+
+        <action path="/EditServiceBinding"
+                type="com.bea.alsb.console.services.actions.EditServiceBindingAction"
+                name="ServiceBindingForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceBinding.jsp"/>
+            <forward name="details"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceDetails.jsp"/>
+            <forward name="transport"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransport.jsp"/>
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+        </action>
+
+        <action path="/EditServiceTransport"
+                type="com.bea.alsb.console.services.actions.EditServiceTransportAction"
+                name="ServiceTransportForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransport.jsp"/>
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransport.jsp"/>
+            <forward name="details"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceDetails.jsp"/>
+            <forward name="binding"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceBinding.jsp"/>
+            <forward name="transport"
+                     path="/ToEditServiceTransportSpecific.do"/>
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+        </action>
+
+        <action path="/ToEditServiceTransportSpecific"
+                type="com.bea.alsb.console.services.actions.ToEditServiceTransportSpecificAction">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransportSpecific.jsp"/>
+            <forward name="transport2Action"
+                     path="/EditServiceTransportSpecific.do"/>
+        </action>
+
+        <action path="/EditServiceTransportSpecific"
+                name="TransportSpecificDynaActionForm"
+                scope="request"
+                type="com.bea.alsb.console.services.actions.EditServiceTransportSpecificAction">
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransportSpecific.jsp"/>
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransportSpecific.jsp"/>
+            <forward name="transport"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransport.jsp"/>
+            <forward name="selector"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSelector.jsp"/>
+            <forward name="msg_content_handling"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceMsgContentHandling.jsp"/>
+            <forward name="summary"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+        </action>
+
+        <action path="/EditServiceSelector"
+                type="com.bea.alsb.console.services.actions.EditServiceSelectorAction"
+                name="ServiceSelectorForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSelector.jsp"/>
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSelector.jsp"/>
+            <forward name="transport"
+                     path="/ToEditServiceTransportSpecific.do"/>
+            <forward name="msg_content_handling"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceMsgContentHandling.jsp"/>
+            <forward name="summary"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+        </action>
+
+        <action path="/EditServiceMsgContentHandling"
+                type="com.bea.alsb.console.services.actions.EditServiceMsgContentHandlingAction"
+                name="ServiceMsgContentHandlingForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceMsgContentHandling.jsp"/>
+            <forward name="transport"
+                     path="/ToEditServiceTransportSpecific.do"/>
+            <forward name="selector"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSelector.jsp"/>
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceMsgContentHandling.jsp"/>
+            <forward name="summary"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+        </action>
+
+        <action path="/EditServiceSummary"
+                type="com.bea.alsb.console.services.actions.EditServiceSummaryAction">
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSummary.jsp"/>
+            <forward name="details"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceDetails.jsp"/>
+            <forward name="binding"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceBinding.jsp"/>
+            <forward name="transport"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceTransport.jsp"/>
+            <forward name="transport2"
+                     path="/ToEditServiceTransportSpecific.do"/>
+            <forward name="selector"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSelector.jsp"/>
+            <forward name="msg_content_handling"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceMsgContentHandling.jsp"/>
+            <forward name="submit"
+                     contextRelative="true"
+                     path="jsp/services/ViewAllServices.jsp"/>
+        </action>
+
+        <action path="/ReturnToOperationalSettingsTab"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/services/EditOperationalSettingsTab.jsp" />
+
+        <action path="/EditOperationalSettingsTab"
+                type="com.bea.alsb.console.services.actions.EditOperationalSettingsTabAction">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/EditOperationalSettingsTab.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditOperationalSettingsTab.jsp"/>
+            <forward
+                name="warning"
+                contextRelative="true"
+                path="jsp/main/WarningPage.jsp"/>
+
+        </action>
+
+        <action path="/SubmitOperationalSettingsTab"
+                type="com.bea.alsb.console.services.actions.SubmitOperationalSettingsTabAction"
+                name="EditOperationalSettingsTabForm"
+                scope="session"
+                attribute="actionform"
+                validate="true"
+                input="error">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/EditOperationalSettingsTab.jsp"/>
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/services/EditOperationalSettingsTab.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditOperationalSettingsTab.jsp"/>
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="warning"
+                     contextRelative="true"
+                     path="jsp/main/WarningPage.jsp"/>
+        </action>
+
+        <action path="/ReturnToServiceSecurityTab"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/services/EditServiceSecurityTab.jsp" />
+
+        <action path="/EditServiceSecurityTab"
+                type="com.bea.alsb.console.services.actions.EditServiceSecurityTabAction">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSecurityTab.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSecurityTab.jsp"/>
+            <forward name="warning"
+                     contextRelative="true"
+                     path="jsp/main/WarningPage.jsp"/>
+        </action>
+
+        <action path="/SubmitServiceSecurityTab"
+                type="com.bea.alsb.console.services.actions.SubmitServiceSecurityTabAction"
+                name="ServiceSecurityTabForm"
+                scope="session"
+                attribute="actionform"
+                validate="true"
+                input="error">
+
+            <forward name="success"
+                     path="/EditServiceSecurityTab.do" />
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSecurityTab.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/services/EditServiceSecurityTab.jsp"/>
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="warning"
+                     contextRelative="true"
+                     path="jsp/main/WarningPage.jsp"/>
+        </action>
+
+        <action path="/ReturnToServicePoliciesTab"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/services/EditServicePoliciesTab.jsp" />
+
+        <action path="/EditServicePoliciesTab"
+                type="com.bea.alsb.console.services.actions.EditServicePoliciesTabAction">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/services/EditServicePoliciesTab.jsp"/>
+            <forward name="warning"
+                     contextRelative="true"
+                     path="jsp/main/WarningPage.jsp"/>
+        </action>
+
+        <action path="/SortServicePolicies"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/services/EditServicePoliciesTab.jsp"/>
+
+        <action path="/SubmitServicePoliciesTab"
+                type="com.bea.alsb.console.services.actions.SubmitServicePoliciesTabAction"
+                name="ServicePoliciesTabForm"
+                scope="session"
+                attribute="actionform"
+                validate="false">
+
+            <forward name="success"
+                     path="/EditServicePoliciesTab.do"/>
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/services/EditServicePoliciesTab.jsp"/>
+            <forward name="cancel"
+                     path="/CancelEditService.do"/>
+            <forward name="warning"
+                     contextRelative="true"
+                     path="jsp/main/WarningPage.jsp"/>
+        </action>
+
+        <!--
+                Common
+                <action path="/ServiceBrowser" forward="jsp/services/ServicesBrowser.jsp" />
+        -->
+
+       <action path="/ServiceBrowserPgSort"
+               type="org.apache.struts.actions.ForwardAction"
+               parameter="jsp/services/ServicesBrowser.jsp" />
+
+        <action path="/ServiceBrowser"
+                type="com.bea.alsb.console.services.actions.ServiceBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="ServiceBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/ServicesBrowser.jsp"/>
+        </action>
+
+        <action path="/ServiceBrowserTask"
+                type="com.bea.alsb.console.services.actions.ServiceBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="ServiceBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/services/ServicesBrowser.jsp"/>
+        </action>
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

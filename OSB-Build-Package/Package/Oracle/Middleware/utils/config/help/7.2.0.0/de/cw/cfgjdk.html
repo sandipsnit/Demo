@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Hilfe zum Konfigurationsassistenten: Serverstartmodus und JDK konfigurieren</title>
+<link rel="StyleSheet" href="blaf.css" type="text/css" media="screen">
+</head>
+<body>
+<h1>Serverstartmodus und JDK konfigurieren</h1>
+<p>Hier geben Sie an, ob Sie WebLogic im Production-Modus oder im Entwicklungsmodus ausf&uuml;hren m&ouml;chten. Sie geben au&szlig;erdem den Speicherort der JDKs an, die f&uuml;r diese Domain verwendet werden.</p>
+<ol>
+<li>W&auml;hlen Sie den Startup-Modus f&uuml;r die WebLogic-Domain aus.
+<ul>
+ <li class="list_para"><strong>Entwicklungsmodus</strong> <br>In diesem Modus ist die Sicherheitskonfiguration relativ gelockert, so dass Sie ein automatisches Deployment von Anwendungen durchf&uuml;hren k&ouml;nnen.</li>
+    <li class="list_para"><strong>Production-Modus</strong><br> In diesem Modus ist die Sicherheitskonfiguration relativ streng, sodass f&uuml;r das Deployment von Anwendungen die Eingabe von Benutzername und Kennwort erforderlich ist. Bevor Sie eine Domain in die Produktion &uuml;berf&uuml;hren, machen Sie sich mit den Verfahren zur Sicherung einer Produktionsumgebung vertraut. Weitere Informationen dazu finden Sie unter <a href="http://www.oracle.com/pls/as1111/lookup?id=LOCKD121" target="_blank">Sicherheit der Produktionsumgebung sicherstellen</a> in <i>Produktionsumgebung f&uuml;r Oracle WebLogic Server sichern</i>.</li>
+	</ul>
+    <p class="list_para">In der folgenden Tabelle finden Sie Informationen dazu, wie Sie einen Startup-Modus w&auml;hlen, der Ihren Anforderungen entspricht.</p>
+    <table>
+      <tr>
+        <th>Funktion</th>
+        <th>Entwicklungsmodus</th>
+        <th>Production-Modus</th>
+      </tr>
+      <tr>
+        <td><strong>SSL</strong></td>
+        <td>Sie k&ouml;nnen die digitalen Demo-Zertifikate und Demo-Keystrokes verwenden, die von den Sicherheitsservices von WebLogic Server zur Verf&uuml;gung gestellt werden. Mit diesen Zertifikaten k&ouml;nnen Sie Ihre Anwendung so gestalten, dass sie auch in SSL-gesicherten Umgebungen arbeiten kann. 
+<p>Weitere Informationen finden Sie unter <a href="http://www.oracle.com/pls/as1111/lookup?id=SECMG384" target="_blank">SSL konfigurieren</a> in <i>Oracle WebLogic Server sichern</i>.</p>
+</td>
+        <td>Sie d&uuml;rfen die digitalen Demo-Zertifikate und Demo-Keystrokes nicht verwenden. Wenn Sie dies tun, wird eine Warnmeldung angezeigt.</td>
+      </tr>
+      <tr>
+        <td><strong>Anwendungen bereitstellen</strong></td>
+        <td>WebLogic Server-Instanzen k&ouml;nnen Anwendungen im Verzeichnis <span class="code">domain_name/autodeploy</span> automatisch bereitstellen und aktualisieren.
+<p>Oracle empfiehlt, diese Methode nur in einer Single-Server-Deployment-Umgebung einzusetzen.</p>
+<p>Weitere Informationen finden Sie unter <a href="http://www.oracle.com/pls/as1111/lookup?id=DEPGD212" target="_blank">Anwendungen und Module mit weblogic.deployer bereitstellen</a> in <i>Anwendungen in Oracle WebLogic Server bereitstellen</i>.</p>
+</td>
+        <td>Die automatische Bereitstellungsfunktion ist deaktiviert. Verwenden Sie die Administrationskonsole von WebLogic Server, das Tool <span class="code">weblogic.Deployer</span>, oder das WebLogic-Scripting-Tool.</td>
+      </tr>
+      <tr>
+        <td><strong>Rotation der Log-Datei</strong></td>
+        <td>Standardm&auml;&szlig;ig wird beim Starten der WebLogic Server-Instanz die lokale Log-Datei des Servers automatisch in <span class="code">SERVER-NAME.log.n</span> umbenannt (rotiert). Im Verlauf der weiteren Server-Session werden Nachrichten in der Log-Datei gesammelt, bis diese eine Gr&ouml;&szlig;e von 500 KB erreicht hat.
+<p>Der Standardwert der Einstellung <b>Anzahl der beibehaltenen Dateien einschr&auml;nken</b> in &quot;Logging-Konfiguration&quot; ist <span class="code">true</span>. Dies schr&auml;nkt die Zahl der Log-Dateien ein, die die Serverinstanz zum Speichern alter Nachrichten erstellt.</p>
+</td>
+        <td>Hat die lokale Log-Datei eine Gr&ouml;&szlig;e von 5000 KB erreicht, wird sie vom Server rotiert. Ist der Server auf den Production-Modus konfiguriert, werden standardm&auml;&szlig;ig s&auml;mtliche Versionen der Log-Dateien gespeichert. Administratoren k&ouml;nnen die Anzahl der zu speichernden Log-Dateien konfigurieren.</td>
+      </tr>
+      <tr>
+        <td><strong>JDBC-Systemressource</strong></td>
+        <td>Die Standardkapazit&auml;t betr&auml;gt 15 Verbindungen.</td>
+        <td>Die Standardkapazit&auml;t betr&auml;gt 25 Verbindungen.</td>
+      </tr>
+    </table>
+  </li>
+  <li>W&auml;hlen Sie das JDK aus.
+ <p class="list_para">W&auml;hlen Sie im Bereich <strong>JDK-Auswahl</strong> das JDK f&uuml;r den im Bereich <strong>Startup-Modus f&uuml;r WebLogic-Domain</strong> ausgew&auml;hlten Startup-Modus aus. Der Konfigurationsassistent zeigt eine Liste der im Installationsprogramm enthaltenen JDKs an. Sie k&ouml;nnen eines dieser JDKs oder ein anderes auf Ihrem System installiertes JDK ausw&auml;hlen.</p>
+    <p class="list_para"><strong>Hinweise</strong>:</p>
+    <ul>
+<li> Wenn Sie ein im Installationsprogramm enthaltenes JDK ausw&auml;hlen, erstellt der Konfigurationsassistent Serverstartskripte, um das JDK aufzurufen. Wenn Sie ein JDK ausw&auml;hlen, das nicht vom Installationsprogramm zur Verf&uuml;gung gestellt wird, konfiguriert der Konfigurationsassistent keine Startskripte. Sie m&uuml;ssen die Startskripte in diesem Fall manuell &auml;ndern.</li>
+      <li>W&auml;hlen Sie nur solche JDKs aus, die auf der von Ihnen verwendeten Plattform unterst&uuml;tzt werden. Standardm&auml;&szlig;ig ist dasjenige JDK ausgew&auml;hlt, das den Anforderungen Ihres Systems basierend auf der Plattform, auf der Sie die Domain installieren, am besten entspricht.</li>
+    </ul>
+  </li>
+  <li>Wenn Sie alle erforderlichen Einstellungen und Eintr&auml;ge vorgenommen haben, klicken Sie im Assistenten auf die Schaltfl&auml;che <strong>Weiter</strong>.</li>
+</ol>
+<p class="body">Weitere Informationen finden Sie in der Dokumentations-Library f&uuml;r Oracle Fusion Middleware im <a href="http://www.oracle.com/technology/documentation/index.html" target="_blank">Oracle Technology Network</a>.</p>
+<p class="copyright">Copyright &copy; 2009, 2010, Oracle und/oder verbundene Unternehmen. All rights reserved. Alle Rechte vorbehalten.</p>
+</body>
+</html>

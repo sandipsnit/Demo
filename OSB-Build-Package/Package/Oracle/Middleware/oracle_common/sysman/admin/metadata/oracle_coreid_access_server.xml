@@ -1,0 +1,916 @@
+<?xml version="1.0" ?>
+<!-- $Header: oracle_coreid_access_server.xml 06-feb-2008.23:36:06 skpanigr Exp $ -->
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">  
+<TargetMetadata META_VER="1.0" TYPE="oracle_coreid_access_server" CATEGORY_PROPERTIES="VersionCategory;isRemote">
+<Display>
+    <Label NLSID="access_server_name_nlsid">Access Manager - Access Server</Label>  
+	<ShortName NLSID="access_short_nlsid">Access Server</ShortName>
+    <Description NLSID="access_desc_nlsid">Access Server</Description>
+  </Display>
+   <AssocTarget ASSOCIATION_NAME="host" ASSOC_TARGET_TYPE="host"/>
+
+   <Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="COREID_ACCESS_SERVER_RESPONSE">Response</Label>
+		 <Description NLSID="response_desc_nlsid">Response</Description>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="COREID_ACCESS_SERVER_STATUS_LABEL">Status</Label>
+               <Description NLSID="COREID_ACCESS_SERVER_DESC">Current Status of the Access Server</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+	 <QueryDescriptor FETCHLET_ID="OSLineToken">
+		  <Property NAME="hostname" SCOPE="INSTANCE">hostname</Property>
+		  <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		  <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+		  <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+		  <Property NAME="command" SCOPE="GLOBAL">
+			 %perlBin%/perl %scriptsDir%/coreid_access_response.pl %hostname% %Port%
+		  </Property>
+		  <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+		  <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+		</QueryDescriptor>
+   </Metric>
+
+     <Metric NAME="coreid_access_config" TYPE="RAW" CONFIG="TRUE">    
+		<Display>
+		  <Label NLSID="access_server_config_nlsid">Access Server configuration information</Label>
+		  <Description NLSID="access_config_desc_nlsid">Access Server configuration information</Description>
+		</Display>    
+		<TableDescriptor TABLE_NAME="COREID_ACCESS_CONFIG_INFO">
+			<ColumnDescriptor NAME="AccessServerMode" COLUMN_NAME="ACCESS_MODE" TYPE="STRING" IS_KEY="TRUE">
+			  <Display>
+				<Label NLSID="AccessServerModeNLS">Access Server Mode</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="ServiceQueue" COLUMN_NAME="NUM_OF_SERVICE_QUEUE"  TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ServiceQueueNLS">Size of Service Queue</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="ThreadsPerQueue"  COLUMN_NAME="SERVICE_THREAD_PER_QUEUE" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ThreadsPerQueueNLS">Service Threads</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="ListenerThreadStarted" COLUMN_NAME="NUM_OF_LISTENER_THREAD" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ListenerThreadStartedNLS">Listener Threads Started</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="ConnectionWatcherThreadStarted" 
+			         COLUMN_NAME="NUM_OF_CONN_WATHCER_THREAD" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ConnWatcherThreadStartedNLS">Connection Watcher Threads Started</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="RequestQueueSize"  COLUMN_NAME="REQUEST_QUEUE_SIZE" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="RequestQueueSizeNLS">Request Queue Size</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">TRUE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.4
+		                                           1.3.6.1.4.1.3831.10.2.1.2.1.5
+												   1.3.6.1.4.1.3831.10.2.1.2.1.6
+												   1.3.6.1.4.1.3831.10.2.1.2.1.7
+												   1.3.6.1.4.1.3831.10.2.1.2.1.8
+												   1.3.6.1.4.1.3831.10.2.1.6.1.2
+		  </Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="aaaTimeAuditLogWasRotated" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="audit_log_nlsid">Audit log rotation time</Label>
+		  <Description NLSID="audit_desc_nlsid">Last when the audit log file was rotated</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AuditLogRotationTime" TYPE="STRING" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="AuditLogTimeNLS">Audit log rotation time</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.12.%SNMP_TRANS_OIDS%D</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="aaaStartTime" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="start_time_nlsid">Up Since</Label>
+		  <Description NLSID="start_time_desc_nlsid">Access Server start time</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="ServerStartTime" TYPE="STRING" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ServerStartTimeNLS">Up Since</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.13.%SNMP_TRANS_OIDS%D</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="aaaAuthenticationsSuccess" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT" >    
+		<Display>
+		  <Label NLSID="auth_success_nlsid">Successful Authentications</Label>
+		  <Description NLSID="auth_success_desc_nlsid">Successful authentications</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AuthenticationSuccess" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="AuthSuccessNLS">Total Successful Authentications</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="AuthenticationSuccessRate" TYPE="NUMBER" IS_KEY="FALSE" 
+					COMPUTE_EXPR="(AuthenticationSuccess - _AuthenticationSuccess) > 0 ? (AuthenticationSuccess - _AuthenticationSuccess) : 0">
+			  <Display>
+				<Label NLSID="AuthSuccessRateNLS">Successful Authentications(since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.14.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+    <Metric NAME="aaaAuthenticationsDenied" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT" >    
+		<Display>
+		  <Label NLSID="auth_denied_nlsid">Failed Authentications</Label>
+		  <Description NLSID="auth_denied_desc_nlsid">Failed Authentications</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AuthDenied" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="AuthDeniedNLS">Total Failed Authentications</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="AuthDeniedRate" TYPE="NUMBER" IS_KEY="FALSE" 
+			          COMPUTE_EXPR="(AuthDenied - _AuthDenied) > 0 ? (AuthDenied - _AuthDenied) : 0">
+			  <Display>
+				<Label NLSID="AuthDeniedRateNLS">Failed Authentications (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.15.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric> 
+	  
+	   <Metric NAME="aaaAuthorizationsSuccess" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT" >    
+		<Display>
+		  <Label NLSID="authorization_suc_nlsid">Successful Authorizations</Label>
+		  <Description NLSID="authorization_suc_desc_nlsid">Successful authorizations</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AuthorizationSuccess" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="AuthorizationSucNLS">Total Successful Authorizations</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="AuthorizationSuccessRate" TYPE="NUMBER" IS_KEY="FALSE"
+			           COMPUTE_EXPR="(AuthorizationSuccess - _AuthorizationSuccess) > 0 ? (AuthorizationSuccess - _AuthorizationSuccess) : 0">
+			  <Display>
+				<Label NLSID="AuthorizationSucRateNLS">Successful Authorizations (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.16.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	   <Metric NAME="aaaAuthorizationsDenied" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT" >    
+		<Display>
+		  <Label NLSID="authorization_denied_nlsid">Failed Authorizations</Label>
+		  <Description NLSID="authorization_denied_desc_nlsid">Failed Authorizations</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AuthorizationDenied" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="AthorDeniedNLS">Total Failed Authorizations</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="AuthorizationDeniedRate" TYPE="NUMBER" IS_KEY="FALSE" 
+			           COMPUTE_EXPR="(AuthorizationDenied - _AuthorizationDenied) > 0 ? (AuthorizationDenied - _AuthorizationDenied) : 0">
+			  <Display>
+				<Label NLSID="AthorDeniedRateNLS">Failed Authorizations (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.17.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	   <Metric NAME="aaaAuditRequests" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="audit_request_nlsid">Audit request</Label>
+		  <Description NLSID="audit_request_desc_nlsid">Number of Audit request</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AuditRequest" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="AuditRequestNLS">Number of Audit request</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.2.1.18.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	   
+	  <Metric NAME="aaaDirectoryServerNoOfLiveConnections" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="dir_server_conn_nlsid">Directory Server Live connection</Label>
+		  <Description NLSID="dir_server_conn_desc_nlsid">Directory Server Live connection</Description>
+		</Display>    
+		<TableDescriptor>
+		    <ColumnDescriptor NAME="DirServerHost" TYPE="STRING" IS_KEY="TRUE">
+			  <Display>
+				<Label NLSID="DirServerHostNLS">Directory Server Host</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="DirServerPort" TYPE="STRING" IS_KEY="TRUE">
+			  <Display>
+				<Label NLSID="DirServerPortNLS">Directory Server Port</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="DirLiveConnection" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="DirLiveConnectionNLS">Directory Server Live connection</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">TRUE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.2.1.3.1.2
+												   1.3.6.1.4.1.3831.10.2.1.3.1.3
+												   1.3.6.1.4.1.3831.10.2.1.3.1.5
+		  </Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="TotalAuthentications" TYPE="TABLE" USAGE_TYPE="HIDDEN" >    
+		<Display>
+		  <Label NLSID="total_authen_nlsid">Total Authentications</Label>
+		  <Description NLSID="total_authen_desc_nlsid">Total authentications</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AggregateAuthentication" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="TotalAuthenticNLS">Total Authentications</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="AggregateAuthenticationRate" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="TotalAuthenticRateNLS">Total Authentications(since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+         <GetTable NAME="aaaAuthenticationsSuccess" USE_CACHE="FALSE"/>
+         <GetTable NAME="aaaAuthenticationsDenied" USE_CACHE="FALSE"/>
+		 <GetView NAME="AuthenticSuccessView" FROM_TABLE="aaaAuthenticationsSuccess">
+		    <Column NAME="authentication" COLUMN_NAME="AuthenticationSuccess"
+			        TABLE_NAME="aaaAuthenticationsSuccess"/>
+			<Column NAME="authenticationRate" COLUMN_NAME="AuthenticationSuccessRate" 
+			          TABLE_NAME="aaaAuthenticationsSuccess"/>
+         </GetView>
+		 <GetView NAME="AuthenticFailView" FROM_TABLE="aaaAuthenticationsDenied">
+		    <Column NAME="authentication" COLUMN_NAME="AuthDenied" TABLE_NAME="aaaAuthenticationsDenied"/>
+			<Column NAME="authenticationRate" COLUMN_NAME="AuthDeniedRate" 
+			          TABLE_NAME="aaaAuthenticationsDenied"/>
+         </GetView>
+
+         <Union NAME="unionAuthentication">     
+             <Table NAME="AuthenticSuccessView" />
+             <Table NAME="AuthenticFailView" />
+        </Union>
+        <GroupBy NAME="TotalAuthentications" FROM_TABLE="unionAuthentication">
+             <AggregateColumn  NAME="AggregateAuthentication"
+                          COLUMN_NAME ="authentication"
+                          OPERATOR="SUM" /> 
+			  <AggregateColumn  NAME="AggregateAuthenticationRate"
+                          COLUMN_NAME ="authenticationRate"
+                          OPERATOR="SUM" /> 
+        </GroupBy>  
+      </ExecutionDescriptor>
+	</Metric> 
+	
+	<Metric NAME="TotalAuthorization" TYPE="TABLE" USAGE_TYPE="HIDDEN" >    
+		<Display>
+		  <Label NLSID="total_author_nlsid">Total Authorizations</Label>
+		  <Description NLSID="total_author_desc_nlsid">Total authorization</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="AggregateAuthorization" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="TotalAthorNLS">Total Authorizations</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="AggregateAuthorizationRate" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="TotalAthorRateNLS">Total Authorizations(last collected)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+         <GetTable NAME="aaaAuthorizationsSuccess" USE_CACHE="FALSE"/>
+         <GetTable NAME="aaaAuthorizationsDenied" USE_CACHE="FALSE"/>
+		 <GetView NAME="AuthorizationSuccessView" FROM_TABLE="aaaAuthorizationsSuccess">
+		    <Column NAME="authorization" COLUMN_NAME="AuthorizationSuccess" TABLE_NAME="aaaAuthorizationsSuccess"/>
+			<Column NAME="authorizationRate" COLUMN_NAME="AuthorizationSuccessRate" TABLE_NAME="aaaAuthorizationsSuccess"/>
+         </GetView>
+		 <GetView NAME="AuthorizationFailView" FROM_TABLE="aaaAuthorizationsDenied">
+		    <Column NAME="authorization" COLUMN_NAME="AuthorizationDenied" TABLE_NAME="aaaAuthorizationsDenied"/>
+			<Column NAME="authorizationRate" COLUMN_NAME="AuthorizationDeniedRate" TABLE_NAME="aaaAuthorizationsDenied"/>
+         </GetView>
+
+         <Union NAME="unionAuthorization">     
+             <Table NAME="AuthorizationSuccessView" />
+             <Table NAME="AuthorizationFailView" />
+        </Union>
+        <GroupBy NAME="TotalAuthorization" FROM_TABLE="unionAuthorization">
+             <AggregateColumn  NAME="AggregateAuthorization"
+                          COLUMN_NAME ="authorization"
+                          OPERATOR="SUM" />
+			 <AggregateColumn  NAME="AggregateAuthorizationRate"
+                          COLUMN_NAME ="authorizationRate"
+                          OPERATOR="SUM" />
+        </GroupBy>  
+      </ExecutionDescriptor>
+	</Metric>  
+
+	<Metric NAME="RequestProcInfo" TYPE="TABLE" >    
+		<Display>
+		  <Label NLSID="request_nlsid">Request Processed by Access Server</Label>
+		  <Description NLSID="request_desc_nlsid">Request processed by Access Server</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="TotalRequest" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="TotalRequestNLS">Total Request Processed</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="LastRequestProcessed" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="LastRequestProcessedNLS">Request Processed (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+         <GetTable NAME="TotalAuthentications" USE_CACHE="FALSE"/>
+         <GetTable NAME="TotalAuthorization" USE_CACHE="FALSE"/>
+		 <GetView NAME="TotalAuthenticationsView" FROM_TABLE="TotalAuthentications">
+		    <Column NAME="totalRequest" COLUMN_NAME="AggregateAuthentication" TABLE_NAME="TotalAuthentications"/>
+			<Column NAME="lastRequest" COLUMN_NAME="AggregateAuthenticationRate" TABLE_NAME="TotalAuthentications"/>
+         </GetView>
+		 <GetView NAME="TotalAuthorizationView" FROM_TABLE="TotalAuthorization">
+		    <Column NAME="totalRequest" COLUMN_NAME="AggregateAuthorization" TABLE_NAME="TotalAuthorization"/>
+			<Column NAME="lastRequest" COLUMN_NAME="AggregateAuthorizationRate" TABLE_NAME="TotalAuthorization"/>
+         </GetView>
+
+         <Union NAME="unionRequest">     
+             <Table NAME="TotalAuthenticationsView" />
+             <Table NAME="TotalAuthenticationsView" />
+        </Union>
+        <GroupBy NAME="RequestProcInfo" FROM_TABLE="unionRequest">
+             <AggregateColumn  NAME="TotalRequest"
+                          COLUMN_NAME ="totalRequest"
+                          OPERATOR="SUM" />
+			 <AggregateColumn  NAME="LastRequestProcessed"
+                          COLUMN_NAME ="lastRequest"
+                          OPERATOR="SUM" />
+        </GroupBy>  
+      </ExecutionDescriptor>
+	</Metric>  
+
+	<Metric NAME="PercentSuccessAuthentications" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="per_suc_authen_nlsid">Successful Authentications (%)</Label>
+		  <Description NLSID="per_suc_authen_desc_nlsid">Successful authentications (%)</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="PercentSucAuthentication" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentSucAuthenNLS">Total Successful Authentications (%)</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="PercentSucAuthenticationRate" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentSucAuthenRateNLS">Successful Authentications (%) (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+         <GetTable NAME="aaaAuthenticationsSuccess" USE_CACHE="FALSE"/>
+		 <GetTable NAME="TotalAuthentications" USE_CACHE="FALSE"/>
+
+         <JoinTables NAME="TotalAndSuccessAuth">
+			<Table NAME="aaaAuthenticationsSuccess" />
+			<Table NAME="TotalAuthentications" />
+			<Column NAME="authenSuccess" TABLE_NAME="aaaAuthenticationsSuccess"
+			               COLUMN_NAME="AuthenticationSuccess" />
+			<Column NAME="authenSuccessRate" TABLE_NAME="aaaAuthenticationsSuccess"
+			               COLUMN_NAME="AuthenticationSuccessRate" />
+            <Column NAME="totalAuthentication" TABLE_NAME="TotalAuthentications" 
+			           COLUMN_NAME="AggregateAuthentication"/>
+			<Column NAME="totalAuthenticationRate" TABLE_NAME="TotalAuthentications" 
+			           COLUMN_NAME="AggregateAuthenticationRate"/>
+		 </JoinTables>
+
+        <GroupBy NAME="PercentSuccessAuthentications" FROM_TABLE="TotalAndSuccessAuth">
+		      <AggregateColumn  NAME="authenSuccess"
+                          COLUMN_NAME="authenSuccess"
+                          OPERATOR="AVG"/>
+			   <AggregateColumn  NAME="authenSuccessRate"
+                          COLUMN_NAME="authenSuccessRate"
+                          OPERATOR="AVG"/>
+			   
+			  <AggregateColumn  NAME="totalAuthentication"
+                          COLUMN_NAME="totalAuthentication"
+                          OPERATOR="AVG"/>
+
+			  <AggregateColumn  NAME="totalAuthenticationRate"
+                          COLUMN_NAME="totalAuthenticationRate"
+                          OPERATOR="AVG"/>
+
+             <ComputeColumn    NAME="PercentSucAuthentication"
+                          EXPR="(authenSuccess*100)/totalAuthentication" /> 
+
+			 <ComputeColumn    NAME="PercentSucAuthenticationRate"
+                          EXPR="totalAuthenticationRate == 0 ? 0 : (authenSuccessRate*100)/totalAuthenticationRate" /> 
+        </GroupBy>  
+
+      </ExecutionDescriptor>
+	</Metric> 
+
+	<Metric NAME="PercentFailedAuthentications" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="per_fail_authen_nlsid">Failed Authentications (%)</Label>
+		  <Description NLSID="per_fail_authen_desc_nlsid">Failed authentications (%)</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="PercentFailAuthentication" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentFailAuthenNLS">Total Failed Authentications (%)</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="PercentFailAuthenticationRate" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentFailAuthenRateNLS">Failed Authentications (%) (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+         <GetTable NAME="aaaAuthenticationsDenied" USE_CACHE="FALSE"/>
+		 <GetTable NAME="TotalAuthentications" USE_CACHE="FALSE"/>
+
+         <JoinTables NAME="TotalAndFailAuth">
+			<Table NAME="aaaAuthenticationsDenied" />
+			<Table NAME="TotalAuthentications" />
+			<Column NAME="aaaAuthenDenied" TABLE_NAME="aaaAuthenticationsDenied"
+			               COLUMN_NAME="AuthDenied" />
+			<Column NAME="aaaAuthenDeniedRate" TABLE_NAME="aaaAuthenticationsDenied"
+			               COLUMN_NAME="AuthDeniedRate" />
+
+            <Column NAME="aaaTotalAuth" TABLE_NAME="TotalAuthentications" 
+			           COLUMN_NAME="AggregateAuthentication"/>
+			<Column NAME="aaaTotalAuthRate" TABLE_NAME="TotalAuthentications" 
+			           COLUMN_NAME="AggregateAuthenticationRate"/>
+		 </JoinTables>
+
+        <GroupBy NAME="PercentFailedAuthentications" FROM_TABLE="TotalAndFailAuth">
+		      <AggregateColumn  NAME="aaaAuthenDenied"
+                          COLUMN_NAME="aaaAuthenDenied"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="aaaAuthenDeniedRate"
+                          COLUMN_NAME="aaaAuthenDeniedRate"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="aaaTotalAuth"
+                          COLUMN_NAME="aaaTotalAuth"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="aaaTotalAuthRate"
+                          COLUMN_NAME="aaaTotalAuthRate"
+                          OPERATOR="AVG"/>
+              <ComputeColumn    NAME="PercentFailAuthentication"
+                          EXPR="(aaaAuthenDenied*100)/aaaTotalAuth"/> 
+			  <ComputeColumn    NAME="PercentFailAuthenticationRate"
+                          EXPR="aaaTotalAuthRate == 0 ? 0 : (aaaAuthenDeniedRate*100)/aaaTotalAuthRate"/> 
+        </GroupBy>  
+      </ExecutionDescriptor>
+	</Metric> 
+
+	<Metric NAME="PercentSuccessAuthorizations" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="per_suc_author_nlsid">Successful Authorizations (%)</Label>
+		  <Description NLSID="per_suc_author_desc_nlsid">Successful Authorizations (%)</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="PercentSuccAuthor" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentSuccAuthorNLS">Total Successful Authorizations (%)</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="PercentSuccAuthorRate" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentSuccAuthorRateNLS">Successful Authorizations (%) (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+         <GetTable NAME="aaaAuthorizationsSuccess" USE_CACHE="FALSE"/>
+		 <GetTable NAME="TotalAuthorization" USE_CACHE="FALSE"/>
+
+         <JoinTables NAME="joinSuccAuthorization">
+			<Table NAME="aaaAuthorizationsSuccess" />
+			<Table NAME="TotalAuthorization" />
+			<Column NAME="aaaAuthorSuccess" TABLE_NAME="aaaAuthorizationsSuccess"
+			               COLUMN_NAME="AuthorizationSuccess" />
+			<Column NAME="aaaAuthorSuccessRate" TABLE_NAME="aaaAuthorizationsSuccess"
+			               COLUMN_NAME="AuthorizationSuccessRate" />
+            <Column NAME="aaaTotalAuthor" TABLE_NAME="TotalAuthorization" 
+			           COLUMN_NAME="AggregateAuthorization"/>
+			<Column NAME="aaaTotalAuthorRate" TABLE_NAME="TotalAuthorization" 
+			           COLUMN_NAME="AggregateAuthorizationRate"/>
+		 </JoinTables>
+
+        <GroupBy NAME="PercentSuccessAuthorizations" FROM_TABLE="joinSuccAuthorization">
+		      <AggregateColumn  NAME="aaaAuthorSuccess"
+                          COLUMN_NAME="aaaAuthorSuccess"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="aaaAuthorSuccessRate"
+                          COLUMN_NAME="aaaAuthorSuccessRate"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="aaaTotalAuthor"
+                          COLUMN_NAME="aaaTotalAuthor"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="aaaTotalAuthorRate"
+                          COLUMN_NAME="aaaTotalAuthorRate"
+                          OPERATOR="AVG"/>
+
+			 <ComputeColumn    NAME="PercentSuccAuthor"
+                          EXPR="(aaaAuthorSuccess*100)/aaaTotalAuthor"/> 
+             <ComputeColumn    NAME="PercentSuccAuthorRate"
+                          EXPR="aaaTotalAuthorRate == 0 ? 0 : (aaaAuthorSuccessRate*100)/aaaTotalAuthorRate"/> 
+        </GroupBy>  
+      </ExecutionDescriptor>
+	</Metric> 
+
+	<Metric NAME="PercentFailedAuthorizations" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="per_fail_author_nlsid">Failed Authorizations (%)</Label>
+		  <Description NLSID="per_fail_author_desc_nlsid">Failed Authorizations (%)</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="PercentFailAuthor" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentFailAuthorNLS">Total Failed Authorizations (%)</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="PercentFailAuthorRate" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="PercentFailAuthorRateNLS">Failed Authorizations (%) (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+         <GetTable NAME="aaaAuthorizationsDenied" USE_CACHE="FALSE"/>
+		 <GetTable NAME="TotalAuthorization" USE_CACHE="FALSE"/>
+
+         <JoinTables NAME="TotalAndFailAuthorization">
+			<Table NAME="aaaAuthorizationsDenied" />
+			<Table NAME="TotalAuthorization" />
+			<Column NAME="aaaAuthorFailed" TABLE_NAME="aaaAuthorizationsDenied"
+			               COLUMN_NAME="AuthorizationDenied" />
+			<Column NAME="aaaAuthorFailedRate" TABLE_NAME="aaaAuthorizationsDenied"
+			               COLUMN_NAME="AuthorizationDeniedRate" />
+            <Column NAME="tempTotalAuthor" TABLE_NAME="TotalAuthorization" 
+			           COLUMN_NAME="AggregateAuthorization"/>
+			<Column NAME="tempTotalAuthorRate" TABLE_NAME="TotalAuthorization" 
+			           COLUMN_NAME="AggregateAuthorizationRate"/>
+		 </JoinTables>
+
+        <GroupBy NAME="PercentFailedAuthorizations" FROM_TABLE="TotalAndFailAuthorization">
+		     <AggregateColumn  NAME="aaaAuthorFailed"
+                          COLUMN_NAME="aaaAuthorFailed"
+                          OPERATOR="AVG"/>
+			 <AggregateColumn  NAME="aaaAuthorFailedRate"
+                          COLUMN_NAME="aaaAuthorFailedRate"
+                          OPERATOR="AVG"/>
+			 <AggregateColumn  NAME="tempTotalAuthor"
+                          COLUMN_NAME="tempTotalAuthor"
+                          OPERATOR="AVG"/>
+			 <AggregateColumn  NAME="tempTotalAuthorRate"
+                          COLUMN_NAME="tempTotalAuthorRate"
+                          OPERATOR="AVG"/>
+             <ComputeColumn    NAME="PercentFailAuthor"
+                          EXPR="(aaaAuthorFailed*100)/tempTotalAuthor"/> 
+			 <ComputeColumn    NAME="PercentFailAuthorRate"
+                          EXPR="tempTotalAuthorRate == 0 ? 0 : (aaaAuthorFailedRate*100)/tempTotalAuthorRate"/> 
+        </GroupBy>  
+      </ExecutionDescriptor>
+	</Metric> 
+
+	 <!-- Process OS Resource Usage Metric -->
+  <Metric NAME="_ResourceUsage" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP="NO_HELP">
+	<ValidIf>
+      <CategoryProp NAME="isRemote" CHOICES="false"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="resourceUsageLbl">Resource Usage</Label>
+	  <Description NLSID="resourceUsageLbl_desc_nlsid">Resource Usage</Description>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="processName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="processNameLbl">Process Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cpuUsageLbl">CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cpuOtherLbl">CPU Other (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cpuIdleLbl">CPU Idle (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryUsageLbl">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryUsagePercentageLbl">Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalMemory" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label NLSID="totalMemoryLbl">Total Memory (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="emdRoot" SCOPE="SYSTEMGLOBAL">emdRoot</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE" >OracleHome</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/coreidresourceusage.pl" "%emdRoot%" "%OracleHome%" "oracle_coreid_access_server"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  	 <!-- Process OS Resource Usage Metric -->
+  <Metric NAME="ResourceUsage" TYPE="TABLE" >
+	<ValidIf>
+      <CategoryProp NAME="isRemote" CHOICES="false"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="access_resourceUsage">Resource Usage</Label>
+	  <Description NLSID="access_resourceUsage_desc_nlsid">Resource Usage</Description>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="access_cpuUsage">CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="access_cpuOther">CPU Other (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="access_cpuIdle">CPU Idle (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="access_memoryUsage">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="access_memoryUsagePercentage">Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+	   <ColumnDescriptor NAME="memory.other" TYPE="NUMBER" IS_KEY="FALSE">
+          <Display>
+            <Label NLSID="memory_other">Other Memory Usage (MB)</Label>
+          </Display>
+	  </ColumnDescriptor>
+	  <ColumnDescriptor NAME="memoryPercentage.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryPercentage_other">Other Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+	  <ColumnDescriptor NAME="memoryPercentage.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryPercentage_free">Free Memory (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+	  <ColumnDescriptor NAME="memory.total" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label NLSID="totalMemory">Total Memory (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+
+	    <GetTable NAME="Load" ASSOC_TARGET="host"/>
+        <GetTable NAME="_ResourceUsage"/>
+		<JoinTables NAME="LoadAndResource">
+        <Table NAME="Load"/>
+        <Table NAME="_ResourceUsage"/>
+        <Column NAME="cpu.component" TABLE_NAME="_ResourceUsage"/>
+        <Column NAME="cpu.other" TABLE_NAME="_ResourceUsage"/>
+		<Column NAME="cpu.idle" TABLE_NAME="_ResourceUsage"/>
+		<Column NAME="memory.component" TABLE_NAME="_ResourceUsage"/>
+		<Column NAME="memoryPercentage.component" TABLE_NAME="_ResourceUsage"/>
+        <Column NAME="memoryKB.total" TABLE_NAME="Load" COLUMN_NAME="realMem"/>
+        <Column NAME="memoryKB.free" TABLE_NAME="Load" COLUMN_NAME="freeMem"/>
+      </JoinTables>
+     
+      <GroupBy NAME="result" FROM_TABLE="LoadAndResource">
+        <AggregateColumn  NAME="cpu.component"
+                          COLUMN_NAME="cpu.component"
+                          OPERATOR="AVG"/>
+        <AggregateColumn  NAME="cpu.other"
+                          COLUMN_NAME="cpu.other"
+                          OPERATOR="AVG"/>
+		<AggregateColumn  NAME="cpu.idle"
+                          COLUMN_NAME="cpu.idle"
+                          OPERATOR="AVG"/>
+		<AggregateColumn  NAME="memory.component"
+                          COLUMN_NAME="memory.component"
+                          OPERATOR="AVG"/>
+		<AggregateColumn  NAME="memoryPercentage.component"
+                          COLUMN_NAME="memoryPercentage.component"
+                          OPERATOR="AVG"/>
+		
+        <AggregateColumn  NAME="memoryKB.total"
+                          COLUMN_NAME = "memoryKB.total"
+                          OPERATOR="AVG"/>
+        <AggregateColumn  NAME="memoryKB.free"
+                          COLUMN_NAME = "memoryKB.free"
+                          OPERATOR="AVG"/>
+
+        <ComputeColumn    NAME="memory.total"
+                          EXPR="memoryKB.total/1024"/>
+        <ComputeColumn    NAME="memory.free"
+                          EXPR="memoryKB.free/1024"/>
+
+        <ComputeColumn    NAME="memory.other"
+                          EXPR="memory.total-memory.component-memory.free"/>
+
+        <ComputeColumn    NAME="memoryPercentage.other"
+                          EXPR="(memory.other*100)/memory.total"/>
+
+        <ComputeColumn    NAME="memoryPercentage.free"
+                          EXPR="(memory.free*100)/memory.total"/>
+      </GroupBy>
+    </ExecutionDescriptor>
+  </Metric>
+
+
+
+	<InstanceProperties>
+	      <InstanceProperty NAME="OracleHome" >
+			 <Display>
+				<Label NLSID="oraclehome_label">COREid home</Label>
+				<ShortName NLSID="oraclehome_lbl">COREid home</ShortName>
+			 </Display>
+		   </InstanceProperty>
+		   <InstanceProperty NAME="isRemote" >
+			 <Display>
+				<Label NLSID="isRemote_label">Indicate whether Access Server is remote</Label>
+				<ShortName NLSID="isRemote_lbl">Indicate whether Access Server is remote</ShortName>
+			 </Display>
+		   </InstanceProperty>
+	       <InstanceProperty NAME="SnmpHost">
+			 <Display>
+				<Label NLSID="snmphostname_label">SNMP Agent Host</Label>
+				<ShortName NLSID="snmphostname_lbl">SNMP Agent Host</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		   <InstanceProperty NAME="SnmpPort">
+			 <Display>
+				<Label NLSID="snmpport_label">SNMP Agent Port</Label>
+				<ShortName NLSID="snmpport_lbl">SNMP Agent Port</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="hostname">
+			 <Display>
+				<Label NLSID="hostname_label">Access Server Host</Label>
+				<ShortName NLSID="hostname_lbl">Access Server Host</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="Port">
+			 <Display>
+				<Label NLSID="PORT_LABEL">Access Server Port Number</Label>
+				<ShortName NLSID="port_name_lbl">Access Server Port Number</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="SnmpCommunity" CREDENTIAL="TRUE">
+			 <Display>
+				<Label NLSID="community_label">Community Name</Label>
+				<ShortName NLSID="community_name_lbl">Community Name</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="SnmpTimeout">
+			 <Display>
+				<Label NLSID="timeout_label">Time out</Label>
+				<ShortName NLSID="timeout_lbl">Time out</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		   <InstanceProperty NAME="SNMP_TRANS_OIDS">
+			 <Display>
+				<Label NLSID="trans_oids_label">Translated OIDS</Label>
+				<ShortName NLSID="trans_oids_lbl">Translated OIDS</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="version">
+			  <Display>
+				<Label NLSID="access_version_prop">Version of Access Server</Label>
+			  </Display>
+		  </InstanceProperty>
+		</InstanceProperties>
+  
+</TargetMetadata>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ASManagementRegistrationDescriptor xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../adminserver/admin_registration.xsd">
+
+   <JavaLibraryRegistration>
+       <AdminServerLibraryRegistration PathToLibraryWithinOracleHome="sysman/jlib/emcoreAgent.jar" DependentLibrary="false"/>
+       <AgentLibraryRegistration PathToLibraryWithinOracleHome="sysman/jlib/emcoreAgent.jar" DependentLibrary="false"/>
+   </JavaLibraryRegistration>
+
+  <ComponentRegistration>
+    <Overview ComponentInternalName="EMAgent"  isCustomerVisibleComponent="true" isManagementComponent="false" Version="0.0.0" isPhysicalProcess="true"/>
+
+    <RegisterDocumentTypes>
+      <ConfigDocumentType>
+        <XMLDocument UniqueDocumentTypeName="application-mbeans-11_0.xsd" MimeContentType="xml">          <FilePathWithinOracleHomeToXMLSchema>j2ee/home/schemas/application-mbeans-11_0.xsd</FilePathWithinOracleHomeToXMLSchema> 
+        </XMLDocument>
+      </ConfigDocumentType>
+    </RegisterDocumentTypes>
+
+    <RegisterConfigurationTemplates>
+      <ConfigurationTemplate UniqueTemplateName="default">
+        <ConfigurationDocumentTemplate FilePathWithinOracleHome="sysman/admin/adminserver/pcscomponent.xml"
+        DocumentNameWithinRepository="pcscomponent.xml"
+        UniqueDocumentTypeName="pcscomponent.xsd"
+        ApplicableServiceName="ProcessControlService" />
+        <ConfigurationDocumentTemplate FilePathWithinOracleHome="pcs/cas/templates/default/pcscomponent-mbeans.xml"
+        DocumentNameWithinRepository="pcscomponent-mbeans.xml"
+        UniqueDocumentTypeName="application-mbeans-11_0.xsd" />
+      </ConfigurationTemplate>
+    </RegisterConfigurationTemplates>
+
+    <RegisterComponentLevelTopologyInfo>
+      <ValidRelationships>
+        <RelationshipsToProviders ProviderTopologyNodeJavaInterfaceName="Component" InterfaceClassName="Relationship" allowExtension="true" MinNumberOccurrences="1" MaxNumberOccurrences="10" /> 
+      </ValidRelationships>
+
+      <RegisterTopologyNodeOverride JavaInterfaceToExpose="oracle.sysman.emd.asmodel.EMAgentComponent" JavaImplementationClass="oracle.sysman.emd.asmodel.EMAgentComponentImpl" /> 
+      <RegisterEndpoints>
+        <ListeningEndpoint Purpose="http_main" IPResolution="IN_ADDR_ANY" isDefault="true" /> 
+      </RegisterEndpoints>
+    </RegisterComponentLevelTopologyInfo>
+
+    <SpecialProvisioningHandler>
+      <AdminServerComponentProvisioningHandler JavaImplementationClass="oracle.sysman.emd.asmodel.ASProvisionHandler"/>
+      <AgentComponentProvisioningHandler JavaImplementationClass="oracle.sysman.emd.asmodel.LASProvisionHandler"/>
+    </SpecialProvisioningHandler>
+
+  </ComponentRegistration>	
+
+</ASManagementRegistrationDescriptor>

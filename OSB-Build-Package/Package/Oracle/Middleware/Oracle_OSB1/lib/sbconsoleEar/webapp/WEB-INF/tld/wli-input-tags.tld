@@ -1,0 +1,1161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE taglib PUBLIC "-//Sun Microsystems, Inc.//DTD JSP Tag Library 1.2//EN" "http://java.sun.com/dtd/web-jsptaglibrary_1_2.dtd">
+
+<taglib>
+    <tlib-version>1.0</tlib-version>
+    <jsp-version>1.2</jsp-version>
+    <short-name>input</short-name>
+    <uri>wli-input-tags</uri>
+    <display-name>WLI Form Input Tags</display-name>
+    <description>
+        Tags used by the WLI and Service Bus management consoles.        
+        Definitions for tags used for creating HTML forms.
+    </description>
+
+
+    <tag>
+        <name>input-form</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputFormTag</tag-class>
+        <body-content>JSP</body-content>
+        <attribute>
+            <name>action</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.CommandId</type>
+        </attribute>
+        <attribute>
+            <name>style</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>params</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.Pair[]</type>
+            <description>
+                An array of parameter pairs. In each pair the first item is the name and
+                the second item is the value.  These parameters are used together with the
+                action attribute to construct the URL for the form action.
+            </description>
+        </attribute>
+        <attribute>
+            <name>name</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>id</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>width</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+        </attribute>
+
+        <attribute>
+            <name>onSubmit</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The exact that goes into the onSubmit attribute of the &lt;form&gt; element
+            </description>
+        </attribute>
+        <attribute>
+            <name>isIncludeFwdURL</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                whether to include the special "fllw" input field (See ParamId.FOLLOWUP_URL) in the submit request
+                automatically. This attribute is provided for convenience, to facilitate passing the value
+                of the FOLLOWUP_URL parameter to the submit page. The page then can extract this value and
+                transition into that page. The default is false.
+            </description>
+        </attribute>
+        <attribute>
+            <name>initialDisabled</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String[]</type>
+            <description>
+                array of parameter (element) names for input fields that should be initially disabled.
+                These are generally input fields that are enabled/disabled based on the value of a
+                checkbox or radio button. default value is null, indicating no fields are initially disabled.
+                It is programmers responsibility to keep in sync, the initially disabled fields, and
+                the initial values of buttons/checkboxes that enable/disable those fields. Important notes:
+                - THIS ELEMENT ONLY WORKS IF JAVASCRIPT IS ENABLED.
+                - YOU MUST SUPPLY FORM NAME IF THIS ATTRIBUTE IS SPECIFIED
+            </description>
+        </attribute>
+        <attribute>
+            <name>enctype</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                When enctype is true the following line is added to the form tag "enctype='multipart/form-data'".
+                This is required when the form contains an input of type=file. This will then instruct
+                the browser to upload the contents of the file rather than just the filename.
+                This attribute is required for pages using the file input element. On the server
+                side you will also need to use the console.core.MultipartRequest object rather
+                than simply the HttpServletRequest.
+            </description>
+        </attribute>
+        <attribute>
+            <name>validationResult</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.ValidationResult</type>
+            <description>
+                Contains the result of validating the input values.
+            </description>
+        </attribute>
+    </tag>
+
+
+    <!--
+    -->
+    <tag>
+        <name>input-text</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputTextTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The initial value of this text field.
+            </description>
+        </attribute>
+        <attribute>
+            <name>size</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                Specifies the size of the input box.
+            </description>
+        </attribute>
+        <attribute>
+            <name>maxLength</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                the maximum number of characters allowed in the input string
+            </description>
+        </attribute>
+        <attribute>
+            <name>isPassword</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                whether this is a password input and thus the input text should be invisable.
+                the default is false;
+            </description>
+        </attribute>
+        <attribute>
+            <name>isReadonly</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                whether the input text will be readonly. i.e., the initial value is not allowed to change
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-multiline</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputMultilineTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>cols</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                the number of columns in the text area. See InputMultilineTag for default value
+            </description>
+        </attribute>
+        <attribute>
+            <name>rows</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                the number of rows in the text area. See InputMultilineTag for default value
+            </description>
+        </attribute>
+        <attribute>
+            <name>isReadonly</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                whether the input text will be readonly. i.e., the initial value is not allowed to change
+            </description>
+        </attribute>
+        <attribute>
+            <name>nowrap</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                sets whether to wrap the text.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-hidden</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputHiddenTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The name of the hidden parameter
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the value of the hidden parameter
+            </description>
+        </attribute>
+    </tag>
+
+
+    <tag>
+        <name>input-menu</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputMenuTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>size</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                the height of the menu. Default is 1. If size is 1 the menu will be a pulldown
+                menu. Otherwise it will be a box menu and the size indicates the height.
+            </description>
+        </attribute>
+        <attribute>
+            <name>options</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.taglibs.input.MenuChoice[]</type>
+            <description>
+                array of elements (display value and submit value) that make up the menu choices.
+            </description>
+        </attribute>
+        <attribute>
+            <name>selected</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The element that is initially selected. This value can be null. The runtime type
+                of this attribute must be either com.bea.alsb.console.common.messages.Text or a String
+            </description>
+        </attribute>
+        <attribute>
+            <name>onChange</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                A JavaScript method to call on an onChange event for the menu.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-submit</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputSubmitTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>name</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The name of the parameter that will be submitted when this submit button is clicked
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.messages.Text</type>
+            <description>
+                the value of the parameter.
+            </description>
+        </attribute>
+        <attribute>
+            <name>onClick</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the javascript that will be executed when this button is clicked
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-reset</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputResetTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label for the reset button. The default value for this attribute is Text.RESET
+            </description>
+        </attribute>
+
+    </tag>
+
+    <tag>
+        <name>input-button</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputButtonTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+        </attribute>
+        <attribute>
+            <name>onClick</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the javascript that will be executed when this button is clicked
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-pane</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputPaneTag</tag-class>
+        <body-content>JSP</body-content>
+        <description>
+            The input-pane represents a collection of inputs. In cases where the
+            UI presents a menu with options A and B, selecting option A may require
+            the user to fill out a specific set of input fields whereas option B
+            would require them to fill out a very different set of input fields,
+            an input-pane can be used to group the related input fields together
+            and based on the menu selection will dynamically show/hide the collection
+            via JavaScript.
+        </description>
+        <attribute>
+            <name>id</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                This id represents the id of the pane and should match the value of
+                a menu drop down selection.
+            </description>
+        </attribute>
+        <attribute>
+            <name>visible</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                Specifies if the pane is visible or not. By default panes are invisible.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-submit-reset-cancel</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.SubmitResetCancel</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>cancelAction</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.CommandId</type>
+            <description>
+                the struts action to perform when the cancel button is clicked.
+            </description>
+        </attribute>
+        <attribute>
+            <name>submitLabel</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label for the Submit button.
+            </description>
+        </attribute>
+        <attribute>
+            <name>params</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.Pair[]</type>
+            <description>
+                An array of parameter pairs. In each pair the first item is the name and
+                the second item is the value.  These parameters are used together with the
+                cancelAction attribute to construct the URL for the action.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-multiselect</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.MultiSelect</tag-class>
+        <body-content>empty</body-content>
+        <description>
+            Implements a chooser element. A chooser contains two non-pulldown menus,
+            one (the one on the left) containing a list of non-selected elements, and
+            the other containing a list of selected elements. I.e., the potential values
+            and the current (selected) values. The user can mark an
+            element in either window and move it to the other one by using two arrows
+            (left and right). This effectively selects or unselects elements. This element
+            must be placed inside a form and should have a name. When the form is submitted
+            the contents of the menu on the right are marshalled and sent as the value of the
+            parameter. The marshalling simply appends all the values in the menu with a newline
+            in between. The new line is composed of two characters : CR and LF. Use Utils class
+            to extract the values properly.
+        </description>
+        <attribute>
+            <name>formName</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The name of the form to be used.
+            </description>
+        </attribute>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>leftCollection</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.util.Collection</type>
+            <description>
+                initial contents of the menu on the left. The elements can be either String or Text.
+            </description>
+        </attribute>
+        <attribute>
+            <name>rightCollection</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.util.Collection</type>
+            <description>
+                initial contents of the menu on the right. The elements can be either String or Text.
+            </description>
+        </attribute>
+        <attribute>
+            <name>leftLabel</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.messages.Text</type>
+            <description>
+                the label on top of the menu on the left. Can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>rightLabel</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.messages.Text</type>
+            <description>
+                the label on top of the menu on the right. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>isSorted</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                whether the elements in the menus are sorted. The default is true, i.e., sorted.
+            </description>
+        </attribute>
+        <attribute>
+            <name>isOrderable</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                Whether the elements in the right list (the chosen list) is orderable via
+                up and down arrows.
+            </description>
+        </attribute>
+        <attribute>
+            <name>size</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                The size of the menus. The default is 6.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-duration</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputDurationTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>type</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                1- indicates simple duration input with one text box for the duration magnitude
+                   and a pulldown menu containing time units (msecs, secs etc)
+                2- indicates duration input with multiple input boxes/pulldown menus for each time unit.
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.Duration</type>
+            <description>
+                the duration value.
+            </description>
+        </attribute>
+        <attribute>
+            <name>minTimeUnit</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                The minimum time unit allowed (e.g., msecs, secs, hours). The valid values are
+                console.support.Duration.{MSECS|SECS|MINS|HOURS|DAYS}. The default is MSECS
+            </description>
+        </attribute>
+        <attribute>
+            <name>maxTimeUnit</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                The maximum time unit allowed (e.g., msecs, secs, hours). The valid values are
+                console.support.Duration.{MSECS|SECS|MINS|HOURS|DAYS}. The default is DAYS
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-include</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputIncludeTag</tag-class>
+        <body-content>JSP</body-content>
+        <description>
+            This tag allows grouping more than one input field.
+        </description>
+        <attribute>
+            <name>label</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-timeofday</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputTimeOfDayTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>type</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                See com.bea.alsb.console.common.taglibs.input.InputTimeOfDayTag.TYPE_XXX constants for valid values
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.util.Date</type>
+            <description>
+                The time of day. Year, mont, and day components are ignored.
+            </description>
+        </attribute>
+        <attribute>
+            <name>minuteIncr</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                minute increment to be used when enumerating minutes in the pulldown menus. Default is 1.
+                This value must be a positive divisor of 60, otherwise it will default to 1.
+                If the increment value is less than 15 then the value of type attribute will default to 1,
+                in order to avoid having too long a list of combined hours and minutes. A value of 60
+                disables the minute input.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-dayofyear</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputDayOfYearTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.util.Date</type>
+            <description>
+                The initial value. Hours, minutes, seconds, and msecs are ignored.
+            </description>
+        </attribute>
+        <attribute>
+            <name>numYears</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                The max number of years to display in the pulldown menu for the year input, starting from the year
+                component of the value attribute.
+                A value of 0 or less causes a textbox to be displayed instead of pulldown menu, so that any
+                year can be entered.
+                default is 0, causing a textbox to be displayed
+            </description>
+        </attribute>
+        <attribute>
+            <name>minuteIncr</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                minute increment to be used when enumerating minutes in the pulldown menus. Default is 1.
+                This value must be a positive divisor of 60, otherwise it will default to 1.
+                If the increment value is less than 15 then the value of type attribute will default to 1,
+                in order to avoid having too long a list of combined hours and minutes. A value of 60
+                disables the minute input.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-checkbox</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputCheckboxTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The value to be submitted when the checkbox is checked. This is optional and the default
+                submit value is 'true'
+            </description>
+        </attribute>
+        <attribute>
+            <name>rightLabel</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.messages.Text</type>
+            <description>
+                The text that will be displayed to the right of the radio button. This is optional (can be null).
+            </description>
+        </attribute>
+        <attribute>
+            <name>checked</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                Whether this radio button is checked. The default is checked
+            </description>
+        </attribute>
+        <attribute>
+            <name>enabled</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                Whether this radio button is enabled. The default is enabled
+            </description>
+        </attribute>
+        <attribute>
+            <name>onClick</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the contents of the 'onclick' attribute. This could be a call to javascript
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-chooser-tag</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputChooserTag</tag-class>
+        <body-content>empty</body-content>
+        <description>
+            Implements a chooser element. A chooser contains two non-pulldown menus,
+            one (the one on the left) containing a list of non-selected elements, and
+            the other containing a list of selected elements. I.e., the potential values
+            and the current (selected) values. The user can mark an
+            element in either window and move it to the other one by using two arrows
+            (left and right). This effectively selects or unselects elements. This element
+            must be placed inside a form and should have a name. When the form is submitted
+            the contents of the menu on the right are marshalled and sent as the value of the
+            parameter. The marshalling simply appends all the values in the menu with a newline
+            in between. The new line is composed of two characters : CR and LF. Use Utils class
+            to extract the values properly.
+        </description>
+        <attribute>
+            <name>leftCollection</name>
+            <required>yes</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>java.util.Collection</type>
+            <description>
+                initial contents of the menu on the left.
+            </description>
+        </attribute>
+        <attribute>
+            <name>rightCollection</name>
+            <required>yes</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>java.util.Collection</type>
+            <description>
+                initial contents of the menu on the right.
+            </description>
+        </attribute>
+        <attribute>
+            <name>leftLabel</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the label on top of the menu on the left. Can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>rightLabel</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the label on top of the menu on the right. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>name</name>
+            <required>yes</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the name of this element. This will be used as the parameter name.
+            </description>
+        </attribute>
+        <attribute>
+            <name>isSorted</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                whether the elements in the menus are sorted. The default is true, i.e., sorted.
+            </description>
+        </attribute>
+        <attribute>
+            <name>isTableElement</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                indicates whether this entity is a part of the table and therefore should be surrounded with
+                &lt;td&gt; and &lt;/td&gt; elements. The default is false, i.e., not surround this entity
+                with those tags.
+            </description>
+        </attribute>
+        <attribute>
+            <name>size</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>int</type>
+            <description>
+                The size of the menus. The default is 10.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>input-menu-submit</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputMenuSubmitTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>formId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>selectId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>options</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.taglibs.input.MenuChoice[]</type>
+            <description>
+                array of elements (display value and submit value) that make up the menu choices.
+            </description>
+        </attribute>
+        <attribute>
+            <name>selected</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The element that is initially selected. This value can be null. The runtime type
+                of this attribute must be either com.bea.alsb.console.common.messages. or a String
+            </description>
+        </attribute>
+    </tag>
+<!-- Add Date + Time Tag -->
+
+    <tag>
+        <name>input-datetime</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.input.InputDateTimeTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The label to print before the input field. Can be null.
+            </description>
+        </attribute>
+        <attribute>
+            <name>paramId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The parameter name to use. Cannot be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>info</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                the information text that is displayed on the RHS of an input form. can be null
+            </description>
+        </attribute>
+        <attribute>
+            <name>value</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.util.Date</type>
+            <description>
+                The initial value. Hours, minutes, seconds, and msecs are ignored.
+            </description>
+        </attribute>
+        <attribute>
+            <name>label</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                Label to print before the input field
+            </description>
+        </attribute>
+        <attribute>
+            <name>numYears</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                The max number of years to display in the pulldown menu for the year input, starting from the year
+                component of the value attribute.
+                A value of 0 or less causes a textbox to be displayed instead of pulldown menu, so that any
+                year can be entered.
+                default is 0, causing a textbox to be displayed
+            </description>
+        </attribute>
+    </tag>
+
+</taglib>

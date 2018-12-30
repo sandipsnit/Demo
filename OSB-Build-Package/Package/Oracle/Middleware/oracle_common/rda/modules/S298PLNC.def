@@ -1,0 +1,149 @@
+# S298PLNC.def: Collects Oracle PL/SQL Native Compilation Information
+# $Id: S298PLNC.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S298PLNC.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S298PLNC - Collects Oracle PL/SQL Native Compilation Information
+
+=head1 DESCRIPTION
+
+This module collects information about Oracle PL/SQL native compilation. The 
+following reports can be generated and are regrouped under C<PL/SQL Native
+Compilation>:
+
+=cut
+
+if !getSetting('DATABASE_INSTALLED')
+ return
+
+echo tput('bold'),'Processing PLNC module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:PL/SQL Native Compilation'
+
+# Load the common macros
+run library()
+ 
+# Define macros
+macro test_compiler
+{var ($pgm) = @arg
+
+ if !testFile('f',$pgm)
+  write encode($pgm),' compiler not found%BR%'
+ elsif !testFile('rx',$pgm)
+  write 'The ',encode($pgm),\
+        ' compiler does not have the read and execute permissions.%BR%'
+ elsif and(loadString($pgm,'package not installed'),getLastLength())
+  write 'The ',encode($pgm),' compiler is not properly installed.%BR%'
+ else
+  write 'No problem identified with the ',encode($pgm),' compiler.%BR%'
+}
+
+macro gen_report
+{var ($dir,$fil,$pth) = @arg
+
+ # Save the specified file as report
+ call cat_report($dir,$fil)
+
+ # Check the compiler
+ report cc_status
+ prefix
+  write '---+ Compiler Status'
+ loop $lin (grepFile($pth,'^\s*[^#]'))
+ {var $lin = trim($lin)
+  if match($lin,'^(.*cc(\.exe)?)\s',true)
+   call test_compiler(last)
+ }
+}
+
+=head2 Native Compilation
+
+Collects Oracle PL/SQL native compilation information.
+
+=cut
+
+pretoc '2:Native Compilation'
+var $dir  = catDir($ORACLE_HOME,'plsql')
+var $fil1 = 'spnc_commands'
+var $fil2 = 'spnc_makefile.mk'
+if testFile('r',catFile($dir,$fil1))
+{call gen_report($dir,$fil1,lastFile())
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Compiler Status]]'
+
+ report native_errors
+ prefix
+ {write '---+ Native Compilation Errors'
+  write '|*Type*|*Owner*|*Name*|*Text*|*Atrribute*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       e.type || ' |' ||
+ "       e.owner || ' |' ||
+ "       e.name || ' |' ||
+ "       e.text || ' |' ||
+ "       e.attribute || ' |'
+ " FROM dba_errors e
+ " WHERE owner = 'SYS'
+ "   AND (REGEXP_INSTR(text , 'PLW-[0-9]{3}' , 1 , 1 , 0 , 'i' ) > 0 
+ "        OR (text LIKE '%native compilation failed%'
+ "            AND EXISTS (SELECT null
+ "                         FROM dba_stored_settings s
+ "                         WHERE s.owner = e.owner
+ "                           AND s.object_name = e.name
+ "                           AND s.object_type = e.type
+ "                           AND s.param_name = 'plsql_code_type'
+ "                           AND s.param_value = 'NATIVE' ) ) );
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+ {write $TOP
+  toc '3:[[',getFile(),'][rda_report][Native Compilation Errors]]'
+ }
+}
+elsif testFile('r',catFile($dir,$fil2))
+{call gen_report($dir,$fil2,lastFile())
+ set $sql
+ {SELECT 'P=' || value
+ " FROM v$parameter
+ " WHERE UPPER(name) = 'PLSQL_NATIVE_C_COMPILER';
+ }
+ loop $pgm (grepSql($sql,'^P='))
+  call test_compiler(value($pgm))
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Compiler Status]]'
+}
+unpretoc
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.11: Francois Lange.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

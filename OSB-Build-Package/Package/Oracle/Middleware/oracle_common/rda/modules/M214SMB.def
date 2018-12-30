@@ -1,0 +1,162 @@
+# M214SMB.def: Collects Samba Information
+# $Id: M214SMB.def,v 1.1 2012/04/25 17:49:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M214SMB.def,v 1.1 2012/04/25 17:49:45 mschenke Exp $
+#
+# Change History
+# 20120418  KRA  Initial version.
+
+=head1 NAME
+
+M214SMB - Collects Samba Information
+
+=head1 DESCRIPTION
+
+This module collects information about Samba (on Solaris 2.9 and later).
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('smb')
+
+#------------------------------------------------------------------------------
+# XPLR_smb section
+#------------------------------------------------------------------------------
+
+section XPLR_smb
+
+# Validate the execution context
+call log_run('Processing SMB sections ...')
+if !expr('>=',$ver = get_osv(),9)
+ return log_info('The operating system version must be 5.9 or later')
+
+pretoc '2:Samba Information'
+
+=head2 smb_cmd - Commands
+
+Gathers the Samba parameter information using the following commands:
+
+=over 2
+
+=item o C</usr/sfw/bin/testparm -s>
+
+=item o C</usr/sfw/bin/testparm -sv>
+
+=back
+
+=cut
+
+debug ' Inside SMB collection, gathering Samba parameters'
+report smb_cmd
+title '---+!! Samba Commands'
+title $TOC
+call do_exec(['usr/sfw/testparm-s',\
+              '/usr/sfw/bin/testparm','-s',\
+              '---+ testparm -s Information'],\
+             ['usr/sfw/testparm-sv',\
+              '/usr/sfw/bin/testparm','-sv',\
+              '---+ testparm -sv Information'])
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Commands]]'
+
+=head2 smb_config_files - Configuration Files
+
+Gathers the C<smb.conf> configuration file from either F</etc/samba> directory
+or F</etc/sfw> directory depending upon the operting system version and patches
+installed.
+
+=cut
+
+debug ' Inside SMB collection, gathering configuration files'
+report smb_config_files
+prefix
+{write '---+!! Configuration Files'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present risks. \
+             To prevent them, access the file outside the browser or use the \
+             link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+var $cfg = undef
+if expr('>',$ver,10)
+ var $cfg = ['etc/samba/smb.conf','/etc/samba/smb.conf']
+elsif compare('eq',$arc = get_arc(),'sparc')
+{if expr('==',$ver,10)
+ {if or(check_patch('146363','01'),check_patch('119757','20'))
+   var $cfg = ['etc/samba/smb.conf','/etc/samba/smb.conf']
+  else
+   var $cfg = ['etc/sfw/smb.conf','/etc/sfw/smb.conf']
+ }
+ elsif expr('==',$ver,9)
+ {if !or(check_patch('146363','01'),check_patch('119757','20'))
+   var $cfg = ['etc/sfw/smb.conf','/etc/sfw/smb.conf']
+ }
+}
+elsif compare('eq',$arc,'i386')
+{if expr('==',$ver,10)
+ {if or(check_patch('146364','01'),check_patch('119757','20'))
+   var $cfg = ['etc/samba/smb.conf','/etc/samba/smb.conf']
+  else
+   var $cfg = ['etc/sfw/smb.conf','/etc/sfw/smb.conf']
+ }
+ elsif expr('==',$ver,9)
+ {if !or(check_patch('146364','01'),check_patch('119757','20'))
+   var $cfg = ['etc/sfw/smb.conf','/etc/sfw/smb.conf']
+ }
+}
+if ?$cfg
+ call do_collect_fil($cfg)
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Configuration Files]]'
+}
+
+=head2 smb_log_files - Log Files
+
+Gathers the log files from the F</var/samba/log> directory.
+
+=cut
+
+debug ' Inside SMB collection, gathering log files'
+report smb_log_files
+prefix
+{write '---+!! Log Files'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present risks. \
+             To prevent them, access the file outside the browser or use the \
+             link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_dir('var/samba/log','/var/samba/log')
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Log Files]]'
+}
+
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,909 @@
+<?xml version="1.0"?>
+<!--  $Header: emas/sysman/admin/metadata/oracle_oam_cluster.xml /st_emasgc_11.1as/5 2010/11/11 13:49:59 sunilkum Exp $ -->
+<!-- 
+ Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     oracle_oam_cluster.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   sunilkum    11/04/10 - partner requests
+   sunilkum    10/27/10 - Services tables changed
+   sunilkum    10/19/10 - services metadata update
+   sunilkum    07/19/10 - Rate table labels
+   sunilkum    07/19/10 - combine tables
+   sunilkum    07/16/10 - user identity table
+   sunilkum    03/19/10 - OAM client metrics
+   sunilkum    02/10/10 - application domain rate metrics
+   sunilkum    01/14/10 - Separate rate tables
+   sunilkum    12/22/09 - OAM cluster metadata
+   sunilkum    12/11/09 - Authentications and Authorizations key unset
+   sunilkum    12/01/09 - Change version
+   sunilkum    11/30/09 - OAM client table name
+   sunilkum    11/11/09 - Enable cluster status check
+   sunilkum    10/06/09 - update metedata with DMS table names
+   sunilkum    08/10/09 - OAM cluster metadata file
+   sunilkum    08/10/09 - Creation
+
+-->
+<TargetMetadata META_VER="11.4" TYPE="oracle_oam_cluster"
+                CATEGORY_PROPERTIES="VersionCategory"
+                RESOURCE_BUNDLE_PACKAGE="oracle.sysman.emas.rsc.gen.iam">
+   <Display>
+      <Label NLSID="oracle_oam_ClusterNLSID">Oracle Access Manager Cluster</Label>
+      <ShortName NLSID="oracle_oam_ClusterShortName">Oracle Access Manager Cluster</ShortName>
+      <Description NLSID="oracle_oam_ClusterDescription">Oracle Access Manager Cluster</Description>
+   </Display>
+   <Metric NAME="Response" TYPE="TABLE">
+    <Display>
+      <Label NLSID="oracle_oam_cluster_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_oam_cluster_status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">domain_j2ee_application:deployment_status</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="ServerNames" SCOPE="GLOBAL">AdminServer</Property>
+      <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+      <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+        <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item></value></argument>]]>
+         </Property>
+    </QueryDescriptor>
+  </Metric>
+   <Metric NAME="Authorizations_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="AUTHORIZATIONS_ROLLUP">Authorizations (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="AuthzLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHORIZATION_LATENCY">Average Authorization Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHORIZATION_SUCCESS_FAILURE_RATE">Authorization Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Host" TYPE="STRING">
+            <Display>
+               <Label NLSID="HOST_NAME">Hostname</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ServerName" TYPE="STRING" >
+            <Display>
+               <Label NLSID="SERVER_NAME">Server Name</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:oam_controller_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">AuthzRequests.persec;AuthzLatency;AuthzSuccessFailure.rate;Host;ServerName;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Authorizations_Rollup_Rate" TYPE="TABLE">
+      <Display>
+         <Label NLSID="AUTHORIZATIONS_ROLLUP">Authorizations Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="AuthzLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHORIZATION_LATENCY">Average Authorization Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHORIZATION_SUCCESS_FAILURE_RATE">Authorization Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHORIZATION_REQUESTS">Authorization Requests/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:oam_controller_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">AuthzLatency;AuthzSuccessFailure.rate;AuthzRequests.persec</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Authentications_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="AUTHENTICATIONS_ROLLUP">Authentications (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHENTICATION_LATENCY">Average Authentication Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHENTICATION_SUCCESS_FAILURE_RATE">Authentication Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Host" TYPE="STRING">
+            <Display>
+               <Label NLSID="HOST_NAME">Hostname</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ServerName" TYPE="STRING">
+            <Display>
+               <Label NLSID="SERVER_NAME">Server Name</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:oam_controller_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">AuthnLatency;AuthnSuccessFailure.rate;Host;ServerName;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Authentications_Rollup_Rate" TYPE="TABLE">
+      <Display>
+         <Label NLSID="AUTHENTICATIONS_ROLLUP">Authentications Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHENTICATION_LATENCY">Average Authentication Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHENTICATION_SUCCESS_FAILURE_RATE">Authentication Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHENTICATION_REQUESTS">Authentication Requests/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:oam_controller_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">AuthnLatency;AuthnSuccessFailure.rate;AuthnRequests.persec</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="LogOperations_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="LOG_OPERATIONS_ROLLUP">Log Operations (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="LogOperationLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="LOG_OPERATIONS_LATENCY">Average Log Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Process" TYPE="STRING">
+            <Display>
+               <Label NLSID="LOG_OPERATIONS_PROCESS">Process</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ServerName" TYPE="STRING">
+            <Display>
+               <Label NLSID="LOG_OPERATIONS_SERVER_NAME">Server Name</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:log_operations_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">LogOperationLatency;Process;ServerName;Process;ServerName</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="LogOperations_Rollup_Rate" TYPE="TABLE">
+      <Display>
+         <Label NLSID="LOG_OPERATIONS_ROLLUP">Log Operations Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+          <ColumnDescriptor NAME="LogOperationLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="LOG_OPERATIONS_LATENCY">Average Log Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="LogOperations.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="LOG_OPERATIONS_THROUGHPUT">Log Operations/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:log_operations_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">LogOperationLatency;LogOperations.persec;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="AuditOperations_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="AUDIT_OPERATIONS_ROLLUP">Audit Operations (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="AuditOperationLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUDIT_OPERATIONS_LATENCY">Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Process" TYPE="STRING">
+            <Display>
+               <Label NLSID="AUDIT_OPERATIONS_PROCESS">Process</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ServerName" TYPE="STRING">
+            <Display>
+               <Label NLSID="AUDIT_OPERATIONS_SERVER_NAME">Server Name</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:audit_operations_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">AuditOperations.persec;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="AuditOperations_Rollup_Rate" TYPE="TABLE">
+      <Display>
+         <Label NLSID="AUDIT_OPERATIONS_ROLLUP">Audit Operations Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="AuditOperationLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUDIT_OPERATIONS_LATENCY">Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuditOperations.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUDIT_OPERATIONS_THROUGHPUT">Operations/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:audit_operations_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">AuditOperations.persec;AuditOperations.persec</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="User_Identity_Operations_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="LDAP_OPERATIONS_ROLLUP">LDAP Operations (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Host" TYPE="STRING">
+            <Display>
+               <Label NLSID="HOST_NAME">Hostname</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Process" TYPE="STRING">
+            <Display>
+               <Label NLSID="ACCESS_CLIENT_PROCESS">Process</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="OperationsLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="LDAP_OPERATIONS_LATENCY">Average LDAP Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="OperationsSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OPERATIONS_SUCCESS_FAILURE_RATE">Process</Label>
+            </Display>
+         </ColumnDescriptor>
+         
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:user_identity_provider_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Host;Process;OperationsLatency;OperationsSuccessFailure.rate</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="User_Identity_Operations_Rollup_Rate" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="LDAP_OPERATIONS_ROLLUP">LDAP Operations Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+        <ColumnDescriptor NAME="OperationsLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="LDAP_OPERATIONS_LATENCY">Average LDAP Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="OperationsSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OPERATIONS_SUCCESS_FAILURE_RATE">Operations Success Failure Rate</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="LDAPOperations.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="LDAP_OPERATIONS_THROUGHPUT">LDAP Operations/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:user_identity_provider_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">OperationsLatency;OperationsSuccessFailure.rate;LDAPOperations.persec</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Access_Clients_OSSO_10g_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="ACCESS_CLIENTS_10G_OSSO_ROLLUP">OSSO 10g (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ACCESS_CLIENT_NAME">Access Client Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OSSO_OPERATIONS_LATENCY">OSSO Client Average Authentication Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OSSO_OPERATIONS_SUCCESS_FAILURE_RATE">OSSO Client Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:access_clients_10g_OSSO_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;AuthnLatency;AuthnSuccessFailure.rate</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Access_Clients_OSSO_10g_Rollup_Rate" TYPE="TABLE" >
+      <Display>
+         <Label NLSID="ACCESS_CLIENTS_10G_OSSO_ROLLUP">OSSO 10g Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+        <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ACCESS_CLIENT_NAME">Access Client Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OSSO_OPERATIONS_LATENCY">OSSO Client Average Authentication Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OSSO_OPERATIONS_SUCCESS_FAILURE_RATE">OSSO Client Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OSSO_OPERATIONS_THROUGHPUT">OSSO Client Operations/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:access_clients_10g_OSSO_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;AuthnLatency;AuthnSuccessFailure.rate;AuthnRequests.persec</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Access_Clients_OAM_10g_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="ACCESS_CLIENTS_10G_OAM_ROLLUP">OAM 10g (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ACCESS_CLIENT_NAME">Access Client Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_AUTHENTICATION_LATENCY">OAM Client Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_OPERATIONS_SUCCESS_FAILURE_RATE">OAM Client Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         
+         <ColumnDescriptor NAME="AuthzLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_OPERATIONS_LATENCY">Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_AUTHORIZATION_SUCCESS_FAILURE_RATE">OAM Client Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:access_clients_10g_OAM_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;AuthnLatency;AuthnSuccessFailure.rate;AuthzLatency;AuthzSuccessFailure.rate</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Access_Clients_OAM_10g_Rollup_Rate" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ACCESS_CLIENTS_10G_OAM_ROLLUP">OAM 10g Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+        <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ACCESS_CLIENT_NAME">Access Client Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_AUTHENTICATION_LATENCY">OAM Client Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_OPERATIONS_SUCCESS_FAILURE_RATE">OAM Client Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         
+         <ColumnDescriptor NAME="AuthzLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_OPERATIONS_LATENCY">Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_AUTHORIZATION_SUCCESS_FAILURE_RATE">OAM Client Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_AUTHENTICATIONS_THROUGHPUT">OAM Client Authentications/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="OAM_AUTHORIZATIONS_THROUGHPUT">OAM Client Authorizations/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:access_clients_10g_OAM_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;AuthnLatency;AuthnSuccessFailure.rate;AuthzLatency;AuthzSuccessFailure.rate;uthnRequests.persec;AuthzRequests.persec</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Access_Clients_Applications_Rollup" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">
+      <Display>
+         <Label NLSID="ACCESS_CLIENTS_APPLICATIONS_ROLLUP">OAM Applications (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ACCESS_CLIENT_NAME">Access Client Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_AUTHENTICATION_LATENCY">Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_AUTHENTICATION_SUCCESS_FAILURE_RATE">Application Authentication Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_OPERATIONS_LATENCY">Average Application Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHORIZATION_SUCCESS_FAILURE_RATE">Application Authorization Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:access_client_applications_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;AuthnLatency;AuthnSuccessFailure.rate;AuthzLatency;AuthzSuccessFailure.rate</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Access_Clients_Applications_Rollup_Rate" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ACCESS_CLIENTS_APPLICATIONS_ROLLUP">OAM Applications Throughput (Aggregated)</Label>
+      </Display>
+      <TableDescriptor>
+        <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="ACCESS_CLIENT_NAME">Access Client Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_AUTHENTICATION_LATENCY">Average Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_AUTHENTICATION_SUCCESS_FAILURE_RATE">Application Authentication Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_OPERATIONS_LATENCY">Average Application Latency</Label>
+               <Unit NLSID="millisec">millisec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AUTHORIZATION_SUCCESS_FAILURE_RATE">Application Authorization Success Failure Ratio</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthnRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_OPERATIONS_THROUGHPUT">Application Authentication Requests/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="AuthzRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="APPLICATION_AUTHORIZATIONS_THROUGHPUT">Application Authorization Requests /sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:access_client_applications_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;AuthnLatency;AuthnSuccessFailure.rate;AuthzLatency;AuthzSuccessFailure.rate;AuthnRequests.persec;AuthzRequests.persec;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Token_Requests_Rollup" TYPE="TABLE">
+      <Display>
+         <Label NLSID="TOKEN_ISSUANCES_ROLLUP">Token Issuances</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="IssueRequests.count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOTAL_TOKENS_ISSUED">Number of Tokens Issued</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="IssueRequestLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_LATENCY">Issue Latency (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+          
+         <ColumnDescriptor NAME="IssueRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_THROUGHPUT">Tokens Issued /sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="IssueRequestsSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_SUCCESS_RATE">Issuance Success Rate</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidationRequests.count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOTAL_TOKENS_VALIDATED ">Number of Tokens Validated</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidationRequestLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_LATENCY">Validation Latency (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidationRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_THROUGHPUT">Validations /sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidationRequestsSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_SUCCESS_RATE">Validation Success Rate</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:token_request_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">IssueRequests.count;IssueRequestLatency;IssueRequests.persec;IssueRequestsSuccessFailure.rate;ValidationRequests.count;ValidationRequestLatency;ValidationRequests.persec;ValidationRequestsSuccessFailure.rate;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Core_Token_Generation_Rollup" TYPE="TABLE">
+      <Display>
+         <Label NLSID="CORE_TOKEN_GENERATION_OPERATIONS_ROLLUP">Core Token Generation Operations</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="TOKEN_TYPE">Token Type</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TokenCreation.count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOTAL_TOKENS_ISSUED">Number of Tokens Issued</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TokenCreation.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_THROUGHPUT">Tokens Issued/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TokenCreationLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_LATENCY">Token Issue Latency (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:core_token_generation_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;TokenCreation.count;TokenCreation.persec;TokenCreationLatency;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Core_Token_Validation_Rollup" TYPE="TABLE">
+      <Display>
+         <Label NLSID="CORE_TOKEN_VALIDATION_OPERATIONS_ROLLUP">Core Token Validation Operations</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="TOKEN_TYPE">Token Type</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TokenValidation.count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOTAL_TOKENS_VALIDATED">Number of Custom Tokens Validated</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TokenValidation.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_THROUGHPUT">Tokens Validated/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TokenValidationLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_LATENCY">Token Validation Latency (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:core_token_validation_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;TokenValidation.count;TokenValidation.persec;TokenValidationLatency;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Partner_Requests_Rollup" TYPE="TABLE">
+      <Display>
+         <Label NLSID="PARTNERS_DATA_ROLLUP">Token Service Clients</Label>
+      </Display>
+      <TableDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="TOKEN_TYPE">Token type</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="RequesterName" TYPE="STRING">
+            <Display>
+               <Label NLSID="REQUESTER_ID">Requester</Label>
+            </Display>
+         </ColumnDescriptor>
+        <ColumnDescriptor NAME="IssueRequests.count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOTAL_TOKENS_ISSUED">Number of Tokens Issued</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="IssueRequestLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_LATENCY">Issue Latency (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+          
+         <ColumnDescriptor NAME="IssueRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_THROUGHPUT">Tokens Issued /sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="IssueRequestsSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_ISSUANCE_SUCCESS_RATE">Issuance Success Rate</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidationRequests.count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOTAL_TOKENS_VALIDATED ">Number of Tokens Validated</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidationRequestLatency" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_LATENCY">Validation Latency (ms)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidationRequests.persec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_THROUGHPUT">Validations /sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ValidateRequestsSuccessFailure.rate" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOKEN_VALIDATION_SUCCESS_RATE">Validation Success Rate</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE"
+                   ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oam:partner_request_rollup_rate</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Name;RequesterName;IssueRequests.count;IssueRequestLatency;IssueRequests.persec;IssueRequestsSuccessFailure.rate;ValidationRequests.count;ValidationRequestLatency;"ValidationRequests.persec;ValidateRequestsSuccessFailure.rate;</Property>
+      </QueryDescriptor>
+   </Metric>
+   <InstanceProperties>
+      <InstanceProperty NAME="ServerNames">
+         <Display>
+            <Label NLSID="serverNameLabel">ServerNames</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="appName">
+         <Display>
+            <Label NLSID="appName">appName</Label>
+         </Display>
+      </InstanceProperty>
+   </InstanceProperties>
+</TargetMetadata>
+
+

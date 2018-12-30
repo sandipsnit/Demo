@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+	<extension point="org.eclipse.ui.newWizards">
+		<category id="com.bea.alsb.new" name="%ALSBCategory_name">
+		</category>
+         <wizard
+              category="com.bea.alsb.new"
+              class="com.bea.alsb.ui.resources.sa.wizard.SaWizard"
+              finalPerspective="com.bea.alsb.ui.perspectives.aqualogic"
+              icon="icons/new_svc_accounts.gif"
+              id="com.bea.alsb.ui.wizards.sa"
+              name="%NewServiceAccountWizard_name"
+              preferredPerspectives="com.bea.alsb.ui.perspectives.aqualogic"
+              project="false">
+           <description>%NewServiceAccountWizard_description</description>
+        </wizard>  
+	</extension>
+	
+	<extension point="org.eclipse.ui.navigator.navigatorContent">
+        <commonWizard type="new" 
+                      menuGroupId="com.bea.alsb.new"
+                      wizardId="com.bea.alsb.ui.wizards.sa">
+            <enablement>
+                <or>
+                    <adapt type="org.eclipse.core.resources.IResource">
+				        <test forcePluginActivation="true"
+				              property="org.eclipse.core.resources.projectNature"
+				              value="com.bea.alsb.core.natures.alsb.project"/>
+				    </adapt>
+                </or>
+            </enablement>
+        </commonWizard>
+	</extension>
+	
+	<extension point="org.eclipse.ui.editors">
+        <editor
+              class="com.bea.alsb.ui.resources.sa.editor.SaEditor"
+              contributorClass="com.bea.alsb.ui.resources.common.AlsbEditorActionBarContributer"
+              default="true"
+              extensions="account"
+              icon="icons/icon_svc_accounts.gif"
+              id="com.bea.alsb.ui.editors.sa"
+              name="%ServiceAccountEditor_name">
+            <contentTypeBinding contentTypeId="com.bea.alsb.core.resources.sa.content-type"/>
+        </editor>
+	</extension>
+	<extension
+	   point="org.eclipse.ui.perspectiveExtensions">
+	   <perspectiveExtension targetID="com.bea.alsb.ui.perspectives.aqualogic">
+	      <newWizardShortcut id="com.bea.alsb.ui.wizards.sa"/>
+	   </perspectiveExtension>
+	</extension>
+</plugin>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><AuditConfig componentType="xmlpserver" xmlns="http://xmlns.oracle.com/ias/audit/audit.xsd">
+  <Events componentType="xmlpserver" displayName="BI Publisher Server" unusedAttributes="ModuleId RemoteIP Target Roles">
+    <CommonAttributes>
+      
+      <Attribute maxLength="30" name="Format" shortName="Format" type="string">
+        <HelpText>Output format</HelpText>
+      </Attribute>
+      <Attribute maxLength="255" name="Template" shortName="Tmpl" type="string">
+        <HelpText>Template name</HelpText>
+      </Attribute>
+      <Attribute maxLength="10" name="Locale" shortName="Locale" type="string">
+        <HelpText>Locale</HelpText>
+      </Attribute>
+      <Attribute displayName="Job ID" maxLength="255" name="JobId" shortName="JobId" type="string">
+        <HelpText>Job ID</HelpText>
+      </Attribute>
+    </CommonAttributes>
+    <Category name="UserSession" unusedAttributes="Resource Format Template Locale AuthenticationMethod">
+      <Event name="UserLogin" unusedAttributes="Format Template Locale">
+      </Event>
+      <Event name="UserLogout" unusedAttributes="Format Template Locale">
+      </Event>
+    </Category>
+    <Category displayName="Report Access" name="ReportAccess">
+      <HelpText>Events that tracks user's access to BI Publisher reports</HelpText>
+      <CommonAttributes>
+        
+        <Attribute displayName="Scheduled" name="IsScheduled" shortName="IsSched" type="boolean">
+          <HelpText>Tells if this request is scheduled run of a report, or interactive request from UI/webservice.</HelpText>
+        </Attribute>
+        <Attribute displayName="Output ID" maxLength="255" name="OutputId" shortName="OutId" type="string">
+          <HelpText>Output ID</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event displayName="Report Request" name="ReportRequest" shortName="rRequest" unusedAttributes="Locale JobId OutputId">
+        <HelpText>Online or scheduled report request</HelpText>
+      </Event>
+      <Event displayName="Scheduled request" name="ScheduledReportRequest" shortName="rSched" unusedAttributes="Format Template Locale IsScheduled OutputId">
+        <HelpText>Requested scheduling a report request</HelpText>
+        <Attribute displayName="User Job Name" maxLength="100" name="UserJobName" shortName="UJobName" type="string">
+          <HelpText>User job name</HelpText>
+        </Attribute>
+        <Attribute displayName="User Job Description" maxLength="255" name="UserJobDescription" shortName="UJobDescr" type="string">
+          <HelpText>User job description</HelpText>
+        </Attribute>
+        <Attribute displayName="Start Date" name="StartDate" shortName="StartDt" type="dateTime">
+          <HelpText>Start date</HelpText>
+        </Attribute>
+        <Attribute displayName="End Date" name="EndDate" shortName="EndDt" type="dateTime">
+          <HelpText>End date</HelpText>
+        </Attribute>
+        <Attribute displayName="Bursting" name="Bursting" shortName="Burst" type="boolean">
+          <HelpText>Whether scheduled job use bursting option or not</HelpText>
+        </Attribute>
+        <Attribute displayName="Job Group" maxLength="255" name="JobGroup" shortName="JobGrp" type="string">
+          <HelpText>Job group</HelpText>
+        </Attribute>
+        <Attribute displayName="Run Type" maxLength="255" name="RunType" shortName="RunType" type="string">
+          <HelpText>Run type</HelpText>
+        </Attribute>
+        <Attribute displayName="Output Information" maxLength="0" name="OutputInfo" shortName="OutputInfo" type="string">
+          <HelpText>Output information</HelpText>
+        </Attribute>
+        <Attribute displayName="Delivery Information" maxLength="0" name="DeliveryInfo" shortName="DelivInfo" type="string">
+          <HelpText>Delivery information</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Report Republish" name="ReportRepublish" shortName="rRepublish" unusedAttributes="Format Template Locale JobId OutputId">
+        <HelpText>Republish of a report request</HelpText>
+        <Attribute displayName="Republish ID" maxLength="255" name="RepublishId" shortName="RepubId" type="string">
+          <HelpText>Republish ID</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Report Data Download" name="ReportDataDownload" shortName="rDDownload" unusedAttributes="Format Template Locale JobId IsScheduled">
+        <HelpText>Downloading report data from scheduled job history page</HelpText>
+      </Event>
+      <Event displayName="Report Download" name="ReportDownload" shortName="rDownload" unusedAttributes="Template Locale JobId IsScheduled">
+        <HelpText>Downloading/viewing a report from scheduled job history page</HelpText>
+      </Event>
+    </Category>
+    <Category displayName="Report Execution" name="ReportExecution">
+      <HelpText>Events that tracks the execution of a report, such as retrieving data from data source, rendering, and delivering the report to destination</HelpText>
+      <CommonAttributes>
+        
+        <Attribute displayName="Free Memory" name="FreeMemory" shortName="FreeMem" type="long">
+          <HelpText>Amount of free memory at the time the event is started</HelpText>
+        </Attribute>
+        <Attribute displayName="Total Memory" name="TotalMemory" shortName="TotalMem" type="long">
+          <HelpText>Amount of total memory when the event is started</HelpText>
+        </Attribute>
+        <Attribute displayName="Data Size" name="DataSize" shortName="DSize" type="long">
+          <HelpText>Data size</HelpText>
+        </Attribute>
+        <Attribute displayName="Processing Time" name="ProcessTime" shortName="PrcsTime" type="long">
+          <HelpText>Time spent on processing the event</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event displayName="Report Data Process" name="ReportDataProcess" shortName="rDataPrcs" unusedAttributes="Format Template Locale JobId DataSize">
+        <HelpText>Retrieval of data from datasoruce</HelpText>
+      </Event>
+      <Event displayName="Report Rendering" name="ReportRendering" shortName="rRender" unusedAttributes="JobId">
+        <HelpText>Rendering of a final output of a report from retrieved data and template</HelpText>
+      </Event>
+      <Event displayName="Report Delivery" name="ReportDelivery" shortName="rDelivery" unusedAttributes="Format Template Locale">
+        <HelpText>Delivery of a report to target destination</HelpText>
+        <Attribute displayName="Output Name" maxLength="255" name="OutputName" shortName="OutName" type="string">
+          <HelpText>Output name</HelpText>
+        </Attribute>
+        <Attribute displayName="Delivery Method" maxLength="255" name="DeliveryMethod" shortName="DMethod" type="string">
+          <HelpText>Delivery method</HelpText>
+        </Attribute>
+        <Attribute displayName="Delivery Properties" maxLength="0" name="DeliveryProperties" shortName="DelivProps" type="string">
+          <HelpText>Delivery properties</HelpText>
+        </Attribute>
+      </Event>
+    </Category>
+  </Events>
+  <Levels>
+    <Level name="ExceptionsOnly">
+    </Level>
+    <Level name="Basic">
+    </Level>
+    <Level name="Enhanced">
+    </Level>
+  </Levels>
+  <FilterPresetDefinitions>
+    <FilterPresetDefinition name="Low">
+  	
+    
+    
+    
+    
+    </FilterPresetDefinition>
+    <FilterPresetDefinition name="Medium">UserLogin,UserLogout,ReportRequest,ScheduledReportRequest,ReportRepublish,ReportDataDownload,ReportDownload,ReportDataProcess,ReportRendering,ReportDelivery
+    
+    
+    
+    </FilterPresetDefinition>
+  </FilterPresetDefinitions>
+</AuditConfig>

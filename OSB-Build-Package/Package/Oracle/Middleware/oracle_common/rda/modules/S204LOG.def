@@ -1,0 +1,1067 @@
+# S204LOG.def: Collects Oracle Database Trace and Log Files
+# $Id: S204LOG.def,v 2.13 2012/03/20 15:41:34 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S204LOG.def,v 2.13 2012/03/20 15:41:34 mschenke Exp $
+#
+# Change History
+# 20120320  KRA  Change ALERT_TEXT default value to 1.
+
+=head1 NAME
+
+S204LOG - Collects Oracle RDBMS Log and Trace Files
+
+=head1 DESCRIPTION
+
+This module collects the Oracle RDBMS log and trace files. This is performed
+only for databases associated with the current Oracle home.
+
+The following reports can be generated and are regrouped under C<RDBMS Log/Trace
+Files>:
+
+=cut
+
+if !getSetting('DATABASE_LOCAL')
+ return
+
+echo tput('bold'),'Processing LOG module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME   = getSetting('ORACLE_HOME')
+var $ORACLE_SID    = field(':',-1,getSetting('ORACLE_SID',''))
+var $ALERT_SUMMARY = getSetting('ALERT_SUMMARY')
+var $ALERT_TAIL    = getSetting('ALERT_TAIL',30000)
+var $ALERT_TEXT    = getSetting('ALERT_TEXT',1)
+var $LOG_AGE       = getSetting('DB_TRACE_AGE',15)
+var $LOG_ERRORS    = max(1,getSetting('DB_TRACE_ERRORS',250))
+var $LOG_TRESHOLD  = getSetting('DB_TRACE_TRESHOLD',20480)
+var $LOG_RATIO     = max(1,getSetting('DB_TRACE_RATIO',10))
+var $LOG_VOLUME    = getSetting('DB_TRACE_VOLUME',10)
+var $BDUMP_MAX     = getSetting('DB_TRACE_BDUMP',2)
+var $BDUMP_VOLUME  = getSetting('DB_TRACE_BVOLUME',100)
+var $UDUMP_AGE     = getSetting('DB_TRACE_UDUMP',0)
+var $UDUMP_DG      = getSetting('DB_TRACE_DG',0)
+var $UDUMP_VOLUME  = getSetting('DB_TRACE_UVOLUME',10)
+var $MERGE_SET     = getSetting('LOG_MERGE_SET') 
+var $MERGE_BEGIN   = getSetting('LOG_MERGE_BEGIN')
+var $MERGE_END     = getSetting('LOG_MERGE_END')
+var $MERGE_LINES   = getSetting('LOG_MERGE_LINES',10)
+var $MERGE_FILES   = getSetting('LOG_MERGE_FILES')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '^1:RDBMS'
+pretoc '1+:RDBMS Log/Trace Files'
+
+# Load the common macros
+run library()
+run DBalert()
+run DBinfo()
+
+# Get the dump destinations
+var $BDUMP_DIR = get_bdump()
+var $CDUMP_DIR = get_cdump()
+var $UDUMP_DIR = get_udump()
+var $ADR_BASE  = get_adr_base()
+var $ADR_HOME  = get_adr_home()
+var $TRACE_DIR = cond($ADR_HOME,catDir($ADR_HOME,'trace'),$BDUMP_DIR)
+
+# Define a macro to estimate the size after compression
+macro get_size
+{var ($fil) = @arg
+ import $LOG_RATIO,$LOG_TRESHOLD
+ keep $LOG_RATIO,$LOG_TRESHOLD
+ var $siz = getSize($fil)
+ if expr('>',$siz,$LOG_TRESHOLD)
+  var $siz = expr('/',$siz,$LOG_RATIO)
+ return $siz
+}
+
+=head2 alert_log - Alert.log
+
+Displays the content of the alert log. By default, it is limited to the last
+30000 lines, but the number of lines can be increased to include the last
+start.
+
+=head2 alert_sum - Alert.log Analysis
+
+When requested, RDA analyzes the lines extracted from the alert log and
+produces a summary.
+
+=cut
+
+var @err = ()
+
+macro push_err
+{var (\@err,$lin,$max) = @arg
+ if expr('<',scalar(@err),$max)
+  var @err = (@err,$lin)
+ else
+  var (undef,@err) = (@err,$lin)
+ return -1
+}
+
+if and($ADR_HOME,not($ALERT_TEXT))
+{debug ' Inside LOG module, found diagdir ',$ADR_HOME,', get log info'
+ var $fil = catFile($ADR_HOME,'alert','log.xml')
+ if createBuffer('ALR','R',$fil)
+ {# Parse the alert log for errors and last startup
+  var $lst = undef
+  call parseReset()
+  call parsePattern('TOP',\
+   '^<msg\b',code(parseMarker(line),-1),\
+   'Starting ORACLE instance',code($lst = parseLast(),-1),\
+   '(Errors in file|Details in trace file)',push_err(\@err,line,$LOG_ERRORS))
+  call parse('ALR')
+
+  # At a minimum, take the alert log back to the last instance startup
+  debug ' Inside LOG module, determining line count for alert log display'
+  report alert_log
+  var $max = inputLine('ALR')
+  if expr('<',$max,$ALERT_TAIL)
+  {call deleteBuffer('ALR')
+   write '---+!! Entire ALERT.log Content'
+   call writeFile($fil)
+  }
+  else
+  {var $cnt = $ALERT_TAIL
+   var $min = expr('-',$max,$cnt)
+   if $lst
+   {var ($pos,$lst,$lin) = match($lst,'^((\d+)\|\d+):(.*)$')
+    if expr('>',$lst,$min)
+     var $lst = undef
+   }
+   if $lst
+   {var $cnt = expr('-',$max,$lst)
+    incr $cnt
+    call setPos('ALR',$pos)
+   }
+   else
+   {call setPos('ALR')
+    while getLine('ALR',$min)
+    {var $lin = chomp(last)
+     break match($lin,'^<msg\b')
+     var $min = 0
+     decr $cnt
+    }
+   }
+   write '---+!! Last ',$cnt,' lines of ALERT.log'
+   call writeBuffer('ALR',$lin)
+   call deleteBuffer('ALR')
+  }
+  toc '2:[[',getFile(),'][rda_report][Alert.log]]'
+
+  if $ALERT_SUMMARY
+  {debug ' Inside LOG module, analyzing alert log report'
+   var $rpt = getFile('/')
+   report alert_sum
+   call analyze_alert($rpt,true)
+   if isCreated(true)
+    toc '2:[[',getFile(),'][rda_report][Alert.log Analysis]]'
+  }
+ }
+}
+elsif $BDUMP_DIR
+{debug ' Inside LOG module, found dumpdir ',$BDUMP_DIR,', get log info'
+ var $fil = catFile($BDUMP_DIR,get_alert_name())
+ if testFile('r',$fil)
+ {# Find associated trace files
+  debug ' Inside LOG module, finding trace files referenced in the alert.log'
+  var @err = (grepFile($fil,'(Errors in file|Details in trace file)','',\
+              expr('-',0,$LOG_ERRORS)))
+
+  # At a minimum, take the alert log back to the last instance startup
+  debug ' Inside LOG module, determining line count for alert log display'
+  report alert_log
+  var @tbl = grepFile($fil,'Starting ORACLE instance','n')
+  var $lst = field(':',0,$tbl[-1])
+  var $max = getLength()
+
+  if expr('<',$max,$ALERT_TAIL)
+  {write '---+!! Entire ALERT.log Content'
+   call writeFile($fil)
+  }
+  else
+  {var $cnt = $ALERT_TAIL
+   var $min = expr('-',$max,$cnt)
+   incr $min
+   if $lst
+   {var $min = min($lst,$min)
+    var $cnt = expr('-',$max,$min)
+    incr $cnt
+   }
+   write '---+!! Last ',$cnt,' lines of ALERT.log'
+   call writeLines($fil,$min,$max)
+  }
+  toc '2:[[',getFile(),'][rda_report][Alert.log]]'
+
+  if $ALERT_SUMMARY
+  {debug ' Inside LOG module, analyzing alert log report'
+   var $rpt = getFile('/')
+   report alert_sum
+   call analyze_alert($rpt,false)
+   if isCreated(true)
+    toc '2:[[',getFile(),'][rda_report][Alert.log Analysis]]'
+  }
+ }
+}
+
+=head2 more_alerts - Additional Alert Log Files
+
+Displays the content of the alert log specified by patterns. If the number
+of errors already collected is less than the maximum possible, it includes 
+the errors in the error reporting also.
+
+=cut
+
+var $num = getSetting('ALERT_PATTERN_COUNT',0)
+if expr('>',$num,0)
+{debug ' Inside LOG module, getting additional alert.log files'
+ report more_alerts
+ prefix
+ {write '---+ Additional Alert Log Files'
+  write '|*File Name*| *Size*|*Last Modification*|'
+ }
+ var $cnt = 0
+ loop $fil (split('\|',getSetting('ALERT_FILE_PATTERN')))
+ {var $fil = catFile($fil)
+  var ($max,$dir,$nam) = ($num,dirname($fil),basename($fil))
+  loop $pth (grepDir($dir,concat(quote($nam),'.*'),'pt'))
+  {next !testFile('fr',$pth)
+   incr $cnt
+   if match($pth,'\.zip$',true)
+   {next isFiltered()
+    output b,concat('alert',$cnt)
+    var $flg = false
+   }
+   else
+   {output d,concat('alert',$cnt)
+    var $flg = true
+   }
+   if ${CUR.LAST}->write_data($pth)
+   {write '|[[',${CUR.LAST}->get_file,'][_blank][',encode($pth),']]| ',\
+          getSize($pth),'|',getLastModify($pth,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+    end ${CUR.LAST}
+    var $fil{$pth} = getLastModify($pth)
+    decr $max
+    break !$max
+   }
+   else
+    end ${CUR.LAST}
+  }
+ }
+ 
+ if hasOutput(true)
+ {write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use \
+              the link to save them and use an adequate viewer.'
+  toc '2:[[',getFile(),'][rda_report][Additional Alert Log Files]]'
+ }
+
+ # Check if the errors to be collected are not greater than the maximum
+ loop $fil (keys(%fil,'ND'))
+ {var $max = $LOG_ERRORS
+  decr $max,scalar(@err)
+  if expr('<=',$max,0)
+   break
+  if $ADR_HOME
+  {# Treat 11G
+   if createBuffer('ALR','R',$fil)
+   {# Parse the alert log for errors
+    var @new = ()
+    call parseReset()
+    call parsePattern('TOP',\
+     '(Errors in file|Details in trace file)',push_err(\@new,line,$max))
+    call parse('ALR')
+    var @err = (@new,@err)
+    call deleteBuffer('ALR')
+   }
+  }
+  elsif $BDUMP_DIR
+  {# Treat pre 11G
+   var @err = (\
+     grepFile($fil,'(Errors in file|Details in trace file)',expr('-',0,$max)),\
+     @err)
+  }
+ }
+}
+
+if @err
+{# Determine the size of the alert.log report
+ var $tot = get_size(getFile('/'))
+
+ # Analyze the last errors
+ var $flg = true
+ var $vol = expr('*',$LOG_VOLUME,1048576)
+ loop $lin (reverse(@err))
+ {# Get the file name
+  if match($lin,'Errors in file\s+(.*)$')
+   var $fil = trim(last,':')
+  elsif match($lin,'Details in trace file\s+(.*)$')
+   var $fil = trim(last,':')
+  else
+   next
+   
+  # When present, remove incident from file name
+  var $fil = replace($fil,'\s+\(incident=\S+?\)$')
+
+  # Eliminate missing, duplicate, and old files
+  next !$fil
+  next exists($tbl{$fil})
+  var $tbl{$fil} = 1
+
+  # Get the file contribution
+  if and($flg,testFile('r',$fil),isNewer($fil,$LOG_AGE))
+  {incr $tot,get_size($fil)
+   if expr('<',$tot,$vol)
+   {var @col = (@col,$fil)
+    next
+   }
+   var $flag = false
+  }
+  var @exc = (@exc,$fil)
+ }
+
+=head2 last_errors - Last Errors
+
+The alert log is scanned to retrieve the trace files associated with
+errors. To limit the data collection volume, only the latest trace files are
+collected based on their last modification date and the total volume.
+
+=cut
+
+ debug ' Inside LOG module, retrieving last errors'
+ report last_errors
+ macro add_title
+ {if !isCreated(true)
+  {import $TOC,$LOG_AGE,$LOG_ERRORS,$LOG_VOLUME
+   write '---+!!Trace Files Related to Last Errors'
+   write $TOC
+   write '%BR%'
+   write '   * Investigation limited to ',$LOG_ERRORS,' last errors'
+   write '   * Trace files not older than ',$LOG_AGE,' days'
+   write '   * Trace file volume lower than ',$LOG_VOLUME,\
+         ' MiB after compression'
+  }
+ }
+ prefix
+ {call add_title()
+  write '---+ Collected Trace Files'
+  write '|*Trace File*| *Size*|*Last Modification*|'
+ }
+ var $dir = cond(isWindows(),catDir($ORACLE_HOME,'database'),\
+                 isCygwin(), catDir($ORACLE_HOME,'database'),\
+                             catDir($ORACLE_HOME,'dbs'))
+ loop $fil (@col)
+ {incr $cnt
+  if !isAbsolute($fil)
+   var $fil = catFile($dir,$fil)
+  output d,concat('error',$cnt,'_',basename($fil))
+  if ${CUR.LAST}->write_data($fil)
+  {share 'log_error',$fil
+   write '|[[',${CUR.LAST}->get_file,'][_blank][',$fil,']]| ',\
+         getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+  end ${CUR.LAST}
+ }
+ if hasOutput(true)
+ {write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use \
+              the link to save them and use an adequate viewer.'
+
+  write $TOP
+ }
+ prefix
+ {call add_title()
+  write '---+ Other Trace Files'
+  write 'Files not collected due to age, permissions problems or collected \
+         size constraints.'
+  write '|*Trace File*| *Size*|*Last Modification*|'
+ }
+ loop $fil (@exc)
+ {if !isAbsolute($fil)
+   var $fil = catFile($dir,$fil)
+  write '|',encode($fil),'| ',getSize($fil),'|',\
+        getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+ if hasOutput(true)
+  write $TOP
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Last Errors]]'
+
+ # Get the share identifiers
+ loop $id (findShares('log_error','LOG'))
+  var $col{getShare($id)} = $id
+}
+
+=head2 Diagnostic Repository
+
+Automatic Diagnostic Repository (ADR) is a file-based repository for
+Application Server diagnostic data.
+
+The ADR Command Interpreter (ADRCI) is a command-line tool that you use to
+view diagnostic data within the ADR.
+
+Diagnostic data includes incident and problem descriptions.
+
+=cut
+
+=head3 diag_problems - Problem Overview
+
+Gathers diagnostic problems. A problem is a critical error in the Application
+Server. Critical errors manifest as internal errors. Problems are tracked in
+the Automatic Diagnostic Repository.
+
+It requires the availability of the ADRCI utility.
+
+=cut
+
+if grepDir(catDir($ORACLE_HOME,'bin'),'^adrci(\.exe)?$','fip')
+ var $cmd = catCommand(last)
+else
+ var $cmd = undef
+if and($cmd,$ADR_BASE,$ADR_HOME)
+{debug ' Inside LOG module, collecting diagnostic repository'
+ var $job = createTemp('job')
+ var $out = getTemp('out')
+ var $err = getTemp('err')
+ var $hom = join(cond(isWindows(),'\',isCygwin(),'\','/'),\
+                 splitDir(catDir($ADR_HOME),catDir($ADR_BASE)))
+ call writeTemp('job','SET BASE ',$ADR_BASE)
+ call writeTemp('job','SET HOMEPATH ',$hom)
+ call writeTemp('job','SHOW PROBLEM -ALL -ORDERBY LASTINC_TIME DSC')
+ call writeTemp('job','EXIT')
+ call closeTemp('job')
+ call command(concat($cmd,' script=',quote($job,'x'),\
+                     ' >',quote($out,'x'),' 2>',quote($err,'x')))
+ pretoc '2:Diagnostic Repository'
+ report diag_problems
+ if testFile('z',$out)
+ {echo 'Error encountered with ADRCI'
+  write '** Error encountered with ADRCI **'
+  write
+  call writeFile($err)
+ }
+ elsif createBuffer('ADR','R',$out)
+ {var ($cnt,$min,$cut,$src,$hdr) = (0,0,true)
+  prefix
+  {write '---+ List of Diagnostic Problems'
+   write '---## Using: SHOW PROBLEM -ALL -ORDERBY LASTINC_TIME DSC'
+   if $src
+    write '---## From: ',replace(encode($src),'\s','&nbsp;',true)
+   if $hdr
+    write $hdr
+  }
+  while getLine('ADR')
+  {var $lin = chomp(last)
+   if match($lin,'^ADR Home\s+=\s*(.*):$')
+    var ($cut,$row,$src) = (false,false,last)
+   elsif match($lin,'^DIA\-(\d+):')
+   {if $src
+     write '**',$lin,'**'
+    break
+   }
+   elsif $cut
+    next
+   elsif match($lin,'^\d+\s+rows\s+fetched$')
+   {if !isCreated()
+    {var $hdr = undef
+     write '**No problems found**'
+    }
+    break
+   }
+   elsif $row
+   {next expr('<',length($lin),$min)
+    var @tbl = ()
+    for $pos (0,$cnt)
+     var $tbl[$pos] = trim(substr($lin,$tb_off[$pos],$tb_lgt[$pos]))
+    if @tbl
+     write '|',join(' |',@tbl),' |'
+   }
+   elsif match($lin,'^[\-\s]+$')
+    var $row = true
+   elsif match($lin,'^\w+\s+')
+   {var ($min,@tb_key,@tb_lgt,@tb_off) = (0)
+    var %tbl = ('PROBLEM_ID','Problem ID',\
+                'PROBLEM_KEY','Problem Key',\
+                'LAST_INCIDENT','Last Incident',\
+                'LASTINC_TIME','Last Incident Time')
+    var $lin = trim($lin)
+    while match($lin,'^(\w+\s+)')
+    {var ($key) = last
+     var $lgt = length($key)
+     var $key = trim($key)
+     var $tb_key[$cnt] = nvl($tbl{$key},$key)
+     var $tb_off[$cnt] = $min
+     var $tb_lgt[$cnt] = $lgt
+     var $lin = substr($lin,$lgt)
+     incr $min,$lgt
+     incr $cnt
+    }
+    var $tb_key[$cnt] = nvl($tbl{$lin},$lin)
+    var $tb_off[$cnt] = $min
+    if $cnt
+     var $hdr = concat('|*',join('*|*',@tb_key),'*|')
+   }
+  }
+  call deleteBuffer('ADR')
+ }
+ call unlinkTemp('job')
+ call unlinkTemp('out')
+ call unlinkTemp('err')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Problem Overview]]'
+
+=head3 diag_incidents - Most Recent Incidents
+
+Gathers diagnostic incidents. An incident is a single occurrence of a problem.
+When a problem (critical error) occurs repeatedly, an incident is created
+for each occurrence. Incidents are time stamped and tracked in the Automatic
+Diagnostic Repository.
+
+By default, RDA collects the last 10 incidents.
+
+It requires the availability of the ADRCI utility.
+
+=cut
+
+ var $MAX = getSetting('LOG_INCIDENTS',10)
+ var $max = $MAX
+ if $max
+ {var ($cut,@inc,%lnk) = (true)
+
+  # Get the incident list
+  var $job = createTemp('job')
+  var $out = getTemp('out')
+  call writeTemp('job','SET BASE ',$ADR_BASE)
+  call writeTemp('job','SET HOMEPATH ',$hom)
+  call writeTemp('job','QUERY (INCIDENT_ID) INCIDENT -ORDERBY CREATE_TIME DSC')
+  call writeTemp('job','EXIT')
+  call closeTemp('job')
+  call command(concat($cmd,' script=',quote($job,'x'),' >',quote($out,'x')))
+  if createBuffer('ADR','R',$out)
+  {while getLine('ADR')
+   {var $lin = chomp(last)
+    if match($lin,'^-+\s*$')
+     var $cut = false
+    elsif $cut
+     next
+    elsif match($lin,'^(\d+)\s*$')
+     var @inc = (@inc,last)
+    elsif match($lin,'^\d+\s+rows\s+fetched$')
+     break
+   }
+   call deleteBuffer('ADR')
+  }
+
+  # Get the incident details
+  loop $inc (@inc)
+  {var $job = createTemp('job')
+   var $out = getTemp('out')
+   call writeTemp('job','SET BASE ',$ADR_BASE)
+   call writeTemp('job','SET HOMEPATH ',$hom)
+   call writeTemp('job','SHOW INCIDENT -MODE DETAIL -P "INCIDENT_ID=',$inc,'"')
+   call writeTemp('job','EXIT')
+   call closeTemp('job')
+   call command(concat($cmd,' script=',quote($job,'x'),' >',quote($out,'x')))
+   if createBuffer('ADR','R',$out)
+   {report concat('incident_',$inc)
+    var ($cut,$src) = (true)
+    prefix
+    {write '---+ Display of Incident ',$inc
+     write '---## Using: SHOW INCIDENT -MODE DETAIL -P "INCIDENT_ID=',$inc,'"'
+     if $src
+      write '---## From: ',replace(encode($src),'\s','&nbsp;',true)
+     write '|*Name*|*Value*|'
+    }
+    while getLine('ADR')
+    {var $lin = chomp(last)
+     if match($lin,'^ADR Home\s+=\s*(.*):$')
+      var ($cut,$src) = (false,last)
+     elsif $cut
+      next
+     elsif match($lin,'^\s+\w+\s')
+     {var (undef,$nam,$val) = split('\s+',$lin,3)
+      write '|',$nam,' |',$val,' |'
+     }
+     elsif match($lin,'^\d+\s+rows\s+fetched$')
+      break
+    }
+    if isCreated(true)
+    {write $TOP
+     var $lnk{$inc} = getFile()
+    }
+    call deleteBuffer('ADR')
+   }
+   call unlinkTemp('job')
+   call unlinkTemp('out')
+
+   # Limit the incident number
+   decr $max
+   break !$max
+  }
+  report diag_incidents  
+  prefix
+  {write '---+ Display of Last ',$MAX,' Incidents'
+   write '| *Incident ID*|'
+  }
+  loop $inc (@inc)
+  {if exists($lnk{$inc})
+    write '| [[',$lnk{$inc},'][_blank][',$inc,']]|'
+  }
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][Most Recent Incidents]]'
+ }
+ unpretoc
+}
+
+=head2 log_trace - Trace/Log Directory Listings
+
+Lists the contents of trace/dump directories.
+
+=cut
+
+debug ' Inside LOG module, doing ls of Oracle trace/log directories'
+report log_trace
+write '---+!!Listing of Files from Oracle Log/Trace Directories'
+write $TOC
+
+var $NOT = '%BR%**Note:** The operating system can relocated the core files \
+            in another location. The ``/etc/coreadm.conf`` file can provide \
+            some extra information on that mechanism. The OS module collects \
+            that file. Run the OS module if needed.%BR%'
+
+if $ADR_HOME
+{write '---+ Diagnostic Traces'
+ if !statDir('at',catDir($ADR_HOME,'trace'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ write $TOP
+
+ write '---+ Incidents'
+ if !statDir('at',catDir($ADR_HOME,'incident'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ write $TOP
+
+ write '---+ Incident Packages'
+ if !statDir('at',catDir($ADR_HOME,'incpkg'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ write $TOP
+
+ write '---+ Core Dumps'
+ if !statDir('at',catDir($ADR_HOME,'cdump'))
+  write 'Could not list files in ',encode(lastDir()),'%BR%'
+ if testFile('e','/etc/coreadm.conf')
+  write $NOT
+ write $TOP
+ 
+ if match(getOsName(),'solaris')
+ {run COREinfo()
+  call run_coreadm((concat('_',$ORACLE_SID,'\b')))
+ }
+}
+
+write '---+ Background Dump Destination'
+if !$BDUMP_DIR
+ write 'Background Dump destination could not be determined.%BR%'
+elsif !statDir('at',$BDUMP_DIR)
+ write 'Could not list files in ',encode($BDUMP_DIR),'%BR%'
+write $TOP
+
+var $dir = catDir($ORACLE_HOME,'rdbms','log')
+if !sameDir($BDUMP_DIR,$dir)
+{write '---+ Default Background Dump Destination.%BR%'
+ if !statDir('at',$dir)
+  write 'Could not list files in ',encode($dir),'%BR%'
+ write $TOP
+}
+
+if !$ADR_HOME
+{write '---+ Core Dump Destination'
+ if !$CDUMP_DIR
+  write 'Core Dump destination could not be determined.%BR%'
+ elsif !statDir('at',$CDUMP_DIR)
+  write 'Could not list files in ',encode($CDUMP_DIR),'%BR%'
+ if testFile('e','/etc/coreadm.conf')
+  write $NOT
+ write $TOP
+
+ var $dir = cond(isWindows(),catDir($ORACLE_HOME,'database'),\
+                 isCygwin(), catDir($ORACLE_HOME,'database'),\
+                             catDir($ORACLE_HOME,'dbs'))
+ if !sameDir($CDUMP_DIR,$dir)
+ {write '---+ Default Core Dump Destination'
+  if !statDir('at',$dir)
+   write 'Could not list files in ',encode($dir),'%BR%'
+  write $TOP
+ }
+ 
+ if match(getOsName(),'solaris')
+ {run COREinfo()
+  call run_coreadm((concat('_',$ORACLE_SID,'\b')))
+ }
+}
+
+write '---+ User Dump Destination'
+if !$UDUMP_DIR
+ write 'User Dump destination could not be determined.%BR%'
+elsif sameDir($UDUMP_DIR,$BDUMP_DIR)
+ write 'User Dump destination and Background Dump destination are the same.\
+        %BR%Please see Background Dump destination for listing.%BR%'
+elsif !statDir('at',$UDUMP_DIR)
+ write 'Could not list files in ',encode($UDUMP_DIR),'%BR%'
+write $TOP
+
+var $dir = catDir($ORACLE_HOME,'rdbms','trace')
+write '---+ RDBMS Trace Destination'
+if !statDir('at',$dir)
+ write 'Could not list files in ',encode($dir),'%BR%'
+write $TOP
+toc '2:[[',getFile(),'][rda_report][Trace/Log Directory Listings]]'
+
+=head2 bdump - Recent Background Trace Files
+
+Collects the most recent trace files for each type of background process. Old
+files are not considered.
+
+=cut
+
+if and($TRACE_DIR,$BDUMP_MAX)
+{debug ' Inside LOG module, gathering most recent background trace files'
+ report bdump
+ macro add_btitle
+ {if !isCreated(true)
+  {import $TOC,$LOG_AGE,$BDUMP_MAX,$BDUMP_VOLUME
+   write '---+!! Most Recent Background Trace Files'
+   write $TOC
+   write '%BR%'
+   write '   * Background trace files not older than ',$LOG_AGE,' days'
+   write '   * Limited to ',$BDUMP_MAX,' files of each type'
+   write '   * File size lower than ',$BDUMP_VOLUME,' MiB'
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               security risks. To prevent them, access the file outside the \
+               browser or use the link to save them and use an adequate viewer.'
+  }
+ }
+ prefix
+ {call add_btitle()
+  write '---+ Collected Files'
+  write '|*Type*|*Trace File*| *Size*|*Last Modification*|'
+ }
+ var $vol = expr('*',$BDUMP_VOLUME,1048576)
+ var ($cnt,@tbl,%fil,%ref) = (0)
+ loop $nam (grepDir($TRACE_DIR,\
+                    concat('^',quote($ORACLE_SID),'_[^_\.]+_.*\.trc$'),\
+                    concat('itm',$LOG_AGE)))
+ {var $typ = field('_',1,$nam)
+  incr $ref{$typ}
+  next expr('>',$ref{$typ},$BDUMP_MAX)
+  var $fil{$typ} = join("\012",$fil{$typ},$nam)
+ }
+ loop $typ (keys(%ref))
+ {loop $nam (split('\012',$fil{$typ}))
+  {var $fil = catFile($TRACE_DIR,$nam)
+   if expr('<',get_size($fil),$vol)
+   {incr $cnt
+    output d,concat('bdump',$cnt,'_',$nam)
+    if ${CUR.LAST}->write_data($fil)
+    {if match($typ,'^(arch|dmon|lgwr|lsp|nsv|p0|rsm)',true)
+      share 'dg_bdump',$fil
+     write '|',$typ,' |[[',\
+           ${CUR.LAST}->get_file,'][_blank][',encode($fil),']]| ',\
+           getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+     end ${CUR.LAST}
+     next
+    }
+    end ${CUR.LAST}
+   }
+   call push(@tbl,$fil)
+  }
+ }
+ if @tbl
+ {call add_btitle()
+  write '---+ Other Trace Files'
+  write 'Files not collected due to permissions problems or size constraints.'
+  write '|*Trace File*| *Size*|*Last Modification*|'
+  loop $fil (@tbl)
+   write '|',encode($fil),'| ',getSize($fil),'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Recent Background Trace Files]]'
+}
+
+=head2 udump - Recent User Dumps
+
+When requested, most recent user dumps can be collected.
+
+=cut
+
+if and($UDUMP_DIR,$UDUMP_AGE)
+{debug ' Inside LOG module, gathering most recent user dumps'
+ report udump
+ macro add_utitle
+ {if !isCreated(true)
+  {import $TOC,$UDUMP_AGE,$UDUMP_VOLUME
+   write '---+!! Most Recent User Dumps'
+   write $TOC
+   write '%BR%'
+   write '   * User dumps not older than ',$UDUMP_AGE,' days'
+   write '   * User dump volume lower than ',$UDUMP_VOLUME,\
+         ' MiB after compression'
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               security risks. To prevent them, access the file outside the \
+               browser or use the link to save them and use an adequate viewer.'
+  }
+ }
+ prefix
+ {call add_utitle()
+  write '---+ Collected Files'
+  write '|*User Dump*| *Size*|*Last Modification*|'
+ }
+ var $vol = expr('*',$UDUMP_VOLUME,1048576)
+ var ($cnt,$tot,$flg,@tbl) = (0,0,true)
+ loop $nam (grepDir($UDUMP_DIR,concat('^',quote($ORACLE_SID),'_.*\.trc$'),\
+                    concat('itm',$UDUMP_AGE)))
+ {var $fil = catFile($UDUMP_DIR,$nam)
+  if exists($col{$fil})
+  {var $rpt = setShare($col{$fil},true)
+   write '|[[',$rpt,'][_blank][',encode($fil),']]| ',getSize($fil),'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   next
+  }
+  elsif $flg
+  {incr $tot,get_size($fil)
+   if expr('<',$tot,$vol)
+   {var @col = (@col,$fil)
+    incr $cnt
+    output d,concat('udump',$cnt,'_',$nam)
+    if ${CUR.LAST}->write_data($fil)
+    {share 'log_udump',$fil
+     write '|[[',${CUR.LAST}->get_file,'][_blank][',encode($fil),']]| ',\
+           getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+     end ${CUR.LAST}
+     next
+    }
+    end ${CUR.LAST}
+   }
+   else
+    var $flg = false
+  }
+  call push(@tbl,$fil)
+ }
+ if @tbl
+ {call add_utitle()
+  write '---+ Other Files'
+  write 'Files not collected due to permissions problems or collected size \
+         constraints.'
+  write '|*User Dump*| *Size*|*Last Modification*|'
+  loop $fil (@tbl)
+   write '|',encode($fil),'| ',getSize($fil),'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Recent User Dumps]]'
+
+ # Get the share identifiers
+ loop $id (findShares('log_udump','LOG'))
+  var $col{getShare($id)} = $id
+}
+
+=head2 dg - Data Guard Broker Log Files
+
+Displays the Data Guard Broker-related log files.
+
+=cut
+
+if getSetting('DG_IN_USE')
+{debug ' Inside LOG module, gathering Data Guard broker log files'
+ var $TTL = '---+!! Data Guard Broker Log Files'
+ report dg
+ prefix
+ {if !isCreated()
+  {write $TTL
+   write $TOC
+  }
+  write '---+ Data Guard Broker Log'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              security risks. To prevent them, access the file outside the \
+              browser or use the link to save them and use an adequate viewer.'
+  write '|*Trace File*| *Size*|*Last Modification*|'
+ }
+ loop $nam (grepDir($BDUMP_DIR,'^drc\w+\.log$','it'))
+ {var $fil = catFile($BDUMP_DIR,$nam)
+  incr $cnt
+  output d,concat('drc',$cnt,'_',$nam)
+  if ${CUR.LAST}->write_data($fil)
+   write '|[[',${CUR.LAST}->get_file,'][_blank][',encode($fil),']]| ',\
+         getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  end ${CUR.LAST}
+ }
+ if hasOutput(true)
+  write $TOP
+ prefix
+ {if !isCreated()
+  {write $TTL
+   write $TOC
+  }
+  write '---+ Background Dump Destination Log Files'
+  write '   * Background trace files not older than ',$LOG_AGE,' days'
+  write '   * Limited to ',$BDUMP_MAX,' files of each type'
+  write '   * File size lower than ',$BDUMP_VOLUME,' MiB'
+  write '|*Type*|*Trace File*| *Size*|*Last Modification*|'
+ }
+ loop $id (findShares('dg_bdump','LOG'))
+ {var $fil = getShare($id)
+  var $typ = field('_',1,basename($fil))
+  var $rpt = setShare($id,true)
+  write '|',$typ,'|[[',$rpt,'][_blank][',encode($fil),']]| ',\
+         getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+ if hasOutput(true)
+  write $TOP
+ prefix
+ {if !isCreated()
+  {write $TTL
+   write $TOC
+  }
+  write '---+ User Dump Destination Log Files'
+  write '   * User dumps not older than ',$UDUMP_DG,' days'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              security risks. To prevent them, access the file outside the \
+              browser or use the link to save them and use an adequate viewer.'
+  write '|*Trace File*| *Size*|*Last Modification*|'
+ }
+ loop $nam (grepDir($UDUMP_DIR,\
+                    concat('^',quote($ORACLE_SID),'_(drc|fal|rfs).*\.trc$'),\
+                    concat('itm',$UDUMP_DG)))
+ {var $fil = catFile($UDUMP_DIR,$nam)
+  if exists($col{$fil})
+  {var $rpt = setShare($col{$fil},true)
+   write '|[[',$rpt,'][_blank][',encode($fil),']]| ',getSize($fil),'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+  else
+  {incr $cnt
+   output d,concat('udump',$cnt,'_',$nam)
+   if ${CUR.LAST}->write_data($fil)
+    write '|[[',${CUR.LAST}->get_file,'][_blank][',encode($fil),']]| ',\
+          getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   end ${CUR.LAST}
+  }
+ }
+ if hasOutput(true)
+  write $TOP
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Data Guard Broker Log Files]]'
+}
+
+=head2 gg - GoldenGate Log Files
+
+Displays the Oracle GoldenGate-related log files.
+
+=cut
+
+if getSetting('OGG_IN_USE')
+{debug ' Inside LOG module, gathering GoldenGate log files'
+ var $TTL = '---+!! GoldenGate Log Files'
+ report gg
+ prefix
+ {if !isCreated()
+  {write $TTL
+   write $TOC
+  }
+  write '---+ User Dump Destination Log Files'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              security risks. To prevent them, access the file outside the \
+              browser or use the link to save them and use an adequate viewer.'
+  write '|*Trace File*| *Size*|*Last Modification*|'
+ }
+ var $fil = catFile($UDUMP_DIR,$nam = 'ggs_ddl_trace.log')
+ if exists($col{$fil})
+ {var $rpt = setShare($col{$fil},true)
+  write '|[[',$rpt,'][_blank][',encode($fil),']]| ',getSize($fil),'|',\
+        getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+ else
+ {incr $cnt
+  output d,concat('udump',$cnt,'_',$nam)
+  if ${CUR.LAST}->write_data($fil)
+   write '|[[',${CUR.LAST}->get_file,'][_blank][',encode($fil),']]| ',\
+         getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  end ${CUR.LAST}
+ }
+ if isCreated(true)
+ {write $TOP
+  toc '2:[[',getFile(),'][rda_report][GoldenGate Log Files]]'
+ }
+}
+
+=head2 MERGE
+
+When requested, merges information from alert log and trace files.
+
+=cut
+
+if getSetting('LOG_RUN_MERGE')
+{var $pat = '^[0-3]\d\-[A-Za-z]{3}\-[1-2]\d{3}_[0-2]\d:[0-5]\d:[0-5]\d$'
+ if !match($MERGE_BEGIN,$pat)
+ {echo 'Start time format should be DD-Mon-YYYY_HH24:MI:SS'
+ }
+ elsif !match($MERGE_END,$pat)
+ {echo 'End time format should be DD-Mon-YYYY_HH24:MI:SS'
+ }
+ else
+ {debug ' Inside LOG module, merging alert log and trace files'
+  call setTempSetting('MERGE_LINES',$MERGE_LINES)
+  test TLmerge('B',$MERGE_SET,\
+               concat($MERGE_BEGIN,',',$MERGE_END,\
+                      cond($MERGE_FILES,concat(',',$MERGE_FILES))))
+  call setTempSetting('MERGE_LINES')
+ }
+}
+                    
+# Disable the group title in next index
+if isTocCreated()
+ toc '-:RDBMS'
+
+=head1 SEE ALSO
+
+L<S200DB.def|modules::S200DB>, L<S405DG.def|modules::S405DG>,
+L<DBalert.def|modules::DBalert>, L<DBinfo.def|modules::DBinfo>,
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.1:  Bob King, Fokke Zijlstra.
+
+=item RDA 4.3:  Roger Snowden.
+
+=item RDA 4.6:  Bob Caldwell.
+
+=item RDA 4.7:  Brandie Smith.
+
+=item RDA 4.26: Joseph deBuzna.
+
+=item RDA 4.28: Adam Nunes.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

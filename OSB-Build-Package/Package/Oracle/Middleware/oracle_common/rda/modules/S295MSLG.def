@@ -1,0 +1,313 @@
+#S295MSLG.def: Collects Microsoft Languages Information
+# $Id: S295MSLG.def,v 2.6 2012/01/03 13:34:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S295MSLG.def,v 2.6 2012/01/03 13:34:45 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S295MSLG - Collects Microsoft Languages Information
+
+=head1 DESCRIPTION
+
+This module collects information about Microsoft APIs and languages
+products. The following reports can be generated and are regrouped under
+C<Microsoft Languages>:
+
+=cut
+
+echo tput('bold'),'Processing MSLG module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME')
+var $TAIL        = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Microsoft Languages'
+
+# Load the common macros
+run library()
+
+=head2 mdac_version - MDAC Version
+
+Collects Microsoft Data Access versions from the Windows registry.
+
+=cut
+
+debug ' Inside MSLG module, gathering Microsoft Data Access versions'
+report mdac_version
+write '---+!! MDAC Version'
+
+var $key = 'HKLM\SOFTWARE\Microsoft\DataAccess'
+write '|*FullInstallVer*|',nvl(getRegValue($key,'FullInstallVer'),'NA'),'|'
+write '|*Version*       |',nvl(getRegValue($key,'Version'),'NA'),'|'
+
+toc '2:[[',getFile(),'][rda_report][MDAC Version]]'
+
+=head2 odbc_registry - ODBC Registry Keys
+
+Collects the basic ODBC-related configurations from the registry.
+
+=cut
+
+debug ' Inside MSLG module, collecting OBDC registry keys'
+report odbc_registry
+prefix
+{write '---+!! ODBC Registry Keys'
+ write $TOC
+}
+if !writeRegistry('HKLM\SOFTWARE\ODBC')
+ write '**No ODBC Registry keys found.**%BR%'
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][ODBC Registry Keys]]'
+
+=head2 ODP.NET Traces
+
+Collects an ODP.NET trace for each different Oracle home.
+
+=cut
+
+debug ' Inside MSLG module, collecting the ODP.NET trace'
+pretoc '2:ODP.NET Trace'
+var %dup = ()
+loop $key (grepRegValue('HKLM\SOFTWARE\ORACLE','ORACLE_HOME_NAME'))
+{var $key = concat($key,'\ODP.NET')
+ if getRegValue($key,'TraceFileName')
+ {# Eliminate the duplicates
+  var $fil = catFile(last)
+  var $dup = lc(replace($fil,'\\',':'))
+  next $dup{$dup}
+  var $dup{$dup} = 1
+
+  # Collect the trace files
+  var $pat = concat('^',basename($fil,'.trc'))
+  call sort_files(3,$TAIL,grepDir(dirname($fil),$pat,'ip'))
+ }
+}
+unpretoc
+
+=head2 OLEDB Traces
+
+Collects the OLEDB trace for different Oracle homes.
+
+=cut
+
+debug ' Inside MSLG module, collecting the OLEDB trace'
+pretoc '2:OLEDB Trace'
+var %dup = ()
+loop $key (grepRegValue('HKLM\SOFTWARE\ORACLE','ORACLE_HOME_NAME'))
+{var $key = concat($key,'\OLEDB')
+ if getRegValue($key,'TraceFileName')
+ {# Eliminate the duplicates
+  var $fil = catFile(last)
+  var $dup = lc(replace($fil,'\\',':'))
+  next $dup{$dup}
+  var $dup{$dup} = 1
+
+  # Collect the trace files
+  var $pat = concat('^',basename($fil,'.trc'))
+  call sort_files(3,$TAIL,grepDir(dirname($fil),$pat,'ip'))
+ }
+}
+unpretoc
+
+=head2 ORAMTS Traces
+
+Gathers the last 10 modified files from the ORAMTS trace directory specified
+in the registry.
+
+=cut
+
+debug ' Inside MSLG module, collecting the ORAMTS trace'
+pretoc '2:ORAMTS Trace'
+loop $key (grepRegValue('HKLM\SOFTWARE\ORACLE','ORAMTS_CP_TRACE_DIR'))
+{var $hom = getRegValue($key,'ORACLE_HOME_NAME')
+ var $dir = catDir(getRegValue($key,'ORAMTS_CP_TRACE_DIR'))
+ var $cnt = 10
+ if testDir('d',$dir)
+ {pretoc '3:',$hom
+  if expr('>',$cnt,0)
+  {loop $fil (grepDir($dir,'^(ORAMTS|ORACLE)','itp'))
+   {if testFile('r',$fil)
+    {report concat('oramts_trace_',$cnt)
+     var $nam = basename($fil)
+     write '---+ Display of ',encode($nam),' File'
+     write '---## Information Taken from ',encode($fil)
+     call writeFile($fil)
+     write $TOP
+     toc '4:[[',getFile(),'][rda_report][',$fil,']]'
+     decr $cnt
+     break !$cnt
+    }
+   }
+  }
+ }
+ unpretoc
+}
+unpretoc
+
+=head2 Oracle Driver Versions
+
+Gathers the version information of Oracle drivers from all the
+F<$ORACLE_HOME/bin> folders.
+
+=cut
+
+macro write_version
+{var ($hom,$dll,$lvl,$lnk) = @arg
+ var $dir = $hom
+
+ loop $fil (grepDir($dir,$dll,'ir'))
+ {var $inf = getVersionInfo($fil)
+  if $inf
+  {report concat('dll_',$fil)
+   write '---+ Version Information of ',encode($fil)
+   loop $key (keys($inf))
+    write '|*',$key,' *|',$inf->{$key},' |'
+   if $lnk
+    toc nvl($lvl,4),':[[',getFile(),'][rda_report][',$lnk,']]'
+   else
+    toc nvl($lvl,4),':[[',getFile(),'][rda_report][$OH\bin\',basename($fil),']]'
+  }
+ }
+}
+
+debug ' Inside MSLG module, collecting the Oracle driver versions'
+pretoc '2:Oracle Driver Versions'
+var %dup = ()
+loop $key (grepRegValue('HKLM\SOFTWARE\ORACLE','ORACLE_HOME'))
+{var $nam = getRegValue($key,'ORACLE_HOME_NAME')
+ next !$nam
+
+ # Eliminate the duplicates
+ var $dup = lc($nam)
+ next $dup{$dup}
+ var $dup{$dup} = 1
+
+ # Get the driver versions
+ pretoc '3:',$nam
+ var $hom = getRegValue($key,'ORACLE_HOME')
+ var $dir = catDir($hom,'bin')
+ call write_version($dir,'^sqora32\.dll$')
+ call write_version($dir,'^oraoledb\d+\.dll$')
+ call write_version($dir,'^oip\d+\.dll$')
+ call write_version($dir,'^Oracle\.DataAccess\.dll$')
+ call write_version($dir,'^oramts\.dll$')
+ call write_version($dir,'^OraOps10W\.dll$')
+ var $dir = catDir($hom,'ODP.NET','bin','1.x')
+ call write_version($dir,'^Oracle\.DataAccess\.dll$',4,\
+                  '$OH\ODP.NET\bin\1.x\Oracle.DataAccess.dll')
+ var $dir = catDir($hom,'ODP.NET','bin','2.x')
+ call write_version($dir,'^Oracle\.DataAccess\.dll$',4,\
+                  '$OH\ODP.NET\bin\2.x\Oracle.DataAccess.dll')
+ unpretoc
+}
+unpretoc
+
+=head2 Microsoft Product Versions
+
+Gathers the versions of various Microsoft products.
+
+=cut
+
+debug ' Inside MSLG module, collecting the Microsoft product versions'
+pretoc '2:Microsoft Product Versions'
+
+# Collect the Microsoft Access and Excel version
+loop $key (grepRegValue('HKLM\SOFTWARE\Microsoft\Office','Path'))
+{if match($key,'\\Access\\InstallRoot$')
+  call write_version(getRegValue($key,'Path'),'^msaccess\.exe$',3,'MS Accesss')
+ elsif match($key,'\\Excel\\InstallRoot$')
+  call write_version(getRegValue($key,'Path'),'^excel\.exe$',3,'MS Excel')
+}
+
+# Collect the Microsoft Visual Studio version
+loop $key (grepRegValue('HKLM\SOFTWARE\Microsoft\VisualStudio',\
+                        'VSCommonDir'))
+{if match($key,'\\Setup$')
+  call write_version(getRegValue($key,'VSCommonDir'),'^msdev\.exe$',3,\
+                    'MS Visual Studio')
+}
+
+# Collect the Microsoft Visual Studio Dot Net version
+loop $key (grepRegValue('HKLM\SOFTWARE\Microsoft\VisualStudio',\
+                        'EnvironmentPath'))
+{if match($key,'\\Setup\\VS$')
+ {var $pth = getRegValue($key,'EnvironmentPath')
+  call write_version(dirname($pth),'^devenv\.exe$',3,'Visual Studio .Net')
+ }
+}
+unpretoc
+
+=head2 odbc_trace - ODBC Trace File
+
+Gets the location of the ODBC trace file from the registry and collects it.
+
+=cut
+
+debug ' Inside MSLG module, collecting the ODBC trace file'
+pretoc '2:ODBC Trace'
+var $fil = getRegValue('HKLM\SOFTWARE\ODBC\ODBC.INI\ODBC',\
+                       'TraceFile')
+if testFile('r',$fil)
+{var $nam = basename($fil)
+ report odbc_trace
+ write '---+ Display of ',encode($nam),' File'
+ write '---## Information Taken from ',encode($fil)
+ call writeFile($fil)
+ write $TOP
+ toc '3:[[',getFile(),'][rda_report][',$nam,']]'
+}
+unpretoc
+
+=head2 gac_list - Global Assembly Cache
+
+Lists the files registered with Global Assembly Cache.
+
+=cut
+
+debug ' Inside MSLG module, listing files registered with Global Assembly Cache'
+report gac_list
+if grepRegValue('HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\SharedDlls',\
+                '\S.*gacutil\.exe\S*',true)
+{loop $lin (last)
+ {var (undef,$nam) = split('\|',$lin)
+  var $cmd = concat(quote(replace($nam,'\.config$'),'x')," /l")
+  break writeCommand($cmd)
+ }
+ if isCreated()
+ {toc '2:[[',getFile(),'][rda_report][Global Assembly Cache]]'
+  write $TOP
+ }
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.3:  Saravanan Gurunathan.
+
+=item RDA 4.5:  Saravanan Gurunathan, Hariharan Mahadevan.
+
+=item RDA 4.8:  Greg Darling, Saravanan Gurunathan.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tns:harvesterSettings xmlns:tns="http://www.oracle.com/oer/integration/harvester"
+                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                       xsi:schemaLocation="http://www.oracle.com/oer/integration/harvester Harvester_Settings.xsd ">
+
+    <!--Description to set on created Assets in OER.-->
+    <harvesterDescription></harvesterDescription>
+
+    <!--Registration status to set on created Assets in OER.
+        The Valid Registration states are 1) Unsubmitted 2)Submitted - Pending Review 3)Submitted - Under Review 4)Registered -->
+    <registrationStatus>Unsubmitted</registrationStatus>
+
+    <!--Namespace to set on created Assets in OER.  If left empty, this is set based on information from OSB projects.
+        That's generally the best practice, so override this with caution.-->
+    <namespace></namespace>
+
+    <!--If true, trigger OER events for use by Workflow.  Warning: this can decrease performance.-->
+    <triggerEvent>false</triggerEvent>
+
+
+    <!--Connection info to OER-->
+    <repository>
+        <uri>http://localhost:7101/oer</uri>
+        <credentials>
+            <user>admin</user>
+            <password>admin</password> <!--run encrypt.bat to encrypt this-->
+        </credentials>
+        <timeout>30000</timeout>
+    </repository>
+
+
+    <!--Query: the files to harvest-->
+    <query>
+        <!--To specify design-time files to harvest: Uncomment the section below and specify the OSB config jar you want to harvest.
+            Or specify on the command-line via the -file parameter.-->
+        <!--
+        <fileQuery>
+            <rootDir>C:\temp</rootDir>
+            <files>my-config.jar</files>
+        </fileQuery>
+        -->
+
+
+        <!--To specify run-time files to harvest: Uncomment this and specify the project(s) you want to harvest.
+            The serverType must remain as OSB.
+            Run encrypt.bat to encrypt the password.-->
+        <!--
+        <remoteQuery>
+            <serverType>OSB</serverType>
+            <projectName>default</projectName>
+            <uri>http://remotehost:7001/</uri>
+            <credentials>
+                <user>weblogic</user>
+                <password>password</password>
+            </credentials>
+        </remoteQuery>
+        -->
+
+    </query>
+
+
+    <introspection>
+        <reader>com.bea.alsb.harvester.plugin.reader.OSBReader</reader>
+        <writer>com.oracle.oer.sync.plugin.writer.oer.OERWriter</writer>
+    </introspection>
+
+</tns:harvesterSettings>

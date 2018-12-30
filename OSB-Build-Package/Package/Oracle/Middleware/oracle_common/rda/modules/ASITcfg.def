@@ -1,0 +1,192 @@
+# ASITcfg.def: Assists Fusion Middleware Installation Types Collection Setup
+# $Id: ASITcfg.def,v 1.11 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/ASITcfg.def,v 1.11 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+ASITcfg - Assists Fusion Middleware Installation Types Collection Setup
+
+=head1 DESCRIPTION
+
+This module provides associated logic for the setup of the Fusion Middleware
+installation types collections.
+
+=cut
+
+#------------------------------------------------------------------------------
+# Section init: Module initialization
+#------------------------------------------------------------------------------
+section init
+
+#------------------------------------------------------------------------------
+# Section chk_instances: Check which instances are present
+#------------------------------------------------------------------------------
+section chk_instances
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Detect the instances
+var ($top,@ins) = (getSetting(concat($pre,'_INSTANCE_ROOT')))
+loop $ins (grepDir($top,'^[^\.]+$','n'))
+{if or(testFile('f',catFile($top,$ins,'bin','opmnctl')),\
+       testFile('f',catFile($top,$ins,'bin','opmnctl.bat')),\
+       testFile('f',catFile($top,$ins,'bin','opmnctl.exe')))
+  call push(@ins,$ins)
+}
+
+# Customize the setup
+if @ins
+{var ${AUX.dft} = 1
+ var ($cnt,$flg,@all,@dft,@itm,@rsp,%sel) = (0,true)
+
+ # Analyze the previous requests
+ if compare('eq',getSetting(concat($pre,'_INSTANCES')),'*')
+  var $flg = false
+ else
+ {loop $key (grepSetting(concat('^',$pre,'_OI\d+_REQ_INSTANCE$')))
+   var $sel{basename(catDir(getSetting($key)))} = 1
+ }
+
+ # Generate temporary setting
+ loop $ins (@ins)
+ {call push(@all,incr($cnt))
+  call push(@itm,$cnt,$ins)
+  call push(@rsp,$cnt,$cnt)
+  if and($flg,exists($sel{$ins}))
+   call push(@dft,$cnt)
+  call setTempSetting(concat($pre,'_OI',$cnt,'_REQ_INSTANCE'),catDir($top,$ins))
+ }
+ call setTempSetting('TMP_ALL_INSTANCES',join('|',@all))
+ call setTempSetting('TMP_DFT_INSTANCES',cond($flg,join('|',@dft),'*'))
+ call setTempSetting('TMP_ITM_INSTANCES',join('|',@itm))
+ call setTempSetting('TMP_RSP_INSTANCES',join('|',@rsp))
+}
+
+#------------------------------------------------------------------------------
+# Section chk_servers: Check which servers are present
+#------------------------------------------------------------------------------
+section chk_servers
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Detect the servers
+var $top = getSetting(concat($pre,'_DOM_REQ_DOMAIN'))
+loop $srv (grepDir(catDir($top,'servers'),'^[^\.]+$','n'))
+{if testDir('d',catDir($top,'servers',$srv,'logs'))
+  call push(@srv,$srv)
+}
+
+# Customize the setup
+if @srv
+{var ${AUX.dft} = 1
+ var ($cnt,$flg,@all,@dft,@itm,@rsp,%sel) = (0,true)
+
+ # Analyze the previous requests
+ var $val = getSetting(concat($pre,'_DOM_WLS_SERVERS'))
+ if compare('eq',$val,'*')
+  var $flg = false
+ else
+ {loop $srv (split('\|',$val))
+   var $sel{$srv} = 1
+ }
+
+ # Generate temporary setting
+ loop $srv (@srv)
+ {call push(@all,$srv)
+  call push(@itm,incr($cnt),$srv)
+  if and($flg,exists($sel{$srv}))
+   call push(@dft,$srv)
+ }
+ call setTempSetting('TMP_ALL_SERVERS',join('|',@all))
+ call setTempSetting('TMP_DFT_SERVERS',cond($flg,join('|',@dft),'*'))
+ call setTempSetting('TMP_ITM_SERVERS',join('|',@itm))
+}
+
+#------------------------------------------------------------------------------
+# Section find_disco_server: Identify the server configured
+#------------------------------------------------------------------------------
+section find_disco_server
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Detect the domain and server
+var ($dom,$srv) = ()
+loop <OUT> $key (grepSetting(concat('^',$pre,'_OI\d+_REQ_INSTANCE$')))
+{loop <IN> $fil (grepDir(\
+  catDir(getSetting($key),'Discoverer'),'^discenv\.(bat|cmd|sh)$','r',2))
+ {var ${AUX.dft} = 1
+  var $dom = catDir(value(grepFile($fil,'^[^\043]*\bWLS_DISCO_HOME=','f')),\
+                    upDir(),upDir())
+  var $srv = value(grepFile($fil,'^[^\043]*\bWLS_DISCO_NAME=','f'))
+  break <OUT>
+ }
+}
+call setTempSetting('TMP_DOMAIN',$dom)
+call setTempSetting('TMP_SERVER',$srv)
+
+#------------------------------------------------------------------------------
+# Section get_ora_home: Get the Middleware Oracle home
+#------------------------------------------------------------------------------
+section get_ora_home
+
+var ($top,$hom) = (${DOMAIN_HOME})
+var $pat = ${TMP_HOME_PATTERN:'MW_ORA_HOME|ORACLE_HOME'}
+if or(isWindows(),isCygwin())
+{if loadFile(catFile($top,'bin','setDomainEnv.cmd'))
+ {loop $itm (split('\|',$pat))
+  {if grepLastFile(concat('^\s*set\s+',$itm,'=.*?\s*$'),'f')
+   {var ($hom) = match(last,concat('^\s*set\s+',$itm,'=(.*?)\s*$'))
+    break $hom
+   }
+  }
+ }
+}
+elsif loadFile(catFile($top,'bin','setDomainEnv.sh'))
+{loop $itm (split('\|',$pat))
+ {if grepLastFile(concat('^[^\043]*\b',$itm,'=([\042\047]).*?\1'),'f')
+  {var (undef,$hom) = \
+     match(last,concat('^[^\043]*\b',$itm,'=([\042\047])(.*?)\1'))
+   break $hom
+  }
+  elsif grepLastFile(concat('^[^\043]*\b',$itm,'=\S+'),'f')
+  {var ($hom) = match(last,concat('^[^\043]*\b',$itm,'=(\S+)'))
+   break
+  }
+ }
+}
+if length($hom)
+ var ${AUX.dft} = $hom
+
+#------------------------------------------------------------------------------
+# Section get_wls_user: Get the Oracle WebLogic user
+#------------------------------------------------------------------------------
+section get_wls_user
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Extract the domain user
+var ($top,$usr) = (getSetting(concat($pre,'_DOM_REQ_DOMAIN')))
+if loadFile(catFile($top,'init-info','tokenValue.properties'))
+{var ($lin) = grepLastFile('^[^\043]*\bDOMAIN_USER=\s*\S','f')
+ var ($usr) = match($lin,'^[^\043]*\bDOMAIN_USER=\s*(\S)')
+}
+if length($usr)
+ var ${AUX.dft} = $usr
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

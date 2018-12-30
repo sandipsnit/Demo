@@ -1,0 +1,1393 @@
+<?xml version="1.0"?>
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" TableSpace="oracle_soainfra">
+
+  <Table Name="soainfra_composite_label_rollup_no_rate_domain">
+    <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+    <ColumnDef Type="Integer" Name="RequestEvents.count"/>
+    <ColumnDef Type="Integer" Name="PostEvents.count"/>
+    <ColumnDef Type="Integer" Name="Requests.completed"/>
+    <ColumnDef Type="Double" Name="Requests.totalTime"/>
+    <ColumnDef Type="Double" Name="Requests.averageTime"/>
+    <ColumnDef Type="Integer" Name="Posts.completed"/>
+    <ColumnDef Type="Double" Name="Posts.totalTime"/>
+    <ColumnDef Type="Double" Name="Posts.averageTime"/>
+    <ColumnDef Type="Integer" Name="compositeInstances.count"/>
+    <Select Name="soainfra_composite_label_result">
+      <TableFrom Name="soainfra_composite_label"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="Integer" Name="RequestEvents.count">
+        <Aggregation Operator="Sum" Name="RequestEvents.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="PostEvents.count">
+        <Aggregation Operator="Sum" Name="PostEvents.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Requests.completed">
+        <Aggregation Operator="Sum" Name="Requests.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Posts.completed">
+        <Aggregation Operator="Sum" Name="Posts.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="Requests.time">
+        <Aggregation Operator="Sum" Name="Requests.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="Posts.time">
+        <Aggregation Operator="Sum" Name="Posts.time"/>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="soainfra_composite_revision"/>
+      <GroupBy Name="soainfra_domain"/>
+      <GroupBy Name="soainfra_composite"/>
+    </Select>
+    <Select Name="soainfra_composite_label_rollup_no_rate_domain">
+      <TableFrom Name="soainfra_composite_label_result"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="Integer" Name="RequestEvents.count"/>
+      <Column Type="Integer" Name="PostEvents.count"/>
+      <Column Type="Integer" Name="Requests.completed"/>
+      <Column Type="Integer" Name="Posts.completed"/>
+      <!-- the amount of time spent processing requests since startup (seconds) -->
+      <Column Type="Double" Name="Requests.totalTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="Requests.time"/>
+          <Value>1000</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- the amount of time spent processing posts since startup (seconds) -->
+      <Column Type="Double" Name="Posts.totalTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="Posts.time"/>
+          <Value>1000</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Average Requests Processing time since startup -->
+      <Column Type="Double" Name="Requests.averageTime">
+        <Expression Operator="Div">
+          <Expression Operator="Div">
+            <ColumnFrom Name="Requests.time"/>
+            <Value>1000</Value>
+          </Expression>
+          <ColumnFrom Name="Requests.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Average Post Processing time since startup -->
+      <Column Type="Double" Name="Posts.averageTime">
+        <Expression Operator="Div">
+          <Expression Operator="Div">
+            <ColumnFrom Name="Posts.time"/>
+            <Value>1000</Value>
+          </Expression>
+          <ColumnFrom Name="Posts.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="compositeInstances.count">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="RequestEvents.count"/>
+          <ColumnFrom Name="PostEvents.count"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Only includes rows with data.  If there is no soainfra_composite name, don't return
+             the row -->
+      <Where>
+        <Condition Operator="NE" Type="String">
+          <ColumnFrom Name="soainfra_composite"/>
+          <Null/>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_composite_label_rollup_domain">
+    <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+    <ColumnDef Type="Double" Name="Requests.time"/>
+    <ColumnDef Type="Integer" Name="Requests.completed"/>
+    <ColumnDef Type="Double" Name="Requests.totalTime"/>
+    <ColumnDef Type="Double" Name="Requests.averageTime"/>
+    <ColumnDef Type="Double" Name="Requests.throughput"/>
+    <ColumnDef Type="Double" Name="Posts.time"/>
+    <ColumnDef Type="Integer" Name="Posts.completed"/>
+    <ColumnDef Type="Double" Name="Posts.totalTime"/>
+    <ColumnDef Type="Double" Name="Posts.averageTime"/>
+    <ColumnDef Type="Double" Name="Posts.throughput"/>
+    <ColumnDef Type="Double" Name="RequestEvents.throughput"/>
+    <ColumnDef Type="Double" Name="PostEvents.throughput"/>
+    <ColumnDef Type="Integer" Name="compositeInstances.count"/>
+    <ColumnDef Type="Double" Name="compositeInstances.throughput"/>
+    <Select Name="soainfra_composite_label_result_1">
+      <TableFrom Name="oracle_soainfra:soainfra_composite_label_rollup_no_rate_domain"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="Double" Name="Requests.totalTime"/>
+      <Column Type="Double" Name="Requests.averageTime"/>
+      <Column Type="Integer" Name="Requests.completed"/>
+      <Column Type="Double" Name="Posts.totalTime"/>
+      <Column Type="Double" Name="Posts.averageTime"/>
+      <Column Type="Integer" Name="Posts.completed"/>
+      <Column Type="Integer" Name="compositeInstances.count"/>
+      <Column Type="Double" Name="RequestEvents.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="RequestEvents.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="PostEvents.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="PostEvents.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="Requests.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Requests.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="Posts.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Posts.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="Requests.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Requests.totalTime"/>
+          <ColumnFrom Name="Requests.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="Posts.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Posts.totalTime"/>
+          <ColumnFrom Name="Posts.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="compositeInstances.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="compositeInstances.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+    </Select>
+    <Select Name="soainfra_composite_label_rollup_domain">
+      <TableFrom Name="soainfra_composite_label_result_1"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="Double" Name="Requests.totalTime"/>
+      <Column Type="Double" Name="Requests.averageTime"/>
+      <Column Type="Integer" Name="Requests.completed"/>
+      <Column Type="Double" Name="Posts.totalTime"/>
+      <Column Type="Double" Name="Posts.averageTime"/>
+      <Column Type="Integer" Name="Posts.completed"/>
+      <Column Type="Double" Name="RequestEvents.throughput"/>
+      <Column Type="Double" Name="PostEvents.throughput"/>
+      <Column Type="Double" Name="Requests.throughput"/>
+      <Column Type="Double" Name="Posts.throughput"/>
+      <Column Type="Double" Name="Requests.time"/>
+      <Column Type="Double" Name="Posts.time"/>
+      <Column Type="Integer" Name="compositeInstances.count"/>
+      <Column Type="Double" Name="compositeInstances.throughput"/>
+      <Where>
+        <And>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite_revision"/>
+              <Value Name="soainfra_composite_revision.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite_revision.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite"/>
+              <Value Name="soainfra_composite.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_domain"/>
+              <Value Name="soainfra_domain.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_domain.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_component_rollup_no_rate_domain">
+    <ColumnDef Type="String" Key="true" Name="Name"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+    <ColumnDef Type="String" Name="soainfra_composite_label"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_component_type"/>
+    <ColumnDef Type="Integer" Name="instantiated.count"/>
+    <ColumnDef Type="Integer" Name="successful.completed"/>
+    <ColumnDef Type="Integer" Name="successful.active"/>
+    <ColumnDef Type="Integer" Name="faulted.completed"/>
+    <ColumnDef Type="Integer" Name="faulted.active"/>
+    <ColumnDef Type="Double" Name="successful.totalTime"/>
+    <ColumnDef Type="Double" Name="faulted.totalTime"/>
+    <ColumnDef Type="Double" Name="successful.averageTime"/>
+    <ColumnDef Type="Double" Name="faulted.averageTime"/>
+    <ColumnDef Type="Integer" Name="businessFaults.count"/>
+    <ColumnDef Type="Integer" Name="systemFaults.count"/>
+    <ColumnDef Type="Integer" Name="totalFaults.count"/>
+    <ColumnDef Type="Double" Name="error.rate"/>
+    <Select Name="soainfra_component_rollup_no_rate_result_1">
+      <TableFrom Name="soainfra_component"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="String" Name="soainfra_composite_label"/>
+      <Column Type="String" Name="soainfra_component_type"/>
+      <Column Type="Integer" Name="instantiated.count">
+        <Aggregation Operator="Sum" Name="instantiated.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="successful.completed">
+        <Aggregation Operator="Sum" Name="successfulInstanceProcessingTime.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="successful.active">
+        <Aggregation Operator="Sum" Name="successfulInstanceProcessingTime.active"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="faulted.completed">
+        <Aggregation Operator="Sum" Name="faultedInstanceProcessingTime.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="faulted.active">
+        <Aggregation Operator="Sum" Name="faultedInstanceProcessingTime.active"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="successfulInstanceProcessingTime.time">
+        <Aggregation Operator="Sum" Name="successfulInstanceProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="faultedInstanceProcessingTime.time">
+        <Aggregation Operator="Sum" Name="faultedInstanceProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="businessFaults.count">
+        <Aggregation Operator="Sum" Name="businessFaults.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="systemFaults.count">
+        <Aggregation Operator="Sum" Name="systemFaults.count"/>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="Name"/>
+      <GroupBy Name="soainfra_component_type"/>
+      <GroupBy Name="soainfra_composite_revision"/>
+      <GroupBy Name="soainfra_composite_label"/>
+      <GroupBy Name="soainfra_composite"/>
+      <GroupBy Name="soainfra_domain"/>
+    </Select>
+    <Select Name="soainfra_component_rollup_no_rate_result">
+      <TableFrom Name="soainfra_component_rollup_no_rate_result_1"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="String" Name="soainfra_composite_label"/>
+      <Column Type="String" Name="soainfra_component_type"/>
+      <Column Type="Integer" Name="instantiated.count"/>
+      <Column Type="Integer" Name="successful.completed"/>
+      <Column Type="Integer" Name="successful.active"/>
+      <Column Type="Integer" Name="faulted.completed"/>
+      <Column Type="Integer" Name="faulted.active"/>
+      <Column Type="Integer" Name="businessFaults.count"/>
+      <Column Type="Integer" Name="systemFaults.count"/>
+      <Column Type="Integer" Name="totalFaults.count">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="businessFaults.count"/>
+          <ColumnFrom Name="systemFaults.count"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- the amount of time spent processing faulted requests since startup (milliseconds) -->
+      <Column Type="Double" Name="successful.totalTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="successfulInstanceProcessingTime.time"/>
+          <Value>1000</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- the amount of time spent processing faulted requests since startup (milliseconds) -->
+      <Column Type="Double" Name="faulted.totalTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="faultedInstanceProcessingTime.time"/>
+          <Value>1000</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Average Successful Request Processing time since startup -->
+      <Column Type="Double" Name="successful.averageTime">
+        <Expression Operator="Div">
+          <Expression Operator="Div">
+            <ColumnFrom Name="successfulInstanceProcessingTime.time"/>
+            <Value>1000</Value>
+          </Expression>
+          <ColumnFrom Name="successfulInstanceProcessingTime.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Average Faulted Request Processing time since startup -->
+      <Column Type="Double" Name="faulted.averageTime">
+        <Expression Operator="Div">
+          <Expression Operator="Div">
+            <ColumnFrom Name="faultedInstanceProcessingTime.time"/>
+            <Value>1000</Value>
+          </Expression>
+          <ColumnFrom Name="faultedInstanceProcessingTime.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+    <!--  <Column Type="Double" Name="error.rate">
+        <Expression Operator="Mult">
+          <Expression Operator="Div">
+            <ColumnFrom Name="faulted.completed"/>
+            <ColumnFrom Name="successful.completed"/>
+            <Default>0</Default>
+          </Expression>
+          <Value>100</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>-->
+
+ <Column Type="Double" Name="error.rate">
+        <Expression Operator="Mult">
+          <Expression Operator="Div">
+            <ColumnFrom Name="totalFaults.count"/>
+            <ColumnFrom Name="instantiated.count"/>
+            <Default>0</Default>
+          </Expression>
+          <Value>100</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Only includes rows with data.  If there is no soainfra_composite name, don't return
+                the row -->
+      <Where>
+        <Condition Operator="NE" Type="String">
+          <ColumnFrom Name="soainfra_composite"/>
+          <Null/>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_component_rollup_domain">
+    <ColumnDef Type="String" Key="true" Name="Name"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+    <ColumnDef Type="String" Name="soainfra_composite_label"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_component_type"/>
+    <ColumnDef Type="Double" Name="instantiated.throughput"/>
+    <ColumnDef Type="Integer" Name="successful.active"/>
+    <ColumnDef Type="Integer" Name="successful.completed"/>
+    <ColumnDef Type="Double" Name="successful.totalTime"/>
+    <ColumnDef Type="Double" Name="successful.averageTime"/>
+    <ColumnDef Type="Double" Name="successful.throughput"/>
+    <ColumnDef Type="Double" Name="successful.time"/>
+    <ColumnDef Type="Integer" Name="faulted.active"/>
+    <ColumnDef Type="Integer" Name="faulted.completed"/>
+    <ColumnDef Type="Double" Name="faulted.totalTime"/>
+    <ColumnDef Type="Double" Name="faulted.averageTime"/>
+    <ColumnDef Type="Double" Name="faulted.throughput"/>
+    <ColumnDef Type="Double" Name="faulted.time"/>
+    <ColumnDef Type="Double" Name="businessFaults.throughput"/>
+    <ColumnDef Type="Double" Name="systemFaults.throughput"/>
+    <ColumnDef Type="Double" Name="totalFaults.throughput"/>
+    <ColumnDef Type="Integer" Name="instantiated.count"/>
+    <ColumnDef Type="Integer" Name="businessFaults.count"/>
+    <ColumnDef Type="Integer" Name="systemFaults.count"/>
+    <ColumnDef Type="Integer" Name="totalFaults.count"/>
+    <ColumnDef Type="Double" Name="error.rate"/>
+    <Select Name="soainfra_component_rollup_result">
+      <TableFrom Name="oracle_soainfra:soainfra_component_rollup_no_rate_domain"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="String" Name="soainfra_composite_label"/>
+      <Column Type="String" Name="soainfra_component_type"/>
+      <Column Type="Integer" Name="instantiated.count"/>
+      <Column Type="Integer" Name="businessFaults.count"/>
+      <Column Type="Integer" Name="systemFaults.count"/>
+      <Column Type="Integer" Name="totalFaults.count"/>
+      <Column Type="Double" Name="error.rate"/>
+      <!-- Calculate the throughput (per minute) for the last 5 mins -->
+      <Column Type="Double" Name="instantiated.throughput">
+          <Rate Interval="300000">
+            <ColumnFrom Name="instantiated.count"/>
+            <Default>0</Default>
+          </Rate>
+      </Column>
+      <Column Type="Integer" Name="successful.active"/>
+      <Column Type="Integer" Name="successful.completed"/>
+      <Column Type="Double" Name="successful.totalTime"/>
+      <Column Type="Double" Name="successful.averageTime"/>
+      <Column Type="Double" Name="businessFaults.throughput">
+          <Rate Interval="300000">
+            <ColumnFrom Name="businessFaults.count"/>
+            <Default>0</Default>
+          </Rate>
+      </Column>
+      <Column Type="Double" Name="systemFaults.throughput">
+          <Rate Interval="300000">
+            <ColumnFrom Name="systemFaults.count"/>
+            <Default>0</Default>
+          </Rate>
+      </Column>
+      <Column Type="Double" Name="totalFaults.throughput">
+          <Rate Interval="300000">
+            <ColumnFrom Name="totalFaults.count"/>
+            <Default>0</Default>
+          </Rate>
+      </Column>
+      <!-- Calculate the successful instance throughput (per minute) for the last 5 mins -->
+      <Column Type="Double" Name="successful.throughput">
+          <Rate Interval="300000">
+            <ColumnFrom Name="successful.completed"/>
+            <Default>0</Default>
+          </Rate>
+      </Column>
+      <!-- Average Successful Request Processing time in the last 5 mins -->
+      <!-- TBD need to check what this is-->
+      <Column Type="Double" Name="successful.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="successful.totalTime"/>
+          <ColumnFrom Name="successful.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Integer" Name="faulted.active"/>
+      <Column Type="Integer" Name="faulted.completed"/>
+      <Column Type="Double" Name="faulted.totalTime"/>
+      <Column Type="Double" Name="faulted.averageTime"/>
+      <!-- Calculate the faulted instance throughput (per minute) for the last 5 mins -->
+      <Column Type="Double" Name="faulted.throughput">
+          <Rate Interval="300000">
+            <ColumnFrom Name="faulted.completed"/>
+            <Default>0</Default>
+          </Rate>
+      </Column>
+      <!-- Average Faulted Request Processing time in the last 5 mins -->
+      <!--TBD need to check what this is-->
+      <Column Type="Double" Name="faulted.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="faulted.totalTime"/>
+          <ColumnFrom Name="faulted.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Where>
+        <And>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="Name"/>
+              <Value Name="Name.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="Name.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_component_type"/>
+              <Value Name="soainfra_component_type.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_component_type.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite_revision"/>
+              <Value Name="soainfra_composite_revision.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite_revision.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite"/>
+              <Value Name="soainfra_composite.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_domain"/>
+              <Value Name="soainfra_domain.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_domain.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_message_processing_rollup_no_rate_domain">
+    <ColumnDef Type="String" Key="true" Name="Name"/>
+    <ColumnDef Type="Integer" Name="activeRequests.count"/>
+    <ColumnDef Type="Integer" Name="activeRequests.value"/>
+    <ColumnDef Type="Double" Name="faultRequestProcessingTime.averageTime"/>
+    <ColumnDef Type="Integer" Name="faultRequestProcessingTime.completed"/>
+    <ColumnDef Type="Double" Name="faultRequestProcessingTime.time"/>
+    <ColumnDef Type="Double" Name="faultRequestProcessingTime.totalTime"/>
+    <ColumnDef Type="Double" Name="postProcessingTime.averageTime"/>
+    <ColumnDef Type="Integer" Name="postProcessingTime.completed"/>
+    <ColumnDef Type="Double" Name="postProcessingTime.time"/>
+    <ColumnDef Type="Double" Name="postProcessingTime.totalTime"/>
+    <ColumnDef Type="Double" Name="requestProcessingTime.averageTime"/>
+    <ColumnDef Type="Integer" Name="requestProcessingTime.completed"/>
+    <ColumnDef Type="Double" Name="requestProcessingTime.time"/>
+    <ColumnDef Type="Double" Name="requestProcessingTime.totalTime"/>
+    <Select Name="soainfra_message_processing_rollup_no_rate_result_1">
+      <TableFrom Name="soainfra_message_processing"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="Integer" Name="activeRequests.count">
+        <Aggregation Operator="Sum" Name="activeRequests.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="activeRequests.value">
+        <Aggregation Operator="Sum" Name="activeRequests.value"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="faultRequestProcessingTime.completed">
+        <Aggregation Operator="Sum" Name="faultRequestProcessingTime.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="faultRequestProcessingTime.time">
+        <Aggregation Operator="Sum" Name="faultRequestProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="postProcessingTime.completed">
+        <Aggregation Operator="Sum" Name="postProcessingTime.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="postProcessingTime.time">
+        <Aggregation Operator="Sum" Name="postProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="requestProcessingTime.completed">
+        <Aggregation Operator="Sum" Name="requestProcessingTime.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="requestProcessingTime.time">
+        <Aggregation Operator="Sum" Name="requestProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="Name"/>
+    </Select>
+    <Select Name="soainfra_message_processing_rollup_no_rate_result">
+      <TableFrom Name="soainfra_message_processing_rollup_no_rate_result_1"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="Integer" Name="activeRequests.count"/>
+      <Column Type="Integer" Name="activeRequests.value"/>
+      <Column Type="Double" Name="faultRequestProcessingTime.averageTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="faultRequestProcessingTime.time"/>
+          <ColumnFrom Name="faultRequestProcessingTime.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="faultRequestProcessingTime.completed"/>
+      <Column Type="Double" Name="faultRequestProcessingTime.time"/>
+      <Column Type="Double" Name="faultRequestProcessingTime.totalTime">
+        <ColumnFrom Name="faultRequestProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="postProcessingTime.averageTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="postProcessingTime.time"/>
+          <ColumnFrom Name="postProcessingTime.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="postProcessingTime.completed"/>
+      <Column Type="Double" Name="postProcessingTime.time"/>
+      <Column Type="Double" Name="postProcessingTime.totalTime">
+        <ColumnFrom Name="postProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="requestProcessingTime.averageTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="requestProcessingTime.time"/>
+          <ColumnFrom Name="requestProcessingTime.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="requestProcessingTime.completed"/>
+      <Column Type="Double" Name="requestProcessingTime.time"/>
+      <Column Type="Double" Name="requestProcessingTime.totalTime">
+        <ColumnFrom Name="requestProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <!-- Only includes rows with data.  If there is no name, don't return the row -->
+      <Where>
+        <Condition Operator="NE" Type="String">
+          <ColumnFrom Name="Name"/>
+          <Null/>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_message_processing_rollup_domain">
+    <ColumnDef Type="String" Key="true" Name="Name"/>
+    <ColumnDef Type="Double" Name="activeRequests.throughput"/>
+    <ColumnDef Type="Integer" Name="activeRequests.value"/>
+    <ColumnDef Type="Integer" Name="activeRequests.count"/>
+    <ColumnDef Type="Double" Name="fault.time"/>
+    <ColumnDef Type="Double" Name="fault.throughput"/>
+    <ColumnDef Type="Double" Name="post.time"/>
+    <ColumnDef Type="Double" Name="post.throughput"/>
+    <ColumnDef Type="Double" Name="request.time"/>
+    <ColumnDef Type="Double" Name="request.throughput"/>
+    <ColumnDef Type="Integer" Name="fault.count"/>
+    <ColumnDef Type="Double" Name="postProcessingTime.averageTime"/>
+    <ColumnDef Type="Double" Name="requestProcessingTime.averageTime"/>
+    <ColumnDef Type="Integer" Name="post.count"/>
+    <ColumnDef Type="Integer" Name="request.count"/>
+    <ColumnDef Type="Integer" Name="message.count"/>
+    <ColumnDef Type="Double" Name="error.rate"/>
+    <Select Name="soainfra_message_processing_rollup_no_rate_result">
+      <TableFrom Name="oracle_soainfra:soainfra_message_processing_rollup_no_rate_domain"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="Double" Name="activeRequests.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="activeRequests.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Integer" Name="activeRequests.count"/>
+      <Column Type="Integer" Name="activeRequests.value"/>
+      <Column Type="Double" Name="fault.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="faultRequestProcessingTime.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <!-- Average Faulted Request Processing time in the last 5 mins -->
+      <Column Type="Double" Name="fault.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="faultRequestProcessingTime.totalTime"/>
+          <ColumnFrom Name="faultRequestProcessingTime.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="post.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="postProcessingTime.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <!-- Average Post Request Processing time in the last 5 mins -->
+      <Column Type="Double" Name="post.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="postProcessingTime.totalTime"/>
+          <ColumnFrom Name="postProcessingTime.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="request.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="requestProcessingTime.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <!-- Average Request Processing time in the last 5 mins -->
+      <Column Type="Double" Name="request.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="requestProcessingTime.totalTime"/>
+          <ColumnFrom Name="requestProcessingTime.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Integer" Name="fault.count">
+        <ColumnFrom Name="faultRequestProcessingTime.completed"/>
+      </Column>
+      <Column Type="Double" Name="postProcessingTime.averageTime"/>
+      <Column Type="Double" Name="requestProcessingTime.averageTime"/>
+      <Column Type="Integer" Name="post.count">
+        <ColumnFrom Name="postProcessingTime.completed"/>
+      </Column>
+      <Column Type="Integer" Name="request.count">
+        <ColumnFrom Name="requestProcessingTime.completed"/>
+      </Column>
+      <Column Type="Integer" Name="message.count">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="postProcessingTime.completed"/>
+          <ColumnFrom Name="requestProcessingTime.completed"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="error.rate">
+        <Expression Operator="Mult">
+          <Expression Operator="Div">
+            <ColumnFrom Name="fault.count"/>
+            <ColumnFrom Name="message.count"/>
+            <Default>0</Default>
+          </Expression>
+          <Value>100</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Where>
+        <Or>
+          <Condition Operator="EQ" Type="String">
+            <ColumnFrom Name="Name"/>
+            <Value Name="Name.parameter"/>
+          </Condition>
+          <Condition Operator="EQ" Type="String">
+            <Value xsi:nil="true" Name="Name.parameter"/>
+            <Null/>
+          </Condition>
+        </Or>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_binding_rollup_no_rate_domain">
+    <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member_type"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member"/>
+    <ColumnDef Type="Integer" Name="processIncomingMessagesEvents.count"/>
+    <ColumnDef Type="Integer" Name="processOutboundMessagesEvents.count"/>
+    <ColumnDef Type="Integer" Name="Errors.count"/>
+    <ColumnDef Type="Integer" Name="processIncomingMessages.completed"/>
+    <ColumnDef Type="Double" Name="processIncomingMessages.totalTime"/>
+    <ColumnDef Type="Double" Name="processIncomingMessages.averageTime"/>
+    <ColumnDef Type="Integer" Name="processOutboundMessages.completed"/>
+    <ColumnDef Type="Double" Name="processOutboundMessages.totalTime"/>
+    <ColumnDef Type="Double" Name="processOutboundMessages.averageTime"/>
+    <ColumnDef Type="Integer" Name="processTotalMessages.count"/>
+    <Select Name="soainfra_binding_label_result_1">
+      <TableFrom Name="soainfra_Binding"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="String" Name="soainfra_composite_assembly_member_type"/>
+      <Column Type="String" Name="soainfra_composite_assembly_member"/>
+      <Column Type="Integer" Name="processIncomingMessagesEvents.count">
+        <Aggregation Operator="Sum" Name="processIncomingMessagesEvents.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="processOutboundMessagesEvents.count">
+        <Aggregation Operator="Sum" Name="processOutboundMessagesEvents.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Errors.count">
+        <Aggregation Operator="Sum" Name="Errors.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="processIncomingMessages.completed">
+        <Aggregation Operator="Sum" Name="processIncomingMessages.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="processOutboundMessages.completed">
+        <Aggregation Operator="Sum" Name="processOutboundMessages.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="processOutboundMessages.time">
+        <Aggregation Operator="Sum" Name="processOutboundMessages.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="processIncomingMessages.time">
+        <Aggregation Operator="Sum" Name="processIncomingMessages.time"/>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="soainfra_composite_assembly_member_type"/>
+      <GroupBy Name="soainfra_composite_assembly_member"/>
+      <GroupBy Name="soainfra_composite_revision"/>
+      <GroupBy Name="soainfra_composite"/>
+      <GroupBy Name="soainfra_domain"/>
+    </Select>
+    <Select Name="soainfra_binding_label_result">
+      <TableFrom Name="soainfra_binding_label_result_1"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="String" Name="soainfra_composite_assembly_member_type"/>
+      <Column Type="String" Name="soainfra_composite_assembly_member"/>
+      <Column Type="Integer" Name="processIncomingMessagesEvents.count"/>
+      <Column Type="Integer" Name="processOutboundMessagesEvents.count"/>
+      <Column Type="Integer" Name="Errors.count"/>
+      <Column Type="Integer" Name="processIncomingMessages.completed"/>
+      <Column Type="Integer" Name="processOutboundMessages.completed"/>
+      <!-- the amount of time spent processing incoming messages since startup (seconds) -->
+      <Column Type="Double" Name="processIncomingMessages.totalTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="processIncomingMessages.time"/>
+          <Value>1000</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- the amount of time spent processing outbound messages since startup (seconds) -->
+      <Column Type="Double" Name="processOutboundMessages.totalTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="processOutboundMessages.time"/>
+          <Value>1000</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Average incoming message processing time since startup -->
+      <Column Type="Double" Name="processIncomingMessages.averageTime">
+        <Expression Operator="Div">
+          <Expression Operator="Div">
+            <ColumnFrom Name="processIncomingMessages.time"/>
+            <Value>1000</Value>
+          </Expression>
+          <ColumnFrom Name="processIncomingMessages.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Average outbound message processing time since startup -->
+      <Column Type="Double" Name="processOutboundMessages.averageTime">
+        <Expression Operator="Div">
+          <Expression Operator="Div">
+            <ColumnFrom Name="processOutboundMessages.time"/>
+            <Value>1000</Value>
+          </Expression>
+          <ColumnFrom Name="processOutboundMessages.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="processTotalMessages.count">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="processIncomingMessages.completed"/>
+          <ColumnFrom Name="processOutboundMessages.completed"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- Only includes rows with data.  If there is no soainfra_composite name, don't return
+                the row -->
+      <Where>
+        <Condition Operator="NE" Type="String">
+          <ColumnFrom Name="soainfra_composite"/>
+          <Null/>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_binding_rollup_domain">
+    <ColumnDef Type="String" Key="true" Name="soainfra_domain"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_revision"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member_type"/>
+    <ColumnDef Type="String" Key="true" Name="soainfra_composite_assembly_member"/>
+    <ColumnDef Type="Double" Name="processIncomingMessagesEvents.throughput"/>
+    <ColumnDef Type="Double" Name="processOutboundMessagesEvents.throughput"/>
+    <ColumnDef Type="Double" Name="Errors.throughput"/>
+    <ColumnDef Type="Double" Name="processIncomingMessages.throughput"/>
+    <ColumnDef Type="Integer" Name="processIncomingMessages.completed"/>
+    <ColumnDef Type="Double" Name="processIncomingMessages.totalTime"/>
+    <ColumnDef Type="Double" Name="processIncomingMessages.averageTime"/>
+    <ColumnDef Type="Double" Name="processIncomingMessages.time"/>
+    <ColumnDef Type="Double" Name="processOutboundMessages.throughput"/>
+    <ColumnDef Type="Integer" Name="processOutboundMessages.completed"/>
+    <ColumnDef Type="Double" Name="processOutboundMessages.totalTime"/>
+    <ColumnDef Type="Double" Name="processOutboundMessages.averageTime"/>
+    <ColumnDef Type="Double" Name="processOutboundMessages.time"/>
+    <ColumnDef Type="Integer" Name="processIncomingMessagesEvents.count"/>
+    <ColumnDef Type="Integer" Name="processOutboundMessagesEvents.count"/>
+    <ColumnDef Type="Integer" Name="Errors.count"/>
+    <ColumnDef Type="Integer" Name="processTotalMessages.count"/>
+    <ColumnDef Type="Double" Name="error.rate"/>
+    <Select Name="soainfra_binding_result">
+      <TableFrom Name="oracle_soainfra:soainfra_binding_rollup_no_rate_domain"/>
+      <Column Type="String" Name="soainfra_domain"/>
+      <Column Type="String" Name="soainfra_composite"/>
+      <Column Type="String" Name="soainfra_composite_revision"/>
+      <Column Type="String" Name="soainfra_composite_assembly_member_type"/>
+      <Column Type="String" Name="soainfra_composite_assembly_member"/>
+      <Column Type="Double" Name="processIncomingMessages.totalTime"/>
+      <Column Type="Double" Name="processIncomingMessages.averageTime"/>
+      <Column Type="Integer" Name="processIncomingMessages.completed"/>
+      <Column Type="Double" Name="processOutboundMessages.totalTime"/>
+      <Column Type="Double" Name="processOutboundMessages.averageTime"/>
+      <Column Type="Integer" Name="processOutboundMessages.completed"/>
+      <Column Type="Integer" Name="processIncomingMessagesEvents.count"/>
+      <Column Type="Integer" Name="processOutboundMessagesEvents.count"/>
+      <Column Type="Integer" Name="Errors.count"/>
+      <Column Type="Integer" Name="processTotalMessages.count"/>
+      <Column Type="Double" Name="processIncomingMessagesEvents.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="processIncomingMessagesEvents.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="processOutboundMessagesEvents.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="processOutboundMessagesEvents.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="Errors.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Errors.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="processIncomingMessages.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="processIncomingMessages.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="processOutboundMessages.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="processOutboundMessages.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="processIncomingMessages.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="processIncomingMessages.totalTime"/>
+          <ColumnFrom Name="processIncomingMessages.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="processOutboundMessages.time">
+        <Rate Interval="300000">
+          <ColumnFrom Name="processOutboundMessages.totalTime"/>
+          <ColumnFrom Name="processOutboundMessages.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="error.rate">
+        <Expression Operator="Mult">
+          <Expression Operator="Div">
+            <ColumnFrom Name="Errors.count"/>
+            <ColumnFrom Name="processTotalMessages.count"/>
+            <Default>0</Default>
+          </Expression>
+          <Value>100</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Where>
+        <And>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite_assembly_member_type"/>
+              <Value Name="soainfra_composite_assembly_member_type.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite_assembly_member_type.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite_assembly_member"/>
+              <Value Name="soainfra_composite_assembly_member.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite_assembly_member.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite_revision"/>
+              <Value Name="soainfra_composite_revision.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite_revision.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_composite"/>
+              <Value Name="soainfra_composite.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_composite.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Operator="EQ" Type="String">
+              <ColumnFrom Name="soainfra_domain"/>
+              <Value Name="soainfra_domain.parameter"/>
+            </Condition>
+            <Condition Operator="EQ" Type="String">
+              <Value xsi:nil="true" Name="soainfra_domain.parameter"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <!--Table Name="soainfra_engine_rollup_no_rate_domain">
+    <ColumnDef Type="String" Name="soainfra_component_type"/>
+    <ColumnDef Type="Integer" Name="instantiated.count"/>
+    <ColumnDef Type="Integer" Name="successful.completed"/>
+    <ColumnDef Type="Integer" Name="successful.active"/>
+    <ColumnDef Type="Integer" Name="faulted.completed"/>
+    <ColumnDef Type="Integer" Name="faulted.active"/>
+    <ColumnDef Type="Double" Name="successfulInstanceProcessingTime.time"/>
+    <ColumnDef Type="Double" Name="faultedInstanceProcessingTime.time"/>
+    <ColumnDef Type="Integer" Name="businessFaults.count"/>
+    <ColumnDef Type="Integer" Name="systemFaults.count"/>
+    <Select Name="soainfra_engine_rollup_no_rate_domain">
+      <TableFrom Name="soainfra_component"/>
+      <Column Type="String" Name="soainfra_component_type"/>
+      <Column Type="Integer" Name="instantiated.count">
+        <Aggregation Operator="Sum" Name="instantiated.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="successful.completed">
+        <Aggregation Operator="Sum" Name="successfulInstanceProcessingTime.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="successful.active">
+        <Aggregation Operator="Sum" Name="successfulInstanceProcessingTime.active"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="faulted.completed">
+        <Aggregation Operator="Sum" Name="faultedInstanceProcessingTime.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="faulted.active">
+        <Aggregation Operator="Sum" Name="faultedInstanceProcessingTime.active"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="successfulInstanceProcessingTime.time">
+        <Aggregation Operator="Sum" Name="successfulInstanceProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="faultedInstanceProcessingTime.time">
+        <Aggregation Operator="Sum" Name="faultedInstanceProcessingTime.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="businessFaults.count">
+        <Aggregation Operator="Sum" Name="businessFaults.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="systemFaults.count">
+        <Aggregation Operator="Sum" Name="systemFaults.count"/>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="soainfra_component_type"/>
+    </Select>
+  </Table-->
+
+
+  <Table Name="soainfra_mesh_rollup_no_rate_domain">
+    <ColumnDef Type="String" Key="true" Name="Name"/>
+    <ColumnDef Type="Double" Name="Posts.averageTime"/>
+    <ColumnDef Type="Double" Name="Posts.totalTime"/>
+    <ColumnDef Type="Integer" Name="Posts.active"/>
+    <ColumnDef Type="Integer" Name="PostErrors.count"/>
+    <ColumnDef Type="Integer" Name="Posts.completed"/>
+    <ColumnDef Type="Double" Name="Posts.time"/>
+    <ColumnDef Type="Double" Name="Requests.averageTime"/>
+    <ColumnDef Type="Double" Name="Requests.totalTime"/>
+    <ColumnDef Type="Integer" Name="Requests.active"/>
+    <ColumnDef Type="Integer" Name="RequestErrors.count"/>
+    <ColumnDef Type="Integer" Name="Requests.completed"/>
+    <ColumnDef Type="Double" Name="Requests.time"/>
+    <ColumnDef Type="Integer" Name="Mesh.active"/>
+    <ColumnDef Type="Integer" Name="Mesh.errors"/>
+    <ColumnDef Type="Double" Name="Activity.totalTime"/>
+    <ColumnDef Type="Integer" Name="Activity.completed"/>
+    <Select Name="soainfra_mesh_rollup_no_rate_domain_result_1">
+      <TableFrom Name="soainfra_Mesh"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="Integer" Name="Posts.active">
+        <Aggregation Operator="Sum" Name="Posts.active"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Requests.active">
+        <Aggregation Operator="Sum" Name="Requests.active"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="PostErrors.count">
+        <Aggregation Operator="Sum" Name="PostErrors.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="RequestErrors.count">
+        <Aggregation Operator="Sum" Name="RequestErrors.count"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Posts.completed">
+        <Aggregation Operator="Sum" Name="Posts.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Requests.completed">
+        <Aggregation Operator="Sum" Name="Requests.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="Posts.time">
+        <Aggregation Operator="Sum" Name="Posts.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="Requests.time">
+        <Aggregation Operator="Sum" Name="Requests.time"/>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="Name"/>
+    </Select>
+    <Select Name="soainfra_mesh_rollup_no_rate_domain_result">
+      <TableFrom Name="soainfra_mesh_rollup_no_rate_domain_result_1"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="Integer" Name="Posts.active"/>
+      <Column Type="Integer" Name="PostErrors.count"/>
+      <Column Type="Integer" Name="Posts.completed"/>
+      <Column Type="Double" Name="Posts.time"/>
+      <Column Type="Integer" Name="Requests.active"/>
+      <Column Type="Integer" Name="RequestErrors.count"/>
+      <Column Type="Integer" Name="Requests.completed"/>
+      <Column Type="Double" Name="Requests.time"/>
+      <!-- the amount of time spent processing Post messages since startup (milliseconds) -->
+      <Column Type="Double" Name="Posts.totalTime">
+        <ColumnFrom Name="Posts.time"/>
+        <Default>0</Default>
+      </Column>
+      <!-- Average Post Message Processing time since startup -->
+      <Column Type="Double" Name="Posts.averageTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="Posts.time"/>
+          <ColumnFrom Name="Posts.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <!-- the amount of time spent processing Request messages since startup (seconds) -->
+      <Column Type="Double" Name="Requests.totalTime">
+        <ColumnFrom Name="Requests.time"/>
+        <Default>0</Default>
+      </Column>
+      <!-- Average Request Message Processing time since startup -->
+      <Column Type="Double" Name="Requests.averageTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="Requests.time"/>
+          <ColumnFrom Name="Requests.completed"/>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Mesh.active">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="Posts.active"/>
+          <ColumnFrom Name="Requests.active"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Mesh.errors">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="PostErrors.count"/>
+          <ColumnFrom Name="RequestErrors.count"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="Activity.totalTime">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="Posts.totalTime"/>
+          <ColumnFrom Name="Requests.totalTime"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Activity.completed">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="Posts.completed"/>
+          <ColumnFrom Name="Requests.completed"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Where>
+        <Condition Operator="NE" Type="String">
+          <ColumnFrom Name="Name"/>
+          <Null/>
+        </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="soainfra_mesh_rollup_domain">
+    <ColumnDef Type="String" Key="true" Name="Name"/>
+    <ColumnDef Type="Double" Name="Posts.averageTime"/>
+    <ColumnDef Type="Double" Name="Posts.totalTime"/>
+    <ColumnDef Type="Integer" Name="Posts.active"/>
+    <ColumnDef Type="Double" Name="PostErrors.throughput"/>
+    <ColumnDef Type="Double" Name="Posts.throughput"/>
+    <ColumnDef Type="Integer" Name="Posts.completed"/>
+    <ColumnDef Type="Double" Name="Requests.averageTime"/>
+    <ColumnDef Type="Double" Name="Requests.totalTime"/>
+    <ColumnDef Type="Integer" Name="Requests.active"/>
+    <ColumnDef Type="Double" Name="RequestErrors.throughput"/>
+    <ColumnDef Type="Double" Name="Requests.throughput"/>
+    <ColumnDef Type="Integer" Name="Requests.completed"/>
+    <ColumnDef Type="Integer" Name="Mesh.active"/>
+    <ColumnDef Type="Integer" Name="Mesh.errors"/>
+    <ColumnDef Type="Double" Name="Mesh.throughput"/>
+    <ColumnDef Type="Integer" Name="Mesh.count"/>
+    <ColumnDef Type="Double" Name="Activity.totalTime"/>
+    <ColumnDef Type="Integer" Name="Activity.completed"/>
+    <ColumnDef Type="Double" Name="Activity.averageTime"/>
+    <ColumnDef Type="Double" Name="Activity.throughput"/>
+    <Select Name="soainfra_mesh_rollup_domain_result_1">
+      <TableFrom Name="oracle_soainfra:soainfra_mesh_rollup_no_rate_domain"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="Integer" Name="Posts.active"/>
+      <Column Type="Integer" Name="Requests.active"/>
+      <Column Type="Double" Name="Posts.totalTime"/>
+      <Column Type="Double" Name="Posts.averageTime"/>
+      <Column Type="Integer" Name="Posts.completed"/>
+      <Column Type="Double" Name="Requests.totalTime"/>
+      <Column Type="Double" Name="Requests.averageTime"/>
+      <Column Type="Integer" Name="Requests.completed"/>
+      <Column Type="Integer" Name="Mesh.active"/>
+      <Column Type="Integer" Name="Mesh.errors"/>
+      <Column Type="Double" Name="Activity.totalTime"/>
+      <Column Type="Integer" Name="Activity.completed"/>
+      <Column Type="Double" Name="PostErrors.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="PostErrors.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="Posts.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Posts.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="RequestErrors.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="RequestErrors.count"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Double" Name="Requests.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Requests.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+      <Column Type="Integer" Name="Mesh.count">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="Posts.completed"/>
+          <ColumnFrom Name="Requests.completed"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="Activity.averageTime">
+        <Expression Operator="Div">
+          <ColumnFrom Name="Activity.totalTime"/>
+          <ColumnFrom Name="Activity.completed"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Double" Name="Activity.throughput">
+        <Rate Interval="300000">
+          <ColumnFrom Name="Activity.completed"/>
+          <Default>0</Default>
+        </Rate>
+      </Column>
+    </Select>
+    <Select Name="soainfra_mesh_rollup_domain_result">
+      <TableFrom Name="soainfra_mesh_rollup_domain_result_1"/>
+      <Column Type="String" Name="Name"/>
+      <Column Type="Integer" Name="Posts.active"/>
+      <Column Type="Integer" Name="Requests.active"/>
+      <Column Type="Double" Name="Posts.totalTime"/>
+      <Column Type="Double" Name="Posts.averageTime"/>
+      <Column Type="Integer" Name="Posts.completed"/>
+      <Column Type="Double" Name="Requests.totalTime"/>
+      <Column Type="Double" Name="Requests.averageTime"/>
+      <Column Type="Integer" Name="Requests.completed"/>
+      <Column Type="Integer" Name="Mesh.active"/>
+      <Column Type="Integer" Name="Mesh.errors"/>
+      <Column Type="Double" Name="PostErrors.throughput"/>
+      <Column Type="Double" Name="Posts.throughput"/>
+      <Column Type="Double" Name="RequestErrors.throughput"/>
+      <Column Type="Double" Name="Requests.throughput"/>
+      <Column Type="Double" Name="Activity.totalTime"/>
+      <Column Type="Integer" Name="Activity.completed"/>
+      <Column Type="Double" Name="Activity.averageTime"/>
+      <Column Type="Double" Name="Activity.throughput"/>
+      <Column Type="Double" Name="Mesh.throughput">
+        <Expression Operator="Plus">
+          <ColumnFrom Name="Posts.throughput"/>
+          <ColumnFrom Name="Requests.throughput"/>
+          <Default>0</Default>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Type="Integer" Name="Mesh.count"/>
+      <Where>
+        <Or>
+          <Condition Operator="EQ" Type="String">
+            <ColumnFrom Name="Name"/>
+            <Value Name="Name.parameter"/>
+          </Condition>
+          <Condition Operator="EQ" Type="String">
+            <Value xsi:nil="true" Name="Name.parameter"/>
+            <Null/>
+          </Condition>
+        </Or>
+      </Where>
+    </Select>
+  </Table>
+</Adml>

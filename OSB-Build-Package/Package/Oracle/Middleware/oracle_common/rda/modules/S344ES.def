@@ -1,0 +1,121 @@
+# S344ES.def: Collects Oracle Entitlements Server Information
+# $Id: S344ES.def,v 1.2 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S344ES.def,v 1.2 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S344ES - Collects Oracle Entitlements Server Information
+
+=head1 DESCRIPTION
+
+This module collects information related to Oracle Entitlements Server,
+formerly known as AquaLogic Enterprise Security.
+
+The following reports can be generated and are regrouped under C<Entitlements
+Server>:
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing ES module ...',tput('off')
+
+# Initialization
+var $ADMIN_HOME = getSetting('ES_ADMIN_HOME','')
+var $MW_HOME    = getSetting('ES_MW_HOME','')
+var $SSM_HOME   = getSetting('ES_SSM_HOME','')
+var $TAIL       = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Entitlements Server'
+
+# Load the common macros
+run library()
+
+=head1 ADMINISTRATION SERVER INFORMATION
+
+=head2 Configuration Files
+
+Gathers Administration Server-related configuration files.
+
+=cut
+
+if testDir('d',$MW_HOME)
+{debug ' Inside ES module, collecting the administration server config files'
+ pretoc '2:Administration Server'
+ pretoc '3:Configuration Files'
+ call sort_files(4,0,grepDir(catDir($ADMIN_HOME,'config'),'^\.+$','pv'))
+ unpretoc 2
+
+=head1 SECURITY SERVICE MODULE INFORMATION
+
+=head2 Configuration Files
+
+Gathers Security Service Module-related configuration files.
+
+=cut
+
+ pretoc '2:Security Service Module'
+ var %ins = ()
+ loop $dir (catDir($SSM_HOME,'java-ssm','instance'),\
+            catDir($SSM_HOME,'oracle-ssm','instance'),\
+            catDir($SSM_HOME,'rmi-ssm','instance'),\
+            catDir($SSM_HOME,'webservice-ssm','instance'),\
+            catDir($SSM_HOME,'websphere-ssm','instance'),\
+            catDir($SSM_HOME,'wls8-ssm','instance'),\
+            catDir($SSM_HOME,'wls-ssm','instance'))
+ {loop $ins (grepDir($dir,'^\.+$','dv'))
+  {if testDir('d',catDir($dir,$ins))
+    var $ins{lastDir()} = $ins
+  }
+ }
+ debug ' Inside ES module, collecting the SSM configuration and log files'
+ loop $dir (keys(%ins))
+ {pretoc "3:'",$ins{$dir},"' Instance"
+  pretoc '4:Configuration Files'
+  call sort_files(5,0,grepDir(catDir($dir,'config'),'^\.+$','pv'))
+  unpretoc
+
+=head2 Log Files
+
+Gathers Security Service Module-related log files.
+
+=cut
+
+  pretoc '4:Log Files'
+  call sort_files(5,$TAIL,grepDir(catDir($dir,'log'),'\.log$','ip'))
+  unpretoc 2
+ }
+ unpretoc
+}
+
+unpretoc
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.26:  Srikanth Manduva.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

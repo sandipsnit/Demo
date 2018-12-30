@@ -1,0 +1,319 @@
+# M275NHA.def: Collects Netra High Availability Suite Information
+# $Id: M275NHA.def,v 1.1 2012/08/12 09:08:30 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M275NHA.def,v 1.1 2012/08/12 09:08:30 mschenke Exp $
+#
+# Change History
+# 20120626  PRO  Initial Version.
+#
+=head1 NAME
+
+M275NHA - Collects Netra High Availability Suite Information
+
+=head1 DESCRIPTION
+
+This module collects Netra High Availability Suite information.
+
+The following reports can be generated and are regrouped under C<Netra High
+Availability>:
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('nhas')
+
+# -----------------------------------------------------------------------------
+# XPLR_nhas section
+# -----------------------------------------------------------------------------
+
+section XPLR_nhas
+
+call log_run('Processing NHAS sections...')
+
+# Validate the Netra HA software
+if !testDir('d','/etc/opt/SUNWcgha')
+ return log_info('Netra HA Suite software not installed')
+
+# Determine the node type
+var $flg = or(\
+  grepCommand('/opt/SUNWcgha/sbin/nhcmmrole -v','MASTER|VICE_MASTER','f'),\
+  grepFile('/etc/opt/SUNWcgha/nhfs.conf','Node\.Type=Diskfull','f'))
+
+pretoc '2: Netra High Availability'
+
+=head2 nhas_cmd - Commands
+
+Collects Netra High Availability information using the following commands:
+
+=over 2
+
+=item o C</bin/ls -l /tftpboot>
+
+=item o C</opt/SUNWcgha/sbin/nhadm check installation>
+
+=item o C</opt/SUNWcgha/sbin/nhadm check configuration>
+
+=item o C</opt/SUNWcgha/sbin/nhadm check starting>
+
+=item o C</opt/SUNWcgha/sbin/nhcmmadm -c all>
+
+=item o C</opt/SUNWcgha/sbin/nhcrfsadm -c>
+
+=item o C</usr/sbin/patchadd -R /SUNWcgha/local/export/services -p>
+
+=item o C</usr/sbin/patchadd -R /SUNWcgha/swdb -p>
+
+=back
+
+=cut
+
+debug ' Inside NHAS collection, gathering NHAS commands'
+var @cmd = ()
+
+# Add cluster configuration commands
+if testFile('f','/opt/SUNWcgha/sbin/nhadm')
+ call push(@cmd,\
+   ['nhas/check/nhadm_check_installation.txt',\
+    '/opt/SUNWcgha/sbin/nhadm','check installation',\
+    '---+ Cluster Software Installation Information'],\
+   ['nhas/check/nhadm_check_configuration.txt',\
+    '/opt/SUNWcgha/sbin/nhadm','check configuration',\
+    '---+ Cluster Software Configuration Information'],\
+   ['nhas/check/nhadm_check_start.txt',\
+    '/opt/SUNWcgha/sbin/nhadm','check starting',\
+    '---+ Cluster Network and Disk Replication Information'])
+else
+ call push(@cmd,\
+   {cmd => 'COMMENT',\
+    nam => 'nhas/check/nhadm.out',\
+    txt => '/opt/SUNWcgha/sbin/nhadm not found!!'})
+
+# Add shared partition commands
+if testDir('d','/SUNWcgha/swdb')
+ call push(@cmd,\
+   {cmd => 'COMMENT',\
+    nam => 'nhas/check/shared_patches.txt',\
+    txt => concat('shared partition: ',$txt)},\
+   ['nhas/check/shared_patches.txt',\
+    '/usr/sbin/patchadd','-R /SUNWcgha/swdb -p',\
+    '---+ Patches Applied on Shared Partition /SUNWcgha/swdb',\
+    {nul=>{cat=>'T',ext=>''}}])
+elsif testDir('d','/SUNWcgha/local/export/services')
+ call push(@cmd,\
+   {cmd => 'COMMENT',\
+    nam => 'nhas/check/shared_patches.txt',\
+    txt => concat('shared partition: ',$txt)},\
+   ['nhas/check/shared_patches.txt',\
+    '/usr/sbin/patchadd','-R /SUNWcgha/local/export/services -p',\
+    '---+ Patches Applied on Shared Partition /SUNWcgha/local/export/services',\
+    {nul=>{cat=>'T',ext=>''}}])
+else
+ call push(@cmd,\
+   {cmd => 'COMMENT',\
+    nam => 'nhas/check/shared_patches.txt',\
+    txt => 'shared partition not found for patchadd!!'})
+
+# Add Reliable NFS command
+if testFile('f','/opt/SUNWcgha/sbin/nhcrfsadm')
+ call push(@cmd,\
+   ['nhas/cmm/nhcrfsadm-c',\
+    '/opt/SUNWcgha/sbin/nhcrfsadm','-c',\
+    '---+ Reliable NFS Administration Information'])
+
+# Add nhcmmadm command
+if testFile('f','/opt/SUNWcgha/sbin/nhcmmadm')
+ call push(@cmd,\
+   ['nhas/cmm/nhcmmadm-c-all',\
+    '/opt/SUNWcgha/sbin/nhcmmadm','-c all',\
+    '---+ Cluster Administration Information'])
+
+# Add RBS commands when node is MASTER or VICE_MASTER
+if $flg
+ call push(@cmd,\
+   ['nhas/rbs/ls_l_tftpboot',\
+    '/bin/ls','-l /tftpboot',\
+    '---+ Listing of Directory /tftpboot'])
+
+# Generate the report
+report nhas_cmd
+title '---+!! Netra High Availability Commands'
+title $TOC
+call do_exec(@cmd)
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Commands]]'
+
+=head2 nhas_trc - File Collection Overview
+
+Reports errors encountered when listing files to collect.
+
+=cut
+
+debug ' Inside NHAS collection, listing NHAS configuration files to collect'
+report nhas_trc
+prefix
+{write '---+ File Collection Overview'
+ call beginBlock(true)
+ call addBlock('E','D','nhas/nma/nma_exp.out')
+}
+
+# Add main filesystem filesmain filesystem files
+var @fil = (\
+  ['nhas/cmm/not_configured'     ,'/etc/opt/SUNWcgha/not_configured'],\
+  ['nhas/cmm/nhfs.conf'          ,'/etc/opt/SUNWcgha/nhfs.conf'],\
+  ['nhas/cmm/target.conf'        ,'/etc/opt/SUNWcgha/target.conf'])
+
+if $flg
+ call push(@fil,\
+   ['nhas/cmm/cluster_nodes_table','/etc/opt/SUNWcgha/cluster_nodes_table'])
+
+# Add NMA files
+if testFile('f',$pth = '/etc/opt/SUNWcgha/nma.conf')
+{call push(@fil,['nhas/nma/nma.conf',$pth])
+ if !?$val = value(grepFile($pth,'TRACE_FILE','f'))
+  write 'NMA : TRACE_FILE is not configured in ',$pth
+ else
+  call push(@fil,[concat('nhas/nma/',basename($val)),$val])
+}
+else
+ write 'NMA_ERROR : ',$pth,' does not exist'
+
+loop $cfg ('nma.properties','nma.security')
+{if testFile('f',catFile('/etc/opt/SUNWcgha',$cfg))
+  call push(@fil,[concat('nhas/nma/',$cfg),lastFile()])
+ else
+  write 'NMA_ERROR : Configured file ',lastFile(),' does not exist'
+}
+
+# Add RFC2573 files
+var $cfg = '/etc/opt/SUNWcgha/nma.properties'
+var $pat = 'com\.sun\.nhas\.ma\.adaptors\.snmp\.rfc2573\.enabled'
+if !?$val = value(grepFile($cfg,$pat,'f'))
+ write 'NMA_ERROR : ',$cfg,' NMA_RFC2573_ENABLED is not configured.'
+elsif compare('eq',$val,'true')
+{loop $pat (\
+   'com\.sun\.nhas\.ma\.adaptors\.snmp\.rfc2573\.target\.addr\.file',\
+   'com\.sun\.nhas\.ma\.adaptors\.snmp\.rfc2573\.target\.params\.file',\
+   'com\.sun\.nhas\.ma\.adaptors\.snmp\.rfc2573\.notification\.file',\
+   'jdmk\.security\.file',\
+   'jdmk\.acl\.file',\
+   'jdmk\.uacl\.file')
+ {if !?$val = value(grepFile($cfg,$pat,'f'))
+   write 'NMA : ',$pat,' is not configured in ',$cfg
+  elsif !testFile('f',$val)
+   write 'NMA_ERROR : Configured file ',$val, ' does not exist.'
+  else
+   call push(@fil,[concat('nhas/nma/',basename($val)),$val])
+ }
+}
+
+# Add RBS files when node is MASTER or VICE_MASTER
+if $flg
+{call push(@fil,['nhas/rbs/dhcpsvc.conf','/etc/inet/dhcpsvc.conf'])
+ if testDir('d',$dir = '/SUNWcgha/local/export/data/var/dhcp')
+ {loop $fil (grepDir($dir,'0$|SUNWnhrbs1_dhcptab','n'))
+   call push(@fil,[concat('nhas/rbs/',$fil),catFile($dir,$fil)])
+ }
+}
+
+# Conclude the report and insert it in the table of content
+if hasOutput(true)
+{call endBlock()
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][File Collection Overview]]'
+}
+else
+{call beginBlock()
+ call addBlock('E','D','nhas/nma/nma_exp.out')
+ call endBlock()
+}
+
+=head2 nhas_cfg - Configuration Files
+
+Collects the following Netra High Availability configuration files:
+
+=over 2
+
+=item o F</etc/inet/dhcpsvc.conf>
+
+=item o F</etc/opt/SUNWcgha/cluster_nodes_table>
+
+=item o F</etc/opt/SUNWcgha/nhfs.conf>
+
+=item o F</etc/opt/SUNWcgha/nma.acl>
+
+=item o F</etc/opt/SUNWcgha/nma.conf>
+
+=item o F</etc/opt/SUNWcgha/nma.notifs.txt>
+
+=item o F</etc/opt/SUNWcgha/nma.params.txt>
+
+=item o F</etc/opt/SUNWcgha/nma.properties>
+
+=item o F</etc/opt/SUNWcgha/nma.security>
+
+=item o F</etc/opt/SUNWcgha/nma.targets.txt>
+
+=item o F</etc/opt/SUNWcgha/nma.uacl>
+
+=item o F</etc/opt/SUNWcgha/not_configured>
+
+=item o F</etc/opt/SUNWcgha/target.conf>
+
+=item o F</SUNWcgha/local/export/data/var/dhcp/SUNWnhrbs1_dhcptab>
+
+=item o F</SUNWcgha/local/export/data/var/dhcp/*0>
+
+=item o Node Management Agent Trace File
+
+=back
+
+The Node Management Agent Trace file is obtained from the value of the
+C<TRACE_FILE> variable present in the F</etc/opt/SUNWcgha/nma.conf>
+configuration file.
+
+=cut
+
+debug ' Inside NHAS collection, gathering NHAS configuration files'
+report nhas_cfg
+prefix
+{write '---+!! Netra High Availability Configuration Files'
+ write '* Links point to files that have been collected in their original \
+          format. Opening them directly in your browser can present risks. \
+          To prevent them, access the file outside the browser or use the \
+          link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_fil(@fil)
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Configuration Files]]'
+}
+
+# Adjust the table of contents
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

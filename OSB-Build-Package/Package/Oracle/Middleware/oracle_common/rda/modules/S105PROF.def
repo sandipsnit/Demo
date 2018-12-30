@@ -1,0 +1,248 @@
+# S105PROF.def: Collects the User Profile
+# $Id: S105PROF.def,v 2.8 2012/02/14 12:39:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S105PROF.def,v 2.8 2012/02/14 12:39:41 mschenke Exp $
+#
+# Change History
+# 20120214  KRA  Extend hidden files of interest list.
+
+=head1 NAME
+
+S105PROF - Collects the User Profile
+
+=head1 DESCRIPTION
+
+This module collects the configuration of the user profile.
+
+The following reports can be generated and are regrouped under C<User Profile>:
+
+=cut
+
+echo tput('bold'),'Processing PROF module ...',tput('off')
+
+# Initialization
+var $HOME = getEnv('HOME')
+
+var $TOC  = '%TOC%'
+var $TOP  = '[[#Top][Back to top]]'
+pretoc '1:User Profile'
+
+# Load the common macros
+run library()
+
+=head2 env - Environment Variables
+
+Lists defined environment variables.
+
+=cut
+
+debug ' Inside PROF module, getting environment variables'
+report env
+if or(isWindows(),isCygwin())
+ call writeMsinfo('Environment Variables','SWEnvEnvVars')
+else
+{write '---+ Environment Variables'
+ write '|*Variable*|*Value*|'
+ loop $key (grepEnv('.'))
+  write '|',$key,'|',replace(replace(getEnv($key),'\|','&#x7C;',true),\
+                             '[\012\015]+','%BR%',true),' |'
+}
+if isCreated()
+ toc '2:[[',getFile(),'][rda_report][Environment Variables]]'
+
+=head1 FOR VMS SYSTEMS
+
+=head2 profiles - Profile settings
+
+Collects both system and user login scripts and the Oracle environment
+settings.
+
+=cut
+
+if isVms()
+{debug ' Inside PROF module, getting login scripts'
+ report profiles
+ write '---+!! Profile Settings'
+ write $TOC
+
+ prefix
+  write '---+ SYS$STARTUP:SYLOGIN.COM'
+ call writeFile('SYS$STARTUP:SYLOGIN.COM')
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  write '---+ SYS$LOGIN:LOGIN.COM'
+ call writeFile('SYS$LOGIN:LOGIN.COM')
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+  write '---+ Oracle Environment Settings'
+ if !writeFile('ORACLE_HOME:ORAUSER.COM')  # Unix file structure
+ {if field(':',-1,getSetting('ORACLE_SID',''))
+   call writeFile(concat('ORA_DB:ORAUSER_',last,'.COM'))
+ }
+ if hasOutput(true)
+  write $TOP
+
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Profile Settings]]'
+
+=head2 user - User Information
+
+Reports user information.
+
+=cut
+
+ debug ' Inside PROF module, getting user information'
+ report user
+ var $cmd = 'show proc/all'
+ write '---+ User Information'
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ toc '2:[[',getFile(),'][rda_report][User Information]]'
+}
+
+=head1 FOR MICROSOFT WINDOWS SYSTEMS
+
+=head2 set - Set Variables
+
+Extracts the variables reported by the F<set> command.
+
+=cut
+
+elsif or(isWindows(),isCygwin())
+{debug ' Inside PROF module, getting set variables'
+ report set
+ prefix
+ {write '---+ Set Variables'
+  write '|*Variable*|*Value*|'
+ }
+ if !testFile('f',$cmd = getGroupFile('D_CWD','cmd.exe'))
+  var $cmd = 'cmd.exe'
+ loop $lin (grepCommand(concat($cmd,' /c set'),'='))
+  write '|',key($lin),'|',replace(value($lin),'\|','&#x7C;',true),'|'
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][Set Variables]]'
+}
+
+=head1 FOR OTHER SYSTEMS
+
+=head2 ulimit - Ulimit
+
+Reports user limits.
+
+=cut
+
+else
+{var $shl = shell('SHELL')
+ if $shl
+ {debug ' Inside PROF module, getting user limits'
+  report ulimit
+  loop $cmd (concat($shl,' -f -c "ulimit -a"'),\
+             'csh -f -c limit',\
+             concat($shl,' -f -c ulimit'))
+  {prefix
+   {write '---+ Ulimit'
+    write '---## Using: ',encode($cmd)
+   }
+   break writeCommand($cmd)
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Ulimit]]'
+
+=head2 umask - Umask
+
+Reports the user file creation mode mask.
+
+=cut
+
+  debug ' Inside PROF module, getting umask information'
+  report umask
+  prefix
+  {write '---+ Umask'
+   write '---## Using: umask'
+  }
+  call writeCommand('"umask"')
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Umask]]'
+ }
+
+=head2 profiles - Hidden Files in HOME
+
+Lists hidden files in F<$HOME>.
+
+=cut
+
+ debug ' Inside PROF module, listing hidden files in home directory'
+ report profiles
+ prefix
+  write '---+ Home Directory Hidden Files'
+ if statFile('b',grepDir($HOME,'^\.','np'))
+  toc '2:[[',getFile(),'][rda_report][Hidden Files in HOME]]'
+
+=pod
+
+Handles the hidden files of interest that were found.
+
+=cut
+
+ debug ' Inside PROF module, getting hidden files of interest'
+ pretoc '2:Hidden Files of Interest'
+ call cat_report($HOME,'.alias','dot')
+ call cat_report($HOME,'.cshrc','dot')
+ call cat_report($HOME,'.bashrc','dot')
+ call cat_report($HOME,'.kshrc','dot')
+ call cat_report($HOME,'.login','dot')
+ call cat_report($HOME,'.dtlogin','dot')
+ call cat_report($HOME,'.rhosts','dot')
+ call cat_report($HOME,'.my.cnf','dot','^(\s*password\s*=).*$','%R:PASSWORD%')
+ unpretoc
+
+=pod
+
+Handles the profile files of interest that were found.
+
+=cut
+
+ debug ' Inside PROF module, getting profile files of interest'
+ pretoc '2:Profile Files of Interest'
+ call cat_report('/etc','profile','etc_')
+ call cat_report($HOME,'.profile','dot')
+ call cat_report($HOME,'.dtprofile','dot')
+ call cat_report($HOME,'.bash_profile','dot')
+ call cat_report('/etc','rc.config','etc_')
+ call cat_report('/etc','config.d','etc_')
+ unpretoc
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.10:  John Whitaker.
+
+=item RDA 4.20:  Tony Mitri.
+
+=item RDA 4.22:  Grant Hayden.
+
+=item RDA 4.27:  Jesper Krogh.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

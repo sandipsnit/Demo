@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="websphere_j2eeserver">
+
+  <Table Name="application">
+    <ColumnDef Name="appName" Type="String" Key="true"/>
+    <ColumnDef Name="serverName" Type="String" Key="true"/>
+    <ColumnDef Name="Status" Type="Integer" Key="false"/>
+
+    <Select Name="application_result_1">
+      <TableFrom Name="J2EEApplication"/>
+
+      <Column Name="appName" Type="String">
+        <ColumnFrom Name="name"/>
+      </Column>
+      <Column Name="serverName" Type="String">
+        <ColumnFrom Name="Server"/>
+      </Column>
+      <Column Name="state" Type="Integer">
+        <ColumnFrom Name="state"/>
+      </Column>
+      <Column Name="Status" Type="Integer">
+        <If>
+          <Condition Operator="EQ">
+            <ColumnFrom Name="state"/>
+            <Value>1</Value>
+          </Condition>
+        <Then>
+          <Value>1</Value>
+        </Then>
+        <Else>
+          <Value>0</Value>
+        </Else>
+        </If>
+      </Column>
+    </Select>
+
+    <Select Name="application_result">
+      <TableFrom Name="application_result_1"/>
+
+      <Column Name="appName" Type="String"/>
+      <Column Name="serverName" Type="String"/>
+      <Column Name="Status" Type="Integer"/>
+
+      <Where>
+        <And>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="appName"/>
+              <Value Name="appName.parameter"/>
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="appName.parameter"
+                     xsi:nil="true"/>
+              <Null/>
+            </Condition>
+          </Or>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="serverName"/>
+              <Value Name="serverName.parameter"/>
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="serverName.parameter"
+                     xsi:nil="true"/>
+              <Null/>
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+</Adml>

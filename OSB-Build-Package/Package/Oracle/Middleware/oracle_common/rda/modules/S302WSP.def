@@ -1,0 +1,483 @@
+# S302WSP.def: Collects IBM WebSphere Application Server Information
+# $Id: S302WSP.def,v 1.8 2012/05/09 07:20:35 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S302WSP.def,v 1.8 2012/05/09 07:20:35 mschenke Exp $
+#
+# Change History
+# 20120508  KRA  Improve the credential management.
+
+=head1 NAME
+
+S302WSP - Collects IBM WebSphere Application Server Information
+
+=head1 DESCRIPTION
+
+This module collects IBM WebSphere Application Server-related information for
+a single or multiple servers opted by the user. The module covers the
+following WebSphere Application Server products:
+
+=over 3
+
+=item o Network Deployment (ND) Release 7.x.
+
+=item o Base Application Server (AS) Release 7.x.
+
+=back
+
+The following reports can be generated and are regrouped under C<IBM WebSphere>:
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing WebSphere Server module ...',tput('off')
+
+# Initialization
+var $AUTO         = getSetting('WSP_AUTH_AUTO')
+var $HOMES        = getSetting('WSP_HOMES','')
+var $MAX          = getSetting('WSP_INCIDENTS',10)
+var $PROFILE_ROOT = catDir(getSetting('WSP_PROFILE_ROOT',''))
+var $TAIL         = getSetting('RDA_TAIL',1000)
+var $TYPE         = uc(getSetting('WSP_TYPE','OFF'))
+
+var @CELLS   = ()
+var %ABBR    = ()
+var %LOGINS  = ()
+var %NODES   = ()
+var %SERVERS = ()
+var $WSP_TOP = ''
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+# Define duplicate file hash
+var %DUP
+
+# Load the common macros
+run WASlib()
+
+pretoc '1:IBM WebSphere (',check($TYPE,'MANY','Multiple Servers',\
+                                       'ONE', 'Single Server',\
+                                              'Offline'),')'
+
+# Determine the cell list
+var $val = getSetting('WSP_CELLS','')
+if match($val,'\*All\*')
+{loop $pro (grepDir($PROFILE_ROOT,'^[^\.]','n'))
+ {loop $cel (grepDir(catDir($PROFILE_ROOT,$pro,'config','cells'),'^[^\.]','n'))
+   call push(@tbl,concat($pro,':',$cel))
+ }
+}
+else
+ var @tbl = split('\|',$val)
+loop $itm (@tbl)
+{var ($pro,$cel) = split(':',$itm)
+ var $dir = catDir($PROFILE_ROOT,$pro,'config','cells',$cel)
+ if testFile('f',catFile($dir,'virtualhosts.xml'))
+ {call push(@CELLS,$itm)
+  var $NODES{$itm}   = {}
+  var $SERVERS{$itm} = {}
+ }
+}
+
+# Determine the server list
+var $val = getSetting('WSP_SERVERS','')
+if match($val,'\*All\*')
+{loop $itm (@CELLS)
+ {var ($pro,$cel) = split(':',$itm)
+  var $dir = catDir($PROFILE_ROOT,$pro,'config','cells',$cel,'nodes')
+  loop $nod (grepDir($dir,'^[^\.]','n'))
+  {next !testFile('f',catFile($dir,$nod,'serverindex.xml'))
+   var $NODES{$itm,join(':',$pro,$cel,$nod)} = 1
+   loop $srv (grepDir(catDir($dir,$nod,'servers'),'^[^\.]','n'))
+   {if testFile('f',catFile(lastDir(),$srv,'server.xml'))
+     var $SERVERS{$itm,join(':',$pro,$cel,$nod,$srv)} = 1
+   }
+  }
+ }
+}
+else
+{loop $itm (split('\|',$val))
+ {var ($pro,$cel,$nod,$srv) = split(':',$itm)
+  var $key = concat($pro,':',$cel)
+  var $dir = catDir($PROFILE_ROOT,$pro,'config','cells',$cel,'nodes',$nod)
+  if and(exists($NODES{$key}),testFile('f',catFile($dir,'serverindex.xml')))
+  {var $NODES{$key,join(':',$pro,$cel,$nod)} = -1
+   if and(exists($SERVERS{$key}),\
+          testFile('f',catFile($dir,'servers',$srv,'server.xml')))
+    var $SERVERS{$key,$itm} = -1
+  }
+ }
+}
+
+# Get user details
+if and(compare('ne',$TYPE,'OFF'),not($AUTO))
+{# Load setup information
+ var (%cpw,%upw,%usr) = ()
+ if getSetting('WSP_CELL_IDS')
+ {loop $uid (split('\|',last))
+  {var $cel = getSetting(concat('WSP_CELL_',$uid))
+
+   # Determine the cell user
+   if $flg = length($usr = getSetting(concat('WSP_USER_',$uid),''))
+    var $usr{$cel} = $usr
+
+   # Determine the cell/user password
+   if hasPassword('wsp',$cel,$usr)
+   {var $cpw{$cel} = true
+    var $upw{$usr} = true
+   }
+   elsif $flg
+   {call setPassword('wsp',$cel,$usr,askPassword(\
+      concat("Enter '",$usr,"' user password:")))
+    var $cpw{$cel} = true
+    var $upw{$usr} = true
+   }
+  }
+ }
+
+ # Get user passwords
+ loop $itm (@CELLS)
+ {if and(exists($usr{$itm}),exists($cpw{$itm}))
+   var $LOGINS{$itm} = $usr{$itm}
+  else
+  {var $LOGINS{$itm} = undef
+   var ($pro,$cel) = split(':',$itm)
+   var $dir = catDir($PROFILE_ROOT,$pro,'config','cells',$cel)
+   if testFile('fr',catFile($dir,'fileRegistry.xml'))
+   {var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'BCDEPR'))
+    if xmlFind($obj,'sdo:datagraph/wim:Root/wim:entities \
+                     xsi:type="wim:PersonAccount"/wim:uid')
+    {var $usr = xmlData(last)
+     if match($usr,'^\w+$')
+     {if missing($upw{$usr})
+      {call setPassword('wsp',$itm,$usr,askPassword(\
+         concat("Enter '",$usr,"' user password:")))
+       var $cpw{$itm} = true
+       var $upw{$usr} = true
+      }
+      var $LOGINS{$itm} = $usr
+     }
+    }
+   }
+  }
+ }
+}
+
+=head2 rda_col - Collection Shortcuts
+
+Displays RDA collection shortcuts used for IBM WebSphere Application Server.
+
+=cut
+
+var $map = $[OUT]->add_report('c','rda_col',0)
+toc '2:[[',$map->get_report,'][rda_report][Collection Shortcuts]]'
+
+=head2 WSADMIN Startup Scripts
+
+Gathers IBM WebSphere Application Server Administration Tool-related startup
+scripts.
+
+=head2 wsadmin_cmd_list - WSADMIN Command Files List
+
+Lists IBM WebSphere Application Server Administration Tool-related command
+files.
+
+=cut
+
+call setWasType('WSP')
+var $chk = cond(isWindows(),'f',isCygwin(),'f','fx')
+loop $hom (split('\|',$HOMES))
+{var $WSP_TOP = dirname($hom)
+ var $WSADMIN_DIR = $hom
+ if testDir('d',catDir($hom,'common'))
+  var $WSADMIN_DIR = lastDir()
+ if testFile($chk,catFile($WSADMIN_DIR,'bin',${AS.CMD:'wsadmin'}))
+ {call setWasType('WSP',lastCommand())
+
+  debug ' Inside WSP module, collecting the WSADMIN startup scripts'
+  pretoc '2:WSADMIN Startup Scripts'
+  var $ABBR{'IBM WebSphere','$TOP'} = $WSP_TOP
+  call sort_results(3,0,$WSP_TOP,'$TOP',\
+   grepDir(catDir($WSADMIN_DIR,'bin'),'.','p'))
+  unpretoc
+
+  debug ' Inside WSP module, listing the WSADMIN command files'
+  var $dir = catDir($WSADMIN_DIR,'wsadmin')
+  report wsadmin_cmd_list
+  prefix
+  {write '---+ List of WSADMIN Command Files'
+   write '---## Information Taken from ',encode($dir)
+  }
+  call statFile('b',grepDir($dir,'\.py$','p'))
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][WSADMIN Command Files List]]'
+
+  break
+ }
+}
+
+=head1 PROFILES COLLECTIONS
+
+It performs the following collections on all specified profiles/cells.
+
+=cut
+
+# Collect the data for each cell
+loop $c_itm (@CELLS)
+{# Cell variables
+ var ($pro,$cel) = split(':',$c_itm)
+ var $top = catDir($PROFILE_ROOT,$pro)
+ var $ABBR{$c_itm,'$PROFILE_HOME'} = $top
+
+ # Determine the related nodes
+ var @nod = keys($NODES{$c_itm})
+
+ # Determine the related servers
+ var @srv = keys($SERVERS{$c_itm})
+
+=head2 Startup Scripts
+
+Gathers IBM WebSphere Application Server-related startup scripts.
+
+=cut
+
+ debug ' Inside WSP module, analyzing profile:cell ',$c_itm
+ if isTocCreated()
+  toc '%SPLIT%'
+ toc "1+:'",$pro,"/",$cel,"' Profile/Cell"
+
+ debug '  - Inside WSP module, collecting the startup scripts'
+ pretoc '2:Startup Scripts'
+ call sort_results(3,0,$top,'$PROFILE_HOME',grepDir(catDir($top,'bin'),'.','p'))
+ unpretoc
+
+=head2 JRF Configuration
+
+Gathers Java Required Files (JRF)-related configuration information.
+
+=cut
+
+ debug '  - Inside WSP module, checking JRF configuration'
+ report concat('p_',$pro,'_c_',$cel,'_jrf_config')
+ prefix
+  write '---+ JRF Configuration Information'
+ loop $itm (@srv)
+ {var (undef,undef,$nod,$srv) = split(':',$itm)
+  var $fil = catFile(\
+   $top,'config','cells',$cel,'nodes',$nod,'servers',$srv,'server.xml')
+  if testFile('fr',$fil)
+  {var $obj = xmlLoadFile($fil,xmlDisable(xmlParser(),'BCDEPR'))
+   if xmlFind($obj,'process:Server/customServices')
+   {var ($xml) = last
+    var $nam = xmlValue($xml,'classname')
+    var $flg = xmlValue($xml,'enable')
+    if and(compare('eq',$nam,'oracle.jrf.was.WebSphereJRFCustomService'),\
+           compare('eq',$flg,'true'))
+     write "   * '**",$srv,"**' server is configured with JRF."
+    else
+    {write "   * '**",$srv,"**' server is not configured with JRF."
+     var $NO_JRF = true
+    }
+   }
+  }
+ }
+ if $NO_JRF
+  write 'Note: Use ``applyJRF`` WSADMIN command to configure JRF.%BR%'
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][JRF Configuration]]'
+
+=head1 CONFIGURATION FILES
+
+Gathers profile/cell-wide IBM WebSphere Application Server-related
+configuration files.
+
+=cut
+
+ debug '  - Inside WSP module, collecting the configuration files'
+ pretoc '%SPLIT%'
+ pretoc '1++:Configuration Files'
+
+ # Gather files from CELL_HOME
+ pretoc '1+++:Cell Home'
+ var ($dir,@tbl) = (catDir($top,'config','cells',$cel))
+ call get_conf(\@tbl,catDir($dir,'fmwconfig'))
+ call get_conf(\@tbl,catDir($dir,'oracle'))
+ var $ABBR{$c_itm,'$CELL_HOME'} = $dir
+ call sort_results(2,0,$dir,'$CELL_HOME',\
+  catFile($dir,'cell.xml'),\
+  catFile($dir,'resources.xml'),\
+  catFile($dir,'security.xml'),\
+  catFile($dir,'variables.xml'),\
+  catFile($dir,'virtualhosts.xml'),\
+  @tbl)
+ unpretoc
+
+ # Gather files from NODES
+ pretoc '%SPLIT%'
+ pretoc '1+++:Nodes'
+ var $ABBR{$c_itm,'$NODE_HOME'} = catDir($dir,'nodes')
+ loop $itm (@nod)
+ {var (undef,undef,$nod) = split(':',$itm)
+  pretoc "2:'",$nod,"' Node"
+  var @tbl = ()
+  call get_conf(\@tbl,catDir($ABBR{$c_itm,'$NODE_HOME'},$nod,'oracle'))
+  call sort_results(3,0,$ABBR{$c_itm,'$NODE_HOME'},'$NODE_HOME',\
+   catFile($ABBR{$c_itm,'$NODE_HOME'},$nod,'node.xml'),\
+   catFile($ABBR{$c_itm,'$NODE_HOME'},$nod,'resources.xml'),\
+   catFile($ABBR{$c_itm,'$NODE_HOME'},$nod,'serverindex.xml'),\
+   catFile($ABBR{$c_itm,'$NODE_HOME'},$nod,'variables.xml'),\
+   @tbl)
+  unpretoc
+ }
+ unpretoc 2
+
+ # Gather files from SERVERS
+ pretoc '%SPLIT%'
+ pretoc '1+++:Servers'
+ loop $itm (@srv)
+ {var (undef,undef,$nod,$srv) = split(':',$itm)
+  pretoc "2:'",$srv,"' Server"
+  var @tbl = ()
+  var $dir = catDir($ABBR{$c_itm,'$NODE_HOME'},$nod,'servers')
+  call get_conf(\@tbl,catDir($dir,$srv,'fmwconfig'))
+  call sort_results(3,0,$ABBR{$c_itm,'$NODE_HOME'},'$NODE_HOME',\
+   catFile($dir,$srv,'resources.xml'),\
+   catFile($dir,$srv,'server.xml'),\
+   @tbl)
+  unpretoc
+ }
+ unpretoc 4
+
+=head1 LOG FILES
+
+Gathers profile/cell-wide IBM WebSphere Application Server-related log files.
+
+=head2 Files from Latest Incidents
+
+Gathers files generated by the latest incidents.
+
+=cut
+
+ pretoc '%SPLIT%'
+ pretoc '1++:Log Files'
+ debug '  - Inside WSP module, collecting the latest incidents files'
+ pretoc '2:Files from Latest Incidents'
+ var $n_h = 0
+ loop $itm (@srv)
+ {var (undef,undef,undef,$srv) = split(':',$itm)
+  var $bas = catDir($top,'logs',$srv,'adr')
+  loop $hom (findDir([$bas,catDir('diag','ofm')],'incident','rw',2))
+  {pretoc '3:From ',$hom
+   var $lnk = concat("'",$srv,"' Server")
+   var $rpt = concat('p_',$pro,'_c_',$cel,'_i',incr($n_h),'_',$srv)
+   call write_latest_incidents($bas,$hom,$rpt,$lnk,3)
+   unpretoc
+  }
+ }
+ unpretoc
+
+=head2 Local Log Files
+
+Gathers Oracle Forms, Oracle Reports, Oracle WebLogic Communication Services
+(OWLCS), and IBM WebSphere Application Server-related log files.
+
+=cut
+
+ debug '  - Inside WSP module, collecting the local log files'
+ pretoc '2:Local Log Files'
+ var $dir = catDir($top,'logs')
+ call sort_results(3,$TAIL,$top,'$PROFILE_HOME',grepDir($dir,'\.log$','ip'))
+ loop $itm (@srv)
+ {var (undef,undef,undef,$srv) = split(':',$itm)
+  pretoc "3:'",$srv,"' Server"
+  var ($sub,@tbl) = (catDir($dir,$srv))
+  call push(@tbl,grepDir($sub,'^System(Err|Out)\.log$','ip'))
+  call get_app_log(\@tbl,$sub,'formsapp','formsapp-diagnostic\.log$','ip')
+  call get_app_log(\@tbl,$sub,'reports','_diagnostic\.log$')
+  call get_app_log(\@tbl,$sub,'sdp')
+  call get_app_log(\@tbl,$sub,'wlcs')
+  call get_app_log(\@tbl,$sub,'wsp',\
+                   concat(quote($srv),'-diagnostic\.log$'),'ip')
+  call sort_results(4,$TAIL,$top,'$PROFILE_HOME',@tbl)
+  unpretoc
+ }
+ unpretoc 3
+
+=head1 APPLICATIONS
+
+Gathers profile/cell-wide IBM WebSphere Application Server-related
+configuration and log files.
+
+=head2 Configuration Files
+
+Gathers profile/cell-wide IBM WebSphere Application Server application-related
+configuration files.
+
+=cut
+
+ debug '  - Inside WSP module, collecting the application config files'
+ pretoc '%SPLIT%'
+ pretoc '1++:Applications'
+ pretoc '2:Configuration Files'
+ var ($dir,@tbl) = (catDir($top,'installedApps',$cel))
+ loop $app (grepDir($dir,'^\.+$','nv'))
+ {loop $nam (grepDir(catDir($dir,$app),'\.war$','in'))
+   call push(@tbl,catFile($dir,$app,$nam,'WEB-INF','web.xml'))
+ }
+ call sort_results(3,0,$top,'$PROFILE_HOME',@tbl)
+ unpretoc 3
+
+=head1 WSADMIN COLLECTIONS
+
+Collects IBM WebSphere Application Server runtime-related information.
+
+It requires the availability of IBM WebSphere Application Server
+Administration Tool (WSADMIN).
+
+=cut
+
+ # Get the runtime information using WSADMIN
+ run WSPrun($SERVERS{$c_itm},$NODES{$c_itm},$top,$c_itm,$LOGINS{$c_itm})
+}
+
+# Write the RDA variables used
+write {$map} '---+ RDA Collection Shortcuts'
+prefix $map
+ write {$map} '|*Section*|*Shortcuts*|'
+loop $key (keys(%ABBR))
+{var ($tbl,@tbl) = ($ABBR{$key})
+ loop $abr (keys($tbl))
+  call push(@tbl,concat($abr,'%NEXT%',$tbl->{$abr}))
+ write {$map} '|',replace($key,':','/'),\
+                  ' |%TBL%%ID:symbol:value%',join('%BR%',@tbl),'%ENDTBL%|'
+}
+if !$map->is_created(true)
+ write {$map} 'No shortcuts used'
+end $map
+unpretoc
+
+=head1 SEE ALSO
+
+L<WASlib.def|modules::WASlib>,
+L<WSPrun.def|modules::WSPrun>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.20: Greg Cook, Andrew Salt.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

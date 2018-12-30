@@ -1,0 +1,450 @@
+<?xml version="1.0"?>
+<!--  $Header: emas/sysman/admin/metadata/oracle_oim_cluster.xml /st_emasgc_11.1as/2 2010/03/11 15:06:00 rayleung Exp $ -->
+<!-- 
+ Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     oracle_oim_cluster.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   rayleung    01/25/10 - Bug 9068599
+   rayleung    09/10/01 - change SQL fetchlet to JDBCSQL fetchlet
+   sunilkum    08/21/09 - Creation
+
+-->
+
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="1.0" TYPE="oracle_oim_cluster"
+                CATEGORY_PROPERTIES="VersionCategory"
+                RESOURCE_BUNDLE_PACKAGE="oracle.sysman.emas.rsc.gen.iam">
+  <Display>
+    <Label NLSID="OIM_CLUSTER_NAME">Oracle Identity Manager Cluster</Label>
+    <ShortName NLSID="OIM_CLUSTER_NAME">Oracle Identity Manager Cluster</ShortName>
+    <Description NLSID="OIM_CLUSTER_DESC">Oracle Access Manager Cluster</Description>
+  </Display>
+
+  <AssocTarget ASSOCIATION_NAME="farm" ASSOC_TARGET_TYPE="*"/>
+  <AssocTarget ASSOCIATION_NAME="managedBy" ASSOC_TARGET_TYPE="*"/>
+  
+  <Metric NAME="Response" TYPE="TABLE">
+    <Display>
+      <Label NLSID="oracle_oim_cluster_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_oim_cluster_status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">    
+      <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">domain_j2ee_application:deployment_status</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="ServerNames" SCOPE="GLOBAL">AdminServer</Property>
+      <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+      <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+        <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item></value></argument>]]>
+         </Property>
+    </QueryDescriptor>   
+  </Metric>
+  
+  <!--Metric NAME="SelfSvcRequests" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">
+    <Display>
+      <Label NLSID="OIM_CLUSTER_SELF_SVC_REQUESTS_METRIC_LABEL">Self Service Requests</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="totalCompletedSelfServiceRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_COMPLETED_SELF_SVC_LABEL">Total Completed Self Service Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalFailedSelfServiceRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_FAILED_SELF_SVC_LABEL">Total Failed Self Service Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalPendingSelfServiceRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_PENDING_SELF_SERVICE_LABEL">Total Pending Self Service Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfCompSelfSvcReq" TYPE="NUMBER" IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalCompletedSelfServiceRequests - _totalCompletedSelfServiceRequests) > 0 ? (totalCompletedSelfServiceRequests - _totalCompletedSelfServiceRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_COMPLETED_SELF_SVC_LABEL">Completed Self Service Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfFailedSelfSvcReq" TYPE="NUMBER" IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalFailedSelfServiceRequests - _totalFailedSelfServiceRequests) > 0 ? (totalFailedSelfServiceRequests - _totalFailedSelfServiceRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_FAILED_SELF_SVC_LABEL">Failed Self Service Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfPendingSelfSvcReq" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalPendingSelfServiceRequests - _totalPendingSelfServiceRequests) > 0 ? (totalPendingSelfServiceRequests - _totalPendingSelfServiceRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_PENDING_SELF_SVC_LABEL">Pending Self Service Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfCompSelfSvcReqRate" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="( noOfCompSelfSvcReq > 0) ? noOfCompSelfSvcReq/(__interval) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_SELF_SVC_COMP_RATE_LABEL">Completed Self Service Requests Processing Time (per sec)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JDBCSQL">
+      <Property NAME="STATEMENT" SCOPE="GLOBAL">
+        <![CDATA[
+            select completed, failing, pending 
+              from (select count(request_id) as completed
+                    from REQUEST
+                    where REQUEST_MODEL_NAME='Self-Register User' and REQUEST_STATUS='Request Completed'),
+                   (select count(request_id) as failing
+                    from REQUEST 
+                    where REQUEST_MODEL_NAME='Self-Register User' and REQUEST_STATUS='Request Failed'), 
+                   (select count(request_id) as pending
+                    from REQUEST 
+                    where REQUEST_MODEL_NAME='Self-Register User' and REQUEST_STATUS='Obtaining Request Approval')
+        ]]>
+      </Property>
+      <Property NAME="ConnInfo" SCOPE="INSTANCE">jdbcurl</Property>
+      <Property NAME="Class" SCOPE="INSTANCE">jdbcdriver</Property>
+      <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">oimdb_schema_user</Property>
+      <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">oimdb_password</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  <Metric NAME="ProvisioningRequests" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">
+    <Display>
+      <Label NLSID="OIM_CLUSTER_PROVISIONING_REQUESTS_METRIC_LABEL">Provisioning Requests</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="totalCompletedProvisioningRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_COMPLETED_PROVISIONING_LABEL">Total Completed Provisioning Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalFailedProvisioningRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_FAILED_PROVISIONING_LABEL">Total Failed Provisioning Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalPendingProvisioningRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_PENDING_PROVISIONING_LABEL">Total Pending Provisioning Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfCompProvisioningReq" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalCompletedProvisioningRequests - _totalCompletedProvisioningRequests) > 0 ? (totalCompletedProvisioningRequests - _totalCompletedProvisioningRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_COMPLETED_PROVISIONING_LABEL">Completed Provisioning Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfFailedProvisioningReq" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalFailedProvisioningRequests - _totalFailedProvisioningRequests) > 0 ? (totalFailedProvisioningRequests - _totalFailedProvisioningRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_FAILED_PROVISIONING_LABEL">Failed Provisioning Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfPendingProvisioningReq" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalPendingProvisioningRequests - _totalPendingProvisioningRequests) > 0 ? (totalPendingProvisioningRequests - _totalPendingProvisioningRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_PENDING_PROVISIONING_LABEL">Pending Provisioning Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfCompProvisioningReqRate" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="( noOfCompProvisioningReq > 0) ? noOfCompProvisioningReq/(__interval) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_PROVISIONING_COMP_RATE_LABEL">Completed Provisioning Requests Processing Time (per sec)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JDBCSQL">
+      <Property NAME="STATEMENT" SCOPE="GLOBAL">
+        <![CDATA[
+            select completed, failing, pending 
+              from (select count(request_id) as completed
+                    from REQUEST
+                    where REQUEST_MODEL_NAME in ('Provision Resource', 'Access Policy Based Provisioning') and REQUEST_STATUS='Request Completed'),
+                   (select count(request_id) as failing
+                    from REQUEST 
+                    where REQUEST_MODEL_NAME in ('Provision Resource', 'Access Policy Based Provisioning') and REQUEST_STATUS='Request Failed'), 
+                   (select count(request_id) as pending
+                    from REQUEST 
+                    where REQUEST_MODEL_NAME in ('Provision Resource', 'Access Policy Based Provisioning') and REQUEST_STATUS='Obtaining Request Approval')           
+            ]]>
+      </Property>
+      <Property NAME="ConnInfo" SCOPE="INSTANCE">jdbcurl</Property>
+      <Property NAME="Class" SCOPE="INSTANCE">jdbcdriver</Property>
+      <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">oimdb_schema_user</Property>
+      <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">oimdb_password</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  <Metric NAME="RoleGrantRequests" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">
+    <Display>
+      <Label NLSID="OIM_CLUSTER_ROLE_GRANT_REQUESTS_METRIC_LABEL">Role Grant Requests</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="totalCompletedRoleGrantRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_COMPLETED_ROLE_GRANT_LABEL">Total Completed Role Grant Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalFailedRoleGrantRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_FAILED_ROLE_GRANT_LABEL">Total Failed Role Grant Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalPendingRoleGrantRequests" TYPE="NUMBER"
+                        IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_TOTAL_PENDING_ROLE_GRANT_LABEL">Total Pending Role Grant Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfCompRoleGrantReq" TYPE="NUMBER" IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalCompletedRoleGrantRequests - _totalCompletedRoleGrantRequests) > 0 ? (totalCompletedRoleGrantRequests - _totalCompletedRoleGrantRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_COMPLETED_ROLE_GRANT_LABEL">Completed Role Grant Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfFailedRoleGrantReq" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalFailedRoleGrantRequests - _totalFailedRoleGrantRequests) > 0 ? (totalFailedRoleGrantRequests - _totalFailedRoleGrantRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_FAILED_ROLE_GRANT_LABEL">Failed Role Grant Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfPendingRoleGrantReq" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="(totalPendingRoleGrantRequests - _totalPendingRoleGrantRequests) > 0 ? (totalPendingRoleGrantRequests - _totalPendingRoleGrantRequests) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_PENDING_ROLE_GRANT_LABEL">Pending Role Grant Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="noOfCompRoleGrantReqRate" TYPE="NUMBER"
+                        IS_KEY="FALSE"
+                        COMPUTE_EXPR="( noOfCompRoleGrantReq > 0) ? noOfCompRoleGrantReq/(__interval) : 0">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_ROLE_GRANT_COMP_RATE_LABEL">Completed Role Grant Requests Processing Time (per sec)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JDBCSQL">
+      <Property NAME="STATEMENT" SCOPE="GLOBAL">
+        <![CDATA[
+            select completed, failing, pending 
+              from (select count(request_id) as completed
+                    from REQUEST
+                    where REQUEST_MODEL_NAME in('Assign Roles', 'Self Assign Roles') and REQUEST_STATUS='Request Completed'),
+                   (select count(request_id) as failing
+                    from REQUEST 
+                    where REQUEST_MODEL_NAME in('Assign Roles', 'Self Assign Roles') and REQUEST_STATUS='Request Failed'), 
+                   (select count(request_id) as pending
+                    from REQUEST 
+                    where REQUEST_MODEL_NAME in('Assign Roles', 'Self Assign Roles') and REQUEST_STATUS='Obtaining Request Approval')
+        ]]>
+      </Property>
+      <Property NAME="ConnInfo" SCOPE="INSTANCE">jdbcurl</Property>
+      <Property NAME="Class" SCOPE="INSTANCE">jdbcdriver</Property>
+      <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">oimdb_schema_user</Property>
+      <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">oimdb_password</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  <Metric NAME="Reconciliations" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">
+    <Display>
+      <Label NLSID="OIM_CLUSTER_RECON_METRIC_LABEL">Reconciliations (last 24 hrs)</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="jobsStarted" TYPE="NUMBER" IS_KEY="FALSE"
+                        TRANSIENT="FALSE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_JOBS_STARTED_LABEL">Jobs Started</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jobsCompleted" TYPE="NUMBER" IS_KEY="FALSE"
+                        TRANSIENT="FALSE">
+        <Display>
+          <Label NLSID="OIM_CLUSTER_JOBS_FINISHED_LABEL">Jobs Completed</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JDBCSQL">
+      <Property NAME="STATEMENT" SCOPE="GLOBAL">
+        <![CDATA[
+             select started, completed
+               from (select count(rj_key) as started
+                     from RECON_JOBS
+                     where RJ_JOB_STATUS='Job Started' and (sysdate - RJ_START_TIME)*24 <= 24),
+                    (select count(rj_key) as completed
+                     from RECON_JOBS 
+                     where RJ_JOB_STATUS='Event Creation Completed' and (sysdate - RJ_START_TIME)*24 <= 24)                        
+        ]]>
+      </Property>
+      <Property NAME="ConnInfo" SCOPE="INSTANCE">jdbcurl</Property>
+      <Property NAME="Class" SCOPE="INSTANCE">jdbcdriver</Property>
+      <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE">oimdb_schema_user</Property>
+      <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE">oimdb_password</Property>
+    </QueryDescriptor>
+  </Metric-->
+  
+  <!-- SPML Web Service Metric -->
+  <!--Metric NAME="SPMLWebService" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPML_WEB_SERVICE">SPML Web Services</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="serviceName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+              <Label NLSID="WEB_SERVICE_NAME">Web Service Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="incomingCalls" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="INCOMING_CALLS">Incoming Calls</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="avgResponse" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="AVG_RESPONSE">Average Response Time (ms)</Label>
+          <Unit NLSID="MS">ms</Unit>
+        </Display>
+      </ColumnDescriptor>      
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">    
+      <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oim:spml_service</Property>
+      <Property NAME="ServerNames" SCOPE="GLOBAL">AdminServer</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+        WebserviceName;
+        TotalRequests;
+        AvgRequest       
+      </Property>     
+    </QueryDescriptor>
+  </Metric--> <!-- JSPML Web Service Metric --> 
+  
+  <InstanceProperties>
+    <InstanceProperty NAME="version" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <Display>
+        <Label NLSID="version_iprop">Version</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="VersionCategory" IS_COMPUTED="TRUE">
+      <Display>
+        <Label NLSID="version_cat_iprop">Version Category</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="jdbcurl" IS_COMPUTED="TRUE">
+      <Display>
+        <Label NLSID="OIM_CLUSTER__JDBC_URL_LABEL">JDBC Url</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="jdbcdriver" IS_COMPUTED="TRUE">
+      <Display>
+        <Label NLSID="OIM_CLUSTER_JDBC_DRIVER_LABEL">JDBC Driver</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="oimdb_schema_user" OPTIONAL="FALSE">
+      <Display>
+        <Label NLSID="OIM_CLUSTER_USERNAME_LABEL">Database Username</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="oimdb_password" CREDENTIAL="TRUE" OPTIONAL="FALSE" IS_COMPUTED="TRUE">
+      <Display>
+        <Label NLSID="OIM_CLUSTER_PASSWORD_LABEL">Databse Password</Label>
+      </Display>
+    </InstanceProperty>    
+    <InstanceProperty NAME="appName" OPTIONAL="FALSE">
+      <Display>
+        <Label NLSID="appName">Deployment Name</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="OracleHome" OPTIONAL="FALSE">
+      <Display>
+        <Label NLSID="OracleHome">Oracle Home</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="DOMAIN_HOME" OPTIONAL="FALSE">
+      <Display>
+        <Label NLSID="DomainHome">Domain Home</Label>
+      </Display>
+    </InstanceProperty>    
+    <DynamicProperties NAME="ComputeVC" FORMAT="ROW"
+                       PROP_LIST="VersionCategory">
+      <QueryDescriptor FETCHLET_ID="VersionRangeComputer">
+        <Property NAME="Version" SCOPE="INSTANCE">version</Property>
+        <Property NAME="11plus" SCOPE="GLOBAL">11.1.1.;</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+    <DynamicProperties NAME="driver" FORMAT="ROW" PROP_LIST="jdbcdriver">
+      <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oim:jdbc</Property>
+        <Property NAME="ServerNames" SCOPE="GLOBAL">AdminServer</Property>
+        <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">Driver</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+    <DynamicProperties NAME="url" FORMAT="ROW" PROP_LIST="jdbcurl">
+      <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">domain_oracle_oim:jdbc</Property>
+        <Property NAME="ServerNames" SCOPE="GLOBAL">AdminServer</Property>
+        <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">Url</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+    <DynamicProperties NAME="password" FORMAT="ROW" PROP_LIST="oimdb_password">            
+      <QueryDescriptor FETCHLET_ID="OSLineToken" >
+        <Property NAME="OracleHome" SCOPE="INSTANCE">OracleHome</Property>
+        <Property NAME="DomainHome" SCOPE="INSTANCE">DOMAIN_HOME</Property>
+        <Property NAME="emdRoot" SCOPE="SYSTEMGLOBAL">emdRoot</Property>
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+        <Property NAME="command">%perlBin%/perl</Property>
+        <Property NAME="args">%scriptsDir%/iam/getCSFPassword_oim.pl %OracleHome% %DomainHome% oracle_oim_cluster %emdRoot%</Property>
+        <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>   
+       </QueryDescriptor>
+    </DynamicProperties> 
+  </InstanceProperties>
+</TargetMetadata>

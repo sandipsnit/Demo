@@ -1,0 +1,375 @@
+# M251ZFS.def: Collects ZFS Information
+# $Id: M251ZFS.def,v 1.3 2012/08/13 15:41:51 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M251ZFS.def,v 1.3 2012/08/13 15:41:51 mschenke Exp $
+#
+# Change History
+# 20120813  JGS  Fix property report.
+
+=head1 NAME
+
+M251ZFS - Collects ZFS Information
+
+=head1 DESCRIPTION
+
+This module collects information about ZFS file systems and pools.
+
+=cut
+
+use Mrc
+use Buffer
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('zfs')
+
+#------------------------------------------------------------------------------
+# XPLR_zfs section
+#------------------------------------------------------------------------------
+
+section XPLR_zfs
+
+# Validate the execution context
+if or(not(${XPLR_GLOBAL:1}),\
+      expr('<',get_osv(),10),\
+      not(testFile('x','/usr/sbin/zpool')),\
+      not(testFile('x','/usr/sbin/zfs')),\
+      not(testFile('x','/usr/sbin/zdb')))
+ return
+call log_run('Processing ZFS sections ...')
+
+# Define some module constants
+var $ZPOOL = '/usr/sbin/zpool'
+var $ZFS = '/usr/sbin/zfs'
+var $ZDB = '/usr/sbin/zdb'
+
+# Test if there are visible pools
+var @all = command($cmd = concat($ZPOOL,' list'))
+if and(grep(@all,'no pools available','f'),\
+       not(grepCommand(concat($ZPOOL,' import'),'^\s*pool: ','f')))
+ return log_info('No pools available')
+
+=head2 zfs - ZFS information
+
+Gathers ZFS file system and pool information using the following commands:
+
+=over 2
+
+=item o C</usr/bin/echo "::arc" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::kmastat" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::memstat" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::pgrep zpool | ::walk thread | ::findstack -v" |
+ /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::spa -cv" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::spa -v" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::spa" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::threadlist -v" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::walk spa | ::print spa_t
+ spa_dsl_pool->dp_tx.tx_sync_thread | ::findstack -v" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::zfs_dbgmsg -v" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "::zfs_params" | /usr/bin/mdb -k>
+
+=item o C</usr/sbin/zdb -U ${ZPOOL_CACHE_FILE}>
+
+=item o C</usr/sbin/zdb -U ${ZPOOL_CACHE_FILE} -u ${POOL}>
+
+=item o C</usr/sbin/zdb -eC ${EXPORTED_POOL}>
+
+=item o C</usr/sbin/zdb -eh ${EXPORTED_POOL}>
+
+=item o C</usr/sbin/zdb -eu ${EXPORTED_POOL}>
+
+=item o C</usr/sbin/zdb -l ${ZDB_DEV}>
+
+=item o C</usr/sbin/zdb -lluuu ${ZDB_DEV}>
+
+=item o C</usr/sbin/zdb -lu ${ZDB_DEV}>
+
+=item o C</usr/sbin/zfs get -rHp all ${POOL}>
+
+=item o C</usr/sbin/zfs list>
+
+=item o C</usr/sbin/zfs list -t snapshot>
+
+=item o C</usr/sbin/zfs list -t volume>
+
+=item o C</usr/sbin/zfs upgrade -v>
+
+=item o C</usr/sbin/zpool get all ${POOL}>
+
+=item o C</usr/sbin/zpool history ${POOL}>
+
+=item o C</usr/sbin/zpool history -il ${POOL}>
+
+=item o C</usr/sbin/zpool import>
+
+=item o C</usr/sbin/zpool iostat -v>
+
+=item o C</usr/sbin/zpool list>
+
+=item o C</usr/sbin/zpool status -v>
+
+=item o C</usr/sbin/zpool status -x>
+
+=item o C</usr/sbin/zpool upgrade -v>
+
+=back
+
+Collects Zpool cache files also.
+
+=cut
+
+debug ' Inside ZFS collection, generating file systems and pools report'
+
+# Perform the collection
+report zfs
+title '---+!! ZFS File Systems and Pools'
+title $TOC
+var (@fil,%pcf) = ()
+
+call do_exec(\
+  {cmd => 'TITLE',txt => '---+ ZFS File Systems'},\
+  ['disks/zfs/zfs_list'             ,$ZFS,'list','---++ All'],\
+  ['disks/zfs/zpool_list-t_snapshot',$ZFS,'list -t snapshot',\
+   '---++ Snapshots'],\
+  ['disks/zfs/zpool_list-t_volume'  ,$ZFS,'list -t volume',\
+   '---++ Volumes'],\
+  ['disks/zfs/zfs_upgrade-v'        ,$ZFS,'upgrade -v',\
+   '---++ Supported Versions'],\
+  {cmd => 'UNTITLE'},\
+  {cmd => 'TITLE',txt => '---+ ZFS Storage Pools'},\
+  {cmd => 'ARRAY',\
+   det => concat($ZPOOL,' list'),\
+   nam => 'disks/zfs/zpool_list.out',\
+   tbl => \@all,\
+   ttl => '---++ Pool List'},\
+  ['disks/zfs/zpool_status_-v',$ZPOOL,'status -v','---++ Status'],\
+  ['disks/zfs/zpool_status_-x',$ZPOOL,'status -x','---++ With Errors'],\
+  ['disks/zfs/zpool_iostat_-v',$ZPOOL,'iostat -v','---++ I/O Statistics'],\
+  ['disks/zfs/zpool_import'   ,$ZPOOL,'import','---++ Available to Import'],\
+  ['disks/zfs/zpool_upgrade-v',$ZPOOL,'upgrade -v','---++ Supported Versions'],\
+  {cmd => 'UNTITLE'})
+
+# Process individual pools
+call shift(@all)  # Discard the header line
+while ?shift(@all)
+{var ($nam) = match(last,'^(\S+)')
+ var @prp = command($cmd = concat($ZPOOL,' get all ',$nam))
+ call do_exec(\
+   {cmd => 'TITLE',txt => concat('---++ Pool: ',$nam)},\
+   [concat('disks/zfs/zpool_history_',$nam)   ,$ZPOOL,\
+    concat('history ',$nam),'---+++ History'],\
+   [concat('disks/zfs/zpool_history-il_',$nam),$ZPOOL,\
+    concat('history -il ',$nam),'---+++ Long History'],\
+   {cmd => 'ARRAY',\
+    det => $cmd,\
+    nam => concat('disks/zfs/zpool_get_all_',$nam,'.out'),\
+    tbl => \@prp,\
+    ttl => '---+++ Properties'},\
+   [concat('disks/zfs/zfs_get_-rHp_all_',$nam),$ZFS,\
+    concat('get -rHp all ',$nam),'---+++ Dataset Properties'],\
+   {cmd => 'UNTITLE'})
+
+ # Extract the cache file from the pool properties
+ loop $prp (@prp)
+ {if match(@prp,'cachefile\s*(\S+)')
+  {var ($pcf{$nam}) = last
+   break
+  }
+ }
+}
+
+# Process imported pools
+call do_exec({cmd => 'TITLE',txt => '---+ ZFS Devices Debug - Imported Pools'})
+loop $dev (grepCommand($ZDB,"^\s*path.\s*'(.*)'$",'1'))
+{var $nam = basename($dev)
+ call do_exec(\
+   {cmd => 'TITLE',txt => concat('---++ Device: ',$nam)},\
+   [concat('disks/zfs/zdb/zdb-l_',$nam)    ,$ZDB,concat('-l ',$dev),\
+    '---+++ Labels',\
+    {out=>{mod=>true,cat=>'T'}}],\
+   [concat('disks/zfs/zdb/zdb-lu_',$nam)   ,$ZDB,concat('-lu ',$dev),\
+    '---+++ Labels and Uberblocks',\
+    {out=>{mod=>true,cat=>'T'}}],\
+   [concat('disks/zfs/zdb/zdb-lluuu_',$nam),$ZDB,concat('-lluuu ',$dev),\
+    '---+++ Labels and Uberblocks - Verbose',\
+    {out=>{mod=>true,cat=>'T'}}],\
+   {cmd => 'UNTITLE'})
+}
+call do_exec({cmd => 'UNTITLE'})
+
+# Process exported pools
+call do_exec({cmd => 'TITLE',txt => '---+ ZFS Devices Debug - Exported Pools'})
+loop $nam (grepCommand(concat($ZPOOL,' import'),"^\s*pool: (.*)$",'1'))
+{call do_exec(\
+   {cmd => 'TITLE',txt => concat('---++ Pool: ',$nam)},\
+   [concat('disks/zfs/zdb/zdb-eC_',$nam),$ZDB,concat('-eC ',$nam),\
+    '---+++ Configuration'],\
+   [concat('disks/zfs/zdb/zdb-eH_',$nam),$ZDB,concat('-eh ',$nam),\
+    '---+++ History'],\
+   [concat('disks/zfs/zdb/zdb-eu_',$nam),$ZDB,concat('-eu ',$nam),\
+    '---+++ Uberblock'])
+ loop $dev (grepCommand(concat($ZDB,' -Ce ',$nam),"^\s*path.\s*'(.*)'$",'1'))
+ {var $nam = basename($dev)
+  call do_exec(\
+    {cmd => 'TITLE',txt => concat('---+++ Device: ',$nam)},\
+    [concat('disks/zfs/zdb/zdb-l_',$nam)    ,$ZDB,concat('-l ',$dev),\
+     '---++++ Labels',\
+     {out=>{mod=>true,cat=>'T'}}],\
+    [concat('disks/zfs/zdb/zdb-lu_',$nam)   ,$ZDB,concat('-lu ',$dev),\
+     '---++++ Labels and Uberblocks',\
+     {out=>{mod=>true,cat=>'T'}}],\
+    [concat('disks/zfs/zdb/zdb-lluuu_',$nam),$ZDB,concat('-lluuu ',$dev),\
+     '---++++ Labels and Uberblocks - Verbose',\
+     {out=>{mod=>true,cat=>'T'}}],\
+    {cmd => 'UNTITLE'})
+ }
+ call do_exec({cmd => 'UNTITLE'})
+}
+call do_exec({cmd => 'UNTITLE'})
+
+# Collect cache files
+call do_exec({cmd => 'TITLE',txt => '---+ ZFS Devices Debug - Cache Files'})
+loop $nam (keys(%pcf))
+{var $fil = cond(compare('eq',$pcf{$nam},'-'),'/etc/zfs/zpool.cache',$pcf{$nam})
+ var $cch = translate($fil,'/ ','@_')
+ call push(@fil,[concat('disks/zfs/cachefile/',$cch),$fil,true])
+
+ var @tbl = command($cmd = concat($ZDB,' -U ',$fil))
+ call do_exec(\
+   {cmd => 'TITLE',txt => concat('---++ Pool: ',$nam,' -- Cache File: ',$fil)},\
+   {cmd => 'ARRAY',\
+    det => $cmd,\
+    nam => concat('disks/zfs/zdb/zdb-U_',$cch),\
+    tbl => \@tbl,\
+    ttl => '---+++ Cache File'},\
+   [concat('disks/zfs/zdb/zdb-U_',$cch,'_-u_',$nam),$ZDB,\
+    concat('-U ',$fil,' -u ',$nam),'---+++ Cache File and Pool'])
+ loop $val (@tbl)
+ {if match($tbl{$key},"^\s*path.\s*'(.*)'$")
+  {var ($dev) = last
+   var $nam = basename($dev)
+   call do_exec(\
+     {cmd => 'TITLE',\
+      txt => concat('---+++ Device: ',$nam,' -- Extracted from Cache File')},\
+     [concat('disks/zfs/zdb/zdb-l_',$nam)    ,$ZDB,concat('-l ',$dev),\
+      '---++++ Labels',\
+      {out=>{mod=>true,cat=>'T'}}],\
+     [concat('disks/zfs/zdb/zdb-lu_',$nam)   ,$ZDB,concat('-lu ',$dev),\
+      '---++++ Labels and Uberblocks',\
+      {out=>{mod=>true,cat=>'T'}}],\
+     [concat('disks/zfs/zdb/zdb-lluuu_',$nam),$ZDB,concat('-lluuu ',$dev),\
+      '---++++ Labels and Uberblocks - Verbose',\
+      {out=>{mod=>true,cat=>'T'}}],\
+     {cmd => 'UNTITLE'})
+  }
+ }
+ call do_exec({cmd => 'UNTITLE'})
+}
+call do_exec({cmd => 'UNTITLE'})
+
+# Process mdb-related requests
+if testFile('x',$pgm = '/usr/bin/mdb')
+{call do_exec(\
+   {cmd => 'TITLE',txt => '---+ Information through Modular Debugger'},\
+   ['disks/zfs/mdb/mdb-arc',$pgm,'-k',\
+    '---++ arc',\
+    {det => 'echo "::arc" | /usr/bin/mdb -k',\
+     inp => "::arc\012"}],\
+   ['disks/zfs/mdb/mdb-zfs_params',$pgm,'-k',\
+    '---++ zfs_params',\
+    {det => 'echo "::zfs_params" | /usr/bin/mdb -k',\
+     inp => "::zfs_params\012"}],\
+   ['disks/zfs/mdb/mdb-spa',$pgm,'-k',\
+    '---++ spa',\
+    {det => 'echo "::spa" | /usr/bin/mdb -k',\
+     inp => "::spa\012"}],\
+   ['disks/zfs/mdb/mdb-spa-v',$pgm,'-k',\
+    '---++ spa -v',\
+    {det => 'echo "::spa -v" | /usr/bin/mdb -k',\
+     inp => "::spa -v\012"}],\
+   ['disks/zfs/mdb/mdb-spa-cv',$pgm,'-k',\
+    '---++ spa -cv',\
+    {det => 'echo "::spa -cv" | /usr/bin/mdb -k',\
+     inp => "::spa -cv\012"}],\
+   ['disks/zfs/mdb/mdb-kmastat',$pgm,'-k',\
+    '---++ kmastat',\
+    {det => 'echo "::kmastat" | /usr/bin/mdb -k',\
+     inp => "::kmastat\012"}],\
+   ['disks/zfs/mdb/mdb-memstat',$pgm,'-k',\
+    '---++ memstat',\
+    {det => 'echo "::memstat" | /usr/bin/mdb -k',\
+     inp => "::memstat\012"}],\
+   ['disks/zfs/mdb/mdb-zfs_dbgmsg',$pgm,'-k',\
+    '---++ zfs_dbgmsg',\
+    {det => 'echo "::zfs_dbgmsg -v" | /usr/bin/mdb -k',\
+     inp => "::zfs_dbgmsg -v\012"}],\
+   ['disks/zfs/mdb/mdb-threadlist-v',$pgm,'-k',\
+    '---++ threadlist -v',\
+    {det => 'echo "::threadlist -v" | /usr/bin/mdb -k',\
+     inp => "::threadlist -v\012"}],\
+   ['disks/zfs/mdb/mdb-spa_sync_thread_findstack',$pgm,'-k',\
+    '---++ spa sync_thread findstack',\
+    {det => 'echo "::walk spa | ::print spa_t spa_dsl_pool->\
+             dp_tx.tx_sync_thread | ::findstack -v" | /usr/bin/mdb -k',\
+     inp => "::walk spa | ::print spa_t spa_dsl_pool->dp_tx.tx_sync_thread | \
+             ::findstack -v\012"}],\
+   ['disks/zfs/mdb/mdb-pgrep_zpool_findstack',$pgm,'-k',\
+    '---++ pgrep zpool findstack',\
+    {det => 'echo "::pgrep zpool | ::walk thread | ::findstack -v" | \
+             /usr/bin/mdb -k',\
+     inp => "::pgrep zpool | ::walk thread | ::findstack -v\012"}],\
+   {cmd => 'UNTITLE'})
+}
+
+# Collect files
+title '---+ Collected files'
+title '   * Links point to files that have been collected in their original \
+            format. Opening them directly in your browser can present \
+            risks. To prevent them, access the file outside the browser or \
+            use the link to save them and use an adequate viewer.'
+prefix
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+call do_collect_fil(@fil)
+if hasOutput(true)
+ write $TOP
+
+# Add the report to the table of content
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][ZFS File Systems and Pools]]'
+
+# Adjust the table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

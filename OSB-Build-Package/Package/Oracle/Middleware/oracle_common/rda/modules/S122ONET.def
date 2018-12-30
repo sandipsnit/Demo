@@ -1,0 +1,742 @@
+# S122ONET.def: Collects Oracle Net Information
+# $Id: S122ONET.def,v 2.17 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S122ONET.def,v 2.17 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S122ONET - Collects Oracle Net Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Net information.
+
+The following reports can be generated and are regrouped under C<Oracle Net>:
+
+=cut
+
+echo tput('bold'),'Processing ONET module ...',tput('off')
+echo tput('bold'),'Listener checks may take a few minutes. \
+                    please be patient...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME')
+var $PS_ARG
+var $PS_EF
+var $PS_ELF
+var $SIZE        = getSetting('ONET_LOG_SIZE',1048576)
+var $TAIL        = getSetting('RDA_TAIL',1000)
+var $TNS_ADMIN   = getEnv('TNS_ADMIN',catDir($ORACLE_HOME,'network','admin'))
+var $TRC_SIZE    = getSetting('ONET_TRACE_SIZE',10)
+var $TRC_AGE     = getSetting('ONET_TRACE_AGE',15)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Oracle Net'
+
+# Identify extra TNS admin directories
+var @TNS = ()
+loop $key (grepSetting('_TNSADMIN_LIST$','n'))
+{loop $dir (split('\|',getSetting($key)))
+ {next !testDir('d',$dir = catDir($dir))
+  next grep(@TNS,code(sameDir($dir,last)))
+  call push(@TNS,$dir)
+ }
+}
+
+# Load the common macros
+run library()
+
+# Get the 'ps' command
+var $osn = getOsName()
+if match($osn,'solaris')
+{run OSsunos('PS')
+}
+elsif match($osn,'hpux')
+{run OShpux('PS')
+}
+elsif match($osn,'aix')
+{run OSaix('PS')
+}
+elsif match($osn,'dec_osf')
+{run OSosf('PS')
+}
+elsif match($osn,'linux')
+{run OSlinux('PS')
+}
+elsif match($osn,'dynixptx')
+{run OSptx('PS')
+}
+elsif match($osn,'darwin')
+{run OSdarwin('PS')
+}
+elsif isUnix()
+{run OSunix('PS')
+}
+elsif isVms()
+{run OSvms('PS')
+}
+
+=head2 adapters - Adapters Output
+
+Executes the F<$ORACLE_HOME/bin/adapters> command.
+
+=cut
+
+report adapters
+var $pgm = catFile($ORACLE_HOME,'bin','adapters')
+if testFile('x',$pgm)
+{debug ' Inside ONET module, about to run adapters command'
+ var $pgm = lastCommand()
+ write '---+!! Output from Adapters in $ORACLE_HOME/bin'
+ write $TOC
+
+ write '---+ Installed Protocol Adapters'
+ call writeCommand($pgm)
+ write $TOP
+
+ write '---+ Protocol Adapters for Oracle Executable'
+ call writeCommand(join(' ',$pgm,catCommand($ORACLE_HOME,'bin','oracle')))
+ write $TOP
+}
+elsif testFile('f',$pgm)
+{debug ' Inside ONET module, adapters command not executable'
+ write '**$ORACLE_HOME/bin/adapters not executable**%BR%\
+        Permissions for $ORACLE_HOME/bin/adapters are:%BR%'
+ call statFile('b',$pgm)
+}
+if isCreated()
+ toc '2:[[',getFile(),'][rda_report][Adapters Output]]'
+
+=pod
+
+Gets the Oracle Net (formerly called SQL*Net) configuration information. Some
+of the Oracle Net files can reside in multiple well-known locations.
+
+=cut
+
+var $HOM = getEnv('HOME')
+toc '2:Oracle Net Configuration'
+call cat_search('cman.ora',true,'sqlnet_')
+call cat_search('endpoints_listener.ora',false,'sqlnet_',\
+                '^(PASSWORDS_\w*\s*=).*$','%R:PASSWORD%')
+call cat_search('ldap.ora',true,'sqlnet_')
+call cat_search('listener.ora',false,'sqlnet_','^(PASSWORDS_\w*\s*=).*$',\
+                '%R:PASSWORD%')
+call cat_search('names.ora',true,'sqlnet_','(PASSWORDS_\w*\s*=).*$',\
+                '%R:PASSWORD%')
+call cat_search('protocol.ora',true,'sqlnet_')
+call cat_search('sqlnet.ora',false,'sqlnet_')
+call cat_search('tnsnames.ora',false,'sqlnet_')
+call cat_search('dbsnmp.ver',true,'sqlnet_')
+
+call cat_report($HOM,'.listener.ora','dot','^(PASSWORDS_\w*\s*=).*$',\
+                '%R:PASSWORD%')
+call cat_report($HOM,'.protocol.ora','dot')
+call cat_report($HOM,'.sqlnet.ora','dot')
+call cat_report($HOM,'.tnsnames.ora','dot')
+
+if isVms()
+{# List the present files
+ report sys_login_net
+ prefix
+  write '---+ SYS$LOGIN Oracle Net (SQL*Net) Files'
+ var @tbl = grepDir($HOM,'\.ora$','inp')
+ call statFile('b',@tbl)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][SYS$LOGIN Oracle Net Files]]'
+
+ # Collect some of them
+ call cat_report($HOM,'listener.ora','home_','^(PASSWORDS_\w*\s*=).*$',\
+                '%R:PASSWORD%')
+ call cat_report($HOM,'protocol.ora','home_')
+ call cat_report($HOM,'sqlnet.ora','home_')
+ call cat_report($HOM,'tnsnames.ora','home_')
+}
+
+=pod
+
+Captures the Oracle Names configuration.
+
+=cut
+
+pretoc '2:Oracle Names Configuration'
+if loadCommand('namesctl exit')
+{if !grepLastFile('NNL-00018\:','f')
+ {debug ' Inside ONET module, looking for Oracle Names server'
+  report names
+  write '---+ Oracle Names Server'
+  call writeCommand('namesctl show server')
+  write '---+ Oracle Names Status'
+  call writeCommand('namesctl show status',false,0.5)
+  unpretoc
+  toc '2:[[',getFile(),'][rda_report][Oracle Names Configuration]]'
+ }
+}
+var $dir = catDir($ORACLE_HOME,'network','names')
+call cat_report($dir,'sdns.ora','names_')
+call cat_report($HOM,'.sdns.ora','dot')
+unpretoc
+
+=pod
+
+Retrieves the Heterogeneous Services configuration and log files.
+
+=cut
+
+pretoc '2:Heterogeneous Services Configuration'
+var $dir = catDir($ORACLE_HOME,'hs','admin')
+loop $nam (grepDir($dir,'\.ora$','in'))
+ call cat_report($dir,$nam,'hs_')
+unpretoc
+
+pretoc '2:Heterogeneous Services Log Files'
+call sort_files(3,$TAIL,\
+                grepDir(catDir($ORACLE_HOME,'hs','log'),'.','r'),\
+                grepDir(catDir($ORACLE_HOME,'hs','trace'),'.','r'))
+unpretoc
+
+=head2 sqlnet_log - sqlnet.log
+
+Extracts the last 1000 lines of F<$ORACLE_HOME/network/log/sqlnet.log>. It
+searches for F<sqlnet.log> in other usual locations for Oracle Database 11g
+and later.
+
+=cut
+
+pretoc '2:sqlnet.log Files'
+debug ' Inside ONET module, processing sqlnet.log'
+
+call tail_report(catDir($ORACLE_HOME,'network','log'),'sqlnet.log',$TAIL,\
+                 'sqlnet')
+
+if or(isWindows(),isCygwin())
+{if getEnv('USERPROFILE')
+  call sort_files(3,$TAIL,grepDir(catDir(last,'oracle'),'sqlnet\.log','ir',10))
+}
+elsif getEnv('ORACLE_BASE')
+ call sort_files(3,$TAIL,grepDir(catDir(last,'diag','clients'),'sqlnet\.log',\
+                                 'ir',10))
+unpretoc
+
+=head2 lstatus - Listener Status and Services
+
+It is possible that more than one listener can be started with the same name
+using a different Oracle home.
+
+For UNIX, because the listeners cannot be queried individually using the
+F<lsnrctl> that started them, it removes duplicate listener names to query the
+status of each one once only.
+
+For Windows, the listener list is extracted from the F<listener.ora> file.
+
+C<lsnrctl status> can hang, causing the script to hang. To prevent this, the
+request is limited to 30 seconds when C<alarm> is supported in the Perl
+version. Passwords found in the F<listener.ora> file are used.
+
+It analyzes the log file and collects existing trace files.
+
+=cut
+
+debug ' Inside ONET module, looking for running listeners'
+var ($ctx,$cmd) = ('the Oracle home directory')
+if getSetting('ONET_LISTENER_ORA')
+ var $lsn = catFile(last)
+elsif and(getSetting('ASM_IN_USE'),compare('eq',getSetting('ONET_PREF'),'asm'))
+{var $dir = getSetting('ASM_ORACLE_HOME','')
+ var $sid = getSetting('ASM_ORACLE_SID')
+ if compare('eq',$sid,'*')
+  run ASMinit(\$dir,\$sid)
+ var $lsn = catFile($dir,'network','admin','listener.ora')
+ var $hom = setEnv('ORACLE_HOME',$dir)
+ if cond(isUnix(),grepDir(catDir($dir,'bin'),'^lsnrctl$','fp'),\
+         isVms() ,list('lsnrctl'),\
+                  grepDir(catDir($dir,'bin'),'^lsnrctl\.exe$','fip'))
+  var ($ctx,$cmd) = ('the ASM home directory',last)
+}
+else
+ var $lsn = catFile($ORACLE_HOME,'network','admin','listener.ora')
+
+if or(isWindows(),isCygwin())
+{# Extract the listener list from listener.ora
+ debug ' Inside ONET module, analyzing listener.ora'
+ loop $lin (grepFile($lsn,'^sid_list_','i'))
+  var $listeners{substr(key($lin),9)} = 1
+ loop $dir (@TNS)
+ {loop $lin (grepFile(catFile($dir,'listener.ora'),'^sid_list_','i'))
+   var $listeners{substr(key($lin),9)} = 1
+ }
+
+ # Extract the listener list from task list in CVS format to avoid line splits
+ loop $lin (grepCommand('tasklist /svc /FO csv',\
+                        '\b(CMADMIN|TNSLSNR)\.EXE\b','i'))
+ {if match($lin,'TNSListener([^"]*)',true)
+  {var ($nam) = last
+   if length($nam)
+    var $listeners{$nam} = 1
+   else
+    var $listeners{'LISTENER'} = 1
+  }
+  elsif match($lin,'CMAdmin([^"]+)',true)
+   var $cman{last} = 1
+ }
+ loop $nam (keys(%cman))
+  delete $listeners{$nam}
+
+ # Determine the listener command
+ var $cmd = nvl($cmd,cond(testDir('d',catDir($ORACLE_HOME,'net80','admin')),\
+                          'lsnrctl80.exe','lsnrctl.exe'))
+}
+elsif isUnix()
+{# Extract the listener list
+ if loadCommand($PS_ARG)
+ {# When ps -o works on the platform, use it to get the listener name.
+  debug ' Inside ONET module, using ps -o to find listener name'
+  loop $lin (grepLastFile('tnslsnr'))
+  {next match($lin,'ifile=',true)
+   var $listeners{field('\s+',2,$lin)} = 1
+  }
+ }
+ elsif match($osn,'linux')
+ {# On linux, ps elf must be used to get the listener name
+  # (short listing does not provide the extra output)
+  debug ' Inside ONET module, using ps -elf to find listener name'
+  if grepDir('/etc','suse.*release','i')
+   var $off = 6
+  else
+   var $off = 7
+  loop $lin (grepCommand($PS_ELF,'tnslsnr.*inherit'))
+   var $listeners{field('\s+',$off,substr($lin,39))} = 1
+ }
+ elsif match($osn,'aix')
+ {# Output from aix ps, the listener name is in a different spot
+  debug ' Inside ONET module, using ps -ef to find listener name on AIX'
+  loop $lin (grepCommand($PS_EF,'tnslsnr'))
+  {next match($lin,'ifile=',true)
+   var $listeners{field('\s+',3,substr($lin,39))} = 1
+  }
+ }
+ else
+ {debug ' Inside ONET module, using ps -ef to find listener name'
+  loop $lin (grepCommand($PS_EF,'tnslsnr'))
+  {next match($lin,'ifile=',true)
+   var $listeners{field('\s+',2,substr($lin,42))} = 1
+  }
+ }
+
+ # Determine the listener command
+ var $cmd = nvl($cmd,'lsnrctl')
+}
+elsif isVms()
+{# Macro to resolve listener process name: ORA_<last-8-characters>NNN
+ macro resolve_alias
+ {var ($ref) = @arg
+  var $pat = '(SID_LIST_|STARTUP_WAIT_TIME_|STOP_|CONNECT_TIMEOUT_|\
+               LOG_DIRECTORY_|LOG_LEVEL_|LOG_FILE_|TRACE_DIRECTORY_|\
+               TRACE_LEVEL_|TRACE_FILE_)'
+  loop $lin (grepFile('TNS_ADMIN:LISTENER.ORA',$ref,'i'))
+  {next match($lin,'^#')
+   var $key = key($lin)
+   if match($key,concat('^',$pat,'(.*)$'),true)
+   {var (undef,$nam) = (last)
+    if compare('eq',uc(substr($nam,-8)),$ref)
+     return $nam
+   }
+   elsif compare('eq',uc(substr($key,-8)),$ref)
+    return $key
+  }
+  return undef
+ }
+
+ # Get processes currently using the Listener program
+ loop $lin (grepCommand('show device/file ora_root/nosys',\
+                        'TNSLSNR(_64)?.EXE','i'))
+ {var $nam = field('\s',0,$lin)
+  var $lgt = length($nam)
+  decr $lgt,7
+  if ?resolve_alias(substr($nam,4,$lgt))
+   var $listeners{last} = 1
+ }
+
+ # Determine the listener command
+ var $cmd = 'lsnrctl'
+}
+else
+{var $cmd = undef
+}
+
+# Extract the passwords
+loop $lin (grepFile($lsn,'^passwords_\w*\s*=','i'))
+{var ($key) = match(key($lin),'passwords_(.*)',true)
+ var $pwd{$key} = trim(value($lin),'\W+')
+}
+loop $dir (@TNS)
+{loop $lin (grepFile(catFile($dir,'listener.ora'),'^passwords_\w*\s*=','i'))
+ {var ($key) = match(key($lin),'passwords_(.*)',true)
+  if missing($pwd{$key})
+   var $pwd{$key} = trim(value($lin),'\W+')
+ }
+}
+
+# Define macro to load command output
+macro load_lsn
+{var ($cmd,$req,$lsn,$pwd) = @arg
+
+ if $pwd
+ {var $tmp = quote(createTemp('lsn'),'x')
+  call writeTemp('lsn','set password ',$pwd)
+  call writeTemp('lsn',$req,' ',$lsn)
+  call writeTemp('lsn','exit')
+  call closeTemp('lsn')
+  call loadCommand(join(' <',$cmd,$tmp))
+  call unlinkTemp('lsn')
+ }
+ else
+  call loadCommand(join(' ',$cmd,$req,$lsn))
+}
+
+# Loop through all listeners
+debug ' Inside ONET module, going to get the listener status'
+report lstatus
+write '---+!! Listener Status, Log, Trace, and Services Information'
+write $TOC
+write
+write '%BR%**Are the listeners running?**%BR%\
+       If no information appears, either there are no listeners running or \
+       there are no listeners running from ',$ctx,'%BR%'
+write
+toc '2:[[',getFile(),'][rda_report][Listener Status and Services]]'
+
+if testCommand(join(' ',$cmd,'exit'))
+{var $siz = sprintf('%d',expr('/',$SIZE,1024))
+ loop $lsn (keys(%listeners))
+ {# Get the status
+  echo '  Processing listener ',$lsn
+  debug ' Inside ONET module, getting the listener status for ',$lsn
+  write '---'
+  write '#T_',$lsn
+  toc '3:[[',getFile(),'#T_',$lsn,'][rda_report][',replace($lsn,'^$',' '),']]'
+  write '---+ Status for ',$lsn
+  call load_lsn($cmd,'status',$lsn,$pwd{$lsn})
+  call writeLastFile()
+  write $TOP
+
+  # Determine the trace file location
+  debug ' Inside ONET module, getting the listener trace file location'
+  var ($lin) = grepLastFile('Listener Trace File','f')
+  var (undef,undef,undef,$trc) = split('\s+',$lin,4)
+  if $trc
+  {var ($trc,$rot) = match($trc,'^(.*?)(\d*)\.trc\s*$',true)
+   if length($rot)
+    var $rot = '\d+'
+  }
+  else
+  {# If the trace file is not diaplyed, get the name from the parameter file
+   var ($lin) = grepLastFile('Listener Parameter File','f')
+   var (undef,undef,undef,$par) = split('\s+',trim($lin),4)
+   if testFile('r',$par)
+   {var ($dir,$trc,$cnt,$lgt) = (\
+      nvl(value(grepFile($par,concat('^\s*TRACE_DIRECTORY_',$lsn,'\b'),'if')),\
+          catDir($ORACLE_HOME,'network','trace')),\
+      nvl(value(grepFile($par,concat('^\s*TRACE_FILE_',$lsn,'\b'),'if')),$lsn),\
+      nvl(value(grepFile($par,concat('^\s*TRACE_FILENO_',$lsn,'\b'),'if')),1),\
+      value(grepFile($par,concat('^\s*TRACE_FILELEN_',$lsn,'\b'),'if')))
+    if and(expr('>',$cnt,1),$lgt)
+     var ($trc,$rot) = (catFile($dir,$trc),'\d+')
+    else
+     var ($trc,$rot) = (catFile($dir,replace($trc,'\.[Tt][Rr][Cc]$')))
+   }
+  }
+
+  # Get and analyze the log file
+  debug ' Inside ONET module, getting the listener log file'
+  var ($lin) = grepLastFile('Log File','f')
+  var (undef,undef,undef,$log) = split('\s+',$lin,4)
+  var $log = trim($log)
+  if !$log
+  {write
+   write 'Log File entry not found in listener status%BR%\
+          (This may be because the listener is not up)%BR%'
+  }
+  elsif createBuffer('log','T',$log,$SIZE)
+  {var $flg = expr('<',last,0)
+   write '---++!! Errors in Log'
+   var $lnk = encode($log)
+   if testFile('r',catFile($log))
+   {output d,log
+    if ${CUR.LAST}->write_tail(lastFile(),$TAIL)
+    {var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+     write '   * Links point to files that have been collected in their \
+                 original format. Opening them directly in your browser can \
+                 present security risks. To prevent them, access the file \
+                 outside the browser or use the link to save them and use an \
+                 adequate viewer.'
+    }
+    call $[OUT]->end_report(${CUR.LAST})
+   }
+   write '|*Listener Name*|',    $lsn,' |'
+   write '|*Listener Log File*|',$lnk,' |'
+   var ($lgt,$cnt) = countBuffer('log','TNS-')
+   if $flg
+    write '|*Total TNS Errors*|', $cnt,' |'
+   else
+    write '|*TNS Errors (in last ',$siz,' KiB)*|', $cnt,' |'
+   if $cnt
+   {write '|*TNS Errors (in last 1000 lines)*|',\
+          grepBuffer('log','TNS-','c',0,expr('-',$lgt,1000),$lgt),' |'
+
+    debug ' Inside ONET module, showing the last 50 errors from listener ',$lsn
+    write '---++!! Last 50 Errors for ',$lsn
+    write '<verbatim>'
+    loop $lin (grepBuffer('log','TNS-','',-50))
+     write $lin
+    write '</verbatim>'
+    call deleteBuffer('log')
+   }
+   write $TOP
+  }
+  else
+  {write
+   write 'Could not read the log file: ',encode($log),'%BR%\
+         It does not exist even though it is specified for this listener%BR%'
+  }
+
+  # Collect the trace files
+  if $trc
+  {debug ' Inside ONET module, collecting the listener trace files'
+   var $dir = dirname($trc)
+   var $pat = concat('^',basename($trc),$rot,'\.trc$')
+   var $vol = expr('*',$TRC_SIZE,1048576)
+   prefix
+   {write '---++!! Trace Files'
+    write '   * Readable trace files not older than ',$TRC_AGE,' days'
+    write '   * Trace file volume lower than ',$TRC_SIZE,' MiB'
+    write '|*Trace File Name*| *Size(MiB)*|*Last Modified Date*|'
+   }
+   loop $fil (grepDir($dir,$pat,'ipt'))
+   {var ($lnk,$siz) = (encode($fil),getSize($fil))
+    if and($siz,testFile('r',$fil),not(isOlder($fil,$TRC_AGE)))
+    {decr $vol,$siz
+     if expr('>=',$vol,0)
+     {output d,concat('trc_',$lsn,'_',basename($fil))
+      if ${CUR.LAST}->write_data($fil)
+       var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+      call $[OUT]->end_report(${CUR.LAST})
+     }
+    }
+    write '|',$lnk,'| ',$siz,'|',\
+          getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+   if hasOutput(true)
+    write $TOP
+  }
+
+  # Get services
+  debug ' Inside ONET module, getting the listener services for ',$lsn
+  write '---+ Services Information for ',$lsn
+  call load_lsn($cmd,'services',$lsn,$pwd{$lsn})
+  call writeLastFile()
+  write $TOP
+ }
+}
+else
+{write 'Unable to execute lsnrctl command'
+ write 'File Permissions are:%BR%'
+ call statFile('b',catFile($ORACLE_HOME,'bin',$cmd))
+ write 'User: ',id(),'%BR%'
+}
+if match($ctx,'ASM')
+ call setEnv('ORACLE_HOME',$hom)
+
+# For VMS, report quotas in TNSLSNR.COM file
+if isVms()
+{write '---'
+ write '---+ Quota Logicals in ORA_NETWORK:TNSLSNR.COM'
+ prefix
+  write '<verbatim>'
+ loop $lin (grepFile('ORA_NETWORK:TNSLSNR.COM','define\s+ORA_LSNR_','i'))
+  write $lin
+ if hasOutput(true)
+  write '</verbatim>'
+}
+
+=head2 cman - Connection Manager
+
+Shows the connection manager services and status.
+
+=cut
+
+report cman
+var $TTL = '---+!! Connection Manager'
+loop $lin (grepFile(catFile($TNS_ADMIN,'cman.ora'),'^\s*\w+\s*=\s*'))
+{var $nam = key($lin)
+
+ var $cmd = concat('cmctl show services -c ',$nam)
+ prefix
+ {if ?delete($TTL)
+  {write last
+   write $TOC
+  }
+  write "---+ Services for Connection Manager Instance '",$nam,"'"
+  write '---## Using: ',encode($cmd)
+ }
+ if writeCommand($cmd)
+  write $TOP
+
+ var $cmd = concat('cmctl show status -c ',$nam)
+ prefix
+ {if ?delete($TTL)
+  {write last
+   write $TOC
+  }
+  write "---+ Status for Connection Manager Instance '",$nam,"'"
+  write '---## Using: ',encode($cmd)
+ }
+ if writeCommand($cmd)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Connection Manager]]'
+
+=head2 netenv - Network Environment
+
+Checks the setting of C<TNS_ADMIN> and lists C<.ora> files from well-known
+directories.
+
+=cut
+
+debug ' Inside ONET module, net environment, looking for tns_admin'
+report netenv
+write '---+!! Display of Various Network Environment Information'
+write $TOC
+
+write '---+ Is TNS_ADMIN Being Used?'
+write '<verbatim>'
+loop $key (grepEnv('^TNS_'))
+ write $key,'=',getEnv($key)
+write '</verbatim>'
+write $TOP
+
+debug ' Inside ONET module, net environment, doing ls of directories'
+write '---+ Listing of .ora Files in the Well Known Locations'
+
+macro list_ora
+{var ($dir) = @arg
+ import $TOP
+ keep %tbl
+ if exists($tbl{$dir})
+  return
+ write '---++ Listing of .ora files from ',encode($dir)
+ if grepDir($dir,'\.ora$','inp')
+  call statFile('b',last)
+ else
+  write 'There are no .ora files in ',encode($dir),'%BR%'
+ write $TOP
+ var $tbl{$dir} = 1
+}
+
+call list_ora('/etc')
+call list_ora('/var/opt/oracle')
+call list_ora(catDir($ORACLE_HOME,'network','admin'))
+call list_ora(catDir($ORACLE_HOME,'network','names'))
+call list_ora(catDir($ORACLE_HOME,'hs','admin'))
+if getEnv('TNS_ADMIN')
+ call list_ora(catDir(last))
+
+debug ' Inside ONET module, get TNS listener processes'
+if isVms()
+{prefix
+ {write '---+ TNS Listener Processes'
+  write '<verbatim>'
+ }
+ loop $lin (grepCommand('show device/file ora_root/nosys',\
+                        'tnslsnr(_64)?\.exe','i'))
+  write $lin
+}
+else
+{prefix
+ {write '---+ TNS Listener Processes'
+  write '<verbatim>'
+  write getHeader()
+ }
+ loop $lin (grepCommand($PS_EF,'tnslsnr','i'))
+  write $lin
+}
+if hasOutput(true)
+{write '</verbatim>'
+ write $TOP
+}
+toc '2:[[',getFile(),'][rda_report][Network Environment]]'
+
+=head2 dynamic_dep - Dynamic Dependencies
+
+Lists the dynamic dependencies of executable files or shared libraries.
+
+=cut
+
+if match($osn,'linux|solaris')
+ var $pgm = 'ldd'
+elsif match($osn,'hpux')
+ var $pgm = 'chatr'
+elsif match($osn,'aix')
+ var $pgm = 'dump -Xany -Hv'
+else
+ var $pgm = undef
+
+if $pgm
+{debug ' Inside ONET module, gather dynamic dependencies'
+ report dynamic_dep
+ prefix
+ {write '---+!! Dynamic Dependencies'
+  write $TOC
+ }
+ loop $fil (catFile($ORACLE_HOME,'bin','oracle'),\
+            catFile($ORACLE_HOME,'bin','tnslsnr'),\
+            catFile($ORACLE_HOME,'bin','names'),\
+            catFile($ORACLE_HOME,'bin','sqlplus'),\
+            catFile($ORACLE_HOME,'lib','libclntsh.so'))
+ {if testFile('r',$fil)
+  {var $cmd = concat($pgm,' ',quote($fil,'x'))
+   write '---+ Dynamic Dependencies of ', encode($fil)
+   write '---## Using: ',encode($cmd)
+   call writeCommand($cmd)
+   write $TOP
+  }
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Dynamic Dependencies]]'
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>,
+L<OSaix|modules::OSaix>, L<OSdarwin|modules::OSdarwin>,
+L<OShpux|modules::OShpux>, L<OSlinux|modules::OSlinux>,
+L<OSosf|modules::OSosf>, L<OSptx|modules::OSptx>,
+L<OSsunos|modules::OSsunos>, L<OSunix|modules::OSunix>,
+L<OSvms|modules::OSvms>, L<OSwin32|modules::OSwin32>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.21: Cameron Melvin.
+
+=item RDA 4.22: Grant Hayden.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

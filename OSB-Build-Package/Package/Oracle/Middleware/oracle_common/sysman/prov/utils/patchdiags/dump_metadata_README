@@ -1,0 +1,76 @@
+README for dump_metadata.pl
+---------------------------
+
+This perl file downloads ORACLE MetaLink metadata and dumps it to a directory.
+It uses wget to get the files.
+
+
+USAGE:
+------
+
+perl dump_metadata.pl <options>
+
+<options>
+   -wget_loc   : wget location if you dont want to use the default wget. 
+                 (optional. If not given default wget is used)
+   -to         : Directory where you want to download Oracle Metadata files
+                 (optional if not specified current directory will be used)
+   -http_user  : Metalink username 
+                 (mandatory)
+   -http_pass  : Metalink password 
+                 (mandatory)
+   -proxy_user : Proxy username 
+                 (optional; needed only if proxy requires authentication)
+   -proxy_pass : Proxy password
+                 (optional; needed only if proxy requires authentication)
+   -proxy_host : Proxy url
+                 (mandatory if proxy_user and proxy_pass are given. 
+                  format: host:port)
+ 
+    Example: perl dump_metadata.pl -to /downloads/metadata 
+                                   -http_user abc_us -http_pass xxxx 
+                                   -proxy_user admin -proxy_pass xxxx 
+                                   -proxy_host example-proxy.example.com:80
+
+
+PARAMETERS: 
+-----------
+
+Mandatory parameters:
+---------------------
+-http_user : This is your Oracle MetaLink username.
+-http_pass : This is your Oracle MetaLink password.
+
+Optional parameters:
+--------------------
+-to         : This is the location where you want to dump the metadata. Please 
+              provide complete path. Relative paths would be considered from 
+              the current working directory. Also this location would be 
+              created if it is not existing. If not given files would be dumped
+              to the current directory.
+-wget_loc   : If you dont want to use the default wget, you can provide your 
+              own wget.
+-proxy_user : If your proxy requires authentication, then you need to provide 
+              the proxy username here.
+-proxy_pass : If your proxy requires authentication, then you need to provide 
+              the proxy password here.
+-proxy_host : This is the location of your actual proxy server. The format is 
+              <host>:<port>. If you have a wgetrc (wget startup file) then  
+              that would take precedence over this variable.The $HTTP_PROXY set
+              up in the wgetrc would be used. Look at the wget manual for more 
+              details.               
+
+
+OUTPUT FORMAT:
+--------------
+
+Initially some information regarding generic variables like PERL, SCRIPT etc 
+along with USER passed parameters are printed out in a block enclosed by 
+"###################################################"
+
+After that for each wget call, the summary is printed in a block enclosed by 
+"---------------------------------------------------"
+
+At the end of the execution, you will have 8 xml files in the directory you 
+specify in the '-to' option.
+

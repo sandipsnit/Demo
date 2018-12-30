@@ -1,0 +1,1444 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="SimpleForm" type="com.bea.alsb.console.forms.SimpleForm" />
+        <form-bean name="EditXqueryForm" type="com.bea.alsb.console.resources.xquery.forms.XqEditForm" />
+        <form-bean name="EditXsltForm" type="com.bea.alsb.console.resources.xslt.forms.XsltEditForm" />
+        <form-bean name="EditXsltRefsForm" type="com.bea.alsb.console.resources.xslt.forms.EditXsltRefsForm" />
+        <form-bean name="EditMflForm" type="com.bea.alsb.console.resources.mfl.forms.MflEditForm" />
+        <form-bean name="EditSchemaForm" type="com.bea.alsb.console.resources.schema.forms.EditSchemaForm" />
+        <form-bean name="EditSchemaRefsForm" type="com.bea.alsb.console.resources.schema.forms.EditSchemaRefsForm" />
+        <form-bean name="EditWsdlForm" type="com.bea.alsb.console.resources.wsdl.forms.EditWsdlForm" />
+        <form-bean name="EditWsdlRefsForm" type="com.bea.alsb.console.resources.wsdl.forms.EditWsdlRefsForm" />
+        <form-bean name="ServiceAccountInputForm" type="com.bea.alsb.console.resources.serviceaccount.forms.ServiceAccountInputForm"/>
+        <form-bean name="BrowserForm" type="com.bea.alsb.console.forms.ResourceSummaryForm"/>
+        <form-bean name="ImportZippedResourcesForm" type="com.bea.alsb.console.resources.forms.ImportZippedResourcesForm"/>
+        <form-bean name="ImportUrlResourcesForm" type="com.bea.alsb.console.resources.forms.ImportUrlResourcesForm"/>
+        <form-bean name="ArchiveResourceForm" type="com.bea.alsb.console.resources.archive.forms.ArchiveResourceForm" />
+        <form-bean name="DestinationForm" type="com.bea.alsb.console.resources.alertdestinations.forms.DestinationForm"/>
+        <form-bean name="ArchiveBrowserForm" type="com.bea.alsb.console.resources.archive.forms.ArchiveBrowserForm" />
+        <form-bean name="TransportSpecificDynaActionForm" type="org.apache.struts.action.DynaActionForm" />
+        <form-bean name="EditJcaForm" type="com.bea.alsb.console.resources.jca.forms.EditJcaForm" />
+        <form-bean name="EditJcaRefsForm" type="com.bea.alsb.console.resources.jca.forms.EditJcaRefsForm" />
+        <form-bean name="EditXmlForm" type="com.bea.alsb.console.resources.xml.forms.EditXmlForm" />
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+	<action-mappings>
+
+        <!--
+            Resource reference
+        -->
+
+        <action path="/ResourceReference"
+            type="com.bea.alsb.console.resources.actions.ResourceReferenceAction" >
+        <forward name="ref"
+                contextRelative="true"
+                path="jsp/resources/ViewResourceReference.jsp" />
+        </action>
+
+        <action path="/ViewResourceReferencePgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/ViewResourceReference.jsp" />
+        <!--
+            XSLT transform
+        -->
+
+        <action path="/ViewAllXsltTransforms"
+                type="com.bea.alsb.console.resources.xslt.actions.ViewAllXsltsAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewAllXsltTransforms.jsp"/>
+        </action>
+
+        <action path="/ViewAllXsltTransformsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xslt/ViewAllXsltTransforms.jsp" />
+
+        <action path="/ManageXsltTransform"
+                type="com.bea.alsb.console.resources.xslt.actions.ManageResourceAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewAllXsltTransforms.jsp" />
+            <forward name="add"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/EditXsltTransformStep1.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewAllXsltTransforms.jsp" />
+            <forward name="view"
+                     path="ViewXsltStructure.do" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/EditXsltTransformStep1.jsp" />
+            <forward name="editrefs"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/EditXsltRefs.jsp" />
+        </action>
+
+        <action path="/ViewXsltTransform"
+                type="com.bea.alsb.console.resources.xslt.actions.ManageResourceAction">
+            <forward name="view"
+                     path="ViewXsltStructure.do" />
+        </action>
+
+        <action path="/EditXsltTransformStep1"
+                type="com.bea.alsb.console.resources.xslt.actions.EditXsltTransformStep1Action"
+                name="EditXsltForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewAllXsltTransforms.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/EditXsltTransformStep1.jsp" />
+            <forward name="finish"
+                     path="/EditXsltTransformStep2.do" />
+        </action>
+
+        <action path="/EditXsltTransformStep2"
+                type="com.bea.alsb.console.resources.xslt.actions.EditXsltTransformStep2Action">
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewAllXsltTransforms.jsp" />
+            <forward name="back"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/EditXsltTransformStep1.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/EditXsltTransformStep1.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewAllXsltTransforms.jsp" />
+        </action>
+
+        <action path="/EditXsltRefs"
+                type="com.bea.alsb.console.resources.xslt.actions.EditXsltRefsAction"
+                name="EditXsltRefsForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/EditXsltRefs.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewXsltResource.jsp"/>
+        </action>
+
+        <action path="/ViewXsltStructure" forward="/ViewXslt.do?isviewtext=false" />
+        <action path="/ViewXsltText" forward="/ViewXslt.do?isviewtext=true" />
+        <action path="/ViewXslt"
+                type="com.bea.alsb.console.resources.xslt.actions.ViewXsltAction">
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewAllXsltTransforms.jsp"/>
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/ViewXsltResource.jsp"/>
+        </action>
+
+        <action path="/XsltTransformDetails"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xslt/XsltTransformDetails.jsp" />
+
+        <action path="/XsltBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xslt/XsltBrowser.jsp" />
+
+        <action path="/XsltBrowser"
+                type="com.bea.alsb.console.resources.xslt.actions.XsltsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="XsltsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/XsltBrowser.jsp"/>
+        </action>
+
+        <action path="/XsltBrowserTask"
+                type="com.bea.alsb.console.resources.xslt.actions.XsltsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="XsltsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xslt/XsltBrowser.jsp"/>
+        </action>
+
+        <!--
+            MFL transform
+        -->
+
+        <action path="/ViewAllMflTransforms"
+                type="com.bea.alsb.console.resources.mfl.actions.ViewAllMflsAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewAllMflTransforms.jsp"/>
+        </action>
+
+        <action path="/ViewAllMflTransformsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/mfl/ViewAllMflTransforms.jsp" />
+
+        <action path="/ManageMflTransform"
+                type="com.bea.alsb.console.resources.mfl.actions.ManageResourceAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewAllMflTransforms.jsp" />
+            <forward name="add"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/EditMflTransformStep1.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewAllMflTransforms.jsp" />
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewMflResource.jsp" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/EditMflTransformStep1.jsp" />
+        </action>
+
+        <action path="/ViewMflTransform"
+                type="com.bea.alsb.console.resources.mfl.actions.ManageResourceAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewAllMflTransforms.jsp" />
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewMflResource.jsp" />
+        </action>
+
+        <action path="/EditMflTransformStep1"
+                type="com.bea.alsb.console.resources.mfl.actions.EditMflTransformStep1Action"
+                name="EditMflForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewAllMflTransforms.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/EditMflTransformStep1.jsp" />
+            <forward name="finish"
+                     path="/EditMflTransformStep2.do" />
+        </action>
+
+        <action path="/EditMflTransformStep2"
+                type="com.bea.alsb.console.resources.mfl.actions.EditMflTransformStep2Action">
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewAllMflTransforms.jsp" />
+            <forward name="back"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/EditMflTransformStep1.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/EditMflTransformStep1.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/ViewAllMflTransforms.jsp" />
+        </action>
+
+        <action path="/MflBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/mfl/MflBrowser.jsp" />
+
+        <action path="/MflBrowser"
+                type="com.bea.alsb.console.resources.mfl.actions.MflsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="MflsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/MflBrowser.jsp"/>
+        </action>
+
+        <action path="/MflBrowserTask"
+                type="com.bea.alsb.console.resources.mfl.actions.MflsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="MflsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/mfl/MflBrowser.jsp"/>
+        </action>
+
+        <!--
+            XQuery transform - new repository
+        -->
+        <action path="/ViewAllXqueryTransforms"
+                type="com.bea.alsb.console.resources.xquery.actions.ViewAllXQueriesAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewAllXqTransforms.jsp"/>
+        </action>
+
+
+        <action path="/ViewAllXqueryTransformsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xquery/ViewAllXqTransforms.jsp" />
+
+        <action path="/ManageXqueryTransform"
+                type="com.bea.alsb.console.resources.xquery.actions.ManageResourceAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewAllXqTransforms.jsp" />
+            <forward name="add"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/EditXqTransformStep1.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewAllXqTransforms.jsp" />
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewXqResource.jsp" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/EditXqTransformStep1.jsp" />
+        </action>
+
+        <action path="/ViewXqueryTransform"
+                type="com.bea.alsb.console.resources.xquery.actions.ManageResourceAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewAllXqTransforms.jsp" />
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewXqResource.jsp" />
+        </action>
+
+        <action path="/EditXqueryTransformStep1"
+                type="com.bea.alsb.console.resources.xquery.actions.EditXqTransformStep1Action"
+                name="EditXqueryForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewAllXqTransforms.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/EditXqTransformStep1.jsp" />
+            <forward name="next"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/EditXqTransformStep2.jsp" />
+            <forward name="finish"
+                     path="/EditXqueryTransformStep2.do" />
+        </action>
+
+        <action path="/EditXqueryTransformStep2"
+                type="com.bea.alsb.console.resources.xquery.actions.EditXqTransformStep2Action">
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewAllXqTransforms.jsp" />
+            <forward name="back"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/EditXqTransformStep1.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/EditXqTransformStep1.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/ViewAllXqTransforms.jsp" />
+        </action>
+
+        <action path="/XqueryTransformDetails"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xquery/XqTransformDetails.jsp" />
+
+        <!-- XQuery Browser -->
+        <action path="/XqueryBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xquery/XqueryBrowser.jsp" />
+
+        <action path="/XqueryBrowser"
+                type="com.bea.alsb.console.resources.xquery.actions.XqueriesBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="XqueriesBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/XqueryBrowser.jsp"/>
+        </action>
+
+        <action path="/XqueryBrowserTask"
+                type="com.bea.alsb.console.resources.xquery.actions.XqueriesBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="XqueriesBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xquery/XqueryBrowser.jsp"/>
+        </action>
+
+        <!--
+            Schemas
+        -->
+        <action path="/ViewAllSchemas"
+                type="com.bea.alsb.console.resources.schema.actions.ViewAllSchemas" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/schema/ViewAllSchemas.jsp"/>
+        </action>
+
+        <action path="/ViewAllSchemasPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/schema/ViewAllSchemas.jsp" />
+
+        <action path="/ManageSchemas"
+                type="com.bea.alsb.console.resources.schema.actions.ManageSchemasAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/schema/ViewAllSchemas.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/schema/ViewAllSchemas.jsp" />
+            <forward name="add"
+                     contextRelative="true"
+                     path="jsp/resources/schema/EditSchema.jsp" />
+            <forward name="view"
+                     path="/ViewSchemaStructure.do" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/schema/EditSchema.jsp" />
+            <forward name="editrefs"
+                     contextRelative="true"
+                     path="jsp/resources/schema/EditSchemaRefs.jsp" />
+        </action>
+
+        <action path="/EditSchema"
+                type="com.bea.alsb.console.resources.schema.actions.EditSchemaAction"
+                name="EditSchemaForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="cancel"
+                     path="/ViewAllSchemas.do" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/schema/EditSchema.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/schema/ViewAllSchemas.jsp" />
+        </action>
+
+        <action path="/EditSchemaRefs"
+                type="com.bea.alsb.console.resources.schema.actions.EditSchemaRefsAction"
+                name="EditSchemaRefsForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/schema/EditSchemaRefs.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/schema/ViewSchema.jsp"/>
+        </action>
+
+        <action path="/ViewSchemaStructure" forward="/ViewSchema.do?isviewtext=false" />
+        <action path="/ViewSchemaText" forward="/ViewSchema.do?isviewtext=true" />
+        <action path="/ViewSchema"
+                type="com.bea.alsb.console.resources.schema.actions.ViewSchemaAction">
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/schema/ViewAllSchemas.jsp"/>
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/schema/ViewSchema.jsp"/>
+        </action>
+
+        <action path="/SchemaDetails"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/schema/SchemaDetails.jsp" />
+
+        <action path="/SchemaBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/schema/SchemaBrowser.jsp" />
+
+        <action path="/SchemaBrowser"
+                type="com.bea.alsb.console.resources.schema.actions.SchemasBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="SchemasBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/schema/SchemaBrowser.jsp"/>
+         </action>
+
+         <action path="/SchemaBrowserReturnToSummary"
+                 type="com.bea.alsb.console.resources.schema.actions.SchemasBrowserAction"
+                 name="BrowserForm"
+                 scope="session"
+                 parameter="summary"
+                 attribute="SchemasBrowserForm"
+                 validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/schema/SchemaBrowser.jsp"/>
+         </action>
+
+         <action path="/SchemaBrowserTask"
+                 type="com.bea.alsb.console.resources.schema.actions.SchemasBrowserAction"
+                 name="BrowserForm"
+                 scope="session"
+                 attribute="SchemasBrowserForm"
+                 validate="false">
+             <forward name="finish"
+                      contextRelative="true"
+                      path="jsp/resources/schema/SchemaBrowser.jsp"/>
+         </action>
+
+        <!--
+            WSDLs
+        -->
+
+        <action path="/ViewAllWsdls"
+                type="com.bea.alsb.console.resources.wsdl.actions.ViewAllWsdlsAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/ViewAllWsdls.jsp"/>
+        </action>
+
+        <action path="/ViewAllWsdlsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/wsdl/ViewAllWsdls.jsp" />
+
+        <action path="/ManageWsdls"
+                type="com.bea.alsb.console.resources.wsdl.actions.ManageWsdlsAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/ViewAllWsdls.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/ViewAllWsdls.jsp" />
+            <forward name="add"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/EditWsdl.jsp" />
+            <forward name="view"
+                     path="/ViewWsdlStructure.do" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/EditWsdl.jsp" />
+            <forward name="editrefs"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/EditWsdlRefs.jsp" />
+            <forward name="sepcallbacks"
+                     path="ViewWsdlStructure.do" />
+        </action>
+
+        <action path="/EditWsdl"
+                type="com.bea.alsb.console.resources.wsdl.actions.EditWsdlAction"
+                name="EditWsdlForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="cancel"
+                     path="/ViewAllWsdls.do" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/EditWsdl.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/ViewAllWsdls.jsp" />
+        </action>
+
+        <action path="/EditWsdlRefs"
+                type="com.bea.alsb.console.resources.wsdl.actions.EditWsdlRefsAction"
+                name="EditWsdlRefsForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/ViewWsdl.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/EditWsdlRefs.jsp" />
+        </action>
+
+        <action path="/ViewWsdlStructure" forward="/ViewWsdl.do?isviewtext=false" />
+        <action path="/ViewWsdlText" forward="/ViewWsdl.do?isviewtext=true" />
+        <action path="/ViewWsdl"
+                type="com.bea.alsb.console.resources.wsdl.actions.ViewWsdlAction">
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/ViewAllWsdls.jsp"/>
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/ViewWsdl.jsp"/>
+        </action>
+
+        <action path="/WsdlDetails"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/wsdl/WsdlDetails.jsp" />
+
+        <action path="/WsdlBrowserPgSort"
+               type="org.apache.struts.actions.ForwardAction"
+               parameter="jsp/resources/wsdl/WsdlBrowser.jsp" />
+
+        <action path="/WsdlBrowser"
+                type="com.bea.alsb.console.resources.wsdl.actions.WsdlsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="WsdlsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/WsdlBrowser.jsp"/>
+        </action>
+
+        <action path="/WsdlBrowserReturnToSummary"
+                type="com.bea.alsb.console.resources.wsdl.actions.WsdlsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="summary"
+                attribute="WsdlsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/WsdlBrowser.jsp"/>
+        </action>
+
+        <action path="/WsdlBrowserTask"
+                type="com.bea.alsb.console.resources.wsdl.actions.WsdlsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="WsdlsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/wsdl/WsdlBrowser.jsp"/>
+        </action>
+
+        <!--
+            Archive resource
+        -->
+
+        <action path="/ViewAllArchives"
+                type="com.bea.alsb.console.resources.archive.actions.ViewAllArchivesAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewAllArchives.jsp"/>
+        </action>
+
+        <action path="/ViewAllArchivesPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/archive/ViewAllArchives.jsp" />
+
+        <action path="/ManageArchive"
+                type="com.bea.alsb.console.resources.archive.actions.ManageArchiveAction"
+                name="ArchiveResourceForm"
+                scope="session"
+                attribute="actionform"
+                validate="false" >
+
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewArchive.jsp" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/archive/EditArchive.jsp" />
+            <forward name="edit_dependencies"
+                     contextRelative="true"
+                     path="jsp/resources/archive/EditDependencies.jsp" />
+            <forward name="summary"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewAllArchives.jsp"/>
+        </action>
+
+        <action path="/ExpandCollapseArchive"
+                type="com.bea.alsb.console.resources.archive.actions.ExpandCollapseArchiveAction"
+                name="ArchiveResourceForm"
+                scope="session"
+                attribute="actionform"
+                validate="false" >
+
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewArchive.jsp" />
+        </action>
+
+        <action path="/ViewArchiveDetails" forward="/ViewArchive.do?view_type=details" />
+        <action path="/ViewArchiveDependencies" forward="/ViewArchive.do?view_type=dependencies" />
+        <action path="/ViewArchive"
+                type="com.bea.alsb.console.resources.archive.actions.ViewArchiveAction"
+                name="ArchiveResourceForm"
+                scope="session"
+                attribute="actionform"
+                validate="false" >
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewArchive.jsp" />
+            <forward name="summary"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewAllArchives.jsp"/>
+        </action>
+
+        <action path="/EditArchive"
+                type="com.bea.alsb.console.resources.archive.actions.EditArchiveAction"
+                name="ArchiveResourceForm"
+                scope="session"
+                attribute="actionform"
+                validate="true"
+                input="failed">
+
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/archive/EditArchive.jsp" />
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewAllArchives.jsp"/>
+        </action>
+
+        <action path="/EditDependencies"
+                type="com.bea.alsb.console.resources.archive.actions.EditDependenciesAction"
+                name="ArchiveResourceForm"
+                scope="session"
+                attribute="actionform"
+                validate="true"
+                input="failed">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ViewArchive.jsp" />
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/resources/archive/EditDependencies.jsp"/>
+        </action>
+
+         <action path="/ViewArchivePgSort"
+                 type="org.apache.struts.actions.ForwardAction"
+                 parameter="jsp/resources/archive/ViewArchive.jsp" />
+
+        <action path="/EditDependentsPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/archive/EditDependencies.jsp" />
+
+        <!-- Archive Browser -->
+        <action path="/ArchiveBrowser"
+                type="com.bea.alsb.console.resources.archive.actions.ArchiveBrowserAction"
+                name="ArchiveBrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="ArchiveBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ArchiveBrowser.jsp"/>
+        </action>
+
+        <action path="/ArchiveBrowserTask"
+                type="com.bea.alsb.console.resources.archive.actions.ArchiveBrowserAction"
+                name="ArchiveBrowserForm"
+                scope="session"
+                attribute="ArchiveBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ArchiveBrowser.jsp"/>
+        </action>
+
+        <action path="/ArchiveBrowserReturnToSummary"
+                type="com.bea.alsb.console.resources.archive.actions.ArchiveBrowserAction"
+                name="ArchiveBrowserForm"
+                scope="session"
+                parameter="summary"
+                attribute="ArchiveBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/archive/ArchiveBrowser.jsp"/>
+        </action>
+
+        <action path="/ArchiveBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/archive/ArchiveBrowser.jsp" />
+
+        <action path="/ArchiveBrowserClassPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/archive/ArchiveBrowser.jsp" />
+        <!--
+            Service Accounts
+        -->
+        <action path="/ViewAllServiceAccounts"
+            type="com.bea.alsb.console.resources.serviceaccount.actions.ViewAllServiceAccounts" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+        </action>
+
+        <action path="/ViewAllServiceAccountsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp" />
+
+        <action path="/ViewServiceAccount"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/serviceaccount/ViewServiceAccount.jsp" />
+
+        <action path="/ManageServiceAccounts"
+            type="com.bea.alsb.console.resources.serviceaccount.actions.ManageServiceAccountAction">
+            <forward name="failed"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+            <forward name="ok"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+            <forward name="add"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountDetails.jsp"/>
+            <forward name="view"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewServiceAccount.jsp"/>
+            <forward name="delete"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+            <forward name="edit_details"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountDetails.jsp"/>
+            <forward name="edit_static_creds"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountStaticCreds.jsp"/>
+            <forward name="edit_local_user_map"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditLocalUserMap.jsp"/>
+            <forward name="edit_remote_user_list"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditRemoteUserList.jsp"/>
+        </action>
+
+        <action path="/ViewServiceAccounts"
+            type="com.bea.alsb.console.resources.serviceaccount.actions.ManageServiceAccountAction">
+            <forward name="failed"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+            <forward name="view"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewServiceAccount.jsp"/>
+        </action>
+
+        <action path="/SubmitEditServiceAccount"
+            type="com.bea.alsb.console.resources.serviceaccount.actions.SubmitEditServiceAccountAction">
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountSummary.jsp"/>
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+            <forward name="finish"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+            <forward name="edit_details"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountDetails.jsp"/>
+            <forward name="edit_static_creds"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountStaticCreds.jsp"/>
+            <forward name="edit_local_user_map"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditLocalUserMap.jsp"/>
+        </action>
+
+        <action path="/SubmitServiceAccountDetails"
+            type="com.bea.alsb.console.resources.serviceaccount.actions.SubmitServiceAccountDetailsAction"
+            name="ServiceAccountInputForm"
+            scope="session"
+            attribute="ServiceAccountInputForm"
+            validate="true"
+            parameter="from_details_page"
+            input="error">
+
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountDetails.jsp"/>
+
+            <forward name="edit_details"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountDetails.jsp"/>
+
+            <forward name="edit_static_creds"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountStaticCreds.jsp"/>
+
+            <forward name="edit_remote_user_list"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditRemoteUserList.jsp"/>
+
+            <forward name="details_summary"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountSummary.jsp"/>
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+        </action>
+
+        <action path="/SubmitStaticCreds"
+                type="com.bea.alsb.console.resources.serviceaccount.actions.SubmitStaticCredsAction"
+                name="ServiceAccountInputForm"
+                scope="session"
+                attribute="ServiceAccountInputForm"
+                validate="true"
+                parameter="from_static_creds_page"
+                input="error">
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountStaticCreds.jsp"/>
+
+            <forward name="edit_details"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountDetails.jsp"/>
+
+            <forward name="details_summary"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountSummary.jsp"/>
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+
+        </action>
+
+        <action path="/SubmitEditRemoteUser"
+                type="com.bea.alsb.console.resources.serviceaccount.actions.SubmitEditRemoteUserAction"
+                name="ServiceAccountInputForm"
+                scope="session"
+                attribute="ServiceAccountInputForm"
+                validate="true"
+                parameter="from_remote_users_page"
+                input="error">
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditRemoteUserList.jsp"/>
+
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditRemoteUserList.jsp"/>
+
+            <forward name="edit_details"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountDetails.jsp"/>
+
+            <forward name="edit_local_user_map"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditLocalUserMap.jsp"/>
+
+            <forward name="details_summary"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountSummary.jsp"/>
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+
+        </action>
+
+        <action path="/SubmitCredentialMap"
+                type="com.bea.alsb.console.resources.serviceaccount.actions.SubmitEditCredMapAction"
+                name="ServiceAccountInputForm"
+                scope="session"
+                attribute="ServiceAccountInputForm"
+                validate="true"
+                parameter="from_credmap_page"
+                input="error">
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditLocalUserMap.jsp"/>
+
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditLocalUserMap.jsp"/>
+
+            <forward name="edit_remote_user_list"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditRemoteUserList.jsp"/>
+
+            <forward name="details_summary"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/EditServiceAccountSummary.jsp"/>
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/resources/serviceaccount/ViewAllServiceAccounts.jsp"/>
+
+        </action>
+
+        <action path="/SortRemoteUsers"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/serviceaccount/EditRemoteUserList.jsp" />
+
+        <action path="/SortCredEntries"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/serviceaccount/EditLocalUserMap.jsp" />
+
+       <action path="/ServiceAccountsBrowserPgSort"
+               type="org.apache.struts.actions.ForwardAction"
+               parameter="jsp/resources/serviceaccount/ServiceAccountsBrowser.jsp" />
+
+        <action path="/ServiceAccountsBrowser"
+                type="com.bea.alsb.console.resources.serviceaccount.actions.ServiceAccountsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="ServiceAccountsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/serviceaccount/ServiceAccountsBrowser.jsp"/>
+        </action>
+
+        <action path="/ServiceAccountsBrowserTask"
+                type="com.bea.alsb.console.resources.serviceaccount.actions.ServiceAccountsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="ServiceAccountsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/serviceaccount/ServiceAccountsBrowser.jsp"/>
+        </action>
+
+        <action path="/LoadZippedResources"
+                type="com.bea.alsb.console.resources.actions.LoadZippedResourcesAction"
+                name="SimpleForm"
+                scope="session"
+                validate="true"
+                input="success" >
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/resources/LoadZippedResources.jsp" />
+        </action>
+
+        <action path="/DoLoadZippedResources"
+                type="com.bea.alsb.console.resources.actions.DoLoadZippedResourcesAction"
+                name="ImportZippedResourcesForm"
+                scope="session"
+                validate="true"
+                input="error" >
+            <forward name="error"
+                    contextRelative="true"
+                    path="jsp/resources/LoadZippedResources.jsp" />
+            <forward name="next"
+                    contextRelative="true"
+                    path="jsp/resources/ViewLoadedResources.jsp" />
+        </action>
+
+        <action path="/UpdateLoadedResources"
+            type="com.bea.alsb.console.resources.actions.UpdateLoadedResourcesAction"
+            name="SimpleForm"
+            scope="session"
+            validate="true"
+            input="success" >
+            <forward name="backToZippedResources"
+                contextRelative="true"
+                path="jsp/resources/LoadZippedResources.jsp" />
+            <forward name="backToUrlResources"
+                contextRelative="true"
+                path="jsp/resources/LoadUrlResources.jsp" />
+            <forward name="stay"
+                contextRelative="true"
+                path="jsp/resources/ViewLoadedResources.jsp" />
+            <forward name="finish"
+                contextRelative="true"
+                path="jsp/resources/FinishImportResources.jsp" />
+         </action>
+
+        <action path="/FinishImportResources"
+            type="com.bea.alsb.console.resources.actions.FinishImportResourcesAction"
+            name="SimpleForm"
+            scope="session"
+            validate="true"
+            input="success" >
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/resources/FinishImportResources.jsp" />
+            <forward name="backToZippedResources"
+                contextRelative="true"
+                path="jsp/resources/LoadZippedResources.jsp" />
+            <forward name="backToUrlResources"
+                contextRelative="true"
+                path="jsp/resources/LoadUrlResources.jsp" />
+        </action>
+
+        <action path="/LoadUrlResources"
+                type="com.bea.alsb.console.resources.actions.LoadUrlResourcesAction"
+                name="SimpleForm"
+                scope="session"
+                validate="true"
+                input="success" >
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/resources/LoadUrlResources.jsp" />
+        </action>
+
+        <action path="/DoLoadUrlResources"
+                type="com.bea.alsb.console.resources.actions.DoLoadUrlResourcesAction"
+                name="ImportUrlResourcesForm"
+                scope="session"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="error"
+                    contextRelative="true"
+                    path="jsp/resources/LoadUrlResources.jsp" />
+            <forward name="next"
+                    contextRelative="true"
+                    path="jsp/resources/ViewLoadedResources.jsp" />
+        </action>
+
+        <!--
+            Alert Destinations resource
+        -->
+
+        <action path="/ViewAllAlertDestinations"
+                type="com.bea.alsb.console.resources.alertdestinations.actions.ViewAllAlertDestinationsAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAllAlertDestinations.jsp"/>
+        </action>
+
+        <action path="/ViewAllAlertDestinationsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/alertdestinations/ViewAllAlertDestinations.jsp" />
+
+        <action path="/ViewAlertDestination"
+                type="com.bea.alsb.console.resources.alertdestinations.actions.ManageAlertDestinationAction" >
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAllAlertDestinations.jsp"/>
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAlertDestination.jsp"/>
+        </action>
+
+        <action path="/ManageAlertDestination"
+                type="com.bea.alsb.console.resources.alertdestinations.actions.ManageAlertDestinationAction">
+            <forward name="failed"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAllAlertDestinations.jsp"/>
+            <forward name="add"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestination.jsp" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestination.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAllAlertDestinations.jsp"/>
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAlertDestination.jsp" />
+        </action>
+
+        <action path="/EditAlertDestination"
+                type="com.bea.alsb.console.resources.alertdestinations.actions.EditAlertDestinationAction"
+                name="DestinationForm"
+                scope="session"
+                attribute="DestinationForm"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAllAlertDestinations.jsp"/>
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestination.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestination.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/ViewAllAlertDestinations.jsp"/>
+            <forward name="edit_destination_target"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestinationTarget.jsp" />
+        </action>
+
+        <action path="/EditAlertDestinationTarget"
+                name="TransportSpecificDynaActionForm"
+                scope="request"
+                type="com.bea.alsb.console.resources.alertdestinations.actions.EditAlertDestinationTargetAction">
+
+            <forward name="cancel"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestination.jsp"/>
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestination.jsp"/>
+
+            <forward name="stay"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/EditAlertDestinationTarget.jsp"/>
+        </action>
+
+        <action path="/AlertDestinationsBrowser"
+                type="com.bea.alsb.console.resources.alertdestinations.actions.AlertDestinationsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="AlertDestinationsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/AlertDestinationsBrowser.jsp"/>
+        </action>
+
+        <action path="/AlertDestinationsBrowserTask"
+                type="com.bea.alsb.console.resources.alertdestinations.actions.AlertDestinationsBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="AlertDestinationsBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/alertdestinations/AlertDestinationsBrowser.jsp"/>
+        </action>
+
+        <action path="/AlertDestinationsBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/alertdestinations/AlertDestinationsBrowser.jsp" />
+
+        <action path="/ManageResources"
+                type="com.bea.alsb.console.resources.actions.ManageResourcesAction" >
+            <forward name="success"
+                     redirect="true"
+                     path="/" />
+        </action>
+
+        <action path="/ManageAdminResources"
+                type="com.bea.alsb.console.resources.actions.ManageResourcesAction" >
+            <forward name="success"
+                     redirect="true"
+                     path="/" />
+        </action>
+
+        <!-- Jcas -->
+        <action path="/ViewAllJcas"
+                type="com.bea.alsb.console.resources.jca.actions.ViewAllJcasAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/jca/ViewAllJcas.jsp"/>
+        </action>
+
+        <action path="/ViewAllJcasPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/jca/ViewAllJcas.jsp" />
+
+        <action path="/ViewJca"
+                type="com.bea.alsb.console.resources.jca.actions.ViewJcaAction">
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/jca/ViewAllJcas.jsp"/>
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/jca/ViewJca.jsp"/>
+        </action>
+
+        <action path="/ManageJcas"
+                type="com.bea.alsb.console.resources.jca.actions.ManageJcasAction">
+            <forward name="summary"
+                     contextRelative="true"
+                     path="jsp/resources/jca/ViewAllJcas.jsp" />
+            <forward name="addOrEdit"
+                     contextRelative="true"
+                     path="jsp/resources/jca/EditJca.jsp" />
+            <forward name="view"
+                     path="/ViewJca.do" />
+            <forward name="editrefs"
+                     contextRelative="true"
+                     path="jsp/resources/jca/EditJcaRefs.jsp" />
+
+        </action>
+
+        <action path="/EditJca"
+                type="com.bea.alsb.console.resources.jca.actions.EditJcaAction"
+                name="EditJcaForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="cancel"
+                     path="/ViewAllJcas.do" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/jca/EditJca.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/jca/ViewAllJcas.jsp" />
+        </action>
+
+        <action path="/EditJcaRefs"
+                type="com.bea.alsb.console.resources.jca.actions.EditJcaRefsAction"
+                name="EditJcaRefsForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/jca/ViewJca.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/jca/EditJcaRefs.jsp" />
+        </action>
+
+        <!-- JCA Browser-->
+
+        <action path="/JcaBrowser"
+                type="com.bea.alsb.console.resources.jca.actions.JcasBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="JcasBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/jca/JcaBrowser.jsp"/>
+        </action>
+
+        <action path="/JcaBrowserTask"
+                type="com.bea.alsb.console.resources.jca.actions.JcasBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="JcasBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/jca/JcaBrowser.jsp"/>
+        </action>
+
+        <action path="/JcaBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/jca/JcaBrowser.jsp" />
+
+        <!--
+            XML Resource
+        -->
+
+        <action path="/ViewAllXmls"
+                type="com.bea.alsb.console.resources.xml.actions.ViewAllXmlsAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/xml/ViewAllXmls.jsp"/>
+        </action>
+
+        <action path="/ViewAllXmlsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xml/ViewAllXmls.jsp" />
+
+        <action path="/ViewXml"
+                type="com.bea.alsb.console.resources.xml.actions.ViewXmlAction">
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xml/ViewAllXmls.jsp" />
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/xml/ViewXml.jsp" />
+        </action>
+
+        <action path="/ManageXmls"
+                type="com.bea.alsb.console.resources.xml.actions.ManageXmlsAction">
+            <forward name="summary"
+                     contextRelative="true"
+                     path="jsp/resources/xml/ViewAllXmls.jsp" />
+            <forward name="addOrEdit"
+                     contextRelative="true"
+                     path="jsp/resources/xml/EditXml.jsp" />
+            <forward name="view"
+                     path="/ViewXml.do" />
+        </action>
+
+        <action path="/EditXml"
+                type="com.bea.alsb.console.resources.xml.actions.EditXmlAction"
+                name="EditXmlForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error">
+            <forward name="cancel"
+                     path="/ViewAllXmls.do" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/xml/EditXml.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xml/ViewAllXmls.jsp" />
+        </action>
+
+        <!-- XMLs Browser -->
+
+        <action path="/XmlBrowser"
+                type="com.bea.alsb.console.resources.xml.actions.XmlBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="XmlBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xml/XmlBrowser.jsp"/>
+        </action>
+
+        <action path="/XmlBrowserTask"
+                type="com.bea.alsb.console.resources.xml.actions.XmlBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="XmlBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/xml/XmlBrowser.jsp"/>
+        </action>
+
+        <action path="/XmlsBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/xml/XmlsBrowser.jsp" />
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                multipartClass="com.bea.alsb.console.controller.MultipartRequestHandler"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="SimpleForm"  type="com.bea.alsb.console.forms.SimpleForm" />
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+	<action-mappings>
+
+        <action path="/EditSessionInMsgFlow"
+                type="com.bea.alsb.console.pipelines.actions.EditSessionAction"
+                validate="false">
+
+            <forward name="MessageFlowMainPage"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp" />
+
+            <forward name="MessageFlowErrorHandlerPage"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditErrorHandler.jsp" />
+
+            <forward name="MessageFlowBranchNodePage"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditBranchNode.jsp" />
+        </action>
+
+        <action path="/EditPipelineTreeEntry"
+                type="com.bea.alsb.console.pipelines.actions.EditPipelineEntryAction"
+                validate="false"
+                parameter="TreeView">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/PipelinesTree.jsp" />
+        </action>
+
+        <action path="/EditPipelineDetailsEntry"
+                type="com.bea.alsb.console.pipelines.actions.EditPipelineEntryAction"
+                validate="false"
+                parameter="DetailView">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp" />
+        </action>
+
+        <action path="/ViewPipelineEntryAction"
+                type="com.bea.alsb.console.pipelines.actions.EditPipelineEntryAction"
+                validate="false"
+                parameter="DetailView">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp" />
+        </action>
+
+        <action path="/PipelineDetailsEntry"
+                type="com.bea.alsb.console.pipelines.actions.EditPipelineEntryAction"
+                validate="false"
+                parameter="DetailView">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp" />
+        </action>
+
+        <action path="/EditPipelineNode"
+                type="com.bea.alsb.console.pipelines.actions.EditPipelineAction"
+                validate="false"
+                parameter="EditSvcPipeline" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+        </action>
+
+        <action path="/ViewPipelineNode"
+                type="com.bea.alsb.console.pipelines.actions.EditPipelineAction"
+                validate="false"
+                parameter="EditSvcPipeline" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+        </action>
+
+        <action path="/SubmitPipelineNode"
+                type="com.bea.alsb.console.pipelines.actions.SubmitPipelineAction"
+                validate="false"
+                parameter="SubmitPipelineNode" >
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+
+            <forward name="reenter"
+                     path="/EditPipelineDetailsEntry.do"/>
+        </action>
+
+        <action path="/ViewSubmitPipelineNode"
+                type="com.bea.alsb.console.pipelines.actions.SubmitPipelineAction"
+                validate="false" />
+
+        <action path="/EditStages"
+                type="com.bea.alsb.console.pipelines.actions.EditStagesAction"
+                validate="false"
+                 parameter="SubmitPipelineNode">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+
+        </action>
+
+        <action path="/EditErrorHandler"
+                type="com.bea.alsb.console.pipelines.actions.EditErrorHandlerAction"
+                validate="false">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditErrorHandler.jsp"/>
+
+            <forward name="toParent"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+
+        </action>
+
+        <action path="/ViewErrorHandler"
+                type="com.bea.alsb.console.pipelines.actions.EditErrorHandlerAction"
+                validate="false">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditErrorHandler.jsp"/>
+
+            <forward name="toParent"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+
+        </action>
+
+        <action path="/EditErrorStages"
+                type="com.bea.alsb.console.pipelines.actions.EditErrorHandlerStagesAction"
+                validate="false">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditErrorHandler.jsp"/>
+        </action>
+
+        <action path="/ViewErrorStages"
+                type="com.bea.alsb.console.pipelines.actions.EditErrorHandlerStagesAction"
+                validate="false">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditErrorHandler.jsp"/>
+        </action>
+
+        <action path="/SubmitErrorHandler"
+                type="com.bea.alsb.console.pipelines.actions.SubmitErrorHandlerAction"
+                validate="false" >
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditErrorHandler.jsp"/>
+
+            <forward name="reenter"
+                     path="/EditPipelineDetailsEntry.do"/>
+
+            <forward name="toParent"
+                     path="/EditPipelineDetailsEntry.do"/>
+
+            <forward name="forwardSuccessToPipeline"
+                     path="/SubmitPipelineNode.do?actionSubmit=submitPipeline"/>
+
+        </action>
+
+        <action path="/ViewSubmitErrorHandler"
+                type="com.bea.alsb.console.pipelines.actions.SubmitErrorHandlerAction"
+                validate="false" >
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditErrorHandler.jsp"/>
+
+            <forward name="reenter"
+                     path="/EditPipelineDetailsEntry.do"/>
+
+            <forward name="toParent"
+                     path="/EditPipelineDetailsEntry.do"/>
+
+        </action>
+
+        <action path="/EditBranchNode"
+                type="com.bea.alsb.console.pipelines.actions.EditBranchNodeAction"
+                validate="false"
+                parameter="EditBranchNode" >
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditBranchNode.jsp"/>
+        </action>
+
+        <action path="/ViewBranchNode"
+                type="com.bea.alsb.console.pipelines.actions.EditBranchNodeAction"
+                validate="false"
+                parameter="EditBranchNode" >
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditBranchNode.jsp"/>
+        </action>
+
+        <action path="/EditBranchNodeFlow"
+                type="com.bea.alsb.console.pipelines.actions.EditBranchNodeFlowAction"
+                validate="false">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+        </action>
+
+        <action path="/ViewBranchNodeFlow"
+                type="com.bea.alsb.console.pipelines.actions.EditBranchNodeFlowAction"
+                validate="false">
+
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditPipelineMain.jsp"/>
+        </action>
+
+        <action path="/SubmitBranchNode"
+                type="com.bea.alsb.console.pipelines.actions.SubmitBranchNodeAction"
+                validate="false"
+                parameter="SubmitBranchNode" >
+            <forward name="reenter"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditBranchNode.jsp"/>
+            <forward name="success"
+                     path="EditPipelineDetailsEntry.do"/>
+            <forward name="forwardSuccessToPipeline"
+                     path="/SubmitPipelineNode.do?actionSubmit=submitPipeline"/>
+        </action>
+
+        <action path="/ViewSubmitBranchNode"
+                type="com.bea.alsb.console.pipelines.actions.SubmitBranchNodeAction"
+                validate="false"
+                parameter="SubmitBranchNode" >
+            <forward name="reenter"
+                     contextRelative="true"
+                     path="jsp/pipelines/EditBranchNode.jsp"/>
+            <forward name="success"
+                     path="EditPipelineDetailsEntry.do"/>
+        </action>
+
+        <!-- Cancel All action for Message Flow edit pages -->
+
+        <action path="/CancelAllPipeline"
+                type="com.bea.alsb.console.pipelines.actions.CancelAllPipelineAction"
+                validate="false">
+
+            <forward name="success"
+                     path="/EditPipelineDetailsEntry.do"/>
+        </action>
+
+        <action path="/ExitAllPipeline"
+                type="com.bea.alsb.console.pipelines.actions.CancelAllPipelineAction"
+                validate="false">
+
+            <forward name="success"
+                     path="/EditPipelineDetailsEntry.do"/>
+        </action>
+
+ 	</action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                inputForward="true" nocache="true"/>
+
+</struts-config>                                

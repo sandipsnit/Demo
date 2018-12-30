@@ -1,0 +1,1381 @@
+# S405DG.def: Collects Data Guard Information
+# $Id: S405DG.def,v 2.17 2012/05/11 09:27:40 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S405DG.def,v 2.17 2012/05/11 09:27:40 mschenke Exp $
+#
+# Change History
+# 20120511  KRA  Improve remote session identifier assignment.
+
+=head1 NAME
+
+S405DG - Collects Data Guard Information
+
+=head1 DESCRIPTION
+
+This module collects Data Guard-related information (for Oracle 9i Release 2
+or later). The following reports can be generated and are regrouped under
+C<Data Guard>.
+
+=cut
+
+if !getSetting('DATABASE_INSTALLED')
+ return
+
+echo tput('bold'),'Processing DG module ...',tput('off')
+
+# Initialization
+var $AGE          = trim(getSetting('DG_AGE'))
+var $ORACLE_HOME  = getSetting('ORACLE_HOME','')
+var $PRIMARY_SID  = getSetting('ORACLE_SID')
+var $TAIL         = getSetting('DG_TAIL',30000)
+var $USER         = getSetting('DG_BROKER_USER','sys')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+var @TTL
+var @HDR
+toc '1:Data Guard'
+
+use Buffer
+use Remote
+
+# Load the common macros
+run DBinfo()
+
+# Validate the number of days for archived history
+if !match($AGE,'^\d+$')
+ var $AGE = 7
+
+# Obtain the database version
+var $ORACLE_VERSION = get_db_version()
+if !match($ORACLE_VERSION,'^(92|10|11)')
+{report not_applicable
+ write 'The Data Guard module can only be executed on 9i Release 2 \
+        or higher.'
+ toc '2:[[',getFile(),'][rda_report][Not Applicable]]'
+ return
+}
+
+=head2 basic - Basic Database Information
+
+Provides the basic information related to Data Guard.
+
+=cut
+
+debug ' Inside DG module, gathering basic database information'
+report basic
+var $TTL = '---+!! Basic Database Information'
+var @TTL = ('',\
+            '---+ Database Information',\
+            '---+ Instance Information',\
+            '---+ RAC Configuration',\
+            '---+ Instance Recovery Information')
+if match($ORACLE_VERSION,'^(10|11)')
+{var $HDR[1] = '| *DB ID*|*DB Unique Name*| *Activation#*|*DB Role*|\
+                  *Switchover Status*| *Platform ID*|*Platform Name *|\
+                  *Controlfile Type* |*Log Mode* |'
+ set $sql
+ {SELECT '| ' ||
+ "       dbid || '|' ||
+ "       db_unique_name || ' | ' ||
+ "       activation# || '|' ||
+ "       database_role || ' | ' ||
+ "       switchover_status || ' | ' ||
+ "       platform_id || '|' ||
+ "       platform_name || ' |' ||
+ "       controlfile_type || ' |' ||
+ "       log_mode || ' |'
+ " FROM v$database;
+ }
+ var $rol = field('\|',4,grepSql($sql,'.','f'))
+}
+else
+{var $HDR[1] = '| *DB ID*| *Activation#*|*DB Role*|*Switchover Status*|\
+                  *Controlfile Type* |*Log Mode* |'
+ set $sql
+ {SELECT '| ' ||
+ "       dbid || '| ' ||
+ "       activation# || '|' ||
+ "       database_role || ' | ' ||
+ "       switchover_status || ' |' ||
+ "       controlfile_type || ' |' ||
+ "       log_mode || ' |'
+ " FROM v$database;
+ }
+ var $rol = field('\|',3,grepSql($sql,'.','f'))
+}
+
+var $HDR[2] = '|*Instance Name* |*Host Name* |*Version* |*Archiver* \
+               |*Log Switch Wait* |*Status* |'
+append $sql
+{PROMPT ___Macro_separator(2)___
+"SELECT '|' ||
+"       instance_name || ' |' ||
+"       host_name || ' |' ||
+"       version || ' |' ||
+"       archiver || ' |' ||
+"       log_switch_wait || ' |' ||
+"       status || ' |'
+" FROM gv$instance;
+}
+
+var ($HDR[3],$col3) = getSqlColumns('RDA','','V$PARAMETER')
+call clearSqlColumns('RDA')
+if $col3
+{append $sql
+ {PROMPT ___Macro_separator(3)___
+ "SELECT :1
+ " FROM v$parameter
+ " WHERE name = 'cluster_database';
+ }
+}
+var ($HDR[4],$col4) = getSqlColumns('RDA','','GV$INSTANCE_RECOVERY')
+call clearSqlColumns('RDA')
+if $col4
+{append $sql
+ {PROMPT ___Macro_separator(4)___
+ "SELECT :2
+ " FROM gv$instance_recovery;
+ }
+}
+call separator(1)
+call writeSql(bindSql($sql,$col3,$col4),2)
+call separator(0,'Basic Database Information')
+
+=head2 primary - Primary Database Information
+
+Provides the primary database information.
+
+=cut
+
+if match($rol,'PRIMARY')
+{debug ' Inside DG module, gathering primary database information'
+ report primary
+ var $TTL = '---+!! Primary Database Information'
+ var @TTL = ('',\
+             '---+ Archive Dest Information',\
+             '---+ Archive Dest Status',\
+             '---+ Shipping Redo Log Process Status',\
+             '---+ Data Guard Features Enabled',\
+             '---+ Data Guard Status',\
+             '---+ Standby Redo Logs',\
+             '---+ Archival History',\
+             '---+ Archival History Count',\
+             '---+ Current and Last Archived Sequence Number')
+ var ($HDR[1],$col1) = getSqlColumns('RDA','','V$ARCHIVE_DEST')
+ call clearSqlColumns('RDA')
+ if $col1
+ {set $sql
+  {SELECT :1
+  " FROM v$archive_dest;
+  }
+ }
+ else
+ {set $sql
+  {PROMPT ___Macro_separator(1)___
+  }
+ }
+ var ($HDR[2],$col2) = getSqlColumns('RDA','','V$ARCHIVE_DEST_STATUS')
+ call clearSqlColumns('RDA')
+ if $col2
+ {append $sql
+  {PROMPT ___Macro_separator(2)___
+  "SELECT :2
+  " FROM v$archive_dest_status;
+  }
+ }
+ var $HDR[3] = '|*Process*|*Status*|*Client Process*|*Sequence Number*|'
+ append $sql
+ {PROMPT ___Macro_separator(3)___
+ "SELECT '|' ||
+ "       process || ' |' ||
+ "       status || ' |' ||
+ "       client_process || ' | ' ||
+ "       sequence# || '|'
+ " FROM v$managed_standby;
+ }
+ if match($ORACLE_VERSION,'^(10|11)')
+ {var $HDR[4] = '|*Flashback*|*Force Logging*|*Supplemental Log Data PK*|\
+                  *Supplemental Log Data UI*|*Remote Archive *|\
+                  *Protection Mode*|*Protection Level*|*Data Guard Broker*|'
+  append $sql
+  {PROMPT ___Macro_separator(4)___
+  "SELECT '| ' ||
+  "       flashback_on || ' |' ||
+  "       force_logging || ' |' ||
+  "       supplemental_log_data_pk || ' |' ||
+  "       supplemental_log_data_ui || ' |' ||
+  "       remote_archive || ' |' ||
+  "       protection_mode || ' |' ||
+  "       protection_level || ' |' ||
+  "       dataguard_broker || ' |'
+  " FROM v$database;
+  }
+ }
+ else
+ {var $HDR[4] = '|*Force Logging*|*Supplemental Log Data PK*|\
+                  *Supplemental Log Data UI*|*Remote Archive*|\
+                  *Protection Mode*|*Protection Level*|*Data Guard Broker*|'
+  append $sql
+  {PROMPT ___Macro_separator(4)___
+  "SELECT '| ' ||
+  "       force_logging || ' |' ||
+  "       supplemental_log_data_pk || ' |' ||
+  "       supplemental_log_data_ui || ' |' ||
+  "       remote_archive || ' |' ||
+  "       protection_mode || ' |' ||
+  "       protection_level || ' |' ||
+  "       dataguard_broker || ' |'
+  " FROM v$database;
+  }
+ }
+ call setSqlColumns('RDA','message',"REPLACE(message,CHR(10),'%BR%')")
+ call setSqlColumns('RDA','severity',"DECODE(UPPER(severity),\
+   'ERROR','%RED%ERROR%ENDCOLOR%',\
+   'FATAL','%RED%FATAL%ENDCOLOR%',\
+   UPPER(severity))")
+ var ($HDR[5],$col5) = getSqlColumns('RDA','','V$DATAGUARD_STATUS')
+ call clearSqlColumns('RDA')
+ if $col5
+ {append $sql
+  {PROMPT ___Macro_separator(5)___
+  "SELECT :3
+  " FROM v$dataguard_status;
+  }
+ }
+ var ($HDR[6],$col6) = getSqlColumns('RDA','','V$STANDBY_LOG')
+ call clearSqlColumns('RDA')
+ if $col6
+ {append $sql
+  {PROMPT ___Macro_separator(6)___
+  "SELECT :4
+  " FROM v$standby_log;
+  }
+ }
+ var ($HDR[7],$col7) = getSqlColumns('RDA','','V$ARCHIVED_LOG')
+ if $col7
+ {append $sql
+  {PROMPT ___Macro_separator(7)___
+  "SELECT :5
+  " FROM v$archived_log
+  " WHERE completion_time >= SYSDATE - :6;
+  }
+ }
+ call clearSqlColumns('RDA')
+ var $HDR[8] = '| *Count*|'
+ append $sql
+ {PROMPT ___Macro_separator(8)___
+ "SELECT '| ' ||
+ "       COUNT(1) || '|'
+ " FROM v$archived_log;
+ }
+ var $HDR[9] = '|*Destination*|*Current Sequence*|*Last Archived*|'
+ append $sql
+ {PROMPT ___Macro_separator(9)___
+ "SELECT '| ' ||
+ "       ads.dest_id || '| ' ||
+ "       max(sequence#) || '| ' ||
+ "       max(log_sequence) || '|'
+ " FROM v$archived_log al,
+ "      v$archive_dest ad,
+ "      v$archive_dest_status ads
+ " WHERE ad.dest_id = al.dest_id
+ "   AND al.dest_id=ads.dest_id
+ " GROUP BY ads.dest_id;
+ }
+ if match($ORACLE_VERSION,'^11')
+ {var $TTL[10] = '---+ X$LOGBUF_READHIST Table Information'
+  var ($HDR[10],$col10) = getSqlColumns('RDA','','X$LOGBUF_READHIST')
+  call clearSqlColumns('RDA')
+  if $col10
+  {append $sql
+   {PROMPT ___Macro_separator(10)___
+   "SELECT :7
+   " FROM x$logbuf_readhist;
+   }
+  }
+ }
+ call separator(1)
+ call writeSql(bindSql($sql,$col1,$col2,$col5,$col6,$col7,$AGE,$col10),2)
+ call separator(0,'Primary Database Information')
+
+ # Identify remote SID
+ var @sid
+ set $sql
+ {SELECT 'con=' || value
+ " FROM v$parameter
+ " WHERE LOWER(name) LIKE 'log_archive_dest_%'
+ "   AND LOWER(value) LIKE '%service=%';
+ }
+ call loadSql($sql)
+ loop $lin (grepLastSql('con='))
+ {if match($lin,'service=([\042\047])(.*?)\1',true)
+   var (undef,$sid) = last
+  elsif match($lin,'service=(\S+)',true)
+   var ($sid) = last
+  call push(@sid,$sid)
+ }
+}
+
+=head2 physical - Physical Standby Information
+
+Provides the physical standby database information.
+
+=cut
+
+macro get_physical_standby
+{var ($nam) = (@arg)
+ import $AGE,$ORACLE_VERSION,$TOC,$TOP,$TTL,@HDR,@TTL
+
+ debug ' Inside DG module, gathering physical standby database information'
+ if match($ORACLE_VERSION,'^(10|11)')
+ {set $sql
+  {SELECT '| ' ||
+  "       open_mode
+  " FROM v$database;
+  }
+  var $mod = field('\|',1,grepSql($sql,'.','f'))
+ }
+ report join('_','physical',$nam)
+ var $TTL = '---+!! Physical Standby Information'
+ var @TTL = ('',\
+             '---+ Data Guard Features Enabled',\
+             '---+ Database Services Information from GV$SERVICES',\
+             '---+ Database Services Information from DBA_SERVICES',\
+             '---+ Archive Dest Information',\
+             '---+ Archive Dest Status',\
+             '---+ Redo Receive Status',\
+             '---+ Redo Apply Status',\
+             '---+ Configuration Process Status',\
+             '---+ Standby Redo Log information',\
+             '---+ Data Guard Status',\
+             '---+ Archive Gap Information',\
+             '---+ Archival History',\
+             '---+ Archival History Count',\
+             '---+ Last Sequence Applied and Received',\
+             '---+ Per Thread Last Sequence Applied and Received')
+ var @HDR = ()
+ if match($ORACLE_VERSION,'^(10|11)')
+ {var $HDR[1] = '|*Flashback*|*Force Logging*|*Supplemental Log Data PK*|\
+                  *Supplemental Log Data UI*|*Remote Archive *|\
+                  *Protection Mode*|*Protection Level*|*Data Guard Broker*|'
+  set $sql
+  {SELECT '| ' ||
+  "       flashback_on || ' |' ||
+  "       force_logging || ' |' ||
+  "       supplemental_log_data_pk || ' |' ||
+  "       supplemental_log_data_ui || ' |' ||
+  "       remote_archive || ' |' ||
+  "       protection_mode || ' |' ||
+  "       protection_level || ' |' ||
+  "       dataguard_broker || ' |'
+  " FROM v$database;
+  }
+ }
+ else
+ {var $HDR[1] = '|*Force Logging*|*Supplemental Log Data PK*|\
+                  *Supplemental Log Data UI*|*Remote Archive*|\
+                  *Protection Mode*|*Protection Level*|*Data Guard Broker*|'
+  set $sql
+  {SELECT '| ' ||
+  "       force_logging || ' |' ||
+  "       supplemental_log_data_pk || ' |' ||
+  "       supplemental_log_data_ui || ' |' ||
+  "       remote_archive || ' |' ||
+  "       protection_mode || ' |' ||
+  "       protection_level || ' |' ||
+  "       dataguard_broker || ' |'
+  " FROM v$database;
+  }
+ }
+ if match($ORACLE_VERSION,'^(10|11)')
+ {if match($mod,'MOUNTED')
+  {var ($HDR[2],$col2) = getSqlColumns('RDA','','GV$SERVICES')
+   call clearSqlColumns('RDA')
+   if $col2
+   {append $sql
+    {PROMPT ___Macro_separator(2)___
+    "SELECT :1
+    " FROM gv$services; 
+    }
+   }
+  }
+  elsif match($mod,'READ ONLY')
+  {var ($HDR[3],$col3) = getSqlColumns('RDA','','DBA_SERVICES')
+   call clearSqlColumns('RDA')
+   if $col3
+   {append $sql
+    {PROMPT ___Macro_separator(3)___
+    "SELECT :2
+    " FROM dba_services; 
+    }
+   }
+  }
+ }
+ var ($HDR[4],$col4) = getSqlColumns('RDA','','V$ARCHIVE_DEST')
+ call clearSqlColumns('RDA')
+ if $col4
+ {append $sql
+  {PROMPT ___Macro_separator(4)___
+  "SELECT :3
+  " FROM v$archive_dest;
+  }
+ }
+ var ($HDR[5],$col5) = getSqlColumns('RDA','','V$ARCHIVE_DEST_STATUS')
+ call clearSqlColumns('RDA')
+ if $col5
+ {append $sql
+  {PROMPT ___Macro_separator(5)___
+  "SELECT :4
+  " FROM v$archive_dest_status;
+  }
+ }
+ var ($HDR[6],$col6) = getSqlColumns('RDA','','V$MANAGED_STANDBY')
+ var $HDR[7] = $HDR[6]
+ call clearSqlColumns('RDA')
+ if $col6
+ {append $sql
+  {PROMPT ___Macro_separator(6)___
+  "SELECT :5
+  " FROM v$managed_standby
+  " WHERE process IN ('RFS','ARCH');
+  "PROMPT ___Macro_separator(7)___
+  "SELECT :5
+  " FROM v$managed_standby
+  " WHERE process LIKE 'MRP%';
+  }
+ }
+ var $HDR[8] = '|*Process*|*Status*|*Client Process*|*Sequence Number*|\
+                 *Block Number*|*Active Agents*|*Known Agents*|'
+ append $sql
+ {PROMPT ___Macro_separator(8)___
+ "SELECT '|' ||
+ "       process || ' |' ||
+ "       status || ' |' ||
+ "       client_process || ' | ' ||
+ "       sequence# || '| ' ||
+ "       block# || '| ' ||
+ "       active_agents || '| ' ||
+ "       known_agents || '|'
+ " FROM v$managed_standby;
+ }
+ var ($HDR[9],$col9) = getSqlColumns('RDA','','V$STANDBY_LOG')
+ call clearSqlColumns('RDA')
+ if $col9
+ {append $sql
+  {PROMPT ___Macro_separator(9)___
+  "SELECT :6
+  " FROM v$standby_log;
+  }
+ }
+ call setSqlColumns('RDA','message',"REPLACE(message,CHR(10),'%BR%')")
+ call setSqlColumns('RDA','severity',"DECODE(UPPER(severity),\
+   'ERROR','%RED%ERROR%ENDCOLOR%',\
+   'FATAL','%RED%FATAL%ENDCOLOR%',\
+   UPPER(severity))")
+ var ($HDR[10],$col10) = getSqlColumns('RDA','','V$DATAGUARD_STATUS')
+ call clearSqlColumns('RDA')
+ if $col10
+ {append $sql
+  {PROMPT ___Macro_separator(10)___
+  "SELECT :7
+  " FROM v$dataguard_status;
+  }
+ }
+ var ($HDR[11],$col11) = getSqlColumns('RDA','','V$ARCHIVE_GAP')
+ call clearSqlColumns('RDA')
+ if $col11
+ {append $sql
+  {PROMPT ___Macro_separator(11)___
+  "SELECT :8
+  " FROM v$archive_gap;
+  }
+ }
+ var ($HDR[12],$col12) = getSqlColumns('RDA','','V$ARCHIVED_LOG')
+ call clearSqlColumns('RDA')
+ if $col12
+ {append $sql
+  {PROMPT ___Macro_separator(12)___
+  "SELECT :9
+  " FROM v$archived_log
+  " WHERE completion_time >= SYSDATE - :10;
+  }
+ }
+ var $HDR[13] = '| *Count*|'
+ var $HDR[14] = '| *Last Sequence Received*| *Last Sequence Applied*|'
+ var $HDR[15] = '| *Thread*| *Last Sequence Received*| *Last Sequence Applied*|'
+ append $sql
+ {PROMPT ___Macro_separator(13)___
+ "SELECT '| ' ||
+ "       COUNT(1) || '|'
+ " FROM v$archived_log;
+ "PROMPT ___Macro_separator(14)___
+ "SELECT '| ' ||
+ "       max(al.sequence#) || '| ' ||
+ "       max(lh.sequence#) || '|'
+ " FROM v$archived_log al, v$log_history lh;
+ "PROMPT ___Macro_separator(15)___
+ "SELECT '| ' ||
+ "       al.thrd || '| ' ||
+ "       almax || '| ' ||
+ "       lhmax || '|'
+ " FROM (SELECT thread# thrd,
+ "              MAX(sequence#) almax
+ "        FROM v$archived_log
+ "        WHERE resetlogs_change# = (SELECT resetlogs_change#
+ "                                    FROM v$database)
+ "        GROUP BY thread#) al,
+ "      (SELECT thread# thrd,
+ "              MAX(sequence#) lhmax
+ "        FROM v$log_history
+ "        WHERE first_time = (SELECT MAX(first_time)
+ "                             FROM v$log_history)
+ "        GROUP BY thread#) lh
+ " WHERE al.thrd = lh.thrd;
+ }
+ if match($ORACLE_VERSION,'^(102|11)')
+ {var $TTL[16] = '---+ Wait Time For Events'
+  var $HDR[16] = '|*Event* | *Total Waits*| *Time Waited (seconds)*| \
+                   *Average Wait (Milliseconds)*|*Time*|'
+  var $TTL[17] = '---+ Event Histogram Information'
+  var $HDR[17] = '|*Time* |*Event* | *Wait Time (Milliseconds)*| *Wait Count*|'
+  var $TTL[18] = '---+ Recovery Progress'
+  var $HDR[18] = '|*Start Time* |*Type* |*Item* | *Units*| *So Far*| *Total*|\
+                   *Time Stamp* |'
+  append $sql
+  {PROMPT ___Macro_separator(16)___
+  "SELECT '|' ||
+  "       event || ' | ' ||
+  "       total_waits || '| ' ||
+  "       ROUND(time_waited/100) || '| ' ||
+  "       average_wait*10  || '|' ||
+  "       TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+  " FROM v$system_event
+  " WHERE time_waited > 100 
+  "   AND event NOT LIKE 'rdbms ipc %'
+  "   AND event NOT LIKE '%timer%'
+  "   AND LOWER(event) NOT LIKE '%idle%'
+  "   AND LOWER(event) not like 'sql%net%'
+  "   AND event NOT LIKE 'ges%'
+  " ORDER BY time_waited;
+  "PROMPT ___Macro_separator(17)___
+  "SELECT '|' ||
+  "       TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+  "       event || ' | ' ||
+  "       wait_time_milli || '| ' ||
+  "       wait_count || '|'
+  " FROM v$event_histogram 
+  " WHERE wait_count > 0;
+  "PROMPT ___Macro_separator(18)___
+  "SELECT '|' ||
+  "       TO_CHAR(start_time,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+  "       type || ' |' ||
+  "       item || ' | ' ||
+  "       units || '| ' ||
+  "       sofar || '| ' ||
+  "       total || '|' ||
+  "       TO_CHAR(timestamp,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+  " FROM v$recovery_progress;
+  }
+ }
+ call separator(1)
+ call writeSql(bindSql($sql,$col2,$col3,$col4,$col5,$col6,$col9,$col10,$col11,\
+                       $col12,$AGE),5)
+ call separator(0,concat('Physical Standby Information',\
+                         cond($nam,concat(' (',$nam,')'))))
+}
+
+if match($rol,'PHYSICAL STANDBY')
+ call get_physical_standby()
+
+=head2 logical - Logical Standby Information
+
+Provides the logical standby database information.
+
+=cut
+
+macro get_logical_standby
+{var ($nam) = (@arg)
+ import $ORACLE_VERSION,$TOC,$TOP,$TTL,@HDR,@TTL
+
+ debug ' Inside DG module, gathering logical standby database information \
+        (can take time) '
+ if match($ORACLE_VERSION,'^(10|11)')
+ {set $sql
+  {SELECT '| ' ||
+  "       open_mode
+  " FROM v$database;
+  }
+  var $mod = field('\|',1,grepSql($sql,'.','f'))
+ }
+ report join('_','logical',$nam)
+ var $TTL = '---+!! Logical Standby Information'
+ var @TTL = ('',\
+             '---+ Data Guard Features Enabled',\
+             '---+ Database Services Information from GV$SERVICES',\
+             '---+ Database Services Information from DBA_SERVICES',\
+             '---+ Archive Dest Information',\
+             '---+ Archive Dest Status',\
+             '---+ Redo Receive Status',\
+             '---+ Shipping Redo Log Process Status',\
+             '---+ Standby Redo Log information',\
+             '---+ Logical Standby Parameters',\
+             code(concat('---++ Redo Apply status at ',${RDA.TIMESTAMP})),\
+             code(concat('---++ Logical Statistics at ',${RDA.TIMESTAMP})),\
+             '---+ SQL Applied',\
+             '---+ Data Guard Status',\
+             '---+ Archival History',\
+             '---+ Logical Standby Apply Activity History',\
+             '---+ Logical Standby Apply Lag',\
+             '---+ Logical Standby Progress Times',\
+             '---+ Logical Standby Event Information',\
+             '---+ Logical Standby Parameters',\
+             '---+ LogMiner Session Information',\
+             '---+ LogMiner Dictionary Information',\
+             '---+ LogMiner Dictionary Status',\
+             '---+ LogMiner Persistent Sessions',\
+             '---+ LogMiner Key Tables',\
+             undef,\
+             undef,\
+             undef)
+ var @HDR = ()
+ if match($ORACLE_VERSION,'^(10|11)')
+ {var $HDR[1] = '|*Flashback*|*Force Logging*|*Supplemental Log Data PK*|\
+                  *Supplemental Log Data UI*|*Remote Archive *|\
+                  *Protection Mode*|*Protection Level*|*Data Guard Broker*|'
+  set $sql
+  {SELECT '| ' ||
+  "       flashback_on || ' |' ||
+  "       force_logging || ' |' ||
+  "       supplemental_log_data_pk || ' |' ||
+  "       supplemental_log_data_ui || ' |' ||
+  "       remote_archive || ' |' ||
+  "       protection_mode || ' |' ||
+  "       protection_level || ' |' ||
+  "       dataguard_broker || ' |'
+  " FROM v$database;
+  }
+ }
+ else
+ {var $HDR[1] = '|*Force Logging*|*Supplemental Log Data PK*|\
+                  *Supplemental Log Data UI*|*Remote Archive*|\
+                  *Protection Mode*|*Protection Level*|*Data Guard Broker*|'
+  set $sql
+  {SELECT '| ' ||
+  "       force_logging || ' |' ||
+  "       supplemental_log_data_pk || ' |' ||
+  "       supplemental_log_data_ui || ' |' ||
+  "       remote_archive || ' |' ||
+  "       protection_mode || ' |' ||
+  "       protection_level || ' |' ||
+  "       dataguard_broker || ' |'
+  " FROM v$database;
+  }
+ }
+ if match($ORACLE_VERSION,'^(10|11)')
+ {if match($mod,'MOUNTED')
+  {var ($HDR[2],$col2) = getSqlColumns('RDA','','GV$SERVICES')
+   call clearSqlColumns('RDA')
+   if $col2
+   {append $sql
+    {PROMPT ___Macro_separator(2)___
+    "SELECT :1
+    " FROM gv$services; 
+    }
+   }
+  }
+  elsif match($mod,'READ ONLY|READ WRITE')
+  {var ($HDR[3],$col3) = getSqlColumns('RDA','','DBA_SERVICES')
+   call clearSqlColumns('RDA')
+   if $col3
+   {append $sql
+    {PROMPT ___Macro_separator(3)___
+    "SELECT :2
+    " FROM dba_services; 
+    }
+   }
+  }
+ }
+ var ($HDR[4],$col4) = getSqlColumns('RDA','','V$ARCHIVE_DEST')
+ call clearSqlColumns('RDA')
+ if $col4
+ {append $sql
+  {PROMPT ___Macro_separator(4)___
+  "SELECT :3
+  " FROM v$archive_dest;
+  }
+ }
+ var ($HDR[5],$col5) = getSqlColumns('RDA','','V$ARCHIVE_DEST_STATUS')
+ call clearSqlColumns('RDA')
+ if $col5
+ {append $sql
+  {PROMPT ___Macro_separator(5)___
+  "SELECT :4
+  " FROM v$archive_dest_status;
+  }
+ }
+ var ($HDR[6],$col6) = getSqlColumns('RDA','','V$MANAGED_STANDBY')
+ call clearSqlColumns('RDA')
+ if $col6
+ {append $sql
+  {PROMPT ___Macro_separator(6)___
+  "SELECT :5
+  " FROM v$managed_standby
+  " WHERE process IN ('RFS','ARCH');
+  }
+ }
+ var $HDR[7] = '|*Process*|*Status*|*Client Process*|*Sequence Number*|'
+ append $sql
+ {PROMPT ___Macro_separator(7)___
+ "SELECT '|' ||
+ "       process || ' |' ||
+ "       status || ' |' ||
+ "       client_process || ' | ' ||
+ "       sequence# || '|'
+ " FROM v$managed_standby;
+ }
+ if match($ORACLE_VERSION,'^(10|11)')
+ {var ($HDR[8],$col8) = getSqlColumns('RDA','','V$STANDBY_LOG')
+  call clearSqlColumns('RDA')
+  if $col8
+  {append $sql
+   {PROMPT ___Macro_separator(8)___
+   "SELECT :6
+   " FROM v$standby_log;
+   }
+  }
+ }
+ var ($HDR[9],$col9) = getSqlColumns('RDA','','DBA_LOGSTDBY_PARAMETERS')
+ call clearSqlColumns('RDA')
+ if $col9
+ {append $sql
+  {PROMPT ___Macro_separator(9)___
+  "SELECT :7
+  " FROM dba_logstdby_parameters;
+  }
+ }
+ if match($ORACLE_VERSION,'^(10|11)')
+ {var ($HDR[10],$col10) = getSqlColumns('RDA','','V$LOGSTDBY_PROCESS')
+  call clearSqlColumns('RDA')
+  if $col10
+  {append $sql
+   {PROMPT ___Macro_separator(27)___
+   "PROMPT ---+ Redo Apply status
+   "PROMPT ___Macro_separator(10)___
+   "SELECT :8
+   " FROM v$logstdby_process;
+   "EXECUTE DBMS_LOCK.SLEEP(30);
+   "PROMPT ___Macro_separator(10)___
+   "SELECT :8
+   " FROM v$logstdby_process;
+   "EXECUTE DBMS_LOCK.SLEEP(30);
+   "PROMPT ___Macro_separator(10)___
+   "SELECT :8
+   " FROM v$logstdby_process;
+   }
+  }
+ }
+ else
+ {var ($HDR[10],$col10) = getSqlColumns('RDA','','V$LOGSTDBY')
+  call clearSqlColumns('RDA')
+  if $col10
+  {append $sql
+   {PROMPT ___Macro_separator(27)___
+   "PROMPT ---+ Redo Apply status
+   "PROMPT ___Macro_separator(10)___
+   "SELECT :8
+   " FROM v$logstdby;
+   "EXECUTE DBMS_LOCK.SLEEP(30);
+   "PROMPT ___Macro_separator(10)___
+   "SELECT :8
+   " FROM v$logstdby;
+   "EXECUTE DBMS_LOCK.SLEEP(30);
+   "PROMPT ___Macro_separator(10)___
+   "SELECT :8
+   " FROM v$logstdby;
+   }
+  }
+ }
+ var ($HDR[11],$col11) = getSqlColumns('RDA','','V$LOGSTDBY_STATS')
+ call clearSqlColumns('RDA')
+ if $col11
+ {append $sql
+  {PROMPT ___Macro_separator(27)___
+  "PROMPT ---+ Logical Statistics
+  "PROMPT ___Macro_separator(11)___
+  "SELECT :9
+  " FROM v$logstdby_stats;
+  "EXECUTE DBMS_LOCK.SLEEP(30);
+  "PROMPT ___Macro_separator(11)___
+  "SELECT :9
+  " FROM v$logstdby_stats;
+  "EXECUTE DBMS_LOCK.SLEEP(30);
+  "PROMPT ___Macro_separator(11)___
+  "SELECT :9
+  " FROM v$logstdby_stats;
+  }
+ }
+ var $HDR[12] = '|*Process*|*Server ID*|*SQL Text*|'
+ append $sql
+ {PROMPT ___Macro_separator(12)___
+ "SELECT '| ' ||
+ "       s.process || ' |' ||
+ "       sas.server_id || ' |' ||
+ "       sa.sql_text || ' |'
+ " FROM v$sqlarea sa,v$session s,v$streams_apply_server sas
+ " WHERE s.sid = sas.sid
+ "   AND sa.address = s.sql_address;
+ }
+ call setSqlColumns('RDA','message',"REPLACE(message,CHR(10),'%BR%')")
+ call setSqlColumns('RDA','severity',"DECODE(UPPER(severity),\
+   'ERROR','%RED%ERROR%ENDCOLOR%',\
+   'FATAL','%RED%FATAL%ENDCOLOR%',\
+   UPPER(severity))")
+ var ($HDR[13],$col13) = getSqlColumns('RDA','','V$DATAGUARD_STATUS')
+ call clearSqlColumns('RDA')
+ if $col13
+ {append $sql
+  {PROMPT ___Macro_separator(13)___
+  "SELECT :10
+  " FROM v$dataguard_status;
+  }
+ }
+ var ($HDR[14],$col14) = getSqlColumns('RDA','','DBA_LOGSTDBY_LOG')
+ call clearSqlColumns('RDA')
+ if $col14
+ {append $sql
+  {PROMPT ___Macro_separator(14)___
+  "SELECT :11
+  " FROM dba_logstdby_log;
+  }
+ }
+ var $HDR[15] = '|*Finished* | *Newest SCN*| *Applied SCN*| *Read SCN*|'
+ var $HDR[16] = '| *Thread*| *Sequence*| *First Change*| *Next Change*|,\
+                  *Dictionary Begin*|*Dictionary End*|*Timestamp*|,\
+                  *Applied*|'
+ var $HDR[17] = '|*Newest Time* |*Applied Time* |*Read Time* |'
+ var $HDR[18] = '|*Time* | *Commit SCN*| *Current SCN*|*Event* |*Status* |'
+ var $HDR[19] = '|*Name* |*Value* |*Type* |'
+ append $sql
+ {PROMPT ___Macro_separator(15)___
+ "SELECT '|' ||
+ "       (CASE WHEN newest_scn = applied_scn               THEN 'Done'
+ "             WHEN newest_scn <= applied_scn + 9          THEN 'Done?'
+ "             WHEN newest_scn > (SELECT MAX(next_change#)
+ "                                 FROM dba_logstdby_log)  THEN 'Near done'
+ "             WHEN (SELECT COUNT(*)
+ "                    FROM dba_logstdby_log
+ "                    WHERE (next_change#, thread#) NOT IN
+ "                      (SELECT first_change#,
+ "                              thread#
+ "                        FROM dba_logstdby_log)) > 1      THEN 'Gap'
+ "             WHEN newest_scn > applied_scn               THEN 'Not Done'
+ "             ELSE '---' end) || ' | ' ||
+ "       newest_scn || '| ' ||
+ "       applied_scn || '| ' ||
+ "       read_scn || '|'
+ " FROM dba_logstdby_progress;
+ "PROMPT ___Macro_separator(16)___
+ "SELECT '| ' ||
+ "       thread# || '| ' ||
+ "       sequence# || '| ' ||
+ "       first_change# || '| ' ||
+ "       next_change# || '|' ||
+ "       dict_begin || ' |' ||
+ "       dict_end || ' |' ||
+ "       TO_CHAR(timestamp,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       (CASE WHEN l.next_change# < p.read_scn THEN 'YES'
+ "             WHEN l.first_change# < p.applied_scn THEN 'CURRENT'
+ "             ELSE 'NO'
+ "        END) || ' |'
+ " FROM dba_logstdby_log l,
+ "      dba_logstdby_progress p
+ " ORDER BY thread#, first_change#;
+ "PROMPT ___Macro_separator(17)___
+ "SELECT '|' ||
+ "       TO_CHAR(newest_time,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       TO_CHAR(applied_time,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       TO_CHAR(read_time,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+ " FROM dba_logstdby_progress;
+ "PROMPT ___Macro_separator(18)___
+ "SET LONGC 10000
+ "SET LONG 10000
+ "SET LINES 15000
+ "SELECT '|' ||
+ "       TO_CHAR(event_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+ "       commit_scn || '| '||
+ "       current_scn || '|' ||
+ "       REPLACE(event,CHR(10),'%BR%') || ' |' ||
+ "       REPLACE(status,CHR(10),'%BR%') || ' |'
+ " FROM dba_logstdby_events
+ " ORDER BY event_time, commit_scn, current_scn;
+ "PROMPT ___Macro_separator(19)___
+ "SELECT '|' ||
+ "       name || ' |' ||
+ "       value || ' |' ||
+ "       type  || ' |'
+ " FROM system.logstdby$parameters
+ " ORDER BY type, name;
+ }
+ var ($HDR[20],$col20) = getSqlColumns('RDA','','SYSTEM.LOGMNR_SESSION$')
+ call clearSqlColumns('RDA')
+ if $col20
+ {append $sql
+  {PROMPT ___Macro_separator(20)___
+  "SELECT :12
+  " FROM system.logmnr_session$;
+  }
+ }
+ var ($HDR[21],$col21) = getSqlColumns('RDA','','SYSTEM.LOGMNR_DICTIONARY$')
+ call clearSqlColumns('RDA')
+ if $col21
+ {append $sql
+  {PROMPT ___Macro_separator(21)___
+  "SELECT :13
+  " FROM system.logmnr_dictionary$;
+  }
+ }
+ var ($HDR[22],$col22) = getSqlColumns('RDA','','SYSTEM.LOGMNR_DICTSTATE$')
+ call clearSqlColumns('RDA')
+ if $col22
+ {append $sql
+  {PROMPT ___Macro_separator(22)___
+  "SELECT :14
+  " FROM system.logmnr_dictstate$;
+  }
+ }
+ var ($HDR[23],$col23) = getSqlColumns('RDA','','V$LOGMNR_SESSION')
+ call clearSqlColumns('RDA')
+ if $col23
+ {append $sql
+  {PROMPT ___Macro_separator(23)___
+  "SELECT :15
+  " FROM v$logmnr_session;
+  }
+ }
+ var $HDR[24] = '|*LogMiner UID* | *Object Number*| *Objv Number*|*Owner* |\
+                  *Name* |'
+ append $sql
+ {PROMPT ___Macro_separator(24)___
+ "SELECT '|' ||
+ "       o.logmnr_uid || ' | ' ||
+ "       o.obj# || '| ' ||
+ "       o.objv# || '|' ||
+ "       u.name || ' |' ||
+ "       o.name || ' |'
+ " FROM system.logmnr_obj$ o,
+ "      system.logmnr_user$ u
+ " WHERE o.logmnr_uid = u.logmnr_uid
+ "   AND o.owner# = u.user#
+ "   AND o.name in ('JOB$','JOBSEQ','SEQ$','AUD$','FGA_LOG$','IND$','COL$',
+ "                  'LOGSTDBY$PARAMETER')
+ " ORDER BY u.name;
+ }
+ if match($ORACLE_VERSION,'^(102|11)')
+ {var $TTL[25] = '---+ Event Histogram Information'
+  var $HDR[25] = '|*Time* |*Event* | *Wait Time (Milliseconds)*| *Wait Count*|'
+  append $sql
+  {PROMPT ___Macro_separator(25)___
+  "SELECT '|' ||
+  "       TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+  "       event || ' | ' ||
+  "       wait_time_milli || '| ' ||
+  "       wait_count || '|'
+  " FROM v$event_histogram 
+  " WHERE wait_count > 0;
+  }
+ }                   
+ if match($ORACLE_VERSION,'^102')
+ {var $TTL[26] = '---+ Unsupported Columns'
+  var $HDR[26] = '|*Owner* |*Table Name* |*Column Name*|*Data Type* |'
+  append $sql
+  {PROMPT ___Macro_separator(26)___
+  "SELECT '|' ||
+  "       owner || ' |' ||
+  "       table_name || ' |' ||
+  "       column_name || ' |' ||
+  "       data_type || ' |'
+  " FROM (SELECT col.owner owner,
+  "              col.table_name table_name,
+  "              col.column_name column_name,
+  "              col.data_type data_type
+  "        FROM dba_tab_cols col,
+  "             dba_tables tbl
+  "        WHERE col.owner NOT IN (SELECT owner
+  "                                 FROM dba_logstdby_skip
+  "                                 WHERE statement_opt = 'INTERNAL SCHEMA')
+  "          AND col.data_type NOT IN ('BINARY_DOUBLE','BINARY_FLOAT','FLOAT',
+  "                                    'BLOB','CLOB','CHAR','DATE','LONG',
+  "                                    'LONG RAW','NCHAR','NCLOB','NUMBER',
+  "                                    'NVARCHAR2','RAW','VARCHAR','VARCHAR2')
+  "          AND col.data_type NOT LIKE 'TIMESTAMP%'
+  "          AND col.data_type NOT LIKE 'INTERVAL%'
+  "          AND col.owner = tbl.owner
+  "          AND col.table_name = tbl.table_name
+  "          AND tbl.secondary != 'Y'
+  "       UNION
+  "       SELECT owner,
+  "              table_name,
+  "              column_name,
+  "              data_type
+  "        FROM dba_logstdby_unsupported)
+  " ORDER BY owner,table_name,column_name;
+  }
+ }
+ elsif match($ORACLE_VERSION,'^11')
+ {var $TTL[26] = '---+ Unsupported Columns'
+  var $HDR[26] = '|*Owner* |*Table Name* |*Column Name*|*Data Type* |'
+  append $sql
+  {PROMPT ___Macro_separator(26)___
+  "SELECT '|' ||
+  "       owner || ' |' ||
+  "       table_name || ' |' ||
+  "       column_name || ' |' ||
+  "       data_type || ' |'
+  " FROM dba_logstdby_unsupported
+  " ORDER BY owner,table_name,column_name;
+  }
+ }
+ call separator(1)
+ call writeSql(bindSql($sql,$col2,$col3,$col4,$col5,$col6,$col8,$col9,$col10,\
+                            $col11,$col13,$col14,$col20,$col21,$col22,$col23),5)
+ call separator(0,concat('Logical Standby Information',\
+                         cond($nam,concat(' (',$nam,')'))))
+}
+
+if match($rol,'LOGICAL STANDBY')
+ call get_logical_standby()
+
+=head2 Data Guard Broker Information
+
+Provides the Data Guard Broker information.
+
+=head2 config - Data Guard Broker Configuration
+
+Displays a detailed summary about the broker configuration.
+
+=cut
+
+debug ' Inside DG module, gathering Data Guard Broker information'
+pretoc '2:Data Guard Broker Information'
+set $sql
+{SELECT '=' ||
+"       dataguard_broker
+" FROM v$database;
+}
+if grepSql($sql,'ENABLED','f')
+{# Determine the user password
+ if compare('eq',$USER,'/')
+  var ($USER,$pwd) = ('','')
+ elsif getSetting('SQL_PASSWORD_DG_BROKER_USER')
+ {var ($pwd) = unpack('u',last)
+  call setDbPassword($USER,$pwd,'oracle',$PRIMARY_SID)
+ }
+ elsif getSetting(concat('SQL_PASSWORD_',$USER))
+  var ($pwd) = unpack('u',last)
+ elsif getSetting(concat('SQL_PASSWORD__',uc($PRIMARY_SID),'__',uc($USER)))
+  var ($pwd) = unpack('u',last)
+ else
+ {var $pwd = askPassword(concat("Enter '",$USER,"' password for dgmgrl:"))
+  call setDbPassword($USER,$pwd,'oracle',$PRIMARY_SID)
+ }
+
+ # Execute the command
+ var $out = getTemp('dg','.txt')
+ var $cmd = concat(catCommand($ORACLE_HOME,'bin','dgmgrl'),' >',\
+                   quote($out,'x'))
+ output | $cmd
+ write 'CONNECT ',$USER,'/',$pwd,';'
+ write 'SHOW CONFIGURATION VERBOSE;'
+ write 'exit;'
+ close
+ report config
+ debug ' Inside DG module, gathering Data Guard broker configuration'
+ prefix
+ {write '---+!! Data Guard Configuration Information'
+  write '---## Using in dgmgrl: SHOW CONFIGURATION VERBOSE'
+ }
+ call writeFile($out)
+ if hasOutput(true)
+ {write $TOP
+  toc '3:[[',getFile(),'][rda_report][Data Guard Broker Configuration]]'
+ }
+
+ # Collect database list
+ var @tbl = grepFile($out,'\w+\s+\-.*database$','i')
+ call unlinkTemp('dg')
+
+=head2 fast_start - Fast-start Failover Information
+
+Displays Data Guard fast-start failover-related information.
+
+=cut
+
+ if match($ORACLE_VERSION,'^11')
+ {var $out = getTemp('dg','.txt')
+  var $cmd = concat(catCommand($ORACLE_HOME,'bin','dgmgrl'),' >',\
+                   quote($out,'x'))
+  output | $cmd
+  write 'CONNECT ',$USER,'/',$pwd,';'
+  write 'SHOW FAST_START FAILOVER;'
+  write 'exit;'
+  close
+  report fast_start
+  debug ' Inside DG module, gathering fast-start failover information'
+  prefix
+  {write '---+!! Data Guard Fast-start Failover Information'
+   write '---## Using in dgmgrl: SHOW FAST_START FAILOVER'
+  }
+  call writeFile($out)
+  if hasOutput(true)
+  {write $TOP
+   toc '3:[[',getFile(),\
+       '][rda_report][Fast-start Failover Information]]'
+  }
+  call unlinkTemp('dg')
+ }
+
+=head2 site - Data Guard Site Information
+
+Displays a detailed summary of the available databases if the Data Guard
+broker is enabled.
+
+=cut
+
+ if @tbl
+ {var $out = getTemp('dg','.txt')
+  var $str = cond(match($ORACLE_VERSION,'^(10|11)'),'SHOW DATABASE VERBOSE ',\
+                                                    'SHOW SITE VERBOSE ')
+  var $cmd = concat(catCommand($ORACLE_HOME,'bin','dgmgrl'),' >',\
+                    quote($out,'x'))
+  output | $cmd
+  write 'CONNECT ',$USER,'/',$pwd,';'
+  loop $lin (@tbl)
+   write $str,trim(field('-',0,$lin)),';'
+  write 'exit;'
+  close
+  report site
+  debug ' Inside DG module, gathering Data Guard site information'
+  prefix
+  {write '---+!! Data Guard Site Information'
+   write '---## Using in dgmgrl: ',$str
+  }
+  call writeFile($out)
+  if hasOutput(true)
+  {write $TOP
+   toc '3:[[',getFile(),'][rda_report][Data Guard Site Information]]'
+  }
+  var ($flg,@tbl) = (false)
+  if and(match($ORACLE_VERSION,'^(10|11)'),createBuffer('DG','R',$out))
+  {while ?getLine('DG')
+   {var $lin = chomp(last)
+    if match($lin,'\s*Instance\(s\):')
+     var $flg = true
+    elsif $flg
+    {if match($lin,'^\s*(\w+)')
+      call push(@tbl,last)
+     elsif match($lin,'^\s*$')
+      var $flg = false
+    }
+   }
+   call deleteBuffer('DG')
+  }
+  call unlinkTemp('dg')
+ }
+
+=head2 instance - Data Guard Instance Information
+
+Displays a detailed summary of the available instances when the Data Guard
+broker is enabled.
+
+=cut
+
+ if @tbl
+ {debug ' Inside DG module, gathering Data Guard instance information'
+  var $out = getTemp('dg','.txt')
+  var $cmd = concat(catCommand($ORACLE_HOME,'bin','dgmgrl'),' >',\
+                    quote($out,'x'))
+  output | $cmd
+  write 'CONNECT ',$USER,'/',$pwd,';'
+  loop $ins (@tbl)
+   write 'SHOW INSTANCE VERBOSE ',$ins,';'
+  write 'exit;'
+  close
+
+  report instance
+  prefix
+  {write '---+!! Data Guard Instance Information'
+   write '---## Using in dgmgrl: SHOW INSTANCE VERBOSE'
+  }
+  call writeFile($out)
+  if hasOutput(true)
+  {write $TOP
+   toc '3:[[',getFile(),'][rda_report][Data Guard Instance Information]]'
+  }
+  call unlinkTemp('dg')
+ }
+}
+unpretoc
+
+=head2 Standby information
+
+Collects remote information from standby instances. It includes key files like
+the alert.log, broker log, <listener.ora>, and <tnsname.ora> files.
+
+=cut
+
+# Test SSH capabilities
+if or(isUnix(),isCygwin())
+{var $USER = getSetting('DG_REMOTE_LOGIN','')
+ if !length($USER)
+  var $USER = undef
+}
+else
+ var $USER = undef
+
+# Collect standby information
+var $old = setSqlLogin()
+var $cnt = 0
+var $usr = 'SYS'
+call sameDbPassword($usr,'oracle',$PRIMARY_SID,@sid)
+loop $sid (@sid)
+{break hasSqlPassword($usr,$sid)
+ var $pwd = askPassword(concat('Enter ',$usr,\
+                               ' password for standby databases:'))
+ call setDbPassword($usr,$pwd,'oracle',$sid)
+ call sameDbPassword($usr,'oracle',@sid)
+ break
+}
+var $pwd = undef
+loop $sid (@sid)
+{call setSqlLogin($usr,undef,$sid,true)
+
+ # Check the database connection
+ if testSql()
+ {echo ''
+  echo tput('bold'),\
+       'Standby database ',$sid,' is not accessible.',tput('off')
+  if $msg = getSqlMessage()
+   echo $msg
+  echo ''
+  report concat('standy_',$sid)
+  write 'Standby database ',$sid,' is not accessible(',$msg,')'
+  toc '2:[[',getFile(),'][rda_report][',$sid,' Standby Not Accessible]]'
+  next
+ }
+
+ # Get instance role
+ var $ORACLE_VERSION = get_db_version()
+ set $sql
+ {SELECT 'rol=' || database_role
+  FROM v$database;
+ }
+ var $rol = value(grepSql($sql,'^rol=','f'))
+
+ # Collect database information
+ if match($rol,'PHYSICAL STANDBY')
+  call get_physical_standby($sid)
+ elsif match($rol,'LOGICAL STANDBY')
+  call get_logical_standby($sid)
+ else
+  next
+
+ # Collect file information
+ if ?$USER
+ {# Get the host name
+  set $sql
+  {SELECT 'host=' || host_name || '|' || instance_name
+  " FROM v$instance;
+  }
+  var ($hst,$ins) = split('\|',value(grepSql($sql,'^host=','f')),2)
+
+  # Get the directory and file names
+  var $dir = get_bdump()
+  var $alr = catFile($dir,concat('alert_',$ins,'.log'))
+  var $dgl = catFile($dir,concat('drc',$ins,'.log'))
+  var $lsn = catFile($ORACLE_HOME,'network','admin','listener.ora')
+  var $tns = catFile($ORACLE_HOME,'network','admin','tnsnames.ora')
+
+  # Set the collection script
+  set $cod
+  {echo "---# RDA:BEGIN"
+  "tail -${TAIL} "${ALR}"
+  "echo "---# RDA:END REPORT:3|alert.log|Information from ${ALR}|\
+                             Using: tail -${TAIL} ${ALR}|alert"
+  "
+  "echo "---# RDA:BEGIN"
+  "tail -${TAIL} "${DGL}"
+  "echo "---# RDA:END REPORT:3|Data Broker Log|Information from ${DGL}|\
+                             Using: tail -${TAIL} ${DGL}|dgbroker"
+  "
+  "echo "---# RDA:BEGIN"
+  "cat "${LSN}"
+  "echo "---# RDA:END REPORT:3|listener.ora|Information from ${LSN}|\
+                             Using: cat ${LSN}|listener"
+  "
+  "echo "---# RDA:BEGIN"
+  "cat "${TNS}"
+  "echo "---# RDA:END REPORT:3|tnsnames.ora|Information from ${TNS}|\
+                             Using: cat ${TNS}|tnsnames"
+  "echo "Collection Ended"
+  }
+
+  # Perform the remote collection
+  debug '  - Getting file based information from ',$hst
+  call addRemoteSession('DG',$hst,$USER)
+  if and(defined($pwd),not(hasPassword('host',$hst,$USER)))
+   call setPassword('host',$hst,$USER,$pwd)
+  if needPassword('DG')
+  {var $pwd = askPassword(concat('Enter ',$USER,'@',$hst,' password:'))
+   call setPassword('host',$hst,$USER,$pwd)
+   if needPassword('DG')
+   {call endRemoteSession('DG')
+    next
+   }
+  }
+  var $res = getTemp('DG')
+  call rcollect('DG',$cod,$res,\
+    {ALR     => $alr,\
+     DGL     => $dgl,\
+     LSN     => $lsn,\
+     TAIL    => $TAIL,\
+     TNS     => $tns\
+    })
+  call endRemoteSession('DG')
+  debug '  - Generating reports for ',$hst
+  call writeRemoteResult($res,$hst)
+  call unlinkTemp('DG')
+ }
+}
+call setSqlLogin($old)
+
+=head1 SEE ALSO
+
+L<S200DB.def|modules::S200DB>, L<S405DG.def|modules::S405DG>,
+L<DBinfo.def|modules::DBinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.7:  Rajendra Ghatge, Somnath Gund, Brandie Smith.
+
+=item RDA 4.14: Frank Kobylanski, Philominraj Periyanayagam.
+
+=item RDA 4.18: Jaime Alcoreza.
+
+=item RDA 4.21: Jaime Alcoreza, Gavin Edmiston, Thorsten Senft.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

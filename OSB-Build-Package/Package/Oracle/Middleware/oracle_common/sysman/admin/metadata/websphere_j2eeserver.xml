@@ -1,0 +1,57 @@
+<?xml version='1.0'?>
+<!-- $Header: emas/sysman/admin/metadata/websphere_j2eeserver.xml /st_emasgc_11.1as/3 2010/09/03 11:36:43 scgrover Exp $ -->
+
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd" [
+<!ENTITY oracle_websphere_j2eeserver_webservices SYSTEM "./oracle_websphere_j2eeserver_webservices.xmlp">
+]>
+
+<TargetMetadata META_VER='2.3' TYPE='websphere_j2eeserver' CATEGORY_PROPERTIES="VersionCategory">
+<Display>
+    <Label NLSID='IBM_WEBSPHERE_LABEL'>IBM WebSphere Application Server</Label>
+ <ShortName NLSID='IBM_WEBSPHERE_NAME'>IBM WebSphere Application Server</ShortName>
+ <Description NLSID='IBM_WEBSPHERE_DESC'>IBM WebSphere Application Server Metrics</Description>
+</Display>
+
+<Metric NAME="Response" TYPE="TABLE">
+    <Display>
+      <Label NLSID="WEBSPHERE_J2EESERVER_RESPONSE">Response</Label>
+    </Display>
+    <TableDescriptor>
+        <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+          <Display>
+            <Label NLSID="WEBSPHEREJ2EE_SERVER_STATUS_LABEL">Response - Status</Label>
+      	<Description NLSID="WEBSPHEREJ2EE_SERVER_STATUS_DESC">Response - Websphere server is running or not (1 depicts 'running' and 0 depicts 'stopped')</Description>
+          </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">websphere_j2eeserver:Response</Property>
+        <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+        <Property NAME="ServerNames.parameter" SCOPE="INSTANCE">ServerNames</Property>
+        <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>ServerNames.parameter</key><value type="java.lang.String">%ServerNames.parameter%</value></item></value></argument>]]>
+         </Property>
+      </QueryDescriptor>
+ </Metric>
+
+<!-- Include Web Services metrics -->
+&oracle_websphere_j2eeserver_webservices;
+
+  <InstanceProperties>
+    <InstanceProperty NAME="ServerNames">
+       <Display>
+          <Label NLSID="serverNames">Server Names</Label>
+       </Display>
+    </InstanceProperty>
+
+  </InstanceProperties>
+
+</TargetMetadata>
+
+

@@ -1,0 +1,128 @@
+# S240OCS.def: Controls Oracle Collaboration Suite Data Collection
+# $Id: S240OCS.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S240OCS.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S240OCS - Controls Oracle Collaboration Suite Data Collection
+
+=head1 DESCRIPTION
+
+This module defines common settings for all Oracle Collaboration Suite modules
+and gathers information that is common for Oracle Collaboration Suite
+components.
+
+The following reports can be generated and are regrouped under "Oracle
+Collaboration Suite":
+
+=cut
+
+echo tput('bold'),'Processing OCS module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle Collaboration Suite'
+
+=head2 virtual - Virtual Service
+
+Gathers Virtual Service (Service to Service) information from the Oracle
+Collaboration Suite installation.
+
+=cut
+
+if grepCommand(concat(catCommand($ORACLE_HOME,'bin','ldapsearch'),' -H 2>&1'),\
+               '\s-q\s','f')
+ var ($flg,$pgm) = (true,lastCommand())
+elsif findCommand('ldapsearch')
+ var ($flg,$pgm) = (false,last)
+else
+ var $pgm = undef
+if $pgm
+{debug ' Inside OCS module, about to gather virtual service information'
+
+ # Get the orcladmin password
+ if getSetting('SQL_PASSWORD_LDAP_ORCLADMIN')
+  var ($pwd) = unpack('u',last)
+ elsif getSetting('OCS_LDAP')
+  var $pwd = last
+ else
+ {var $pwd = askPassword(concat('Enter orcladmin password: '))
+  call setTempSetting('OCS_LDAP',nvl($pwd,'?'))
+ }
+
+ # Get other required information to perform LDAP query
+ var $hst = getSetting('LDAP_HOST')
+ var $prt = getSetting('LDAP_PORT')
+
+ # Perform the LDAP query
+ if and($hst,$prt)
+ {if $flg
+  {var $out = getTemp('ldapsearch','.txt')
+   var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D "cn=orcladmin" -q \
+                     -L -s sub -b "cn=Services,cn=OracleContext" \
+                     "labeleduri=*" labeleduri >',quote($out,'x'),' 2>&1')
+   output | $cmd
+   write $pwd
+   close
+   report virtual
+   prefix
+    write '---+ Virtual Service (Service to Service) Information'
+   call writeFile($out)
+   call unlinkTemp('ldapsearch')
+  }
+  else
+  {var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D "cn=orcladmin" -w ',\
+                     $pwd,' -L -s sub -b "cn=Services,cn=OracleContext" \
+                     "labeleduri=*" labeleduri 2>&1')
+   report virtual
+   prefix
+    write '---+ Virtual Service (Service to Service) Information'
+   call writeCommand($cmd)
+  }
+  if isCreated(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][Virtual Service]]'
+  }
+ }
+}
+
+# Disable the group title in next index
+if isTocCreated()
+ toc '-:Oracle Collaboration Suite'
+
+=head1 SEE ALSO
+
+L<S241MAIL.def|modules::S241MAIL>, L<S242WAC.def|modules::S242WAC>,
+L<S243WMC.def|modules::S243WMC>, L<S244OCAL.def|modules::S244OCAL>,
+L<S245RTC.def|modules::S245RTC>, L<S246DSCS.def|modules::S246DSCS>,
+L<S247WKSP.def|modules::S247WKSP>, L<S248CONT.def|modules::S248CONT>,
+L<S249WRLS.def|modules::S249WRLS>.
+
+=begin credits
+
+=over 10
+
+=item RDA 4.6:  Frederic Daurelle, Takayuki Hamaguchi.
+
+=item RDA 4.7:  Frederic Daurelle.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

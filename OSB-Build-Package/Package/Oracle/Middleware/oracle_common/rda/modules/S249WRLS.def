@@ -1,0 +1,143 @@
+# S249WRLS.def: Collects Wireless Information
+# $Id: S249WRLS.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S249WRLS.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S249WRLS - Collects Wireless Information
+
+=head1 DESCRIPTION
+
+The following reports can be generated and are regrouped under C<Wireless>:
+
+=cut
+
+echo tput('bold'),'Processing Wireless module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $AGE         = getSetting('OCS_AGE',    15)
+var $TAIL        = getSetting('OCS_TAIL1',  5000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '^1:Oracle Collaboration Suite'
+pretoc '1+:Wireless'
+
+# Load the common macros
+run library()
+
+=head2 Gathering Wireless Information
+
+Finds all wireless configuration and log files.
+
+=cut
+
+debug ' Inside Wireless module, getting configuration and log information'
+var $dir = catDir($ORACLE_HOME,'wireless')
+call sort_files(2,$TAIL,\
+                grepDir($dir,'\.xml$','ir'),\
+                grepDir($dir,'System\.properties$','ir'),\
+                grepDir($dir,'\.log$','ir'))
+
+=head2 Recent archive files
+
+Lists the recent archive files and collects the last lines of the most recent
+file of each type.
+
+=cut
+
+var $dir = catDir($ORACLE_HOME,'wireless','logs','archive')
+if testDir('r',$dir)
+{debug ' Inside Wireless module, getting archive files'
+ var ($cnt,%log) = (0)
+ loop $fil (grepDir($dir,'^[a-z]+_\d+\.[a-z]+$',concat('itm',$AGE)))
+ {var ($typ) = match($fil,'^([a-z]+)_',true)
+  next exists($log{$typ})
+  var $log{$typ} = catFile($dir,$fil)
+  incr $cnt
+ }
+ if $cnt
+ {report recent_archive
+  write '---+ Recent Archive Files'
+  var @dir = grepDir($dir,'^[a-z]+_\d+\.[a-z]+$',concat('ipnm',$AGE))
+  write 'In ',encode($dir),'%BR%Limited to ',$AGE,' last days'
+  call statFile('b',@dir)
+  toc '2:[[',getFile(),'][rda_report][Recent Archive Files]]'
+  call sort_files(3,$TAIL,values(%log))
+ }
+}
+
+=head2 Recent status files
+
+Lists the recent status files and collects the last lines of the most recent
+file of each type.
+
+=cut
+
+var $dir = catDir($ORACLE_HOME,'wireless','logs','status')
+if testDir('r',$dir)
+{debug ' Inside Wireless module, getting status files'
+ var ($cnt,%log) = (0)
+ loop $fil (grepDir($dir,'^[a-z]+logstatus_\d+$',concat('itm',$AGE)))
+ {var ($typ) = match($fil,'^([a-z]+)logstatus_',true)
+  next exists($log{$typ})
+  var $log{$typ} = catFile($dir,$fil)
+  incr $cnt
+ }
+ if $cnt
+ {report recent_status
+  write '---+ Recent Status Files'
+  var @dir = grepDir($dir,'^[a-z]+logstatus_\d+$',concat('ipnm',$AGE))
+  write 'In ',encode($dir),'%BR%Limited to ',$AGE,' last days'
+  call statFile('b',@dir)
+  toc '2:[[',getFile(),'][rda_report][Recent Status Files]]'
+  call sort_files(3,$TAIL,values(%log))
+ }
+}
+
+=head2 not_found - Not found
+
+Used as a warning when none of the Wireless files are found.
+
+=cut
+
+if !isTocCreated()
+{debug ' Inside WRLS module, no file found'
+ report not_found
+ write 'No Oracle log files were found and all files were optional. This does \
+        not mean there was necessarily a problem with RDA, but it should be \
+        investigated.'
+ toc '2:[[',getFile(),'][rda_report][Not found]]'
+}
+
+# Disable the group title in next index
+toc '-:Oracle Collaboration Suite'
+
+=head1 SEE ALSO
+
+L<S240OCS.def|modules::S240OCS>, L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.2:  Frederic Daurelle.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,208 @@
+# IFSr2.def: Collects iFS Information (iFS R2)
+# $Id: IFSr2.def,v 2.5 2012/01/03 13:34:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/IFSr2.def,v 2.5 2012/01/03 13:34:42 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+IFSr2 - Collects iFS Information (iFS R2)
+
+=head1 DESCRIPTION
+
+This module collects iFS (CMSDK, Files) information (for example, configuration
+and log files). It regroups the produced reports under C<Internet File System>.
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing iFS R2 module ...',tput('off')
+
+# Load the common macros
+run library()
+
+# Initialization
+var $ORACLE_HOME   = getSetting('ORACLE_HOME','')
+var $IFS_HOME      = getSetting('IFS_HOME','')
+var $IFS_ROOT_HOME = getSetting('IFS_ROOT_HOME','')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Internet File System'
+
+=head2 ifs_repos_info - Repository
+
+Collects the Internet File System repository information.
+
+It asks for the Internet File System repository user password. For batch/cron
+execution, you can encode the password in the setup file using the pseudo user
+C<IFS_REPOS_USER>.
+
+=cut
+
+report ifs_repos_info
+debug ' Inside the IFS R2 mode, collecting the IFS repository information'
+write '---+!! Internet File System Repository Information'
+write $TOC
+
+var $IFS_REPOS_USER = getSetting('IFS_REPOS_USER')
+var $IFS_REPOS_DB   = getSetting('IFS_REPOS_DB')
+var $IFS_REPOS_PORT = getSetting('IFS_REPOS_PORT')
+var $IFS_REPOS_SID  = getSetting('IFS_REPOS_SID')
+var $IFS_REPOS_PWD  = getSetting('SQL_PASSWORD_IFS_REPOS_USER')
+
+if $IFS_REPOS_USER
+{# Get the user password
+if $IFS_REPOS_PWD
+ var ($IFS_REPOS_PWD) = unpack('u',$IFS_REPOS_PWD)
+else
+ var $IFS_REPOS_PWD = askPassword(concat('Enter ',$IFS_REPOS_USER,\
+                                         ' user password: '))
+
+ # Change the database context
+ var $old = setSqlLogin(concat($IFS_REPOS_USER,\
+                        '@(description=(address=(host=',$IFS_REPOS_DB,\
+                        ')(protocol=tcp)(port=',$IFS_REPOS_PORT,\
+                        '))(connect_data=(service_name=',$IFS_REPOS_SID,')))'),\
+                        $IFS_REPOS_PWD)
+ var $try = setSqlFailure(0)
+
+ # Get the repository information
+ prefix
+ {write '---+ Repository Version'
+  write '|*Value*|'
+ }
+ set $sql
+ {SELECT '|' || value || ' |'
+ " FROM odmz_RepositoryParameter
+ " WHERE name = 'SCHEMAVERSION';
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Domain Controller Configuration'
+  write '|*Configuration Values*|'
+ }
+ set $sql
+ {SELECT '|' || p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE(p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue,
+ "                           11, p.publicobjectvalue,
+ "                           p.bundle) || ' |'
+ " FROM odmv_PropertyBundle pb, odmv_Property p
+ " WHERE pb.name = 'IFS.DOMAIN.Properties'
+ "   AND p.bundle = pb.id
+ " ORDER BY 1;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Node Configuration'
+  write '|*Node Name*|*Property Name*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       nc.name || '|' ||
+ "       p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE(p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue) || ' |'
+ " FROM odmv_NodeConfiguration nc, odmv_Property p
+ " WHERE nc.propertybundle = p.bundle
+ " ORDER BY nc.name;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Service Configuration'
+  write '|*Service Name*|*Property Name*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       sc.name || '|' ||
+ "       p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE(p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue) || ' |'
+ " FROM odmv_ServiceConfiguration sc, odmv_Property p
+ " WHERE sc.id = p.bundle ORDER BY sc.name;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Server Configuration'
+  write '|*Server Name*|*Property Name*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       sc.name || '|' ||
+ "       p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE (p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue) || ' |'
+ " FROM odmv_ServerConfiguration sc, odmv_Property p
+ " WHERE sc.id = p.bundle ORDER BY sc.name;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ # Display  the last SQL error message
+ if getSqlMessage()
+  write '%BR%',last
+
+ # Restore the previous context
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+}
+else
+{echo 'Missing information to connect to the iFS repository'
+ write '**Missing information to connect to the iFS repository.**'
+}
+
+toc '2:[[',getFile(),'][rda_report][Repository]]'
+
+=head2 Log Files
+
+Inserts the log files that are found in all subdirectories under C<$IFS_HOME>
+as separate reports.
+
+=cut
+
+if testDir('d',$IFS_HOME)
+{debug ' Inside the IFS R2 mode, gathering IFS logs from ',$IFS_HOME
+ var $tgt = replace($IFS_HOME,concat('^',quote($ORACLE_HOME),'[\/\\]'))
+ pretoc '2:',$tgt,' Log Files'
+ call search_files(catDir($IFS_HOME,'log'),'\.log$',0)
+ unpretoc
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

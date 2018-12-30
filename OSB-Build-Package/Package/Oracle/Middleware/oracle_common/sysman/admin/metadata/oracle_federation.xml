@@ -1,0 +1,3432 @@
+<?xml version="1.0" ?>
+<!-- Copyright (c) 2007, 2010, Oracle and/or its affiliates. 
+All rights reserved. -->
+
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd" [
+<!ENTITY j2ee_application_response SYSTEM "./j2ee_application_response.xmlp">
+]>
+
+<TargetMetadata META_VER="2.0" TYPE="oracle_federation" CATEGORY_PROPERTIES="VersionCategory" RESOURCE_BUNDLE_PACKAGE="oracle.sysman.emas.rsc.gen.iam">
+  <Display>
+    <Label NLSID="oracle_federation">Identity Federation Server</Label>
+  </Display>
+
+  <AssocTarget ASSOCIATION_NAME="farm" ASSOC_TARGET_TYPE="*"/>
+  <AssocTarget ASSOCIATION_NAME="managedBy" ASSOC_TARGET_TYPE="*"/>
+  <AssocTarget ASSOCIATION_NAME="managedServer" ASSOC_TARGET_TYPE="*"/>
+ 
+  <!-- 11 Metric Response -->
+  <Metric NAME="Response" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <Display>
+      <Label NLSID="oracle_federation_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_federation_status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+      </ValidIf>
+      <Property NAME="Host" SCOPE="INSTANCE">Host</Property>
+      <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/oifresponse.pl" "%Host%" "%Port%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="errStartsWith" SCOPE="GLOBAL">em_error=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+      </ValidIf>
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">weblogic_j2eeserver:application</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+      <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+        <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item></value></argument>]]>
+         </Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- 10.1.4 Metric Response -->
+  <!--Metric NAME="Response" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="response_status">Status</Label>
+          <ShortName NLSID="response_status_shortname">Status</ShortName>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+      <Property NAME="Host" SCOPE="INSTANCE">Host</Property>
+      <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/oifresponse.pl" "%Host%" "%Port%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="errStartsWith" SCOPE="GLOBAL">em_error=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric--> 
+
+  <!-- OIF 10.1.4 Metrics -->
+  <!-- OIF IdP Hidden Metric-->
+  <Metric NAME="OIFIdPMetricsHidden" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT" FORCE_CACHE="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="OIFIdPMetricsHidden">IdP Related Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_Value1">Value1</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_Value2">Value2</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_Value3">Value3</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_Value4">Value4</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value5" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_Value5">Value5</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value6" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_Value6">Value6</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value7" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="(Value1/__interval)">
+        <Display>
+          <Label  NLSID="OIFIdPMetricsHidden_Value7">Value7</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="Host" SCOPE="INSTANCE">Host</Property>
+      <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+      <Property NAME="Role" SCOPE="INSTANCE">Role</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/oifidpmetrics.pl" "%Host%" "%Port%" "%Role%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric> <!-- OIF IdP Hidden Metric-->
+
+  <!-- OIF SP Hidden Metric-->
+  <Metric NAME="OIFSPMetricsHidden" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT" FORCE_CACHE="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="OIFSPMetricsHidden">SP Related Metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden_Value1">Value1</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden__Value2">Value2</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden__Value3">Value3</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden__Value4">Value4</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value5" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden__Value5">Value5</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value6" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden__Value6">Value6</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value7" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="(Value1/__interval)">
+        <Display>
+          <Label  NLSID="OIFSPMetricsHidden__Value7">Value7</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="Host" SCOPE="INSTANCE">Host</Property>
+      <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+      <Property NAME="Role" SCOPE="INSTANCE">Role</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/oifspmetrics.pl" "%Host%" "%Port%" "%Role%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric> <!-- OIF SP Hidden Metric-->
+
+  <!-- ReceivedAuthnRequest-->
+  <Metric NAME="ReceivedAuthnRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+          <Label NLSID="ReceivedAuthnRequest">Authentication Request Received By IdP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="ReceivedAuthnRequest_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnRequest_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnRequest_Value1">Request Received</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnRequest_Value2">Signed Request Received</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnRequest_Value3">Request Containing Allow Federation Creation</Label>
+        </Display>
+      </ColumnDescriptor> 
+      <ColumnDescriptor NAME="Value7" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnRequest_Value7">Request Received Per Second</Label>
+        </Display>
+      </ColumnDescriptor> 	 
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="ReceivedAuthnRequest" FROM_TABLE="OIFIdPMetricsHidden">
+        <Column NAME="mname" />
+        <Column NAME="ProviderID"/>
+  	<Column NAME="Value1" />
+  	<Column NAME="Value2" />
+  	<Column NAME="Value3" />
+   	<Column NAME="Value7" />	  
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedAuthnRequest</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- ReceivedAuthnRequest-->
+
+  <!-- SentAuthnResponse -->
+  <Metric NAME="SentAuthnResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SentAuthnResponse">Authentication Response Sent By IdP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="SentAuthnResponse_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="SentAuthnResponse_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnResponse_Value1">Response Sent</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnResponse_Value2">Response Sent Sucessfully</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnResponse_Value3">Response Failed</Label>
+        </Display>
+      </ColumnDescriptor>    
+      <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnResponse_Value4">Signed Response Sent</Label>
+        </Display>
+      </ColumnDescriptor>    
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SentAuthnResponse" FROM_TABLE="OIFIdPMetricsHidden">
+        <Column NAME="mname" />
+  	<Column NAME="ProviderID" />
+  	<Column NAME="Value1" />
+  	<Column NAME="Value2" />
+  	<Column NAME="Value3" />
+   	<Column NAME="Value4" />
+  	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentAuthnResponse</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- SentAuthnResponse -->
+
+  <!-- ReceivedAuthnResponse -->
+  <Metric NAME="ReceivedAuthnResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="ReceivedAuthnResponse">Authentication Response Received By SP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="ReceivedAuthnResponse_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnResponse_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnResponse_Value1">Response Received</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnResponse_Value2">Response Received Sucessfully</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnResponse_Value3">Response Failed</Label>
+        </Display>
+      </ColumnDescriptor>    
+      <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="ReceivedAuthnResponse_Value4">Signed Response Received</Label>
+        </Display>
+      </ColumnDescriptor>  
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="ReceivedAuthnResponse" FROM_TABLE="OIFSPMetricsHidden">
+        <Column NAME="mname"/>
+        <Column NAME="ProviderID"/>
+  	<Column NAME="Value1"/>
+  	<Column NAME="Value2"/>
+  	<Column NAME="Value3"/>
+	<Column NAME="Value4"/>
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedAuthnResponse</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- ReceivedAuthnResponse -->
+
+  <!-- SentAuthnRequest -->
+  <Metric NAME="SentAuthnRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SentAuthnRequest">Authentication Request Sent By SP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="SentAuthnRequest_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="SentAuthnRequest_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnRequest_Value1">Request Sent</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnRequest_Value2">Signed Request Sent</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnRequest_Value3">Request Containing Allow Federation Creation</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value7" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="SentAuthnRequest_Value7">Request Sent Per Second</Label>
+        </Display>
+      </ColumnDescriptor> 
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SentAuthnRequest" FROM_TABLE="OIFSPMetricsHidden">
+        <Column NAME="mname" />
+        <Column NAME="ProviderID" />
+        <Column NAME="Value1" />
+        <Column NAME="Value2" />
+        <Column NAME="Value3" />
+        <Column NAME="Value7" />	  
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentAuthnRequest</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- SentAuthnRequest -->
+
+  <Metric NAME="IdPSentFedTermRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPSentFedTermRequest">Federation Termination Request Sent By IdP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="IdPSentFedTermRequest_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermRequest_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermRequest_Value1">Request Sent</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermRequest_Value2">Signed Request Sent</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPSentFedTermRequest" FROM_TABLE="OIFIdPMetricsHidden">
+        <Column NAME="mname" />
+        <Column NAME="ProviderID" />
+        <Column NAME="Value1" />
+        <Column NAME="Value2" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentFedTermRequest</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- SentAuthnRequest -->
+
+  <!-- IdPSentFedTermResponse -->
+  <Metric NAME="IdPSentFedTermResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPSentFedTermResponse">Federation Termination Response Sent By IdP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="IdPSentFedTermResponse_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermResponse_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermResponse_Value1">Response Sent</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermResponse_Value2">Response Sent Sucessfully</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermResponse_Value3">Response Failed</Label>
+        </Display>
+      </ColumnDescriptor>    
+      <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPSentFedTermResponse_Value4">Signed Response Sent</Label>
+        </Display>
+      </ColumnDescriptor>    
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPSentFedTermResponse" FROM_TABLE="OIFIdPMetricsHidden">
+        <Column NAME="mname" />
+        <Column NAME="ProviderID" />
+        <Column NAME="Value1" />
+        <Column NAME="Value2" />
+        <Column NAME="Value3" />
+        <Column NAME="Value4" />
+        <Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentFedTermResponse</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- IdPSentFedTermResponse -->
+
+  <!-- IdPReceivedFedTermRequest -->
+  <Metric NAME="IdPReceivedFedTermRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPReceivedFedTermRequest">Federation Termination Request Received By IdP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermRequest_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermRequest_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermRequest_Value1">Request Received</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermRequest_Value2">Signed Request Received</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPReceivedFedTermRequest" FROM_TABLE="OIFIdPMetricsHidden">
+        <Column NAME="mname" />
+        <Column NAME="ProviderID" />
+        <Column NAME="Value1" />
+        <Column NAME="Value2" />
+        <Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedFedTermRequest</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- IdPReceivedFedTermRequest -->
+
+  <!-- IdPReceivedFedTermResponse -->
+  <Metric NAME="IdPReceivedFedTermResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPReceivedFedTermResponse">Federation Termination Response Received By IdP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermResponse_mname">Metric Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermResponse_ProviderID">Provider Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermResponse_Value1">Response Received</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermResponse_Value2">Response Received Sucessfully</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermResponse_Value3">Response Failed</Label>
+        </Display>
+      </ColumnDescriptor>    
+      <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label  NLSID="IdPReceivedFedTermResponse_Value4">Signed Response Received</Label>
+        </Display>
+      </ColumnDescriptor>    
+    </TableDescriptor>
+    <ExecutionDescriptor>
+      <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPReceivedFedTermResponse" FROM_TABLE="OIFIdPMetricsHidden">
+        <Column NAME="mname" />
+        <Column NAME="ProviderID" />
+        <Column NAME="Value1" />
+        <Column NAME="Value2" />
+        <Column NAME="Value3" />
+        <Column NAME="Value4" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedFedTermResponse</Filter>
+      </GetView>
+    </ExecutionDescriptor>
+  </Metric> <!-- IdPReceivedFedTermResponse -->
+
+  <Metric NAME="IdPSentRNIRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPSentRNIRequest">Name Registration Request Sent By IdP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="IdPSentRNIRequest_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="IdPSentRNIRequest_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPSentRNIRequest_Value1">Request Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPSentRNIRequest_Value2">Signed Request Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPSentRNIRequest" FROM_TABLE="OIFIdPMetricsHidden">
+	    <Column NAME="mname" />
+  	    <Column NAME="ProviderID" />
+  	    <Column NAME="Value1" />
+  	    <Column NAME="Value2" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentRNIRequest</Filter>
+  </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="IdPSentRNIResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPSentRNIResponse">Name Registration Response Sent By IdP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="IdPSentRNIResponse_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="IdPSentRNIResponse_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPSentRNIResponse_Value1">Response Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPSentRNIResponse_Value2">Response Sent Sucessfully</Label>
+       </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPSentRNIResponse_Value3">Response Failed</Label>
+       </Display>
+     </ColumnDescriptor>    
+     <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPSentRNIResponse_Value4">Signed Response Sent</Label>
+       </Display>
+     </ColumnDescriptor>    
+   </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPSentRNIResponse" FROM_TABLE="OIFIdPMetricsHidden">
+	  <Column NAME="mname" />
+  	  <Column NAME="ProviderID" />
+  	  <Column NAME="Value1" />
+  	  <Column NAME="Value2" />
+  	  <Column NAME="Value3" />
+   	  <Column NAME="Value4" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentRNIResponse</Filter>
+    </GetView>
+    </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="IdPReceivedRNIRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPReceivedRNIRequest">Name Registration Request Received By IdP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIRequest_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIRequest_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIRequest_Value1">Request Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIRequest_Value2">Signed Request Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPReceivedRNIRequest" FROM_TABLE="OIFIdPMetricsHidden">
+	    <Column NAME="mname" />
+  	    <Column NAME="ProviderID" />
+  	    <Column NAME="Value1" />
+  	    <Column NAME="Value2" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedRNIRequest</Filter>
+  </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="IdPReceivedRNIResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPReceivedRNIResponse">Name Registration Response Received By IdP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIResponse_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIResponse_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIResponse_Value1">Response Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIResponse_Value2">Response Received Sucessfully</Label>
+       </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIResponse_Value3">Response Failed</Label>
+       </Display>
+     </ColumnDescriptor>    
+     <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="IdPReceivedRNIResponse_Value4">Signed Response Received</Label>
+       </Display>
+     </ColumnDescriptor>    
+   </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFIdPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="IdPReceivedRNIResponse" FROM_TABLE="OIFIdPMetricsHidden">
+	  <Column NAME="mname" />
+  	  <Column NAME="ProviderID" />
+  	  <Column NAME="Value1" />
+  	  <Column NAME="Value2" />
+  	  <Column NAME="Value3" />
+   	  <Column NAME="Value4" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedRNIResponse</Filter>
+    </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="SPSentFedTermRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPSentFedTermRequest">Federation Termination Request Sent By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPSentFedTermRequest_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPSentFedTermRequest_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentFedTermRequest_Value1">Request Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentFedTermRequest_Value2">Signed Request Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPSentFedTermRequest" FROM_TABLE="OIFSPMetricsHidden">
+	    <Column NAME="mname" />
+  	    <Column NAME="ProviderID" />
+  	    <Column NAME="Value1" />
+  	    <Column NAME="Value2" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentFedTermRequest</Filter>
+  	  </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="SPSentFedTermResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPSentFedTermResponse">Federation Termination Response Sent By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPSentFedTermResponse_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPSentFedTermResponse_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentFedTermResponse_Value1">Response Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentFedTermResponse_Value2">Response Sent Sucessfully</Label>
+       </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentFedTermResponse_Value3">Response Failed</Label>
+       </Display>
+     </ColumnDescriptor>    
+      <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentFedTermResponse_Value4">Signed Response Sent</Label>
+       </Display>
+     </ColumnDescriptor>    
+   </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPSentFedTermResponse" FROM_TABLE="OIFSPMetricsHidden">
+	  <Column NAME="mname" />
+  	  <Column NAME="ProviderID" />
+  	  <Column NAME="Value1" />
+  	  <Column NAME="Value2" />
+  	  <Column NAME="Value3" />
+   	  <Column NAME="Value4" />
+    <Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentFedTermResponse</Filter>
+  </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="SPReceivedFedTermRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPReceivedFedTermRequest">Federation Termination Request Received By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermRequest_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermRequest_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermRequest_Value1">Request Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermRequest_Value2">Signed Request Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPReceivedFedTermRequest" FROM_TABLE="OIFSPMetricsHidden">
+	    <Column NAME="mname" />
+  	    <Column NAME="ProviderID" />
+  	    <Column NAME="Value1" />
+  	    <Column NAME="Value2" />
+  <Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedFedTermRequest</Filter>
+  </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="SPReceivedFedTermResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPReceivedFedTermResponse">Federation Termination Response Received By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermResponse_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermResponse_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermResponse_Value1">Response Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermResponse_Value2">Response Received Sucessfully</Label>
+       </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermResponse_Value3">Response Failed</Label>
+       </Display>
+     </ColumnDescriptor>    
+     <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedFedTermResponse_Value4">Signed Response Received</Label>
+       </Display>
+     </ColumnDescriptor>    
+   </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPReceivedFedTermResponse" FROM_TABLE="OIFSPMetricsHidden">
+	  <Column NAME="mname" />
+  	  <Column NAME="ProviderID" />
+  	  <Column NAME="Value1" />
+  	  <Column NAME="Value2" />
+  	  <Column NAME="Value3" />
+   	  <Column NAME="Value4" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedFedTermResponse</Filter>
+    </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="SPSentRNIRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPSentRNIRequest">Name Registration Request Sent By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPSentRNIRequest_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPSentRNIRequest_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentRNIRequest_Value1">Request Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentRNIRequest_Value2">Signed Request Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPSentRNIRequest" FROM_TABLE="OIFSPMetricsHidden">
+	    <Column NAME="mname" />
+  	    <Column NAME="ProviderID" />
+  	    <Column NAME="Value1" />
+  	    <Column NAME="Value2" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentRNIRequest</Filter>
+  </GetView>
+  </ExecutionDescriptor> 
+  </Metric> 
+
+  <Metric NAME="SPSentRNIResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPSentRNIResponse">Name Registration Response Sent By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPSentRNIResponse_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPSentRNIResponse_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentRNIResponse_Value1">Response Sent</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentRNIResponse_Value2">Response Sent Sucessfully</Label>
+       </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentRNIResponse_Value3">Response Failed</Label>
+       </Display>
+     </ColumnDescriptor>    
+     <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPSentRNIResponse_Value4">Signed Response Sent</Label>
+       </Display>
+     </ColumnDescriptor>    
+   </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPSentRNIResponse" FROM_TABLE="OIFSPMetricsHidden">
+	  <Column NAME="mname" />
+  	  <Column NAME="ProviderID" />
+  	  <Column NAME="Value1" />
+  	  <Column NAME="Value2" />
+  	  <Column NAME="Value3" />
+   	  <Column NAME="Value4" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">SentRNIResponse</Filter>
+  </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="SPReceivedRNIRequest" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPReceivedRNIRequest">Name Registration Request Received By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPReceivedRNIRequest_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIRequest_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIRequest_Value1">Request Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIRequest_Value2">Signed Request Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPReceivedRNIRequest" FROM_TABLE="OIFSPMetricsHidden">
+	    <Column NAME="mname" />
+  	    <Column NAME="ProviderID" />
+  	    <Column NAME="Value1" />
+  	    <Column NAME="Value2" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedRNIRequest</Filter>
+  </GetView>
+  </ExecutionDescriptor> 
+  </Metric> 
+
+ <Metric NAME="SPReceivedRNIResponse" TYPE="TABLE">
+   <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPReceivedRNIResponse">Name Registration Response Received By SP</Label>
+    </Display>
+   <TableDescriptor>
+   <ColumnDescriptor NAME="mname" TYPE="STRING" IS_KEY="FALSE" COLUMN_NAME="mname">
+       <Display>
+         <Label  NLSID="SPReceivedRNIResponse_mname">Metric Name</Label>
+    </Display>
+   </ColumnDescriptor>
+     <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIResponse_ProviderID">Provider Name</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value1" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIResponse_Value1">Response Received</Label>
+       </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="Value2" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIResponse_Value2">Response Received Sucessfully</Label>
+       </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="Value3" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIResponse_Value3">Response Failed</Label>
+       </Display>
+     </ColumnDescriptor>    
+     <ColumnDescriptor NAME="Value4" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label  NLSID="SPReceivedRNIResponse_Value4">Signed Response Received</Label>
+       </Display>
+     </ColumnDescriptor>    
+   </TableDescriptor>
+  <ExecutionDescriptor>
+     <GetTable NAME="OIFSPMetricsHidden" USE_CACHE="TRUE"/>
+      <GetView NAME="SPReceivedRNIResponse" FROM_TABLE="OIFSPMetricsHidden">
+	  <Column NAME="mname" />
+  	  <Column NAME="ProviderID" />
+  	  <Column NAME="Value1" />
+  	  <Column NAME="Value2" />
+  	  <Column NAME="Value3" />
+   	  <Column NAME="Value4" />
+	<Filter COLUMN_NAME="mname" OPERATOR="CONTAINS">ReceivedRNIResponse</Filter>
+    </GetView>
+  </ExecutionDescriptor>
+  </Metric> 
+
+  <Metric NAME="PercentageSuccessAuthnReqSent" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="PercentageSuccessAuthnReqSent">Successful Authentication Request Sent By SP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="PercentSuccAuthnSent" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="PercentSuccAuthnSent">Successful Authentication(%) </Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="SentAuthnRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="ReceivedAuthnResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinSuccAuthnReqSent">
+			<Table NAME="SentAuthnRequest" />
+			<Table NAME="ReceivedAuthnResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="ReceivedAuthnResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="ReceivedAuthnResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="PercentageSuccessAuthnReqSent" FROM_TABLE="joinSuccAuthnReqSent">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="PercentSuccAuthnSent"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+ </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="SPPercentageSuccessFedTermReqReceived" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPPercentageSuccessFedTermReqReceived">Successful Federation Termination Request Received By SP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="SPPercentSuccFedTermRec" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="SPPercentSuccFedTermRec">Successful Federation Termination Received(%) </Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="SPReceivedFedTermRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="SPSentFedTermResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinSuccFedTermReqRecvd">
+			<Table NAME="SPReceivedFedTermRequest" />
+			<Table NAME="SPSentFedTermResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="SPSentFedTermResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="SPSentFedTermResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="SPPercentageSuccessFedTermReqReceived" FROM_TABLE="joinSuccFedTermReqRecvd">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="SPPercentSuccFedTermRec"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+     </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="SPPercentageSuccessFedTermReqSent" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPPercentageSuccessFedTermReqSent">Successful Federation Termination Request Sent By SP(%)</Label>
+    </Display>
+    <TableDescriptor>
+		<ColumnDescriptor NAME="SPPercentSuccFedTermSent" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="SPPercentSuccFedTermSent">Successful Federation Termination Sent(%) </Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="SPSentFedTermRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="SPReceivedFedTermResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinSuccFedTermReqSent">
+			<Table NAME="SPSentFedTermRequest" />
+			<Table NAME="SPReceivedFedTermResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="SPReceivedFedTermResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="SPReceivedFedTermResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="SPPercentageSuccessFedTermReqSent" FROM_TABLE="joinSuccFedTermReqSent">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="SPPercentSuccFedTermSent"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+     </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="SPPercentageSuccessRNIReqReceived" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPPercentageSuccessRNIReqReceived">Successful Name Registration Request Received By SP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="SPPercentSuccRNIRec" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="SPPercentSuccRNIRec">Successful Name Registration Received(%) </Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="SPReceivedRNIRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="SPSentRNIResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinSuccRNIReqRecvd">
+			<Table NAME="SPReceivedRNIRequest" />
+			<Table NAME="SPSentRNIResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="SPSentRNIResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="SPSentRNIResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="SPPercentageSuccessRNIReqReceived" FROM_TABLE="joinSuccRNIReqRecvd">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="SPPercentSuccRNIRec"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+ </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="SPPercentageSuccessRNIReqSent" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="SPPercentageSuccessRNIReqSent">Successful Name Registration Request Sent By SP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="SPPercentSuccRNISent" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="SPPercentSuccRNISent">Successful Name Registration Sent(%)</Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="SPSentRNIRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="SPReceivedRNIResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinSuccRNIReqSent">
+			<Table NAME="SPSentRNIRequest" />
+			<Table NAME="SPReceivedRNIResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="SPReceivedRNIResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="SPReceivedRNIResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="SPPercentageSuccessRNIReqSent" FROM_TABLE="joinSuccRNIReqSent">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="SPPercentSuccRNISent"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+  </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="PercentageSuccessAuthnReqRcvd" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="PercentageSuccessAuthnReqRcvd">Successful Authentication Request Received By IdP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="PercentSuccAuthnRcvd" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="PercentSuccAuthnRcvd">Successful Authentication(%) </Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="ReceivedAuthnRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="SentAuthnResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinSuccAuthnReqRcvd">
+			<Table NAME="ReceivedAuthnRequest" />
+			<Table NAME="SentAuthnResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="SentAuthnResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="SentAuthnResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="PercentageSuccessAuthnReqRcvd" FROM_TABLE="joinSuccAuthnReqRcvd">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="PercentSuccAuthnRcvd"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+     </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="IdPPercentageSuccessFedTermReqReceived" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPPercentageSuccessFedTermReqReceived">Successful Federation Termination Request Received By IdP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="IdPPercentSuccFedTermRec" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="IdPPercentSuccFedTermRec">Successful Federation Termination Received(%) </Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="IdPReceivedFedTermRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="IdPSentFedTermResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinIdpSuccFedTermReqRecvd">
+			<Table NAME="IdPReceivedFedTermRequest" />
+			<Table NAME="IdPSentFedTermResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="IdPSentFedTermResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="IdPSentFedTermResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="IdPPercentageSuccessFedTermReqReceived" FROM_TABLE="joinIdpSuccFedTermReqRecvd">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="IdPPercentSuccFedTermRec"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+    </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="IdPPercentageSuccessFedTermReqSent" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPPercentageSuccessFedTermReqSent">Successful Federation Termination Request Sent By IdP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="IdPPercentSuccFedTermSent" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="IdPPercentSuccFedTermSent">Successful Federation Termination Sent(%)</Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="IdPSentFedTermRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="IdPReceivedFedTermResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinIdPSuccFedTermReqSent">
+			<Table NAME="IdPSentFedTermRequest" />
+			<Table NAME="IdPReceivedFedTermResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="IdPReceivedFedTermResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="IdPReceivedFedTermResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="IdPPercentageSuccessFedTermReqSent" FROM_TABLE="joinIdPSuccFedTermReqSent">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="IdPPercentSuccFedTermSent"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+    </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="IdPPercentageSuccessRNIReqReceived" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPPercentageSuccessRNIReqReceived">Successful Name Registration Request Received By IdP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="IdPPercentSuccRNIRec" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="IdPPercentSuccRNIRec">Successful Name Registration Received(%)</Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="IdPReceivedRNIRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="IdPSentRNIResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinIdPSuccRNIReqRecvd">
+			<Table NAME="IdPReceivedRNIRequest" />
+			<Table NAME="IdPSentRNIResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="IdPSentRNIResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="IdPSentRNIResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="IdPPercentageSuccessRNIReqReceived" FROM_TABLE="joinIdPSuccRNIReqRecvd">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="IdPPercentSuccRNIRec"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+    </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="IdPPercentageSuccessRNIReqSent" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1014plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="IdPPercentageSuccessRNIReqSent">Successful Name Registration Request Sent By IdP(%)</Label>
+    </Display>
+   <TableDescriptor>
+		<ColumnDescriptor NAME="IdPPercentSuccRNISent" TYPE="NUMBER" IS_KEY="FALSE">
+			 <Display>
+				<Label NLSID="IdPPercentSuccRNISent">Successful Name Registration Sent(%)</Label>
+			 </Display>
+		</ColumnDescriptor>		
+  </TableDescriptor>
+  <ExecutionDescriptor>
+         <GetTable NAME="IdPSentRNIRequest" USE_CACHE="TRUE_IF_COLLECT"/>
+		 <GetTable NAME="IdPReceivedRNIResponse" USE_CACHE="TRUE_IF_COLLECT"/>
+         <JoinTables NAME="joinIdPSuccRNIReqSent">
+			<Table NAME="IdPSentRNIRequest" />
+			<Table NAME="IdPReceivedRNIResponse" />
+			<Column NAME="totalFailed" TABLE_NAME="IdPReceivedRNIResponse"
+			               COLUMN_NAME="Value3" />
+			<Column NAME="totalSuccess" TABLE_NAME="IdPReceivedRNIResponse"
+			               COLUMN_NAME="Value2" />           
+         </JoinTables>
+         <GroupBy NAME="IdPPercentageSuccessRNIReqSent" FROM_TABLE="joinIdPSuccRNIReqSent">
+		      <AggregateColumn  NAME="totalFailed"
+                          COLUMN_NAME="totalFailed"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="totalSuccess"
+                          COLUMN_NAME="totalSuccess"
+                          OPERATOR="AVG"/>
+			  <ComputeColumn    NAME="IdPPercentSuccRNISent"
+                          EXPR="(totalSuccess*100)/(totalFailed+totalSuccess)"/>             
+          </GroupBy>  
+  </ExecutionDescriptor>
+  </Metric>
+  <!-- OIF 10.1.4 Metrics -->
+  
+  <!-- OIF 11g Metrics -->
+  <!-- Protocol Profiles Summary -->
+  <Metric NAME="ProtocolProfilesSummary" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+    <Display>
+      <Label NLSID="protocol_profiles_summary">Protocol Profiles Summary</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ArtifactProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="artifcat_processing_avg">SAML Artifact Processing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor> 
+      <ColumnDescriptor NAME="ArtifactResolutionErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="artifact_resolution_error_responses">ArtifactResolve Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="artifact_resolution_requests">ArtifactResolve Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="artifact_resolution_responses">ArtifactResolve Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="attribute_qeury_error_responses">AttributeQuery Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="attribute_query_requests">AttributeQuery Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="attribute_query_responses">AttributeQuery Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="authn_request_error_responses">AuthnRequest Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="authn_request_processing_avg">AuthnRequest Processing time at the IdP (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="authn_request_requests">AuthnRequest Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="authn_request_responses">AuthnRequest Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnResponseProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="authn_response_processing_avg">AuthnResponse Processing Time at the SP (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="BadlyFormedMessage_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="badly_formed_requests">Received XML Requests with Parsing Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="encrypted_requests">Requests Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="encrypted_responses">Responses Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="error_responses">Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EventProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="event_processing_avg">Event Processing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocalAuthn.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="local_authn_avg">Local User Authentication Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Logout.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="logout_avg">Global Logout Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="logout_error_responses">Logout Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="logout_requests">Logout Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="logout_responses">Logout Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_id_management_error_responses">ManageNameID Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="nameid_management_requests">ManageNameID Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="nameid_management_responses">ManageNameID Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_EmailAddress_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_email_address">NameIDs of EmailAddress Format processed</Label>
+        </Display>
+      </ColumnDescriptor>     
+      <ColumnDescriptor NAME="NameIdentifierFormat_Kerberos_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_kerberos">NameIDs of Kerberos Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Persistent_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_persistent">NameIDs of Persistent Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Transient_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_transient">NameIDs of Transient Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Unspecified_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_unspecified">NameIDs of Unspecified Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Windows_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_windowns">NameIDs of WindowsDomainQualifiedName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_X509DN_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_x509dn">NameIDs of X509SubjectName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Requests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests">HTTP and SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestProcessed_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="request_processed">ApplicationController Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="request_processing_avg">Incoming Request Processing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOST_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_http_post">HTTP Requests using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOSTSimpleSign_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_http_post_simple_sign">HTTP Requests using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPRedirect_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_http_redirect">HTTP Requests using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsSOAP_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_soap">SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Responses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses">HTTP and SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOST_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_http_post">HTTP Responses using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOSTSimpleSign_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_http_post_simple_sign">HTTP Responses using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPRedirect_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_http_redirect">HTTP Responses using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesSOAP_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_soap">SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SecurityTokenResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="security_token_responses">RequestSecurityToken Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_and_encrypted_requests">Requests both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_and_encrypted_responses">Responses both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_requests">Requests Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_responses">Responses Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="WellFormedMessage_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="well_formed_requests">Received XML Requests successfully Parsed</Label>
+        </Display>
+      </ColumnDescriptor>                  
+      <ColumnDescriptor NAME="ArtifactResolutionErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ArtifactResolutionErrorResponses_raw > _ArtifactResolutionErrorResponses_raw) ? ArtifactResolutionErrorResponses_raw - _ArtifactResolutionErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="artifact_resolution_error_responses">ArtifactResolve Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ArtifactResolutionRequests_raw > _ArtifactResolutionRequests_raw) ? ArtifactResolutionRequests_raw - _ArtifactResolutionRequests_raw : 0">
+        <Display>
+          <Label NLSID="artifact_resolution_requests">ArtifactResolve Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ArtifactResolutionResponses_raw > _ArtifactResolutionResponses_raw) ? ArtifactResolutionResponses_raw - _ArtifactResolutionResponses_raw : 0">
+        <Display>
+          <Label NLSID="artifact_resolution_responses">ArtifactResolve Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AttributeQueryErrorResponses_raw > _AttributeQueryErrorResponses_raw) ? AttributeQueryErrorResponses_raw - _AttributeQueryErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="attribute_qeury_error_responses">AttributeQuery Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AttributeQueryRequests_raw > _AttributeQueryRequests_raw) ? AttributeQueryRequests_raw - _AttributeQueryRequests_raw : 0">
+        <Display>
+          <Label NLSID="attribute_query_requests">AttributeQuery Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AttributeQueryResponses_raw > _AttributeQueryResponses_raw) ? AttributeQueryResponses_raw - _AttributeQueryResponses_raw : 0">
+        <Display>
+          <Label NLSID="attribute_query_responses">AttributeQuery Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AuthnRequestErrorResponses_raw > _AuthnRequestErrorResponses_raw) ? AuthnRequestErrorResponses_raw - _AuthnRequestErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="authn_request_error_responses">AuthnRequest Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AuthnRequestRequests_raw > _AuthnRequestRequests_raw) ? AuthnRequestRequests_raw - _AuthnRequestRequests_raw : 0">
+        <Display>
+          <Label NLSID="authn_request_requests">AuthnRequest Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AuthnRequestResponses_raw > _AuthnRequestResponses_raw) ? AuthnRequestResponses_raw - _AuthnRequestResponses_raw : 0">
+        <Display>
+          <Label NLSID="authn_request_responses">AuthnRequest Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="BadlyFormedMessage" TYPE="NUMBER"
+                        COMPUTE_EXPR="(BadlyFormedMessage_raw > _BadlyFormedMessage_raw) ? BadlyFormedMessage_raw - _BadlyFormedMessage_raw : 0">
+        <Display>
+          <Label NLSID="badly_formed_requests">Received XML requests with Parsing Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(EncryptedRequests_raw > _EncryptedRequests_raw) ? EncryptedRequests_raw - _EncryptedRequests_raw : 0">
+        <Display>
+          <Label NLSID="encrypted_requests">Requests Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(EncryptedResponses_raw > _EncryptedResponses_raw) ? EncryptedResponses_raw - _EncryptedResponses_raw : 0">
+        <Display>
+          <Label NLSID="encrypted_responses">Responses Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ErrorResponses_raw > _ErrorResponses_raw) ? ErrorResponses_raw - _ErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="error_responses">Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(LogoutErrorResponses_raw > _LogoutErrorResponses_raw) ? LogoutErrorResponses_raw - _LogoutErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="logout_error_responses">Logout Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(LogoutRequests_raw > _LogoutRequests_raw) ? LogoutRequests_raw - _LogoutRequests_raw : 0">
+        <Display>
+          <Label NLSID="logout_requests">Logout Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(LogoutResponses_raw > _LogoutResponses_raw) ? LogoutResponses_raw - _LogoutResponses_raw : 0">
+        <Display>
+          <Label NLSID="logout_responses">Logout Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIDManagementErrorResponses_raw > _NameIDManagementErrorResponses_raw) ? NameIDManagementErrorResponses_raw - _NameIDManagementErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="name_id_management_error_responses">ManageNameID Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIDManagementRequests_raw > _NameIDManagementRequests_raw) ? NameIDManagementRequests_raw - _NameIDManagementRequests_raw : 0">
+        <Display>
+          <Label NLSID="nameid_management_requests">ManageNameID Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIDManagementResponses_raw > _NameIDManagementResponses_raw) ? NameIDManagementResponses_raw - _NameIDManagementResponses_raw : 0">
+        <Display>
+          <Label NLSID="nameid_management_responses">ManageNameID Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_EmailAddress" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_EmailAddress_raw > _NameIdentifierFormat_EmailAddress_raw) ? NameIdentifierFormat_EmailAddress_raw - _NameIdentifierFormat_EmailAddress_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_email_address">NameIDs of EmailAddress Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Kerberos" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Kerberos_raw > _NameIdentifierFormat_Kerberos_raw) ? NameIdentifierFormat_Kerberos_raw - _NameIdentifierFormat_Kerberos_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_kerberos">NameIDs of Kerberos Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Persistent" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Persistent_raw > _NameIdentifierFormat_Persistent_raw) ? NameIdentifierFormat_Persistent_raw - _NameIdentifierFormat_Persistent_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_persistent">NameIDs of Persistent Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Transient" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Transient_raw > _NameIdentifierFormat_Transient_raw) ? NameIdentifierFormat_Transient_raw - _NameIdentifierFormat_Transient_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_transient">NameIDs of Transient Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Unspecified" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Unspecified_raw > _NameIdentifierFormat_Unspecified_raw) ? NameIdentifierFormat_Unspecified_raw - _NameIdentifierFormat_Unspecified_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_unspecified">NameIDs of Unspecified Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Windows" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Windows_raw > _NameIdentifierFormat_Windows_raw) ? NameIdentifierFormat_Windows_raw - _NameIdentifierFormat_Windows_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_windowns">NameIDs of WindowsDomainQualifiedName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_X509DN" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_X509DN_raw > _NameIdentifierFormat_X509DN_raw) ? NameIdentifierFormat_X509DN_raw - _NameIdentifierFormat_X509DN_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_x509dn">NameIDs of X509SubjectName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Requests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(Requests_raw > _Requests_raw) ? Requests_raw - _Requests_raw : 0">
+        <Display>
+          <Label NLSID="requests">HTTP and SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestProcessed" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestProcessed_raw > _RequestProcessed_raw) ? RequestProcessed_raw - _RequestProcessed_raw : 0">
+        <Display>
+          <Label NLSID="request_processed">ApplicationController Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOST" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsHTTPPOST_raw > _RequestsHTTPPOST_raw) ? RequestsHTTPPOST_raw - _RequestsHTTPPOST_raw : 0">
+        <Display>
+          <Label NLSID="requests_http_post">HTTP Requests using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOSTSimpleSign" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsHTTPPOSTSimpleSign_raw > _RequestsHTTPPOSTSimpleSign_raw) ? RequestsHTTPPOSTSimpleSign_raw - _RequestsHTTPPOSTSimpleSign_raw : 0">
+        <Display>
+          <Label NLSID="requests_http_post_simple_sign">HTTP Requests using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPRedirect" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsHTTPRedirect_raw > _RequestsHTTPRedirect_raw) ? RequestsHTTPRedirect_raw - _RequestsHTTPRedirect_raw : 0">
+        <Display>
+          <Label NLSID="requests_http_redirect">HTTP Requests using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsSOAP" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsSOAP_raw > _RequestsSOAP_raw) ? RequestsSOAP_raw - _RequestsSOAP_raw : 0">
+        <Display>
+          <Label NLSID="requests_soap">SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Responses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(Responses_raw > _Responses_raw) ? Responses_raw - _Responses_raw : 0">
+        <Display>
+          <Label NLSID="responses">HTTP and SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOST" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesHTTPPOST_raw > _ResponsesHTTPPOST_raw) ? ResponsesHTTPPOST_raw - _ResponsesHTTPPOST_raw : 0">
+        <Display>
+          <Label NLSID="responses_http_post">HTTP Responses using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOSTSimpleSign" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesHTTPPOSTSimpleSign_raw > _ResponsesHTTPPOSTSimpleSign_raw) ? ResponsesHTTPPOSTSimpleSign_raw - _ResponsesHTTPPOSTSimpleSign_raw : 0">
+        <Display>
+          <Label NLSID="responses_http_post_simple_sign">HTTP Responses using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPRedirect" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesHTTPRedirect_raw > _ResponsesHTTPRedirect_raw) ? ResponsesHTTPRedirect_raw - _ResponsesHTTPRedirect_raw : 0">
+        <Display>
+          <Label NLSID="responses_http_redirect">HTTP Responses using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesSOAP" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesSOAP_raw > _ResponsesSOAP_raw) ? ResponsesSOAP_raw - _ResponsesSOAP_raw : 0">
+        <Display>
+          <Label NLSID="responses_soap">SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SecurityTokenResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SecurityTokenResponses_raw > _SecurityTokenResponses_raw) ? SecurityTokenResponses_raw - _SecurityTokenResponses_raw : 0">
+        <Display>
+          <Label NLSID="security_token_responses">RequestSecurityToken Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedAndEncryptedRequests_raw > _SignedAndEncryptedRequests_raw) ? SignedAndEncryptedRequests_raw - _SignedAndEncryptedRequests_raw : 0">
+        <Display>
+          <Label NLSID="signed_and_encrypted_requests">Requests both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedAndEncryptedResponses_raw > _SignedAndEncryptedResponses_raw) ? SignedAndEncryptedResponses_raw - _SignedAndEncryptedResponses_raw : 0">
+        <Display>
+          <Label NLSID="signed_and_encrypted_responses">Responses both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedRequests_raw > _SignedRequests_raw) ? SignedRequests_raw - _SignedRequests_raw : 0">
+        <Display>
+          <Label NLSID="signed_requests">Requests Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedResponses_raw > _SignedResponses_raw) ? SignedResponses_raw - _SignedResponses_raw : 0">
+        <Display>
+          <Label NLSID="signed_responses">Responses Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="WellFormedMessage" TYPE="NUMBER"
+                        COMPUTE_EXPR="(WellFormedMessage_raw > _WellFormedMessage_raw) ? WellFormedMessage_raw - _WellFormedMessage_raw : 0">
+        <Display>
+          <Label NLSID="well_formed_requests">Received XML Requests successfully Parsed</Label>
+        </Display>
+      </ColumnDescriptor>            
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_federation:protocol_profiles_rollup</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>      
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+        ArtifactProcessing.avg;
+        ArtifactResolutionErrorResponses;
+        ArtifactResolutionRequests;
+        ArtifactResolutionResponses;
+        AttributeQueryErrorResponses;
+        AttributeQueryRequests;
+        AttributeQueryResponses;
+        AuthnRequestErrorResponses;
+        AuthnRequestProcessing.avg;
+        AuthnRequestRequests;
+        AuthnRequestResponses;
+        AuthnResponseProcessing.avg;
+        BadlyFormedMessage;
+        EncryptedRequests;
+        EncryptedResponses;
+        ErrorResponses;
+        EventProcessing.avg;
+        LocalAuthn.avg;
+        Logout.avg;
+        LogoutErrorResponses;
+        LogoutRequests;
+        LogoutResponses;
+        NameIDManagementErrorResponses;
+        NameIDManagementRequests;
+        NameIDManagementResponses;
+        NameIdentifierFormat_EmailAddress;
+        NameIdentifierFormat_Kerberos;
+        NameIdentifierFormat_Persistent;
+        NameIdentifierFormat_Transient;
+        NameIdentifierFormat_Unspecified;
+        NameIdentifierFormat_Windows;
+        NameIdentifierFormat_X509DN;
+	Requests;
+        RequestProcessed;
+        RequestProcessing.avg;
+        RequestsHTTPPOST;
+        RequestsHTTPPOSTSimpleSign;
+        RequestsHTTPRedirect;
+        RequestsSOAP;
+        Responses;
+        ResponsesHTTPPOST;
+        ResponsesHTTPPOSTSimpleSign;
+        ResponsesHTTPRedirect;
+        ResponsesSOAP;
+        SecurityTokenResponses;
+        SignedAndEncryptedRequests;
+        SignedAndEncryptedResponses;
+        SignedRequests;
+        SignedResponses;
+        WellFormedMessage
+      </Property>
+    </QueryDescriptor>
+  </Metric> <!-- Protocol Profiles Summary -->
+  
+  <!-- Protocol Profiles -->
+  <Metric NAME="ProtocolProfiles" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+    <Display>
+      <Label NLSID="protocol_profiles">Protocol Profiles</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ProviderID" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="profile_name">Profile Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="artifcat_processing_avg">SAML Artifact Processing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor> 
+      <ColumnDescriptor NAME="ArtifactResolutionErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="artifact_resolution_error_responses">ArtifactResolve Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="artifact_resolution_requests">ArtifactResolve Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="artifact_resolution_responses">ArtifactResolve Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="attribute_qeury_error_responses">AttributeQuery Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="attribute_query_requests">AttributeQuery Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="attribute_query_responses">AttributeQuery Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="authn_request_error_responses">AuthnRequest Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="authn_request_processing_avg">AuthnRequest Processing Time at the IdP (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="authn_request_requests">AuthnRequest Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="authn_request_responses">AuthnRequest Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnResponseProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="authn_response_processing_avg">AuthnResponse Processing Time at the SP (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="BadlyFormedMessage_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="badly_formed_requests">Received XML Requests with Parsing Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="encrypted_requests">Requests Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="encrypted_responses">Responses Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="error_responses">Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EventProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="event_processing_avg">Event Processing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocalAuthn.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="local_authn_avg">Local User Authentication Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Logout.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="logout_avg">Global Logout Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="logout_error_responses">Logout Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="logout_requests">Logout Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="logout_responses">Logout Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementErrorResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_id_management_error_responses">ManageNameID Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="nameid_management_requests">ManageNameID Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="nameid_management_responses">ManageNameID Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_EmailAddress_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_email_address">NameIDs of EmailAddress Format processed</Label>
+        </Display>
+      </ColumnDescriptor>     
+      <ColumnDescriptor NAME="NameIdentifierFormat_Kerberos_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_kerberos">NameIDs of Kerberos Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Persistent_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_persistent">NameIDs of Persistent Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Transient_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_transient">NameIDs of Transient Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Unspecified_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_unspecified">NameIDs of Unspecified Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Windows_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_windowns">NameIDs of WindowsDomainQualifiedName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_X509DN_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="name_identifier_format_x509dn">NameIDs of X509SubjectName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Requests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests">HTTP and SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestProcessed_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="request_processed">ApplicationController Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestProcessing.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="request_processing_avg">Incoming Request Processing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOST_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_http_post">HTTP Requests Using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOSTSimpleSign_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_http_post_simple_sign">HTTP Requests using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPRedirect_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_http_redirect">HTTP Requests using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsSOAP_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="requests_soap">SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Responses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses">HTTP and SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOST_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_http_post">HTTP Responses using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOSTSimpleSign_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_http_post_simple_sign">HTTP Responses using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPRedirect_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_http_redirect">HTTP Responses using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesSOAP_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="responses_soap">SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SecurityTokenResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="security_token_responses">RequestSecurityToken Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_and_encrypted_requests">Requests both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_and_encrypted_responses">Responses both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedRequests_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_requests">Requests Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedResponses_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="signed_responses">Responses Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="WellFormedMessage_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="well_formed_requests">Received XML Requests Successfully Parsed</Label>
+        </Display>
+      </ColumnDescriptor>                  
+      <ColumnDescriptor NAME="ArtifactResolutionErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ArtifactResolutionErrorResponses_raw > _ArtifactResolutionErrorResponses_raw) ? ArtifactResolutionErrorResponses_raw - _ArtifactResolutionErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="artifact_resolution_error_responses">ArtifactResolve Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ArtifactResolutionRequests_raw > _ArtifactResolutionRequests_raw) ? ArtifactResolutionRequests_raw - _ArtifactResolutionRequests_raw : 0">
+        <Display>
+          <Label NLSID="artifact_resolution_requests">ArtifactResolve Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ArtifactResolutionResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ArtifactResolutionResponses_raw > _ArtifactResolutionResponses_raw) ? ArtifactResolutionResponses_raw - _ArtifactResolutionResponses_raw : 0">
+        <Display>
+          <Label NLSID="artifact_resolution_responses">ArtifactResolve Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AttributeQueryErrorResponses_raw > _AttributeQueryErrorResponses_raw) ? AttributeQueryErrorResponses_raw - _AttributeQueryErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="attribute_qeury_error_responses">AttributeQuery Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AttributeQueryRequests_raw > _AttributeQueryRequests_raw) ? AttributeQueryRequests_raw - _AttributeQueryRequests_raw : 0">
+        <Display>
+          <Label NLSID="attribute_query_requests">AttributeQuery Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AttributeQueryResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AttributeQueryResponses_raw > _AttributeQueryResponses_raw) ? AttributeQueryResponses_raw - _AttributeQueryResponses_raw : 0">
+        <Display>
+          <Label NLSID="attribute_query_responses">AttributeQuery Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AuthnRequestErrorResponses_raw > _AuthnRequestErrorResponses_raw) ? AuthnRequestErrorResponses_raw - _AuthnRequestErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="authn_request_error_responses">AuthnRequest Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AuthnRequestRequests_raw > _AuthnRequestRequests_raw) ? AuthnRequestRequests_raw - _AuthnRequestRequests_raw : 0">
+        <Display>
+          <Label NLSID="authn_request_requests">AuthnRequest Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="AuthnRequestResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(AuthnRequestResponses_raw > _AuthnRequestResponses_raw) ? AuthnRequestResponses_raw - _AuthnRequestResponses_raw : 0">
+        <Display>
+          <Label NLSID="authn_request_responses">AuthnRequest Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="BadlyFormedMessage" TYPE="NUMBER"
+                        COMPUTE_EXPR="(BadlyFormedMessage_raw > _BadlyFormedMessage_raw) ? BadlyFormedMessage_raw - _BadlyFormedMessage_raw : 0">
+        <Display>
+          <Label NLSID="badly_formed_requests">Received XML Requests with Parsing Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(EncryptedRequests_raw > _EncryptedRequests_raw) ? EncryptedRequests_raw - _EncryptedRequests_raw : 0">
+        <Display>
+          <Label NLSID="encrypted_requests">Requests Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="EncryptedResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(EncryptedResponses_raw > _EncryptedResponses_raw) ? EncryptedResponses_raw - _EncryptedResponses_raw : 0">
+        <Display>
+          <Label NLSID="encrypted_responses">Responses Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ErrorResponses_raw > _ErrorResponses_raw) ? ErrorResponses_raw - _ErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="error_responses">Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(LogoutErrorResponses_raw > _LogoutErrorResponses_raw) ? LogoutErrorResponses_raw - _LogoutErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="logout_error_responses">Logout Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(LogoutRequests_raw > _LogoutRequests_raw) ? LogoutRequests_raw - _LogoutRequests_raw : 0">
+        <Display>
+          <Label NLSID="logout_requests">Logout Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LogoutResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(LogoutResponses_raw > _LogoutResponses_raw) ? LogoutResponses_raw - _LogoutResponses_raw : 0">
+        <Display>
+          <Label NLSID="logout_responses">Logout Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementErrorResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIDManagementErrorResponses_raw > _NameIDManagementErrorResponses_raw) ? NameIDManagementErrorResponses_raw - _NameIDManagementErrorResponses_raw : 0">
+        <Display>
+          <Label NLSID="name_id_management_error_responses">ManageNameID Error Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIDManagementRequests_raw > _NameIDManagementRequests_raw) ? NameIDManagementRequests_raw - _NameIDManagementRequests_raw : 0">
+        <Display>
+          <Label NLSID="nameid_management_requests">ManageNameID Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIDManagementResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIDManagementResponses_raw > _NameIDManagementResponses_raw) ? NameIDManagementResponses_raw - _NameIDManagementResponses_raw : 0">
+        <Display>
+          <Label NLSID="nameid_management_responses">ManageNameID Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_EmailAddress" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_EmailAddress_raw > _NameIdentifierFormat_EmailAddress_raw) ? NameIdentifierFormat_EmailAddress_raw - _NameIdentifierFormat_EmailAddress_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_email_address">NameIDs of EmailAddress Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Kerberos" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Kerberos_raw > _NameIdentifierFormat_Kerberos_raw) ? NameIdentifierFormat_Kerberos_raw - _NameIdentifierFormat_Kerberos_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_kerberos">NameIDs of Kerberos Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Persistent" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Persistent_raw > _NameIdentifierFormat_Persistent_raw) ? NameIdentifierFormat_Persistent_raw - _NameIdentifierFormat_Persistent_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_persistent">NameIDs of Persistent Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Transient" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Transient_raw > _NameIdentifierFormat_Transient_raw) ? NameIdentifierFormat_Transient_raw - _NameIdentifierFormat_Transient_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_transient">NameIDs of Transient Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Unspecified" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Unspecified_raw > _NameIdentifierFormat_Unspecified_raw) ? NameIdentifierFormat_Unspecified_raw - _NameIdentifierFormat_Unspecified_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_unspecified">NameIDs of Unspecified Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_Windows" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_Windows_raw > _NameIdentifierFormat_Windows_raw) ? NameIdentifierFormat_Windows_raw - _NameIdentifierFormat_Windows_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_windowns">NameIDs of WindowsDomainQualifiedName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="NameIdentifierFormat_X509DN" TYPE="NUMBER"
+                        COMPUTE_EXPR="(NameIdentifierFormat_X509DN_raw > _NameIdentifierFormat_X509DN_raw) ? NameIdentifierFormat_X509DN_raw - _NameIdentifierFormat_X509DN_raw : 0">
+        <Display>
+          <Label NLSID="name_identifier_format_x509dn">NameIDs of X509SubjectName Format processed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Requests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(Requests_raw > _Requests_raw) ? Requests_raw - _Requests_raw : 0">
+        <Display>
+          <Label NLSID="requests">HTTP and SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestProcessed" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestProcessed_raw > _RequestProcessed_raw) ? RequestProcessed_raw - _RequestProcessed_raw : 0">
+        <Display>
+          <Label NLSID="request_processed">ApplicationController Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOST" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsHTTPPOST_raw > _RequestsHTTPPOST_raw) ? RequestsHTTPPOST_raw - _RequestsHTTPPOST_raw : 0">
+        <Display>
+          <Label NLSID="requests_http_post">HTTP Requests using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPPOSTSimpleSign" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsHTTPPOSTSimpleSign_raw > _RequestsHTTPPOSTSimpleSign_raw) ? RequestsHTTPPOSTSimpleSign_raw - _RequestsHTTPPOSTSimpleSign_raw : 0">
+        <Display>
+          <Label NLSID="requests_http_post_simple_sign">HTTP Requests using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsHTTPRedirect" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsHTTPRedirect_raw > _RequestsHTTPRedirect_raw) ? RequestsHTTPRedirect_raw - _RequestsHTTPRedirect_raw : 0">
+        <Display>
+          <Label NLSID="requests_http_redirect">HTTP Requests using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="RequestsSOAP" TYPE="NUMBER"
+                        COMPUTE_EXPR="(RequestsSOAP_raw > _RequestsSOAP_raw) ? RequestsSOAP_raw - _RequestsSOAP_raw : 0">
+        <Display>
+          <Label NLSID="requests_soap">SOAP Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Responses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(Responses_raw > _Responses_raw) ? Responses_raw - _Responses_raw : 0">
+        <Display>
+          <Label NLSID="responses">HTTP and SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOST" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesHTTPPOST_raw > _ResponsesHTTPPOST_raw) ? ResponsesHTTPPOST_raw - _ResponsesHTTPPOST_raw : 0">
+        <Display>
+          <Label NLSID="responses_http_post">HTTP Responses using POST Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPPOSTSimpleSign" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesHTTPPOSTSimpleSign_raw > _ResponsesHTTPPOSTSimpleSign_raw) ? ResponsesHTTPPOSTSimpleSign_raw - _ResponsesHTTPPOSTSimpleSign_raw : 0">
+        <Display>
+          <Label NLSID="responses_http_post_simple_sign">HTTP Responses using POST Simple Sign Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesHTTPRedirect" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesHTTPRedirect_raw > _ResponsesHTTPRedirect_raw) ? ResponsesHTTPRedirect_raw - _ResponsesHTTPRedirect_raw : 0">
+        <Display>
+          <Label NLSID="responses_http_redirect">HTTP Responses using Redirect Binding</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ResponsesSOAP" TYPE="NUMBER"
+                        COMPUTE_EXPR="(ResponsesSOAP_raw > _ResponsesSOAP_raw) ? ResponsesSOAP_raw - _ResponsesSOAP_raw : 0">
+        <Display>
+          <Label NLSID="responses_soap">SOAP Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SecurityTokenResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SecurityTokenResponses_raw > _SecurityTokenResponses_raw) ? SecurityTokenResponses_raw - _SecurityTokenResponses_raw : 0">
+        <Display>
+          <Label NLSID="security_token_responses">RequestSecurityToken Responses</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedAndEncryptedRequests_raw > _SignedAndEncryptedRequests_raw) ? SignedAndEncryptedRequests_raw - _SignedAndEncryptedRequests_raw : 0">
+        <Display>
+          <Label NLSID="signed_and_encrypted_requests">Requests both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedAndEncryptedResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedAndEncryptedResponses_raw > _SignedAndEncryptedResponses_raw) ? SignedAndEncryptedResponses_raw - _SignedAndEncryptedResponses_raw : 0">
+        <Display>
+          <Label NLSID="signed_and_encrypted_responses">Responses both Signed and Encrypted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedRequests" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedRequests_raw > _SignedRequests_raw) ? SignedRequests_raw - _SignedRequests_raw : 0">
+        <Display>
+          <Label NLSID="signed_requests">Requests Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SignedResponses" TYPE="NUMBER"
+                        COMPUTE_EXPR="(SignedResponses_raw > _SignedResponses_raw) ? SignedResponses_raw - _SignedResponses_raw : 0">
+        <Display>
+          <Label NLSID="signed_responses">Responses Signed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="WellFormedMessage" TYPE="NUMBER"
+                        COMPUTE_EXPR="(WellFormedMessage_raw > _WellFormedMessage_raw) ? WellFormedMessage_raw - _WellFormedMessage_raw : 0">
+        <Display>
+          <Label NLSID="well_formed_requests">Received XML Requests Successfully Parsed</Label>
+        </Display>
+      </ColumnDescriptor>         
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_federation:protocol_profiles</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+        ProviderID;
+        ArtifactProcessing.avg;
+        ArtifactResolutionErrorResponses;
+        ArtifactResolutionRequests;
+        ArtifactResolutionResponses;
+        AttributeQueryErrorResponses;
+        AttributeQueryRequests;
+        AttributeQueryResponses;
+        AuthnRequestErrorResponses;
+        AuthnRequestProcessing.avg;
+        AuthnRequestRequests;
+        AuthnRequestResponses;
+        AuthnResponseProcessing.avg;
+        BadlyFormedMessage;
+        EncryptedRequests;
+        EncryptedResponses;
+        ErrorResponses;
+        EventProcessing.avg;
+        LocalAuthn.avg;
+        Logout.avg;
+        LogoutErrorResponses;
+        LogoutRequests;
+        LogoutResponses;
+        NameIDManagementErrorResponses;
+        NameIDManagementRequests;
+        NameIDManagementResponses;
+        NameIdentifierFormat_EmailAddress;
+        NameIdentifierFormat_Kerberos;
+        NameIdentifierFormat_Persistent;
+        NameIdentifierFormat_Transient;
+        NameIdentifierFormat_Unspecified;
+        NameIdentifierFormat_Windows;
+        NameIdentifierFormat_X509DN;
+	Requests;
+        RequestProcessed;
+        RequestProcessing.avg;
+        RequestsHTTPPOST;
+        RequestsHTTPPOSTSimpleSign;
+        RequestsHTTPRedirect;
+        RequestsSOAP;
+        Responses;
+        ResponsesHTTPPOST;
+        ResponsesHTTPPOSTSimpleSign;
+        ResponsesHTTPRedirect;
+        ResponsesSOAP;
+        SecurityTokenResponses;
+        SignedAndEncryptedRequests;
+        SignedAndEncryptedResponses;
+        SignedRequests;
+        SignedResponses;
+        WellFormedMessage;
+      </Property>
+    </QueryDescriptor>
+  </Metric> <!-- Protocol Profiles -->
+  
+  <!-- Security Protocol Messages -->
+  <Metric NAME="SecurityProtocolMessages" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+    <Display>
+      <Label NLSID="security_protocol_messages">Security Protocol Messages</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="XMLSignatures_Signed_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="xlmsignatures_signed">XML Signatures Generated</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLSignatures_Verified_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="xmlsignatures_verified">XML Signatures Verification Successes</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLSignatures_VerifyFailed_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="xmlsignatures_verifyfailed">XML Signatures Verification Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLEncryption_Encryptions_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="xmlencryption_encryptions">XML Encryptions Generated</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLEncryption_Decryptions_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="xmlencryption_decryptions">XML Decryptions Successes</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLEncryption_DecryptionFailures_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="xmlencryption_decryptionailures">XML Decryptions Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLSigner.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="xmlsigner_avg">XML Message Signing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLSignatureVerifier.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="xmlsignatureverifier_avg">XML Message Signature Verification Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="QueryStringSigner.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="querystringsigner_avg">URL Query String Signing Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="QueryStringSignatureVerifier.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="querystringsignatureVerifier_avg">URL Query String Signature Verification Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLEncryptionService.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="xmlencryptionservice_avg">XML Message Encryption Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLDecryptionService.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="xmldecryptionservice_avg">XML Message Decryption Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SerializeMessage.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="serializemessage_avg">XML Message Marshalling Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeSerializeMessage.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="deserializemessage_avg">XML Message Unmarshalling Time (ms)</Label>
+          <Unit NLSID="ms">ms</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLSignatures_Signed" TYPE="NUMBER"
+                        COMPUTE_EXPR="(XMLSignatures_Signed_raw > _XMLSignatures_Signed_raw) ? XMLSignatures_Signed_raw - _XMLSignatures_Signed_raw : 0">
+        <Display>
+          <Label NLSID="xlmsignatures_signed">XML Signatures Generated</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLSignatures_Verified" TYPE="NUMBER"
+                        COMPUTE_EXPR="(XMLSignatures_Verified_raw > _XMLSignatures_Verified_raw) ? XMLSignatures_Verified_raw - _XMLSignatures_Verified_raw : 0">
+        <Display>
+          <Label NLSID="xmlsignatures_verified">XML Signatures Verification Successes</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLSignatures_VerifyFailed" TYPE="NUMBER"
+                        COMPUTE_EXPR="(XMLSignatures_VerifyFailed_raw > _XMLSignatures_VerifyFailed_raw) ? XMLSignatures_VerifyFailed_raw - _XMLSignatures_VerifyFailed_raw : 0">
+        <Display>
+          <Label NLSID="xmlsignatures_verifyfailed">XML Signatures Verification Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLEncryption_Encryptions" TYPE="NUMBER"
+                        COMPUTE_EXPR="(XMLEncryption_Encryptions_raw > _XMLEncryption_Encryptions_raw) ? XMLEncryption_Encryptions_raw - _XMLEncryption_Encryptions_raw : 0">
+        <Display>
+          <Label NLSID="xmlencryption_encryptions">XML Encryptions Generated</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLEncryption_Decryptions" TYPE="NUMBER"
+                        COMPUTE_EXPR="(XMLEncryption_Decryptions_raw > _XMLEncryption_Decryptions_raw) ? XMLEncryption_Decryptions_raw - _XMLEncryption_Decryptions_raw : 0">
+        <Display>
+          <Label NLSID="xmlencryption_decryptions">XML Decryptions Successes</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="XMLEncryption_DecryptionFailures" TYPE="NUMBER"
+                        COMPUTE_EXPR="(XMLEncryption_DecryptionFailures_raw > _XMLEncryption_DecryptionFailures_raw) ? XMLEncryption_DecryptionFailures_raw - _XMLEncryption_DecryptionFailures_raw : 0">
+        <Display>
+          <Label NLSID="xmlencryption_decryptionailures">XML Decryptions Failures</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_federation:security_protocol_messages</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+        XMLSignatures_Signed;
+        XMLSignatures_Verified;
+        XMLSignatures_VerifyFailed;
+        XMLEncryption_Encryptions;
+        XMLEncryption_Decryptions;
+        XMLEncryption_DecryptionFailures;
+        XMLSigner.avg;
+        XMLSignatureVerifier.avg;
+        QueryStringSigner.avg;
+        QueryStringSignatureVerifier.avg;
+        XMLEncryptionService.avg;
+        XMLDecryptionService.avg;
+        SerializeMessage.avg;
+        DeSerializeMessage.avg;
+      </Property>      
+    </QueryDescriptor>
+  </Metric> <!-- Security Protocol Messages -->
+  
+  <!-- Enterprise DT Connectivity -->
+  <Metric NAME="DataTierConnectivity" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+    <Display>
+      <Label NLSID="enterprise_dt_connectivity">Data Tier Connectivity</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ServerName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="ServerName">Server Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ServerType" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="ServerType">Server Type</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Server_OpenSessions_raw" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="Server_OpenSessions">Open Server Connections</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Server_OpenSessions" TYPE="NUMBER"
+                        COMPUTE_EXPR="(Server_OpenSessions_raw > _Server_OpenSessions_raw) ? Server_OpenSessions_raw - _Server_OpenSessions_raw : 0">
+        <Display>
+          <Label NLSID="Server_OpenSessions">Open Server Connections</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">          
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_federation:enterprise_dt_connectivity</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+        DT_Name;
+        DT_Type;
+        DT_OpenSessions;
+      </Property>      
+    </QueryDescriptor>
+  </Metric> <!-- Enterprise DT Connectivity -->
+  
+  <!-- JVT Discovery Providers -->
+  <Metric NAME="DataModel" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+    <Display>
+      <Label NLSID="jvt_discovery_providers">Data Model</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ArtifactCreation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="artifact_creation_avg">SAML Artifact Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateArtifact.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_artifact_avg">SAML Artifact Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateConfiguration.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_configuration_avg">Server Configuration Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>      
+      <ColumnDescriptor NAME="LocateMetadata.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_metadata_avg">Provider Metadata Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>  
+      <ColumnDescriptor NAME="ProfileStateCreation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="profile_state_creation_avg">ProfileState Object Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateProfileState.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_profile_state_avg">ProfileState Object Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SessionCreation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="session_creation_avg">User Session Retrieval or Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateUser.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_user_avg">User Object Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateSession.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_session_avg">Session Object Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="CreateActiveServiceProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="create_active_service_provider_federation_avg">Active SP Federation Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateActiveServiceProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_active_service_provider_federation_avg">Active SP Federation Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="CreateActiveIdentityProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="create_active_identity_provider_federation_avg">Active IdP Federation Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateActiveIdentityProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_active_identity_provider_federation_avg">Active IdP Federation Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_provider_federation_avg">Provider Federation Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateTemporaryProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_temporary_provider_federation_avg">Temporary Provider Federation Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="CreateAffiliationProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="create_affiliation_provider_federation_avg">Affiliation Federation Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateAffiliationFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_affiliation_federationn_avg">Affiliation Federation Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="CreateServiceProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="create_service_provider_federation_avg">SP Federation Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="CreateIdentityProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="create_identity_provider_federation_avg">IdP Federation Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeleteSession.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="delete_session_avg">Session Deletion Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="CreateBinaryLargeObject.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="create_binary_large_object_avg">Database BLOB Creation Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LocateBinaryLargeObject.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="locate_binary_large_object_avg">Database BLOB Retrieval Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SessionPersistence.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="session_persistence_avg">Time to Persist Session Data (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeleteArtifact.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="delete_artifact_avg">SAML Artifact Deletion Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>           
+      <ColumnDescriptor NAME="DeleteProfileState.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="delete_profile_state_avg">ProfileState Data Deletion Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>     
+      <ColumnDescriptor NAME="DeleteActiveIdPFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="delete_active_idp_federation_avg">Active IdP Federation Deletion Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>      
+      <ColumnDescriptor NAME="DeleteActiveSPFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="delete_active_sp_federation_avg">Active SP Federation Deletion Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>      
+      <ColumnDescriptor NAME="DeleteProviderFederation.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="delete_provider_federation_avg">Provider Federation Deletion Time (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProviderFederationPersistenc.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="provider_federation_persistenc_avg">Time to Persist a Provider Federation (ms)</Label>
+            <Unit NLSID="ms">ms</Unit>
+          </Display>
+      </ColumnDescriptor>     
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_federation:jvt_discovery_providers</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+        ArtifactCreation.avg;
+        LocateArtifact.avg;
+        LocateConfiguration.avg;
+        LocateMetadata.avg;       
+        ProfileStateCreation.avg;
+        LocateProfileState.avg;
+        SessionCreation.avg;
+        LocateUser.avg;
+        LocateSession.avg;
+        CreateActiveServiceProviderFederation.avg;
+        LocateActiveServiceProviderFederation.avg;
+        CreateActiveIdentityProviderFederation.avg;
+        LocateActiveIdentityProviderFederation.avg;
+        LocateProviderFederation.avg;
+        LocateTemporaryProviderFederation.avg;
+        CreateAffiliationProviderFederation.avg;
+        LocateAffiliationFederation.avg;
+        CreateServiceProviderFederation.avg;
+        CreateIdentityProviderFederation.avg;
+        DeleteSession.avg;
+        CreateBinaryLargeObject.avg;
+        LocateBinaryLargeObject.avg;
+        SessionPersistence.avg;
+        DeleteArtifact.avg;
+        DeleteProfileState.avg;
+        DeleteActiveIdPFederation.avg;
+        DeleteActiveSPFederation.avg;
+        DeleteProviderFederation.avg;
+        ProviderFederationPersistenc.avg;
+      </Property>
+    </QueryDescriptor>
+  </Metric> <!-- JVT Discovery Providers -->
+   
+  <!-- Resource Usage Metric -->
+  <Metric NAME="ResourceUsage" TYPE="TABLE" NUM_CACHE_VALUES="24" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oracle_federation_ResourceUsage">Resource Usage</Label>
+    </Display>
+    <TableDescriptor>      
+      <!--ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_federation_resource_cpu_other">Other CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_federation_resource_cpu_idle">CPU Idle Time (%)</Label>
+        </Display>
+      </ColumnDescriptor-->
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oracle_federation_resource_memory_component">Memory Utilizaation (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_federation_resource_memoryPercentage_component">Memory Utilizaation (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="oracle_federation_resource_cpu_component">CPU Utilizaation (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <!--ColumnDescriptor NAME="memory.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_federation_resource_memory_other">Other Memory Usage (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_federation_resource_memory_free">Free Memory (KB)</Label>
+        </Display>
+      </ColumnDescriptor-->
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="wlshome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="servername" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="command">%perlBin%/perl</Property>
+      <Property NAME="args">%scriptsDir%/iam/weblogicResUsage.pl %wlshome% %servername%</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+    <!--QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">opmn_component:ResourceUsage</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">cpu.component;cpu.other;cpu.idle;memory.component;memoryPercentage.component;memory.other;memory.free</Property>
+    </QueryDescriptor-->
+  </Metric>
+
+  <!-- Instance Properties -->
+  <InstanceProperties>
+    <!-- 10.1.4. Instance Properties -->
+    <InstanceProperty NAME="Host">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="fed_server_host">Host</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="Port">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="fed_server_port">Port</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="SoapPort">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="fed_server_soapport">SoapPort</Label>
+      </Display>   
+    </InstanceProperty>
+    <InstanceProperty NAME="Role">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="fed_server_role">Role</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="UserStore">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="usr_data_store">User Data Store</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="UserStorePort">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="usr_data_store_port">User Data Store Port</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="FedStore">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="fed_data_store">Fed Data Store</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="FedStorePort">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="fed_data_store_port">Fed Data Store Port</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="ServerId">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="oif_server_id">ServerId</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="SPProviderID">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="sp_provider_uri">SP URI</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="IdPProviderID">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1014plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="idp_provider_uri">IdP URI</Label>
+      </Display>
+    </InstanceProperty> 
+    <!-- 10.1.4 Instance Properties -->
+    <!-- Instance Properties for all versions -->
+    <InstanceProperty NAME="version" CREDENTIAL="FALSE" OPTIONAL="FALSE">      
+      <Display>
+        <Label NLSID="version_iprop">Version</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="VersionCategory" IS_COMPUTED="TRUE">
+      <Display>
+        <Label NLSID="version_cat_iprop">Version Category</Label>
+      </Display>
+    </InstanceProperty> 
+    <!-- Instance Properties for all versions -->
+    <!-- 11 Instance Properties -->
+    <InstanceProperty NAME="appName" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="appName">Application Name</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="ServerNames" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="serverNameLabel">ServerNames</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="serviceURL" OPTIONAL="FALSE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="oracle_federation_serviceURL">JMX Service URL</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="WeblogicUserName">
+     <ValidIf>
+       <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+     </ValidIf>
+     <Display>
+       <Label NLSID="USERNAME_LABEL">WebLogic Monitoring User Name</Label>
+       <ShortName NLSID="USERNAME_NAME">WebLogic Monitoring User Name</ShortName>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="WeblogicPassword" CREDENTIAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="PASSWORD_LABEL">WebLogic Monitoring Password</Label>
+        <ShortName NLSID="PASSWORD_NAME">WebLogic Monitoring Password</ShortName>
+      </Display>
+    </InstanceProperty> 
+    <InstanceProperty NAME="WebLogicHome">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="WEBLOGIC_HOME_LABEL">Weblogic Home</Label>
+        <ShortName NLSID="WEBLOGIC_HOME_NAME">Weblogic Home</ShortName>
+      </Display>
+    </InstanceProperty> 
+    <InstanceProperty NAME="farmName" OPTIONAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+      </ValidIf>
+      <Display>
+        <Label NLSID="FARMNAME_LABEL">Farm Name</Label>
+      </Display>
+    </InstanceProperty>    
+    <!-- 11 Instance Properties -->
+    <DynamicProperties NAME="ComputeVC" FORMAT="ROW" PROP_LIST="VersionCategory">
+      <QueryDescriptor FETCHLET_ID="VersionRangeComputer">
+        <Property NAME="Version" SCOPE="INSTANCE">version</Property>
+        <Property NAME="DefaultRange" SCOPE="GLOBAL">11plus</Property>
+        <Property NAME="1014plus" SCOPE="GLOBAL">10.1.4;</Property>
+        <Property NAME="11plus" SCOPE="GLOBAL">10.3.0;</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+  </InstanceProperties>
+</TargetMetadata>

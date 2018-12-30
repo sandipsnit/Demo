@@ -1,0 +1,143 @@
+# DEVinfo.def: Collects Generic Oracle Developer Information
+# $Id: DEVinfo.def,v 2.5 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/DEVinfo.def,v 2.5 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+DEVinfo - Collects Generic Oracle Developer Information
+
+=head1 DESCRIPTION
+
+This module collects generic Oracle Developer-related information.
+
+=cut
+
+# Initialization
+var (\%ENV,\$PS_EF,\$DEV_VER,\$IAS_VER,\$IAS_ALONE,\$IAS_HOME,\$APPS_INST,\
+     \$OAH_TOP) = @arg
+import $DEV_BIN,$ORACLE_HOME
+
+# Adapt the environment variables
+run &{check(getOsName(),'aix',            'OSaix',\
+                        'darwin',         'OSdarwin',\
+                        'dec_osf',        'OSosf',\
+                        'dynixptx',       'OSptx',\
+                        'hpux',           'OShpux',\
+                        'linux',          'OSlinux',\
+                        'solaris',        'OSsunos',\
+                        cond(isCygwin(),  'OSwin32',\
+                             isUnix(),    'OSunix',\
+                             isVms(),     'OSvms',\
+                             isWindows(), 'OSwin32'))}('DEV',\%ENV,\$PS_EF)
+
+debug ' Inside DEV module, determining the Forms/Reports install type'
+
+# Include 32-bit or 64-bit library directory to the library path
+if ${CUR.SHLIB}
+{var ($key,$dir) = (last)
+ loop $cmd (grepDir($DEV_BIN,'^(frmcmp_batch|rwrun)$','ip'))
+ {if grepCommand(concat('file ',$cmd),concat($cmd,':\s.*64'),'f')
+  {if testDir('e',catDir($ORACLE_HOME,'lib64'))
+    var $dir = lastDir()
+  }
+  else
+  {if testDir('e',catDir($ORACLE_HOME,'lib32'))
+    var $dir = lastDir()
+  }
+ }
+ if $dir
+  call setEnv($key,join(':',$dir,getEnv($key,undef,true)))
+} 
+
+# Determine type of Forms/Reports installation version
+if grepDir($DEV_BIN,'^(frmcmp_batch|rwrun)(\.(bat|sh))?$','ip')
+{loop $cmd (last)
+ {var ($str) = grepCommand(concat(quote($cmd,'x'),' \?'),'\S','f')
+  if match($str,'(Release|Version)\s+(\S+)\s+')
+  {var (undef,$ver) = (last)
+   if match($ver,'^(11|10)\.(\d+)\.')
+   {var ($ver,$rel) = (last)
+    var $DEV_VER = concat($ver,'g')
+    var $IAS_ALONE = 'AS'
+    var $IAS_VER = 'R2'
+   }
+   elsif grepDir($DEV_BIN,'^(/rwbuilder|f90desm)(\.(sh|bat|exe))?$','i')
+   {var $DEV_VER = '9i'
+    var $IAS_ALONE = 'iDS'
+    var $IAS_VER = 'DS'
+   }
+   else
+   {var $DEV_VER = '9i'
+    var $IAS_ALONE = 'AS'
+    var $IAS_VER = 'R2'
+   }
+   break
+  }
+ }
+}
+elsif grepDir($DEV_BIN,'^(rwrun60|f60runm)(\.exe)?$','i')
+{var $DEV_VER = '6i'
+ if testFile('r',catFile($ORACLE_HOME,'conf,','6iserver.conf'))
+ {var $IAS_ALONE = 'IAS102'
+  var $IAS_VER = 'R1'
+ }
+ else
+  var $IAS_ALONE = 'Forms/Reports 6.0.x stand alone'
+}
+elsif grepDir($DEV_BIN,\
+              '^(reports|f90genm|rwrun|ifweb|ifweb90)(\.(sh|bat|exe))?$','i')
+{var $DEV_VER = '9i'
+ if grepDir($DEV_BIN,'^(/rwbuilder|f90desm)(\.(sh|bat|exe))?$','i')
+ {var $IAS_ALONE = 'iDS'
+  var $IAS_VER = 'DS'
+ }
+ else
+ {var $IAS_ALONE = 'AS'
+  var $IAS_VER = 'R2'
+ }
+}
+
+# Find iAS home
+var $IAS_HOME = $ORACLE_HOME
+if compare('eq',$IAS_VER,'DS')
+{if !testFile('r',catFile($IAS_HOME,'Apache','Apache','conf','httpd.conf'))
+ {var $IAS_HOME = dirname($IAS_HOME)
+  var $dir = catDir($IAS_HOME,'Apache','Apache','conf')
+  if !or(testFile('r',catFile($dir,'httpd.conf')),\
+         testFile('r',catFile($dir,'httpds.conf')))
+  {var $dir = catDir($IAS_HOME,'iAS','Apache','Apache','conf')
+   if or(testFile('r',catFile($dir,'httpd.conf')),\
+         testFile('r',catFile($dir,'httpds.conf')))
+    var $IAS_HOME = catDir($IAS_HOME,'iAS')
+  }
+ }
+}
+
+# Determine if this is an APPS install
+debug ' Inside DEV module, determining if it is an APPS install'
+if testFile('r',catFile($IAS_HOME,'Apache','Apache','conf','apps.conf'))
+{var $IAS_VER = 'R1'
+ var $IAS_ALONE = 'APPS 11i install'
+}
+var $OAH_TOP = getEnv('OAH_TOP')
+if $OAH_TOP
+ var $APPS_INST = '11i'
+
+# Indicate the identification result
+debug '  DEV_VER=',nvl($DEV_VER,'unknown')
+debug '  IAS_VER=',nvl($IAS_VER,'unknown')
+debug '  IAS_ALONE=',$IAS_ALONE
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

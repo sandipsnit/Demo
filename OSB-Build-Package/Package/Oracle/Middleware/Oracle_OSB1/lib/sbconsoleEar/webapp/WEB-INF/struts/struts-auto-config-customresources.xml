@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="EditCustomResourceForm" type="com.bea.alsb.console.resources.custom.forms.EditCustomResourcesForm" />
+        <form-bean name="BrowserForm" type="com.bea.alsb.console.resources.custom.forms.CustomResourceBrowserForm"/>
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+	<action-mappings>
+
+        <action path="/ViewAllCustomResources"
+                type="com.bea.alsb.console.resources.custom.actions.ViewAllCustomResourcesAction"
+                parameter="entry">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/custom/ViewAllCustomResources.jsp"/>
+        </action>
+
+        <action path="/ViewAllSearchCustomResources"
+                type="com.bea.alsb.console.resources.custom.actions.ViewAllCustomResourcesAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/custom/ViewAllCustomResources.jsp"/>
+        </action>
+
+        <action path="/ViewAllCustomResourcesPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/custom/ViewAllCustomResources.jsp" />
+
+        <action path="/ViewCustomResources"
+                type="com.bea.alsb.console.resources.custom.actions.ManageCustomResourcesAction"
+                name="EditCustomResourceForm"
+                scope="session"
+                attribute="EditCustomResourceForm"
+                validate="false"
+                input="view" >
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/custom/ViewCustomResource.jsp" />
+        </action>
+
+        <action path="/ManageCustomResources"
+                type="com.bea.alsb.console.resources.custom.actions.ManageCustomResourcesAction"
+                name="EditCustomResourceForm"
+                scope="session"
+                attribute="EditCustomResourceForm"
+                validate="false"
+                input="error" >
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/custom/ViewCustomResource.jsp" />
+            <forward name="addOrEdit"
+                     contextRelative="true"
+                     path="jsp/resources/custom/EditCustomResource.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/custom/ViewAllCustomResources.jsp" />
+        </action>
+
+        <action path="/EditCustomResource"
+                type="com.bea.alsb.console.resources.custom.actions.EditCustomResourcesAction"
+                name="EditCustomResourceForm"
+                scope="session"
+                attribute="EditCustomResourceForm"
+                validate="true"
+                input="error" >
+            <forward name="cancel"
+                     path="/ViewAllCustomResources.do" />
+            <forward name="refresh"
+                     contextRelative="true"
+                     path="jsp/resources/custom/EditCustomResource.jsp" />
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/custom/EditCustomResource.jsp" />
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/custom/ViewAllCustomResources.jsp" />
+        </action>
+
+        <action path="/CustomResBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/custom/CustomResourceBrowser.jsp" />
+
+        <action path="/CustomResBrowser"
+                type="com.bea.alsb.console.resources.custom.actions.CustomResourceBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="CustomResourceBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/custom/CustomResourceBrowser.jsp"/>
+        </action>
+
+        <action path="/CustomResBrowserTask"
+                type="com.bea.alsb.console.resources.custom.actions.CustomResourceBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="CustomResourceBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/resources/custom/CustomResourceBrowser.jsp"/>
+        </action>
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                multipartClass="com.bea.alsb.console.controller.MultipartRequestHandler"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

@@ -1,0 +1,236 @@
+# M258D39.def: Collects StorEdge 3900/6900 Series Disk Array Information
+# $Id: M258D39.def,v 1.2 2012/08/14 00:13:06 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M258D39.def,v 1.2 2012/08/14 00:13:06 mschenke Exp $
+#
+# Change History
+# 20120705  JGS  Initial version.
+
+=head1 NAME
+
+M258D39 - Collects StorEdge 3900/6900 Series Disk Array Information
+
+=head1 DESCRIPTION
+
+This module collects remote information for StorEdge 3900/6900 series disk
+arrays using the <curl> tool.
+
+=cut
+
+use Explorer
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+var $WRN = '* Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use the \
+              link to save them and use an adequate viewer.'
+
+run XPLRlib('indy')
+
+# Get the ping syntax
+var $PING = check(${RDA.OS},'solaris','/usr/sbin/ping %s',\
+                            'linux',  '/bin/ping -c 1 %s',\
+                            'cygwin', '/bin/ping %s 64 1')
+
+#------------------------------------------------------------------------------
+# XPLR_indy section
+#------------------------------------------------------------------------------
+
+section XPLR_indy
+
+# Validate the execution context
+if !${XPLR_GLOBAL:1}
+ return
+call log_run('Processing D39 sections ...')
+
+# Locate curl
+if get_bin_tool('curl')
+ call $[XPL]->set_curl(last)
+if !$CURL = $[XPL]->has_curl
+ return log_info('Explorer bundled curl is not available')
+
+pretoc '2:StorEdge 3900/6900'
+
+=head2 StorEdge 3900/6900 Series Disk Array Data Collection
+
+Gathers the StorEdge 3900/6900 series disk array information using F<curl> to
+get the following files:
+
+=over 2
+
+=item o F<${DISK_ARRAY_NAME}.response>
+
+=item o F<${DISK_ARRAY_NAME}.tar>
+
+=back
+
+=cut
+
+# Process and validate input
+loop $set (split('\|',${XPLR_D39_SET}))
+{var $hst = getSetting(concat('XPLR_D39_HOST_',$set))
+ var $prt = getSetting(concat('XPLR_D39_PORT_',$set))
+ var $usr = getSetting(concat('XPLR_D39_USER_',$set))
+ next !?$hst
+
+ # Validate the input parameters
+ debug ' Inside D39 collection, validating ',$hst,' access'
+ if !match($hst,'^[\w\-\.\:]+$')
+ next log_info(concat('The StorEdge disk array host name or IP "',$hst,\
+                      '"contains invalid characters'))
+ call command(sprintf($PING,$hst))
+ if status()
+  next log_info(concat('Host ',$hst,' is not reachable'))
+ if !match($prt,'^[\d]+$')
+  next log_info('Invalid port value')
+ if or(expr('>',$prt,65535),expr('<',$prt,0))
+  next log_info('Invalid port number')
+ if !match($usr,'^[\w\-\.]+$')
+  next log_info('The StorEdge disk array user name contains invalid characters')
+ if !hasPassword('host',$hst,$usr)
+  call setPassword('host',$hst,$usr,\
+    askPassword(concat('Enter ',$usr,' HTTP password for StorEdge disk array ',\
+                        $hst,': ')))
+
+ # Run report for each valid host
+ call log_info(concat('Collecting data for ',$hst))
+ var $box = cleanBox()
+ var $pth = catFile($box,$fil = concat($hst,'.response'))
+ var $cmd = concat('--silent --retry 1 -o ',quote($pth,'x'),' "http://',$hst,\
+                   ':',$prt,'/?GET=RUNSS&comm=ras_admin+host_detail"')
+ if $[XPL]->exec_curl($hst,$usr,$cmd)
+  next log_error(concat('curl command [',$CURL,' -q --config - ',$cmd,\
+                        '] returned error code: ',last))
+ if !grepFile($pth,'3910|3960|6910|6960','f')
+  next log_error(concat('Unable to establish http connection to ',$hst,\
+                        ', check firewall'))
+ var @fil = ([concat('disks/StorEdge/Indy/',$fil),$pth,undef,$fil])
+
+ var $pth = catFile($box,$fil = concat($hst,'.tar'))
+ var $cmd = concat('--connect-timeout 300 --silent --retry 1 -o ',\
+                   quote($pth,'x'),' "http://',$hst,':',$prt,\
+                   '/?GET=RUNSS&comm=se_extract+-r+-x"')
+ if $[XPL]->exec_curl($hst,$usr,$cmd)
+  var $msg = concat('curl command [',$CURL,' -q --config - ',$cmd,\
+                               '] returned error code: ',last)
+ if !grepCommand(concat('/usr/bin/file ',quote($pth,'x'),' 2>&1',\
+                 'tar archive','f'))
+  var $msg = concat('Data collection for ',$hst,' failed because patch \
+                     114591-22 or later is not installed on the SP')
+ else
+ {var $msg = undef
+  call push(@fil,[concat('disks/StorEdge/Indy/',$fil),$pth,true,$fil])
+ }
+
+ report concat('d39_',$hst)
+ title '---+!! Disk Array ',$hst
+ prefix
+ {write $WRN
+  write '|*File Path*| *Size*|*Last Modified Date*|'
+ }
+ call do_collect_fil(@fil)
+ if hasOutput(true)
+  write $TOP
+
+ if ?$msg
+ {call log_error($msg)
+  call do_exec(\
+    [concat('disks/StorEdge/Indy/',$hst,'.log'),undef,\
+     concat(${RDA.GMTIME},': ',$msg),\
+     '---++ Collection Error'])
+ } 
+ else
+  call log_info(concat('Data gathering complete for ',$hst))
+
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Disk Array ',$hst,']]'
+}
+
+=head2 d39_input - Input File
+
+Lists the characteristics of the specified input file.
+
+=cut
+
+if testFile('r',catFile(${XPLR_D39_CFG}))
+{debug ' Inside D39 collection, getting input file characteristics'
+ report d39_input
+ title '---+ Input File Details'
+ call do_exec(\
+   ['disks/StorEdge/Indy',\
+    '/usr/bin/ls',concat('-l ',quote(lastFile(),'x')),\
+    '---+ Explorer Input File'])
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][Input File]]'
+}
+
+# Adjust the table of content
+unpretoc
+
+#------------------------------------------------------------------------------
+# Input file conversion section
+#------------------------------------------------------------------------------
+
+section input
+
+# Define the input file parser macro
+macro parse_input
+{var ($fil,$flg) = @arg
+
+ var @sta = getStat($fil)
+ if !expr('&',$sta[2],077)
+ {# Parse the input file
+  var ($set,@set) = (0)
+  loop $lin (grepFile($fil,'^\s*#','v'))
+  {var ($hst,$prt,$usr,$pwd) = split('\s+',trim($lin),4)
+   next !?$hst
+   if ?$pwd
+    call setPassword('host',$hst,$usr,$pwd)
+
+   call push(@set,incr($set))
+   call setTempSetting(concat('XPLR_D39_HOST_',$set),$hst)
+   call setTempSetting(concat('XPLR_D39_PORT_',$set),$prt)
+   call setTempSetting(concat('XPLR_D39_USER_',$set),$usr)
+  }
+
+  # Save the parsing results
+  if $set
+  {call setTempSetting('XPLR_D39_CFG',$fil)
+   call setTempSetting('XPLR_D39_SET',join('|',@set))
+   call setTempSetting('xplr_d39_accept',true)
+  }
+  else
+   call setTempSetting('xplr_d39_accept',$flg)
+ }
+}
+
+# Determine which input file must be parsed
+if and(defined($fil = ${ENV.EXP_INDYINPUT_CONFIG}),\
+       testFile('frs',catFile($fil)))
+ call parse_input(lastFile(),true)
+else
+ call parse_input(catFile(${XPLR_ETC},'indyinput.txt'),false)
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

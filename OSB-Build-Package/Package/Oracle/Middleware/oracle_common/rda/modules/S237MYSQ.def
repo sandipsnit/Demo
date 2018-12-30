@@ -1,0 +1,336 @@
+# S237MYSQ.def: Collects Oracle MySQL Server Information
+# $Id: S237MYSQ.def,v 1.10 2012/05/11 09:30:04 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S237MYSQ.def,v 1.10 2012/05/11 09:30:04 mschenke Exp $
+#
+# Change History
+# 20120509  KRA  Improve socket connection.
+
+=head1 NAME
+
+S237MYSQ - Collects Oracle MySQL Server Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle MySQL Server-related information. The following
+reports can be generated and are regrouped under C<Oracle MySQL Server>:
+
+=head1 REPORTS
+
+=cut
+
+use Buffer
+
+echo tput('bold'),'Processing MYSQ module ...',tput('off')
+
+# Initialization
+var $CONFIG   = getSetting('MYSQ_CONFIG','')
+var $DATA     = getSetting('MYSQ_DATA_DIR','')
+var $HOME     = getSetting('MYSQ_HOME','')
+var $LOOP     = getSetting('MYSQ_LOOP',3)
+var $PROTOCOL = uc(getSetting('MYSQ_PROTOCOL'))
+var $SLEEP    = getSetting('MYSQ_SLEEP',30)
+var $TAIL     = getSetting('MYSQ_TAIL',5000000)
+var $USER     = getSetting('MYSQ_USER','')
+
+var %DUP
+var $MOD = cond(isUnix(),'fx','fr')
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle MySQL Server'
+
+# Validate the settings
+if !match($LOOP,'^\d+$')
+ var $LOOP = 3
+if !match($SLEEP,'^\d+$')
+ var $SLEEP = 30
+
+# Define global variables
+var $SECTION
+var %MYSQL = (basedir             => undef,\
+              datadir             => undef,\
+              log_error           => undef,\
+              slow_query_log_file => undef)
+
+# Load the common macros
+run library()
+run MYSQlib()
+
+=head2 db_info - Database Information
+
+Gathers the Oracle MySQL Server-related database information.
+
+=head2 error - Database Error
+
+Indicates that the database connection is not successful with the specified
+connection parameters.
+
+=cut
+
+debug ' Inside MYSQ module, gathering database information (can take time)'
+if testFile($MOD,catFile($HOME,'bin',${AS.EXE:'mysql'}))
+ var $pgm = lastCommand()
+elsif findCommand('mysql')
+ var $pgm = last
+else
+ var $pgm = undef
+if ?$pgm
+{# Check whether user and password are present
+ var ($usr,$opt,$pwd) = ('',concat(' --defaults-file=',quote($CONFIG,'x'),\
+   ' -B -f --column_names=false --vertical=false --table=false --xml=false \
+     --html=false --default_character_set=ascii'))
+ if compare('eq',$PROTOCOL,'MEMORY')
+  var $opt = concat($opt,' --protocol=MEMORY --shared-memory-base-name=',\
+                    quote(getSetting('MYSQ_MEMORY','MYSQL'),'x'))
+ elsif compare('eq',$PROTOCOL,'PIPE')
+  var $opt = concat($opt,' --protocol=PIPE --socket=',\
+                    quote(getSetting('MYSQ_PIPE','MySQL'),'x'))
+ elsif compare('eq',$PROTOCOL,'SOCKET')
+ {var $arg = getSetting('MYSQ_SOCKET')
+  if !testFile('S',$arg)
+   var $arg = '/tmp/mysql.sock'
+  var $opt = concat($opt,' --protocol=SOCKET --socket=',quote($arg,'x'))
+ }
+ else
+ {var $arg = getSetting('MYSQ_PORT')
+  if !and(match($arg,'^\d+$'),expr('>=',$arg,1),expr('<=',$arg,65535))
+   var $arg = 3306
+  var $opt = concat($opt,' --protocol=TCP --port=',$arg)
+ }
+
+ if createBuffer('CFG','R',$CONFIG)
+ {loop $str (grepBuffer('CFG','^\[client|mysql\]','o'))
+  {var ($off,$lin) = split(':',$str,2)
+   call setPos('CFG',$off)
+   while ?getLine('CFG')
+   {var $lin = chomp(last)
+    break match($lin,'^\[')
+    if match($lin,'^[^\043]*\buser\s*=\s*(\S+)')
+     var ($usr) = last
+    elsif match($lin,'^[^\043]*\bpassword\s*=\s*(\S*)')
+     var ($pwd) = last
+   }
+   break and(length($usr),defined($pwd))
+  }
+
+  if !length($usr)
+   var $opt = concat($opt,' -u',$USER)
+  if !?$pwd
+  {if isCygwin()
+    echo "WARNING: In Cygwin, it is not possible to provide a password \
+                   interactively.\012"
+   else
+    var $opt = concat($opt,' -p')
+  }
+  call deleteBuffer('CFG')
+ }
+
+ # Perform the database collection
+ var $cur = 0
+ var $job = createTemp('JOB')
+ var $out = getTemp('OUT')
+ call writeTemp('JOB',"SELECT '---# RDA:BEGIN';")
+ call writeTemp('JOB','SHOW GLOBAL VARIABLES;')
+ call writeTemp('JOB',\
+   "SELECT '---# RDA:END MACRO write_variables:var';")
+ while expr('<',$cur,$LOOP)
+ {if and($cur,$SLEEP)
+   call writeTemp('JOB',"SELECT sleep(",$SLEEP,");")
+  incr $cur
+  call writeTemp('JOB',"SELECT '---# RDA:BEGIN';")
+  call writeTemp('JOB','SHOW GLOBAL STATUS;')
+  call writeTemp('JOB',\
+    "SELECT '---# RDA:END MACRO write_table:glb|1|",$cur,"';")
+  call writeTemp('JOB',"SELECT '---# RDA:BEGIN';")
+  call writeTemp('JOB','SHOW ENGINE INNODB STATUS;')
+  call writeTemp('JOB',\
+    "SELECT '---# RDA:END MACRO write_data:idb|1';")
+  call writeTemp('JOB',"SELECT '---# RDA:BEGIN';")
+  call writeTemp('JOB','SHOW FULL PROCESSLIST;')
+  call writeTemp('JOB',\
+    "SELECT '---# RDA:END MACRO write_table:prc|1';")
+  call writeTemp('JOB',"SELECT '---# RDA:BEGIN';")
+  call writeTemp('JOB','SHOW MASTER STATUS;')
+  call writeTemp('JOB',\
+    "SELECT '---# RDA:END MACRO write_table:mst|1';")
+  call writeTemp('JOB',"SELECT '---# RDA:BEGIN';")
+  call writeTemp('JOB','SHOW SLAVE STATUS;')
+  call writeTemp('JOB',\
+    "SELECT '---# RDA:END MACRO write_table:slv|1';")
+ }
+ call writeTemp('JOB',"SELECT '---# RDA:BEGIN';")
+ call writeTemp('JOB','SHOW OPEN TABLES;')
+ call writeTemp('JOB',"SELECT '---# RDA:END MACRO write_table:tbl';")
+ call writeTemp('JOB','QUIT;')
+ call closeTemp('JOB')
+ call command(concat($pgm,$opt,' <',quote($job,'x'),' >',quote($out,'x')))
+
+ # Report the gathered database information
+ report db_info
+ title '---+!! Database Information'
+ title $TOC
+ var %DSC = (\
+   glb => ["---++ Global Status\012|*Variable Name*|*Value*|",2],\
+   idb => ["---++ Engine InnoDB Status"],\
+   mst => ["---++ Master Status\012\
+            |*File*|*Position*|*Binlog Do DB*|*Binlog Ignore DB*|",4],\
+   prc => ["---++ Full Process List\012\
+           |*ID*|*User*|*Host*|*Database*|*Command*|*Time*|*State*|\
+            *Information*|",8],\
+   slv => ["---++ Slave Status\012\
+            |*Slave IO State*|*Master Host*|*Master User*|*Master Port*|\
+             *Connect Retry*|*Master Log File*|*Read Master Log Pos*|\
+             *Relay Log File*|*Relay Log Pos*|*Relay Master Log File*|\
+             *Slave IO Running*|*Slave SQL Running*|*Replicate Do DB*|\
+             *Replicate Ignore DB*|*Replicate Do Table*|\
+             *Replicate Ignore Table*|*Replicate Wild Do Table*|\
+             *Replicate Wild Ignore Table*|*Last Errno*|*Last Error*|\
+             *Skip Counter*|*Exec Master Log Pos*|*Relay Log Space*|\
+             *Until Condition*|*Until Log File*|*Until Log Pos*|\
+             *Master SSL Allowed*|*Master SSL CA File*|*Master SSL CA Path*|\
+             *Master SSL Cert*|*Master SSL Cipher*|*Master SSL Key*|\
+             *Seconds Behind Master*|*Master SSL Verify Server Cert*|\
+             *Last IO Errno*|*Last IO Error*|*Last SQL Errno*|*Last SQL Error*|\
+             *Replicate Ignore Server Ids*|*Master Server Id*|",40],\
+   tbl => ["---+ Open Tables\012\
+            |*Database*|*Table*|*In Use*|*Name Locked*|",4],\
+   var => ["---+ Global Variables\012|*Variable Name*|*Value*|",2])
+ call writeWasResult($out)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Database Information]]'
+ else
+ {echo 'Error: Unable to collect database information'
+  report error
+  write '** Error: Unable to collect database information**%BR%'
+  write 'Command used: ',$pgm,$opt
+  toc '2:[[',getFile(),'][rda_report][Database Error]]'
+ }
+
+ # Unlink the temporary files
+ call unlinkTemp('JOB')
+ call unlinkTemp('OUT')
+
+ # Get online basedir directory if present
+ if ?$MYSQL{'basedir'}
+  var $HOME = catDir(last)
+}
+
+=head2 Configuration Files
+
+Gathers Oracle MySQL Server-related configuration files.
+
+=cut
+
+debug ' Inside MYSQ module, collecting the configuration files'
+pretoc '2:Configuration Files'
+var ($dir,$bas) = parseFile(catDir($CONFIG))
+call cat_report($dir,$bas,'cfg_','^(\s*password\s*=).*$','%R:PASSWORD%')
+unpretoc
+
+=head2 datadir_overview - Data Directory Overview
+
+Lists the content of the F<$DATA_DIR> directory.
+
+=cut
+
+if ?$MYSQL{'datadir'}
+ var $DATA = catDir(last)
+elsif or(isWindows(),isCygwin())
+{if grepDir(catDir($HOME,'data'),'(\.err|slow\.log)$','fi')
+  var $DATA = lastDir()
+}
+
+debug ' Inside MYSQ module, listing the files in ',$DATA,' directory'
+report datadir_overview
+prefix
+{write '---+ Data Directory Overview'
+ write '---## Information Taken from ',encode($DATA)
+}
+call stat_tree($DATA)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Data Directory Overview]]'
+
+=head2 log_files - Log Files
+
+Gathers Oracle MySQL Server-related log files.
+
+=cut
+
+debug ' Inside MYSQ module, collecting the log files'
+
+# Get the error log
+var @fil = ()
+if ?$MYSQL{'log_error'}
+{if !isAbsolute($fil = catFile(last))
+  var $fil = catFile($DATA,$fil)
+ call push(@fil,$fil)
+}
+else
+ call push(@fil,grepDir($DATA,'\.err$','inp'))
+
+# Get the slow log
+if ?$MYSQL{'slow_query_log_file'}
+{if !isAbsolute($fil = catFile(last))
+  var $fil = catFile($DATA,$fil)
+ call push(@fil,$fil)
+}
+else
+ call push(@fil,grepDir($DATA,'-slow\.log$','inp'))
+
+# Collect the log files
+report log_files
+prefix
+{write '---+ Log Files'
+ write '   * Last ',$TAIL,' log file lines collected'
+ write '   * Links point to files that have been collected in their \
+             original format. Opening them directly in your browser can \
+             present risks. To prevent them, access the file outside the \
+             browser or use the link to save them and use an adequate viewer.'
+ write '|*File Name*| *Size*|*Last Modified Date*|'
+}
+loop $fil (@fil)
+{if $buf = new('Buffer','r',$fil)
+ {var $lnk = encode($fil)
+  var $siz = getSize($fil)
+  if $siz
+  {var $rpt = $[OUT]->add_report('d',concat('log_',basename($fil)),0,'.log')
+   if $rpt->write_tail($buf,$TAIL,['F',$fil,'F','T'])
+    var $lnk = concat('[[',$rpt->get_file,'][_blank][',$lnk,']]')
+   end $rpt
+  }
+  write '|',$lnk,' | ',$siz,'|',\
+            getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Log Files]]'
+
+unpretoc
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>,
+L<MYSQlib.def|modules::MYSQlib>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.27:  Arnaud Adant, Jesper Wisborg Krogh, Anandakumar S,
+Rajesh Sivaramasubramaniom.
+
+=item RDA 4.28:  Arnaud Adant.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

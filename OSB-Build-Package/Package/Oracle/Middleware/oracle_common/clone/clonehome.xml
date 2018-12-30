@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<CloneProducts xmlns="http://www.oracle.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://www.oracle.com clonehome.xsd">
+
+<Product home="Application Server" verMin="10.1.2.0.0" verMax="10.1.3.99.99" minAgentVer="10.2.0.0.0">
+	<WizardSequence>
+                <Page slno="1">ecm/cloneHome/cloneWiz_SourceHome</Page>
+                <Page slno="2">ecm/cloneHome/cloneWiz_SourceSettings</Page>
+                <Page slno="3">ecm/cloneHome/cloneWiz_IAS</Page>
+                <Page slno="4">ecm/cloneHome/cloneWiz_SelectDestination</Page>
+                <Page slno="5">ecm/cloneHome/cloneWiz_PrePost</Page>
+                <Page slno="6">ecm/cloneHome/cloneWiz_Schedule</Page>
+                <Page slno="7">ecm/cloneHome/cloneWiz_Review</Page>
+	</WizardSequence>
+	<JobTypes>
+	 	<DefaultJobType>CloneASInstallation</DefaultJobType>
+		<JobType verMin="10.1.3.0.0" verMax="10.1.3.99.99">CloneAS1013Installation</JobType>
+	</JobTypes>
+</Product>
+
+<Product home="Database" verMin="10.1.0.0.0" verMax="11.9.99.99.99" minAgentVer="10.2.0.0.0">
+	<WizardSequence>
+                <Page slno="1">ecm/cloneHome/cloneWiz_SourceHome</Page>
+                <Page slno="2">ecm/cloneHome/cloneWiz_SourceSettings</Page>
+                <Page slno="3">ecm/cloneHome/cloneWiz_DB</Page>
+                <Page slno="4">ecm/cloneHome/cloneWiz_SelectDestination</Page>
+                <Page slno="5">ecm/cloneHome/cloneWiz_PrePost</Page>
+                <Page slno="6">ecm/cloneHome/cloneWiz_CustomizeParams</Page>
+                <Page slno="7">ecm/cloneHome/cloneWiz_Schedule</Page>
+                <Page slno="8">ecm/cloneHome/cloneWiz_Review</Page>
+	</WizardSequence>
+	<JobTypes>
+		<DefaultJobType>CloneRACInstallation</DefaultJobType>
+	</JobTypes>
+  <PrepostScriptList>
+    <PrepostScript name="crsracpreinstall.sh" descriptionID="DESC_PRESCRIPT_RAC_CRT_EXT" description="Performs prerequisite checks and, if necessary, fix-up operations for &quot;Create RAC&quot; and &quot;Extend RAC&quot; operations with RAC Database 10.2." runAsRoot="true" platform="Unix">
+      <!--<CmdLine>%emd_root%/sysman/prov/crsracprereq/crsracpreinstall.sh -user &lt;Host User Name for the Oracle Home&gt; -oh %oracle_home% -ohname &lt;Oracle Home Name&gt; -agentHome %emd_root% -check oracle.sysman.crsracprov.crsracasm.kernel_checks</CmdLine> -->
+      <CmdLine>%emd_root%/sysman/prov/crsracprereq/crsracpreinstall.sh -user &lt;USER&gt; -oh %oracle_home% -ohname &lt;ORACLE_HOME_NAME&gt; -agentHome %emd_root% -check oracle.sysman.crsracprov.crsracasm.kernel_checks -clone</CmdLine>
+    </PrepostScript>
+  </PrepostScriptList>
+</Product>
+
+<Product home="Clusterware" verMin="10.2.0.0.0" verMax="11.9.99.99.99" minAgentVer="10.2.0.0.0">
+        <WizardSequence>
+                <Page slno="1">ecm/cloneHome/cloneWiz_SourceHome</Page>
+                <Page slno="2">ecm/cloneHome/cloneWiz_SourceSettings</Page>
+                <Page slno="3">ecm/cloneHome/cloneWiz_DB</Page>
+                <Page slno="4">ecm/cloneHome/cloneWiz_SelectDestination</Page>
+                <Page slno="5">ecm/cloneHome/cloneWiz_PrePost</Page>
+                <Page slno="6">ecm/cloneHome/cloneWiz_Schedule</Page>
+                <Page slno="7">ecm/cloneHome/cloneWiz_Review</Page>
+        </WizardSequence>
+	<JobTypes>
+		<DefaultJobType>CloneCRSInstallation</DefaultJobType>
+	</JobTypes>
+  <PrepostScriptList>
+    <PrepostScript name="crsracpreinstall.sh" descriptionID="DESC_PRESCRIPT_CRS_CRT_EXT" description="Performs prerequisite checks and, if necessary, fix-up operations for &quot;Create New Cluster&quot; and &quot;Extend Cluster&quot; operations with Oracle Clusterware 10.2." runAsRoot="true" platform="Unix">
+    <CmdLine>%emd_root%/sysman/prov/crsracprereq/crsracpreinstall.sh  -user &lt;USER&gt; -oh %oracle_home% -ohname &lt;ORACLE_HOME_NAME&gt; -agentHome %emd_root% -check oracle.sysman.crsracprov.crsracasm.kernel_checks -CLUSTER_NODES  &lt;CLUSTER_NODES&gt; -clone </CmdLine>
+     <!--  <CmdLine>%emd_root%/sysman/prov/crsracprereq/crsracpreinstall.sh  -user &lt;USER&gt; -oh %oracle_home% -ohname &lt;ORACLE_HOME_NAME&gt; -agentHome %emd_root% -check oracle.sysman.crsracprov.crsracasm.kernel_checks -CLUSTERNAME  &lt;CLUSTER_NAME&gt; -CLUSTER_NODES  &lt;CLUSTER_NODES&gt; -clone </CmdLine>
+         %emd_root%/sysman/prov/crsracprereq/crsracpreinstall.sh -user &lt;Host User Name for the Oracle Home&gt; -oh %oracle_home% -ohname &lt;Oracle Home Name&gt; -agentHome %emd_root% -check oracle.sysman.crsracprov.crs -->
+    </PrepostScript>
+    <PrepostScript name="post_crs_create.pl" descriptionID="DESC_POSTSCRIPT_CRS_CREATE" description="Executes commands required for the completion of the clone operation on the target node. You must run this script as a post-script when executing the &quot;Create New Cluster&quot; operation with Oracle Clusterware 10.2." platform="Unix">
+      <CmdLine>%perlbin%/perl %emd_root%/sysman/admin/scripts/cloning/samples/post_crs_create.pl ORACLE_HOME=%oracle_home%</CmdLine>
+    </PrepostScript>
+    <PrepostScript name="post_crs_extend.pl" descriptionID="DESC_POSTSCRIPT_CRS_EXTEND" description="Executes commands required for the completion of the clone operation on the target node. You must run this script as a post-script when executing the &quot;Extend Cluster&quot; operation with Oracle Clusterware 10.2." platform="Unix">
+      <CmdLine>%perlbin%/perl %emd_root%/sysman/admin/scripts/cloning/samples/post_crs_extend.pl ORACLE_HOME=%oracle_home%</CmdLine>
+    </PrepostScript>
+    <PrepostScript name="runAsBat.pl" descriptionID="DESC_POSTSCRIPT_CRS_CREATE_WIN32" description="Creates and runs the necessary batch file for running post-install config tools. You must run this script as a post-script when executing the &quot;Create New Cluster&quot; operation with Oracle Clusterware 10.2 on Windows." platform="Windows">
+      <CmdLine>%perlbin%/perl %emd_root%/sysman/admin/scripts/cloning/samples/runAsBat.pl %oracle_home%\cfgtoollogs\configToolAllCommands [&lt;other files to be run as batch scripts&gt;]</CmdLine>
+    </PrepostScript>
+    <PrepostScript name="updateCSProps.pl" descriptionID="DESC_PRESCRIPT_CRS_CREATE" description="Updates cs.properties with the parameters required for OUI. You must run this script as a pre-script before executing the &quot;Create New Cluster&quot; operation with Oracle Clusterware 10.2." platform="Unix">
+      <CmdLine>%perlbin%/perl %emd_root%/sysman/admin/scripts/cloning/samples/updateCSProps.pl -oraclehome %oracle_home% -responseFile &lt;Location of Response File&gt; [&lt;other flags / key-value pairs to update cs.properties&gt;]</CmdLine>
+    </PrepostScript>
+    <PrepostScript name="updateCSProps.pl" descriptionID="DESC_PRESCRIPT_CRS_CREATE_WIN32" description="Updates cs.properties with the parameters required for OUI. You must run this script as a pre-script before executing the &quot;Create New Cluster&quot; operation with Oracle Clusterware 10.2 on Windows." platform="Windows">
+      <CmdLine>%perlbin%/perl %emd_root%/sysman/admin/scripts/cloning/samples/updateCSProps.pl -oraclehome %oracle_home% -responseFile &lt;Location of Response File&gt; [&lt;other flags / key-value pairs to update cs.properties&gt;]</CmdLine>
+    </PrepostScript>
+  </PrepostScriptList>
+</Product>
+
+<Product home="Generic">
+	<WizardSequence>
+                <Page slno="1">ecm/cloneHome/cloneWiz_SourceHome</Page>
+                <Page slno="2">ecm/cloneHome/cloneWiz_SourceSettings</Page>
+                <Page slno="3">ecm/cloneHome/cloneWiz_SelectDestination</Page>
+                <Page slno="4">ecm/cloneHome/cloneWiz_PrePost</Page>
+                <Page slno="5">ecm/cloneHome/cloneWiz_CustomizeParams</Page>
+                <Page slno="6">ecm/cloneHome/cloneWiz_Schedule</Page>
+                <Page slno="7">ecm/cloneHome/cloneWiz_Review</Page>
+	</WizardSequence>
+	<JobTypes>
+		<DefaultJobType>CloneInstallation</DefaultJobType>
+	</JobTypes>
+</Product>
+
+</CloneProducts>

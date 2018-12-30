@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<platform-policy-configuration>
+
+  <!-- 
+==================================================================== -->
+  <!-- PolicyAccessor configuration                                         -->
+  <!-- 
+==================================================================== -->
+  <policy-accessor>
+    <properties>
+      <!-- PolicyManager Application -->
+      <!-- Properties are specified using elements similar to the following
+           (with key replaced by the property name and value replaced by the
+           properties' value):
+      <property name="key">value</property>
+      -->
+     <!-- Here is a sample set for remote Policy Manager-->
+
+     <!--The protocol for accessing the policy store. Supported values are - "classpath", "local", "remote"
+         "remote" will be used by default and OWSM tries to lookup WSM Policy Manager in the same domain-->
+     <!--<property name="active.protocol">remote</property>-->
+
+     <!--The URL from which to retrieve the remote interface. Used when active.protocol is set to remote -->
+     <!--<property name="java.naming.provider.url">{protocol}://{hostname}:{port}</property>-->
+
+     <!-- 
+           The property to be set when obtaining credentials using csf key
+           Use of java.naming.security.principal and java.naming.security.credentials
+           to specify credentials in plain text is against security guidelines.
+           However, csf-key via jndi.lookup.csf.key can be used.
+      -->
+     <!--<property name="jndi.lookup.csf.key">{papCsfKey}</property>-->
+
+     <!--If property "active.protocol" is set to local, use this property to set location of file based MDS repository.
+         If property "active.protocol" is set to classpath, use this property to restrict the search for policies 
+         to a (comma separated) list of classpath entries. -->
+     <!--<property name="wsm.repository.path">{location path}</property>-->
+
+     <!--Number of milliseconds to wait before initial cache refresh. 
+         The default is 600000 milliseconds (10 minutes). -->
+     <property name="cache.refresh.initial">600000</property>
+
+     <!--Number of milliseconds to wait between cache refreshes.
+         The default is 600000 milliseconds (10 minutes). -->
+     <property name="cache.refresh.repeat">600000</property>
+
+     <!--Number of times to retry after communication failure.
+         The default is 2 retry attempts. -->
+     <property name="failure.retry.count">2</property>
+
+     <!--Number of milliseconds to wait between retry attempts.
+         The default is 5000 milliseconds. -->
+     <property name="failure.retry.delay">5000</property>
+
+     <!--Number of milliseconds to wait before trying to retrieve a missing document. 
+         The default is 15000 milliseconds. -->
+     <property name="missing.retry.delay">15000</property>
+
+     <!--Number of milliseconds to wait before sending usage data. 
+         The default is 30000 milliseconds. -->
+     <property name="usage.record.delay">30000</property> 
+
+     <!--Number of milliseconds to wait between each refresh of the configuration.
+         The default is 600000 milliseconds (10 minutes). -->
+     <property name="connect.retry.delay">600000</property>
+
+    </properties>
+  </policy-accessor>
+
+  <!--
+==================================================================== -->
+  <!-- Policy change monitor configuration                                  -->
+  <!--
+==================================================================== -->
+  <policy-change-monitor>
+    <properties>
+      <property name="delay">3000</property>
+      <property name="period">4000</property>
+    </properties>
+  </policy-change-monitor>
+
+    <!--
+  ==================================================================== -->
+    <!-- Policy cache configuration                                  -->
+    <!--
+  ==================================================================== -->
+    <policy-cache>
+      <properties>
+        <property name="cache.tolerance">60000</property>
+      </properties>
+    </policy-cache>
+    <!--
+  ==================================================================== -->
+    <!-- Service Identity Extension configuration                                  -->
+    <!--
+  ==================================================================== -->
+    <identity-extension>
+      <properties>
+        <property name="wsm.ignore.hostname.verification">true</property>
+        <property name="wsm.ignore.identity.wsdl">false</property>
+      </properties>
+    </identity-extension>
+
+   <!--
+  ==================================================================== -->
+    <!-- SAML SV and HOK trusted DNs                                 -->
+    <!--
+  ==================================================================== -->
+   <saml-trusted-dns>
+        <saml-sv-trusted-dns>
+                <issuer name="www.oracle.com"/>
+        </saml-sv-trusted-dns>
+        <saml-hok-trusted-dns>
+                <issuer name="www.oracle.com"/>
+        </saml-hok-trusted-dns>
+    </saml-trusted-dns>
+
+
+  <!--
+==================================================================== -->
+  <!-- Interceptors                                                         -->
+  <!--
+==================================================================== -->
+  <interceptors>
+    <interceptor name="BindingSecurityInterceptor"
+                 class="oracle.fabric.common.BindingSecurityInterceptor"
+                 category="security">
+        <properties>
+            <property name="agent.clock.skew">360</property>
+            <property name="agent.client.clock.skew">0</property>
+            <property name="agent.nonce.ttl">28800</property>
+            <property name="agent.expire.time">300</property>
+	    <property name="agent.allow.all.xpaths">false</property>
+        </properties>
+    </interceptor>
+
+    <interceptor name="BindingManagementInterceptor"
+                 class="oracle.fabric.common.BindingSecurityInterceptor"
+                 category="management"/>
+
+    <interceptor name="WireManagementInterceptor"
+                 class="oracle.fabric.common.WireSecurityInterceptor"
+                 category="management"/>
+
+    <interceptor name="MTOMInterceptor"
+                 class="oracle.j2ee.ws.common.mtom.MtomPolicyInterceptor"
+                 category="mtom"/>
+
+    <interceptor name="WireSecurityInterceptor"
+                 class="oracle.fabric.common.WireSecurityInterceptor"
+                 category="security"/>
+
+	<interceptor name="WSRMClientInterceptor"
+				 class="oracle.j2ee.ws.rm.interceptor.WSRMClientInterceptor"
+				 category="wsrm"/>
+
+	<interceptor name="WSRMServerInterceptor"
+				 class="oracle.j2ee.ws.rm.interceptor.WSRMServerInterceptor"
+				 category="wsrm"/>
+
+	<interceptor name="MEXInterceptor"
+				 class="oracle.j2ee.ws.server.mex.MEXInterceptor"
+				 category="mex"/>
+
+	<interceptor name="ServerAddressingInterceptor"
+				 class="oracle.j2ee.ws.server.addressing.ServerWSAddressingInterceptor"
+				 category="addressing"/>
+
+    <interceptor name="ClientAddressingInterceptor"
+                 class="oracle.j2ee.ws.common.addressing.ClientWSAddressingInterceptor"
+                 category="addressing"/>
+
+	<interceptor name="ContextInterceptor"
+				 class="oracle.j2ee.ws.common.context.ContextInterceptor"
+				 category="context"/>
+	
+	<interceptor name="ClientWSATInterceptor" 
+				class="oracle.j2ee.ws.client.transaction.ClientWSATInterceptor"
+				category="transaction" />
+	
+	<interceptor name="ServerWSATInterceptor" 
+				class="oracle.j2ee.ws.server.transaction.ServerWSATInterceptor"
+				category="transaction" />
+
+  
+  </interceptors>
+
+  <!--
+==================================================================== -->
+  <!-- Interceptor Chains                                                   -->
+  <!--                                         
+==================================================================== -->
+  <interceptor-chains>
+    <interceptor-chain name="SOAPServiceBindingInterceptorChain"
+                       class="oracle.integration.platform.common.SOAPBindingInterceptorChain">
+         <interceptor-ref name="MTOMInterceptor"/>
+         <interceptor-ref name="BindingSecurityInterceptor"/>
+         <interceptor-ref name="ServerAddressingInterceptor"/>
+         <interceptor-ref name="MEXInterceptor"/>
+         <interceptor-ref name="WSRMServerInterceptor"/>
+
+         <interceptor-ref name="ServerWSATInterceptor"/>
+         
+         <interceptor-ref name="ContextInterceptor"/>
+        
+         <interceptor-ref name="BindingManagementInterceptor"/>
+    </interceptor-chain>
+
+    <interceptor-chain name="SOAPReferenceBindingInterceptorChain"
+                       class="oracle.integration.platform.common.SOAPBindingInterceptorChain">
+         <interceptor-ref name="BindingManagementInterceptor"/>
+         <interceptor-ref name="ContextInterceptor"/>
+         
+         <interceptor-ref name="ClientWSATInterceptor"/>
+        
+         <interceptor-ref name="WSRMClientInterceptor"/>
+         <interceptor-ref name="ClientAddressingInterceptor"/>
+      
+         <interceptor-ref name="BindingSecurityInterceptor"/>
+         <interceptor-ref name="MTOMInterceptor"/>
+    </interceptor-chain>
+
+    <interceptor-chain name="WireInterceptorChain"
+                       class="oracle.integration.platform.common.WireInterceptorChain">
+         <interceptor-ref name="WireSecurityInterceptor"/>
+         <interceptor-ref name="WireManagementInterceptor"/>
+    </interceptor-chain>
+
+  </interceptor-chains>
+
+</platform-policy-configuration>

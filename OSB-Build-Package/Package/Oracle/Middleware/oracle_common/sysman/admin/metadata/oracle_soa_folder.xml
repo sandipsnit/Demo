@@ -1,0 +1,46 @@
+<?xml version='1.0'?>
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="11.00000" TYPE="oracle_soa_folder" CATEGORY_PROPERTIES="VersionCategory" RESOURCE_BUNDLE_PACKAGE="oracle.sysman.emai.rsc.sca">
+
+  <Display>
+    <Label NLSID="oracle_soa_folderNLSID">Oracle SOA Partition</Label>
+    <ShortName NLSID="oracle_soa_folderShortName">oracle_soa_folder</ShortName>
+    <Description NLSID="oracle_soa_folderDescription">oracle_soa_folder</Description>
+  </Display>
+
+  <Metric NAME="Response" TYPE="TABLE">
+    <Display>
+      <Label NLSID="j2ee_app_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+	<Display>
+	  <Label NLSID="j2ee_app_status">UpDown Status</Label>
+	</Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+      <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">weblogic_j2eeserver:application</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+      <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+      <Property NAME="admlMap" SCOPE="GLOBAL">
+	<![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">soa-infra</value></item></value></argument>]]>
+      </Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <InstanceProperties>
+    <InstanceProperty NAME="ServerNames">
+      <Display>
+	<Label NLSID="ServerNamesLabel">Server Name</Label>
+      </Display>
+    </InstanceProperty>
+  </InstanceProperties>
+
+</TargetMetadata>

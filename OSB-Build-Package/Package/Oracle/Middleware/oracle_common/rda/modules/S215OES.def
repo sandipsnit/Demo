@@ -1,0 +1,539 @@
+# S215OES.def: Collects Oracle Express Server Information
+# $Id: S215OES.def,v 2.7 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S215OES.def,v 2.7 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S215OES - Collects Oracle Express Server Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Express Server-related information. It executes
+Express SPL commands to get the patch level of Oracle Express Server and
+gathers files pertaining to the OES installation.
+
+=cut
+
+echo tput('bold'),'Processing OES module ...',tput('off')
+
+# Load the common macros
+#run library()
+
+# Initialization
+var $ORACLE_SID      = getSetting('ORACLE_SID','')
+var $OES_ORACLE_HOME = getSetting('OES_ORACLE_HOME','')
+var $OES_DBA_USER    = getSetting('OES_DBA_USER','?')
+var $OES_DBA_PWD     = getSetting('SQL_PASSWORD_OES_DBA_USER')
+var $OES_PORT_NO     = getSetting('OES_PORT_NO','')
+var $DPE_INSTALLED   = getSetting('DPE_INSTALLED')
+var $OFA_INSTALLED   = getSetting('OFA_INSTALLED')
+var $OWA_INSTALLED   = getSetting('OWA_INSTALLED')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Express Server'
+
+# Get the ps command format
+var $PS_EF
+run &{check(getOsName(),'aix',           'OSaix',\
+                        'darwin',        'OSdarwin',\
+                        'dec_osf',       'OSosf',\
+                        'dynixptx',      'OSptx',\
+                        'hpux',          'OShpux',\
+                        'linux',         'OSlinux',\
+                        'solaris',       'OSsunos',\
+                        cond(isCygwin(), 'OSunix',\
+                             isUnix(),   'OSunix'))}('PS')
+
+=pod
+
+Requires the Oracle Express Server password. For batch/cron execution, you can
+encode the password in the setup file using the pseudo user C<OES_DBA_USER>.
+
+The following reports can be generated and are regrouped under C<Express
+Server>:
+
+=cut
+
+if $OES_DBA_PWD
+ var ($OES_DBA_PWD) = unpack('u',$OES_DBA_PWD)
+
+macro get_pwd
+{import $OES_DBA_PWD
+ if !$OES_DBA_PWD
+  var $OES_DBA_PWD = askPassword('Please enter OES DBA Role User password for \
+                                  Oracle Express Server: ')
+ return $OES_DBA_PWD
+}
+
+=head2 summary - Services Summary
+
+Gives an overview of the Oracle Express Server services.
+
+=head2 eversion - eversion
+
+Collects the related eversions.
+
+=cut
+
+# Prepare the eversion gathering
+debug ' Inside OES module, preparing the OES key parsing'
+report eversion
+
+if or(isWindows(),isCygwin())
+ debug '  using Windows registry'
+elsif isUnix()
+{debug '  using oes.key file'
+ call loadRegistry(catFile($OES_ORACLE_HOME,'olap','oes.key'))
+}
+var $env = ${CUR.SHLIB}
+if $env
+{var $lib = getEnv($env)
+ call setEnv($env,join(':',split(':',$lib),catDir($OES_ORACLE_HOME,'lib')))
+}
+
+macro get_eversion
+{import $OES_ORACLE_HOME,$OES_DBA_USER,$OES_DBA_PWD
+ keep $dir,$flg,$pre,$suf
+ if !$dir
+ {var $dir = catDir($OES_ORACLE_HOME,'olap','bin')
+  var $flg = grepDir($dir,'^oescmd(\.exe)?$','i')
+  if !$flg
+   return
+  var $pre = concat(catCommand($dir,'oescmd'),\
+                    ' -b ora_ro_tcp:',${RDA.NODE},'[')
+  var $suf = concat('] -u ',$OES_DBA_USER,' -p ',get_pwd(),\
+                    ' "otf append ',getFile('/'),';shw eversion;otf eof"')
+ }
+ if $flg
+ {suspend summary
+  resume eversion
+  write '---+ OES eversion - ',$arg[1]
+  call command(concat($pre,$arg[0],$suf))
+  suspend eversion
+  resume summary
+ }
+}
+
+suspend eversion
+
+# Identify the OES services
+var $cnt = 0
+loop $key (grepRegValue('HKLM\SYSTEM\CurrentControlSet\Services','ImagePath'))
+{next !match(getRegValue($key,'ImagePath'),'expres')
+ var $svc{field('\\',-1,$key)} = $key
+ incr $cnt
+}
+
+# Treat all services found
+debug ' Inside OES module, producing the OES services summary'
+report summary
+write '---+!! OES Services Summary'
+if $cnt
+ write $TOC
+else
+ write '**No OES services found.**%BR%'
+
+loop $svc (keys(%svc))
+{debug ' Inside OES module, looking for service ',$svc
+ var $key = concat('HKLM\SOFTWARE\Oracle\Olap\ExpressServer\',$svc,\
+                   '\Identifiers')
+
+ # Get the Name and DisplayName of the Service
+ var $dsp = nvl(getRegValue($svc{$svc},'DisplayName'),$svc)
+ write '---+ Service: ',$dsp
+ write '|Name|',$svc,'|'
+
+ # Get the PageBufferCount
+ write '|PageBufferCount|',nvl(getRegValue($key,'PageBufferCount'),'NA'),'|'
+
+ # Check if Service is running
+ var $run = grepCommand($PS_EF,$svc)
+ if $run
+  write '|State|Running|'
+ else
+  write '|State|Not Running|'
+
+ # Get the UUID
+ write '|ServerObjectId|',nvl(getRegValue($key,'ServerObjectId'),'NA'),'|'
+
+ # Get the XCA port
+ write '|XCAPortNumber|',nvl(getRegValue($key,'XCAPortNumber'),'NA'),'|'
+
+ # Get the Snapi port
+ var $spn = getRegValue($key,'RoListenPortNumber')
+ if $spn
+  write '|RoListenPortNumber|',$spn,'|'
+ else
+ {write '|RoListenPortNumber|NA|'
+  var $run = false
+ }
+
+ # Get the related eversion
+ if $run
+ {debug ' Inside OES module, looking for eversion of service ',$svc
+  call get_eversion($spn,$dsp)
+ }
+}
+if isCreated()
+ toc '2:[[',getFile(),'][rda_report][Services Summary]]'
+
+# Close eversion treatment
+resume eversion
+if $env
+ call setEnv($env,$lib)
+if isCreated()
+ toc '2:[[',getFile(),'][rda_report][eversion]]'
+
+=head2 oeskey - oes.key / expressprm - express.prm
+
+Collects the basic OES-related configurations.
+
+=cut
+
+debug ' Inside OES module, looking for oes.key'
+report oeskey
+
+prefix
+{write '---+!! OES Services'
+ write $TOC
+}
+call writeRegistry('HKLM\SCM')
+loop $svc (keys(%svc))
+ call writeRegistry(concat('HKLM\SYSTEM\CurrentControlSet\Services\',$svc))
+if !writeRegistry('HKLM\SOFTWARE\Oracle\Olap\ExpressServer')
+ write '**No OES Services keys found.**%BR%'
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][oes.key]]'
+
+debug ' Inside OES module, creating a copy of express.prm'
+report expressprm
+prefix
+ write '---+ OES Services express.prm'
+call writeFile(catFile($OES_ORACLE_HOME,'olap','express.prm'))
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][express.prm]]'
+
+# Display log excerpts
+pretoc '2:Log Excerpts'
+
+=head2 xsdaemon - xsdaemon
+
+Extracts the last 10000 lines of F<xsdaemon.log>.
+
+=cut
+
+debug ' Inside OES module, getting last 10000 lines of xsdaemon.log'
+report xsdaemon
+prefix
+ write '---+ OES xsdaemon.log file (Last 10000 lines)'
+call writeTail(catFile($OES_ORACLE_HOME,'olap','log','xsdaemon.log'),10000)
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][xsdaemon]]'
+
+=head2 xsauth - xsauth
+
+Extracts the last 10000 lines of F<xsauth.log>.
+
+=cut
+
+debug ' Inside OES module, getting last 10000 lines of xsauth.log'
+report xsauth
+prefix
+ write '---+ OES xsauth.log file (Last 10000 lines)'
+call writeTail(catFile($OES_ORACLE_HOME,'olap','log','xsauth.log'),10000)
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][xsauth]]'
+
+=head2 oesevents - OESevent
+
+Extracts the last 10000 lines of all the OESEvent log files.
+
+=cut
+
+debug ' Inside OES module, getting last 10000 of all the OESEvent.log files'
+report oesevents
+
+if loadFile(catFile($OES_ORACLE_HOME,'olap','oes.key'))
+{var $ttl = '---+ OESEvent Log Files'
+ loop $dir (grepLastFile('EventLogPath'))
+ {var $dir = field('"',1,$dir)
+  var $fil = catFile($dir,'OESEvent.log')
+  prefix
+  {if $ttl
+   {write $ttl
+    write $TOC
+    var $ttl = undef
+   }
+   write '---+ Last 10000 lines of ',encode($fil)
+  }
+  call writeTail($fil,10000)
+  if hasOutput(true)
+   write $TOP
+ }
+}
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][OESevent]]'
+unpretoc
+
+=head2 ofainfo - OFA
+
+Determines the database versions and gets the OFA configuration files.
+
+=cut
+
+if $OFA_INSTALLED
+{report ofainfo
+ debug ' Inside Get_OFA_Version, getting the OFA Shared version'
+ write '---+!! Oracle Financial Analyzer Information'
+ write $TOC
+
+ var $OFA_DBA_HOME = getSetting('OFA_DBA_HOME','')
+ var $OFAS_NAME    = getSetting('OFAS_NAME','')
+
+ write '---+ Oracle Financial Analyzer Versions'
+ var $cmd = concat(catCommand($OES_ORACLE_HOME,'olap','bin','oescmd'),\
+                   ' -b ora_ro_tcp:',${RDA.NODE},'[',$OES_PORT_NO,\
+                   '] -u ',$OES_DBA_USER,' -p ')
+ var $rpt = getFile('/')
+ if testFile(catFile($OFA_DBA_HOME,'shared',$OFAS_NAME))
+ {var $fil = lastFile()
+  var $tmp = createTemp('ofa','.inf')
+  call writeTemp('ofa',"dtb attach ",$fil," ro")
+  call writeTemp('ofa',"otf append ",$rpt)
+  call writeTemp('ofa',"shw joinchars('Shared database: ' fms.version)")
+  call writeTemp('ofa',"otf eof")
+  call writeTemp('ofa',"dtb detach ",$fil)
+  call closeTemp('ofa')
+  call command(concat($cmd,get_pwd(),' "infile ',$tmp,'"'))
+  call unlinkTemp('ofa')
+ }
+ else
+  write '**Can not attach the ',$OFAS_NAME,' database.**%BR%'
+
+ debug ' Inside Get_OFA_Version, getting the OFASERVE version'
+ if testFile(catFile($OFA_DBA_HOME,'code','ofaserve.db'))
+ {var $fil = lastFile()
+  var $tmp = createTemp('ofa','.inf')
+  call writeTemp('ofa',"dtb attach ",$fil," ro")
+  call writeTemp('ofa',"otf append ",$rpt)
+  call writeTemp('ofa',"shw joinchars('OFASERVE database: ' fmsserve.version)")
+  call writeTemp('ofa',"otf eof")
+  call writeTemp('ofa',"dtb detach ",$fil)
+  call closeTemp('ofa')
+  call command(concat($cmd,get_pwd(),' "infile ',$tmp,'"'))
+  call unlinkTemp('ofa')
+ }
+ else
+  write '**Can not attach the ofaserve database.**%BR%'
+
+ debug ' Inside Get_OFA_Version, getting the OFATOOLS version'
+ if testFile(catFile($OFA_DBA_HOME,'code','ofatools.db'))
+ {var $fil = lastFile()
+  var $tmp = createTemp('ofa','.inf')
+  call writeTemp('ofa',"dtb attach ",$fil," ro")
+  call writeTemp('ofa',"otf append ",$rpt)
+  call writeTemp('ofa',"shw joinchars('OFATOOLS database: ' fmstools.version)")
+  call writeTemp('ofa',"otf eof")
+  call writeTemp('ofa',"dtb detach ",$fil)
+  call closeTemp('ofa')
+  call command(concat($cmd,get_pwd(),' "infile ',$tmp,'"'))
+  call unlinkTemp('ofa')
+ }
+ else
+  write '**Can not attach the ofatools database.**%BR%'
+ write $TOP
+
+ debug ' Inside Get_OFA_Config_Files, getting OFA onfiguration files'
+ var $fil = catFile($OFA_DBA_HOME,'shared','ofasyscf.cfg')
+ prefix
+  write '---+ OFASYSCF.CFG'
+ call writeFile($fil)
+ if hasOutput(true)
+  write $TOP
+ var $fil = catFile($OFA_DBA_HOME,'code','ofacdcf.cfg')
+ prefix
+  write '---+ OFACDCF.CFG'
+ call writeFile($fil)
+ if hasOutput(true)
+  write $TOP
+
+ # Add the report in the index
+ toc '2:[[',getFile(),'][rda_report][OFA]]'
+}
+
+=head2 owainfo - OWA
+
+Determines the XWDEVKIT database version and gets the OWA configuration file.
+
+=cut
+
+if $OWA_INSTALLED
+{report owainfo
+ write '---+!! Express Web Agent Information'
+ write $TOC
+
+ var $CGI_LOCATION = getSetting('CGI_LOCATION','')
+ var $CGI_EXEC     = getSetting('CGI_EXEC','')
+ var $OWA_LOCATION = getSetting('OWA_LOCATION','')
+
+ # Get OWA Version
+ debug ' Inside OES module, getting the XWDEVKIT database version'
+ var $cmd = concat(catCommand($OES_ORACLE_HOME,'olap','bin','oescmd'),\
+                   ' -b ora_ro_tcp:',${RDA.NODE},'[',$OES_PORT_NO,\
+                   '] -u ',$OES_DBA_USER,' -p ')
+ var $rpt = getFile('/')
+ var $fil = catFile($OWA_LOCATION,'xwdevkit.db')
+ write '---+ Oracle Web Agent Version (',encode($fil),')'
+ if testFile('r',$fil)
+ {var $tmp = createTemp('owa','.inf')
+  call writeTemp('owa',"dtb attach ",$fil," ro")
+  call writeTemp('owa',"otf append ",$rpt)
+  call writeTemp('owa',"shw joinchars('_XWD_DEVKITVER: ' _xwd_devkitver)")
+  call writeTemp('owa',"otf eof")
+  call writeTemp('owa',"dtb detach ",$fil)
+  call closeTemp('owa')
+  call command(concat($cmd,get_pwd(),' "infile ',$tmp,'"'))
+  call unlinkTemp('owa')
+ }
+ else
+  write '**Can not attach the ',encode($fil),' database.**%BR%'
+ write $TOP
+
+ # Get OWA the configuratin file
+ debug ' Inside OES module, getting the OWA configuration file'
+ var $fil = catFile($CGI_LOCATION,concat($CGI_EXEC,'.cfg'))
+ prefix
+  write '---+ ',encode($fil)
+ call writeFile($fil)
+ if hasOutput(true)
+  write $TOP
+
+ # Add the report in the index
+ toc '2:[[',getFile(),'][rda_report][OWA]]'
+}
+
+=head2 dpeinfo - DPE
+
+Collects Demand Planning information. This includes, when present, the
+C<xsoowaroas> and Single Sign-On configurations.
+
+Requires the application "system" password for Demand Planning Server. For
+batch/cron execution, you can encode the password in the setup file using the
+pseudo user C<DPE_DPS_SYSTEM>.
+
+=cut
+
+if $DPE_INSTALLED
+{report dpeinfo
+ write '---+!! Demand Planning Information'
+ write $TOC
+
+ var $DPE_SSO_LOCATION = getSetting('DPE_SSO_LOCATION')
+ var $DPE_DP_NAME      = getSetting('DPE_DP_NAME')
+ var $DPE_DPS_SID      = getSetting('DPE_DPS_SID')
+ var $DPE_DPS_PWD      = getSetting('SQL_PASSWORD_DPE_DPS_SYSTEM')
+
+ # Get the password
+ if $DPE_DPS_PWD
+  var ($DPE_DPS_PWD) = unpack('u',$DPE_DPS_PWD)
+ else
+  var $DPE_DPS_PWD = askPassword('Please enter application "system" password \
+                                  for Demand Planning Server: ')
+
+ # Collect the information
+ prefix
+ {write '---+ Demand Planning Engine Information'
+  write '---++!! Demand Plan Name: ',$DPE_DP_NAME
+  write '|*Parameter Name*|*Value*|'
+ }
+ set $sql
+ {SELECT '|EAD Name|' || a.ead_name || '|' ||
+ "       CHR(10) ||
+ "       '|Express Port|' || a.express_machine_port || '|' ||
+ "       CHR(10) ||
+ "       '|DP Code Location|' || a.code_location || '|' ||
+ "       CHR(10) ||
+ "       '|Shared DB Prefix|' || a.shared_db_prefix || '|' ||
+ "       CHR(10) ||
+ "       '|Shared DB Location|' || a.shared_db_location || '|' ||
+ "       CHR(10) ||
+ "       '|OWA Virtual Path|' || a.owa_virtual_path_name || '|' ||
+ "       CHR(10) ||
+ "       '|Express Connect String|' || a.express_connect_string || '|' ||
+ "       CHR(10) ||
+ "       '|Valid|' || b.valid_flag || '|'
+ " FROM msd.msd_dp_express_setup a, msd.msd_demand_plans b
+ " WHERE b.demand_plan_name = ':1' AND
+ "       a.demand_plan_id = b.demand_plan_id;
+ }
+ var $old = setSqlLogin('SYSTEM',$DPE_DPS_PWD,$DPE_DPS_SID)
+ var $try = setSqlFailure(0)
+ call writeSql(bindSql($sql,$DPE_DP_NAME))
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+ if hasOutput(true)
+  write $TOP
+ elsif getSqlMessage()
+ {write '---+ Demand Planning Engine Information'
+  write getSqlMessage(),'%BR%'
+  write $TOP
+ }
+
+ var $fil = getSetting('DPE_DBC_FILE')
+ prefix
+  write '---+ DBC File: ',encode($fil)
+ call writeFile($fil)
+ if hasOutput(true)
+  write $TOP
+
+ var $fil = catFile($DPE_SSO_LOCATION,'bin','xsoowaroas.cfg')
+ prefix
+  write '---+ XSOOWAROAS Configuration: ',encode($fil)
+ call writeFile($fil)
+ if hasOutput(true)
+  write $TOP
+
+ var $fil = catFile($DPE_SSO_LOCATION,'conf','sso.cfg')
+ prefix
+  write '---+ Single Sign-On Configuration: ',encode($fil)
+ call writeFile($fil)
+ if hasOutput(true)
+  write $TOP
+
+ # Add the report in the index
+ toc '2:[[',getFile(),'][rda_report][DPE]]'
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>,
+L<OSaix|modules::OSaix>, L<OSdarwin|modules::OSdarwin>,
+L<OShpux|modules::OShpux>, L<OSlinux|modules::OSlinux>,
+L<OSosf|modules::OSosf>, L<OSptx|modules::OSptx>,
+L<OSsunos|modules::OSsunos>, L<OSunix|modules::OSunix>,
+L<OSvms|modules::OSvms>, L<OSwin32|modules::OSwin32>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.0:  Dirk Steigner.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

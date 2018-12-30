@@ -1,0 +1,944 @@
+<?xml version="1.0" ?>
+<!-- $Header: wmq.xml 08-apr-2008.18:56:20 spandita Exp $ -->
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="2.2" TYPE="wmq" CATEGORY_PROPERTIES="VersionCategory">
+   <Display>
+      <Label NLSID="WMQ_LABEL">IBM WebSphere MQ Queue Manager</Label>
+      <ShortName NLSID="WMQ_NAME">IBM WebSphere MQ Queue Manager</ShortName>
+      <Description NLSID="WMQ_DESC">IBM WebSphere MQ Queue Manager</Description>
+   </Display>
+
+	<!-- Response metric -->
+	<Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_RESPONSE">Response</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_RESP_STATUS">Status</Label>
+               <Description NLSID="WMQ_RESP_STATUS_DESC">Current status of the Queue Manager</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="MQFetchlet">
+			<Property NAME="metric">Response</Property>
+			<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+			<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+            <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+		</QueryDescriptor>
+	 </Metric>
+
+	<!-- QMCluster -->
+	<Metric NAME="QMCluster" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_CLUSTER">Queue Manager Cluster</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="ConnectionName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="WMQ_CLUS_CONN">Connection Name</Label>
+               <Description NLSID="WMQ_CLUS_CONN_DESC">Name of connection used by cluster channel</Description>
+            </Display>
+         </ColumnDescriptor>
+   		<ColumnDescriptor NAME="ClusterName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="WMQ_CLUS_CLUSNAME">Cluster Name</Label>
+               <Description NLSID="WMQ_CLUS_CLUSNAME_DESC">Name of the cluster</Description>
+            </Display>
+         </ColumnDescriptor>
+			<ColumnDescriptor NAME="ChannelName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="WMQ_CLUS_CHANNAME">Channel Name</Label>
+               <Description NLSID="WMQ_CLUS_CHANNAME_DESC">Cluster channel name</Description>
+            </Display>
+        </ColumnDescriptor>
+	<ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_CLUS_NAME">Queue Manager Name</Label>
+               <Description NLSID="WMQ_CLUS_NAME_DESC">Queue manager name</Description>
+            </Display>
+         </ColumnDescriptor>
+	<ColumnDescriptor NAME="QMgrType" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_CLUS_QMGRTYPE">Queue Manager Type</Label>
+               <Description NLSID="WMQ_CLUS_QMGRTYPE_DESC">Type of Queue Manager (full/partial repository)</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="MQFetchlet">
+			<Property NAME="metric" SCOPE="GLOBAL">QMCluster</Property>
+			<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+			<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+			<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+			<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+			<Property NAME="password" SCOPE="INSTANCE">password</Property>
+			<Property NAME="COMMAND" SCOPE="GLOBAL">70</Property>
+			<Property NAME="ATTRIBUTES"  SCOPE="GLOBAL">string,3506;string,2029;string,3501;string,2015;int,1085</Property>
+			<Property NAME="parameters" SCOPE="GLOBAL">string,2031,*;int[],1093,1009</Property>
+			<!-- <Property NAME="key" SCOPE="GLOBAL">3506,2029</Property> -->
+            <Property NAME="ValueMap" SCOPE="GLOBAL">1085,0,Normal,1,Repository</Property>
+            <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    </QueryDescriptor>
+	</Metric>
+
+	<!-- DeadLetterQDepth -->
+	<!-- <Metric NAME="DeadLetterQDepth">
+      <Display>
+         <Label NLSID="QM_DLQD">DeadLetterQDepth</Label>
+      </Display>
+      <TableDescriptor>
+	<ColumnDescriptor NAME="DeadLetterQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_DLQD_NAME">DeadLetterQName</Label>
+               <Description NLSID="WMQ_DLQD_NAME_DESC">DeadLetterQName</Description>
+            </Display>
+         </ColumnDescriptor>
+			<ColumnDescriptor NAME="Depth" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_DLQD_DEPTH">Depth</Label>
+               <Description NLSID="WMQ_DLQD_DEPTH_DESC">Depth</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+			<GetTable NAME="QMGeneral"/>
+			<GetView NAME="V_QMGeneral" FROM_TABLE="QMGeneral">
+				<Column Name="DeadLetterQName" COLUMN_NAME="DeadLetterQName"/>
+			</GetView>
+			<GetTable NAME="LocalQueues"/>
+			<GetView NAME="V_LocalQueues" FROM_TABLE="LocalQueues">
+				<Column NAME="QName" COLUMN_NAME="QName"/>
+				<Column NAME="Depth" COLUMN_NAME="Depth"/>
+				<In COLUMN_NAME="QName" IN_TABLE_NAME="V_QMGeneral" IN_COLUMN_NAME="DeadLetterQName"/>
+			</GetView>
+			<JoinTables NAME="ret" OUTER="TRUE">
+        		<Table NAME="V_QMGeneral" />
+        		<Table NAME="V_LocalQueues" />
+				<Where  FROM_TABLE="V_QMGeneral" FROM_KEY="DeadLetterQName" JOIN_TABLE="V_LocalQueues" JOIN_KEY="QName"/>
+ 		       </JoinTables>
+ 		        <GetView NAME="lastgetview" FROM_TABLE="ret">
+ 		           <Column NAME="DeadLetterQName" COLUMN_NAME="DeadLetterQName"/>
+        		     <Column NAME="Depth" COLUMN_NAME="Depth"/>
+        		</GetView>
+		</ExecutionDescriptor>
+	</Metric> -->
+
+	<!-- QMLoad -->
+	<Metric NAME="QMLoad" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_LOAD">Queue Manager Load</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="DeltaBytesSent" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_LOAD_DBS">Bytes Sent</Label>
+               <Description NLSID="WMQ_LOAD_DBS_DESC">Bytes sent since last collection</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DeltaBytesReceived" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_LOAD_DBR">Bytes Received</Label>
+               <Description NLSID="WMQ_LOAD_DBR_DESC">Bytes received since last collection</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DeltaMessagesSentReceived" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="WMQ_LOAD_DMSR">Messages Sent/Received</Label>
+                <Description NLSID="WMQ_LOAD_DMSR_DESC">Messages sent and/or received since last collection</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+			<GetTable NAME="ChannelCurrentStatus" />
+			<GetView NAME="VW_COMPRW" FROM_TABLE="ChannelCurrentStatus">
+				 <Column NAME="DeltaBytesSent"/>
+				 <Column NAME="DeltaBytesReceived"/>
+				 <Column NAME="DeltaMessagesSentReceived"/>
+			 </GetView>
+			<GroupBy NAME="Name" FROM_TABLE="VW_COMPRW">
+        		<AggregateColumn  NAME="DeltaBytesSent" COLUMN_NAME="DeltaBytesSent" OPERATOR="SUM"/>
+				<AggregateColumn  NAME="DeltaBytesReceived" COLUMN_NAME="DeltaBytesReceived" OPERATOR="SUM"/>
+				<AggregateColumn  NAME="DeltaMessagesSentReceived" COLUMN_NAME="DeltaMessagesSentReceived" OPERATOR="SUM"/>
+			</GroupBy>
+		</ExecutionDescriptor>
+	</Metric>
+
+	<!-- DynamicQs -->
+	<Metric NAME="DynamicQs" TYPE="TABLE">
+		<Display>
+		   <Label NLSID="QM_DQ">Dynamic Queues</Label>
+		</Display>
+		<TableDescriptor>
+			<ColumnDescriptor NAME="QName" TYPE="STRING" IS_KEY="TRUE">
+				<Display>
+					<Label NLSID="WMQ_DQ_NAME">Queue Name</Label>
+					<Description NLSID="WMQ_DQ_NAME_DESC">Name of the queue</Description>
+				</Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="Type" TYPE="STRING" IS_KEY="FALSE">
+				<Display>
+					<Label NLSID="WMQ_DQ_TYPE">Type</Label>
+					<Description NLSID="WMQ_DQ_TYPE_DESC">Type of the queue</Description>
+				</Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="Usage" TYPE="STRING" IS_KEY="FALSE">
+				<Display>
+					<Label NLSID="WMQ_DQ_USAGE">Usage</Label>
+                    <Description NLSID="WMQ_DQ_USAGE_DESC">Usage (normal/transmission)</Description>
+				</Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="DefinitionType" TYPE="STRING" IS_KEY="FALSE">
+				<Display>
+					<Label NLSID="WMQ_DQ_DEFTYPE">Definition Type</Label>
+					<Description NLSID="WMQ_DQ_DEFTYPE_DESC">Type of queue definition</Description>
+				</Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="MQFetchlet">
+			<Property NAME="metric" SCOPE="GLOBAL">DynamicQs</Property>
+			<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+			<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+			<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+			<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+			<Property NAME="password" SCOPE="INSTANCE">password</Property>
+			<Property NAME="COMMAND" SCOPE="GLOBAL">13</Property>
+			<Property NAME="package" SCOPE="GLOBAL">com.ibm.mq.pcf</Property>
+			<Property NAME="ATTRIBUTES" SCOPE="GLOBAL">string,2016;int,20;int,12;int,7</Property>
+			<Property NAME="parameters" SCOPE="GLOBAL">string,2016,*;int,20,1</Property>
+			<Property NAME="Filter" SCOPE="GLOBAL">7,2,3,4</Property>
+			<Property NAME="ValueMap" SCOPE="GLOBAL">20,1,Local,2,Model,3,Alias,6,Remote,7,Cluster;12,0,Normal,1,Transmission;7,2,PermanentDynamic,3,TemporaryDynamic,4,SharedDynamic</Property>
+            <Property NAME="key" SCOPE="GLOBAL">2016</Property>
+            <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+		</QueryDescriptor>
+	</Metric>
+
+	<!-- Queues -->
+	<Metric NAME="Queues" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_QUEUES">Queues</Label>
+      </Display>
+      <TableDescriptor>
+			<ColumnDescriptor NAME="QName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_QUEUES_NAME">Queue Name</Label>
+               <Description NLSID="QM_QUEUES_NAME_DESC">Name of the queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Type" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_TYPE">Type</Label>
+               <Description NLSID="QM_QUEUES_TYPE_DESC">Type of the queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Depth" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_DEPTH">Depth</Label>
+               <Description NLSID="QM_QUEUES_DEPTH_DESC">Current depth (no. of messages) of the queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="MaxDepth" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_MAXDEPTH">Max Depth</Label>
+               <Description NLSID="QM_QUEUES_MAXDEPTH_DESC">Maximum depth (no. of messages) of the queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="OpenInputCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_OICOUNT">Open Input Count</Label>
+               <Description NLSID="QM_QUEUES_OICOUNT_DESC">Number of open input handles</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="OpenOutputCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_OOCOUNT">Open Output Count</Label>
+               <Description NLSID="QM_QUEUES_OOCOUNT_DESC">Number of open otput handles</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="MaxMessageLenght" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_MSGLTH">Max Message Length</Label>
+               <Description NLSID="QM_QUEUES_MSGLTH_DESC">Maximum message length allowed on queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ClusterNameList" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_CLUSNMLIST">Cluster Name List</Label>
+               <Description NLSID="QM_QUEUES_CLUSNMLIST_DESC">List of cluster names in which queue is shared</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="RemoteQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_REMQ">Remote Queue Name</Label>
+               <Description NLSID="QM_QUEUES_REMQ_DESC">Remote queue name (only for remote queues)</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="RemoteQManager" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_REMQMGR">Remote Queue Manager</Label>
+               <Description NLSID="QM_QUEUES_REMQMGR_DESC">Remote queue manager name (only for remote queues)</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="XmitQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QUEUES_XMITQNAME">Transmission Queue Name</Label>
+               <Description NLSID="QM_QUEUES_XMITQNAME_DESC">Transmission queue associated with this queue (only for remote queues)</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Use" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="QM_QUEUES_USE">Use</Label>
+                <Description NLSID="QM_QUEUES_USE_DESC">Usage (normal/tramission)</Description>
+            </Display>
+         </ColumnDescriptor>
+
+		</TableDescriptor>
+            <QueryDescriptor FETCHLET_ID="MQFetchlet">
+		<Property NAME="metric" SCOPE="GLOBAL">Queues</Property>
+		<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+		<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+		<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+		<Property NAME="password" SCOPE="INSTANCE">password</Property>
+		<Property NAME="package" SCOPE="GLOBAL">com.ibm.mq.pcf</Property>
+		<Property NAME="COMMAND" SCOPE="GLOBAL">13</Property>
+		<Property NAME="package" SCOPE="GLOBAL">com.ibm.mq.pcf</Property>
+		<Property NAME="ATTRIBUTES" SCOPE="GLOBAL">string,2016;int,20;int,3;int,15;int,17;int,18;int,13;string,2030;string,2018;string,2017;string,2024;int,12</Property>
+		<Property NAME="parameters" SCOPE="GLOBAL">string,2016,*</Property>
+        <Property NAME="ValueMap" SCOPE="GLOBAL">20,1,Local,2,Model,3,Alias,6,Remote,7,Cluster;12,0,Normal,1,Transmission</Property>
+        <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    </QueryDescriptor>
+
+   </Metric>
+
+	<!-- Channel Current Status -->
+	<Metric NAME="ChannelSavedStatus" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_CHAN_CURRSTAT">Channel Saved Status</Label>
+      </Display>
+      <TableDescriptor>
+			<ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="WMQ_CCS_NAME">Name</Label>
+               <Description NLSID="WMQ_CCS_NAME_DESC">Channel name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Type" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_CCS_TYPE">Type</Label>
+               <Description NLSID="WMQ_CCS_DESC">Channel type</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_CCS_STATUS">Status</Label>
+               <Description NLSID="WMQ_CCS_STATUS_DESC">Status</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ConnectionName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="WMQ_CCS_CONNAME">Connection Name</Label>
+               <Description NLSID="WMQ_CCS_CONNAME_DESC">Channel connection name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="XmitQueue" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_CCS_XMITQ">Transmission Queue</Label>
+               <Description NLSID="WMQ_CCS_XMITQ_DESC">Transmission queue (used by sender channels)</Description>
+            </Display>
+         </ColumnDescriptor>
+			<ColumnDescriptor NAME="LastSeqNumber" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_CCS_LSNO">Last Seq Number</Label>
+               <Description NLSID="WMQ_CCS_LSNO_DESC">Sequence number of the last message sent</Description>
+            </Display>
+         </ColumnDescriptor>
+
+		</TableDescriptor>
+            <QueryDescriptor FETCHLET_ID="MQFetchlet">
+		<Property NAME="metric" SCOPE="GLOBAL">ChannelSavedStatus</Property>
+		<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+		<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+		<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+		<Property NAME="password" SCOPE="INSTANCE">password</Property>
+		<Property NAME="package" SCOPE="GLOBAL">com.ibm.mq.pcf</Property>
+		<Property NAME="COMMAND" SCOPE="GLOBAL">42</Property>
+     <Property NAME="parameters" SCOPE="GLOBAL">string,3501,*;int,1523,1012</Property>
+     <Property NAME="ATTRIBUTES"  SCOPE="GLOBAL">string,3501;int,1511;int,1527;string,3506;string,3505;int,1529</Property>
+     <Property NAME="ValueMap" SCOPE="GLOBAL">1511,1,Sender,2,Server,3,Receiver,4,Requester,6,ClientConn,7,SrvConn,8,ClusRcvr,9,ClusSdr</Property>
+     <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    </QueryDescriptor>
+
+   </Metric>
+
+	<!-- Channels -->
+	<Metric NAME="Channels" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_CHAN">Channels</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="ChannelName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_CHAN_CN">Name</Label>
+               <Description NLSID="QM_CHAN_CN_DESC">Channel name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Type" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CHAN_TYPE">Type</Label>
+               <Description NLSID="QM_CHAN_TYPE_DESC">Channel type</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ConnectionName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CHAN_CONNAME">Connection Name</Label>
+               <Description NLSID="QM_CHAN_CONNAME_DESC">Channel connection name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="XmitQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CHAN_XMITQNAME">Transmission Queue Name</Label>
+               <Description NLSID="QM_CHAN_XMITQNAME_DESC">Transmission queue (used by sender channels)</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ClusterName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CHAN_CLUSNAME">Cluster Name</Label>
+               <Description NLSID="QM_CHAN_CLUSNAME_DESC">Cluster name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ClusterNamelist" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CHAN_CNL">Cluster Name list</Label>
+               <Description NLSID="QM_CHAN_CNL_DESC">Cluster name list</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="MaxMsgLength" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CHAN_MML">Max Message Length</Label>
+               <Description NLSID="QM_CHAN_MML_DESC">Maximum length of the message that can be processed by channel</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="AlterationDate" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CHAN_ALTDATE">Alteration Date</Label>
+               <Description NLSID="QM_CHAN_ALTDATE_DESC">Date on which the definition was last altered</Description>
+            </Display>
+         </ColumnDescriptor>
+
+		</TableDescriptor>
+            <QueryDescriptor FETCHLET_ID="MQFetchlet">
+		<Property NAME="metric" SCOPE="GLOBAL">Channels</Property>
+		<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+		<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+		<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+		<Property NAME="password" SCOPE="INSTANCE">password</Property>
+		<Property NAME="COMMAND" SCOPE="GLOBAL">25</Property>
+		<Property NAME="package" SCOPE="GLOBAL">com.ibm.mq.pcf</Property>
+		<Property NAME="ATTRIBUTES" SCOPE="GLOBAL">string,3501;int,1511;string,3506;string,3505;string,2029;string,2030;int,1510;string,2027</Property>
+		<Property NAME="parameters" SCOPE="GLOBAL">string,3501,*;int,1511,5;int[],1015,1009</Property>
+		<Property NAME="key" SCOPE="GLOBAL">3501</Property>
+		<Property NAME="ValueMap" SCOPE="GLOBAL">1511,1,Sender,2,Server,3,Receiver,4,Requester,6,ClientConn,7,SrvConn,8,ClusRcvr,9,ClusSdr</Property>
+        <!-- <Property NAME="Filter" SCOPE="GLOBAL">1511,7</Property> -->
+        <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    </QueryDescriptor>
+
+   </Metric>
+
+	<!-- SenderChannelQs -->
+	<Metric NAME="SenderChannelQs" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_SCQ">Sender Channel Queues</Label>
+      </Display>
+      <TableDescriptor>
+			<ColumnDescriptor NAME="ChannelName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_SCQ_CHANNAME">Channel Name</Label>
+               <Description NLSID="QM_SCQ_CHANNAME_DESC">Channel name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="QName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_SCQ_QNAME">Queue Name</Label>
+               <Description NLSID="QM_SCQ_QNAME_DESC">Name of the remote queue</Description>
+            </Display>
+         </ColumnDescriptor>
+			<ColumnDescriptor NAME="XmitQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_SCQ_XMITQNAME">Transmission Queue Name</Label>
+               <Description NLSID="QM_SCQ_XMITQNAME_DESC">Transmission queue name</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+			<GetTable NAME="Channels"/>
+			<GetView NAME="V_Channels" FROM_TABLE="Channels">
+				<!-- <Column COLUMN_NAME="ChannelName"/>
+				<Column COLUMN_NAME="XmitQName"/> -->
+				<Filter COLUMN_NAME="Type" OPERATOR="EQ">Sender</Filter>
+				<Filter COLUMN_NAME="XmitQName" OPERATOR="ISNOTNULL"/>
+				<Filter COLUMN_NAME="ChannelName" OPERATOR="ISNOTNULL"/>
+			</GetView>
+			<GetTable NAME="Queues"/>
+			<GetView NAME="V_Queues" FROM_TABLE="Queues">
+				<!-- <Column COLUMN_NAME="QName"/>
+				<Column COLUMN_NAME="XmitQName"/> -->
+				<Filter COLUMN_NAME="Type" OPERATOR="EQ">Remote</Filter>
+				<Filter COLUMN_NAME="XmitQName" OPERATOR="ISNOTNULL"/>
+				<Filter COLUMN_NAME="QName" OPERATOR="ISNOTNULL"/>
+				<In COLUMN_NAME="XmitQName" IN_TABLE_NAME="V_Channels" IN_COLUMN_NAME="XmitQName"/>
+			</GetView>
+			<JoinTables NAME="ret" OUTER="TRUE">
+        		<Table NAME="V_Channels" />
+        		<Table NAME="V_Queues" />
+				<Where  FROM_TABLE="V_Channels" FROM_KEY="XmitQName" JOIN_TABLE="V_Queues" JOIN_KEY="XmitQName"/>
+ 		    </JoinTables>
+ 		    <GetView NAME="lastgetview" FROM_TABLE="ret">
+ 		    	<Column NAME="ChannelName" COLUMN_NAME="ChannelName"/>
+        		<Column NAME="QName" COLUMN_NAME="QName"/>
+				<Column NAME="XmitQName" COLUMN_NAME="XmitQName"/>
+        	 </GetView>
+		</ExecutionDescriptor>
+	</Metric>
+
+	<!-- Channel Status -->
+	<Metric NAME="ChannelCurrentStatus" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_CCS">Channel Current Status</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_CCS_NAME">Name</Label>
+               <Description NLSID="QM_CCS_NAME_DESC">Name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CCS_STATUS">Status</Label>
+               <Description NLSID="QM_CCS_STATUS_DESC">Status</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="BytesSent" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CCS_BYTSENT">Bytes Sent</Label>
+               <Description NLSID="QM_CCS_BYTSENT_DESC">Number of bytes sent</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="BytesReceived" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_CCS_BYTRECD">Bytes Received</Label>
+               <Description NLSID="QM_CCS_BYTRECD_DESC">Number of bytes received</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="MessagesSentReceived" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="QM_CCS_MSR">Messages Sent/Received</Label>
+               <Description NLSID="QM_CCS_MSR_DESC">Number of messages processed</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DeltaBytesSent" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="(BytesSent - _BytesSent) > 0 ? (BytesSent - _BytesSent) : 0">
+            <Display>
+               <Label NLSID="QM_CCS_DBS">Delta Bytes Sent</Label>
+               <Description NLSID="QM_CCS_DBS_DESC">Number of bytes send since last collection</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DeltaBytesReceived" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="(BytesReceived - _BytesReceived) > 0 ? (BytesReceived - _BytesReceived) : 0">
+            <Display>
+               <Label NLSID="QM_CCS_DBR">Delta Bytes Received</Label>
+               <Description NLSID="QM_CCS_DBR_DESC">Number of bytes received since last collection</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DeltaMessagesSentReceived" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="(MessagesSentReceived - _MessagesSentReceived) > 0 ? (MessagesSentReceived - _MessagesSentReceived) : 0">
+            <Display>
+                <Label NLSID="QM_CCS_DBSR">Delta Messages Sent/Received</Label>
+               <Description NLSID="QM_CCS_DBSR_DESC">Number of messages processed since last collection</Description>
+            </Display>
+        </ColumnDescriptor>
+		</TableDescriptor>
+            <QueryDescriptor FETCHLET_ID="MQFetchlet">
+		<Property NAME="metric" SCOPE="GLOBAL">ChannelCurrentStatus</Property>
+		<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+		<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+		<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+		<Property NAME="password" SCOPE="INSTANCE">password</Property>
+		<Property NAME="COMMAND" SCOPE="GLOBAL">42</Property>
+		<Property NAME="key" SCOPE="GLOBAL">3501</Property>
+		<Property NAME="parameters" SCOPE="GLOBAL">string,3501,*;int,1523,1011</Property>
+		<Property NAME="ATTRIBUTES"  SCOPE="GLOBAL">string,3501;int,1527;int,1535;int,1536;int,1538;int,1539;int,1534</Property>
+        <Property NAME="ValueMap"  SCOPE="GLOBAL">1527,0,INACTIVE,1,BINDING,2,STARTING,3,RUNNING,4,STOPPING,5,RETRYING,6,STOPPED,7,REQUESTING,8,PAUSED,13,INITIALIZING</Property>
+        <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    </QueryDescriptor>
+
+   </Metric>
+
+	<!-- Local Queues -->
+      <Metric NAME="LocalQueues" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_LCLQ">Local Queues</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="QName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_LCLQ_NAME">Name</Label>
+               <Description NLSID="QM_LCLQ_NAME_DESC">Name</Description>
+            </Display>
+         </ColumnDescriptor>
+			<ColumnDescriptor NAME="Type" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_TYPE">Type</Label>
+               <Description NLSID="QM_LCLQ_TYPE_DESC">Type</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Depth" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_DEPTH">Depth</Label>
+               <Description NLSID="QM_LCLQ_DEPTH_DESC">Number of messages on queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="MaxDepth" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_MAXDEPTH">Max Depth</Label>
+               <Description NLSID="QM_LCLQ_MAXDEPTH_DESC">Maximum number of messages on queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="OpenInputCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_OIC">Open Input Count</Label>
+               <Description NLSID="QM_LCLQ_OIC_DESC">Number of open input handles</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="OpenOutputCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_OOC">Open Output Count</Label>
+               <Description NLSID="QM_LCLQ_OOC_DESC">Number of open output handles</Description>
+            </Display>
+         </ColumnDescriptor>
+			<ColumnDescriptor NAME="MaxMessageLenght" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_MSL">Max Message Length</Label>
+               <Description NLSID="QM_LCLQ_MSL_DESC">Maximum length of the message can be processed</Description>
+            </Display>
+         </ColumnDescriptor>
+
+	 <ColumnDescriptor NAME="ClusterNameList" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_CNL">Cluster Name List</Label>
+               <Description NLSID="QM_LCLQ_CNL_DESC">Cluster Name List</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="XmitQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_XQNAME">Transmission Queue Name</Label>
+               <Description NLSID="QM_LCLQ_XQNAME_DESC">Transmission queue name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Usage" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_USG">Usage</Label>
+               <Description NLSID="QM_LCLQ_USG_DESC">Usage (normal/trasmission)</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DefinitionType" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_LCLQ_DEFTYPE">Definition Type</Label>
+               <Description NLSID="QM_LCLQ_DEFTYPE_DESC">Queue definition type</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="PercentUsage" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="(Depth / MaxDepth) * 100">
+            <Display>
+               <Label NLSID="QM_LCLQ_PERUSG">Percent Usage</Label>
+               <Description NLSID="QM_LCLQ_PERUSG_DESC">Space used in percentage</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+            <QueryDescriptor FETCHLET_ID="MQFetchlet">
+		<Property NAME="metric" SCOPE="GLOBAL">LocalQueues</Property>
+		<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+		<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+		<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+		<Property NAME="password" SCOPE="INSTANCE">password</Property>
+		<Property NAME="COMMAND" SCOPE="GLOBAL">13</Property>
+		<Property NAME="package" SCOPE="GLOBAL">com.ibm.mq.pcf</Property>
+		<Property NAME="ATTRIBUTES" SCOPE="GLOBAL">string,2016;int,20;int,3;int,15;int,17;int,18;int,13;string,2030;string,2024;int,12;int,7</Property>
+		<Property NAME="parameters" SCOPE="GLOBAL">string,2016,*;int,20,1</Property>
+		<Property NAME="Filter" SCOPE="GLOBAL">7,1</Property>
+		<Property NAME="ValueMap" SCOPE="GLOBAL">20,1,Local;12,0,Normal,1,Transmission</Property> <!-- ;7,1,Perdefined -->
+        <Property NAME="key" SCOPE="GLOBAL">2016</Property>
+        <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    </QueryDescriptor>
+
+   </Metric>
+
+	<!-- QMGeneral metric -->
+	<Metric NAME="QMGeneral" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_GENERAL">Queue Manager General</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="QMName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_NAME">Queue Manager Name</Label>
+               <Description NLSID="WMQ_QMGEN_NAME_DESC">Name of the Queue manager</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="RepositoryNameList" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_RNL">Repository Name List</Label>
+               <Description NLSID="WMQ_QMGEN_RNL_DESC">The name of a list of clusters for which this queue manager is to provide a repository service</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="MaxMessageLength" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_MML">Max Message Length</Label>
+               <Description NLSID="WMQ_QMGEN_MML_DESC">Maximum length of message that could be processed</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="MaxHandles" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_MAXHNDL">Max Handles</Label>
+               <Description NLSID="WMQ_QMGEN_MAXHNDL_DESC">The maximum number of handles that any one job can have open at the same time</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="Platform" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_PLTFM">Platform</Label>
+               <Description NLSID="WMQ_QMGEN_PLTFM_DESC">Platform on which the queue manager is running</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DeadLetterQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_DLQN">Dead Letter Queue</Label>
+               <Description NLSID="WMQ_QMGEN_DLQN_DESC">The name of the local queue that is to be used for undelivered messages</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="CommandQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_CMDQN">Command Queue</Label>
+               <Description NLSID="WMQ_QMGEN_CMDQN_DESC">The name of the local queue that is used for accepting commands</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="DefaultXmitQName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="WMQ_QMGEN_DXQN">Default Transmission Queue</Label>
+               <Description NLSID="WMQ_QMGEN_DXQN_DESC">Name of the default transmission queue that is used for the transmission of messages to remote queue managers</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+            <QueryDescriptor FETCHLET_ID="MQFetchlet">
+		<Property NAME="metric" SCOPE="GLOBAL">QMGeneral</Property>
+		<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+		<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+		<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+		<Property NAME="password" SCOPE="INSTANCE">password</Property>
+		<Property NAME="COMMAND" SCOPE="GLOBAL">2</Property>
+		<Property NAME="ATTRIBUTES" SCOPE="GLOBAL">string,2015;string,2035;int,13;int,11;int,32;string,2006;string,2003;string,2025</Property>
+		<Property NAME="parameters" SCOPE="GLOBAL">;</Property>
+        <Property NAME="ValueMap" SCOPE="GLOBAL">32,11,Windows,5,Windows NT,3,Unix,12,Compaq,13,Compaq</Property>
+        <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    </QueryDescriptor>
+
+   </Metric>
+
+	<!-- QueueStatusInputHandle -->
+	<Metric NAME="QueueStatusInputHandle" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_QSIH">Queue Status Input Handle</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_QSIH_NAME">Name</Label>
+               <Description NLSID="QM_QSIH_NAME_DESC">Queue name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ProcessId" TYPE="NUMBER" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_QSIH_PROCID">Process Id</Label>
+               <Description NLSID="QM_QSIH_PROCID_DESC">Process id of the application using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ThreadId" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_QSIH_THRDID">Thread Id</Label>
+               <Description NLSID="QM_QSIH_THRDID_DESC">ID of the thread using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ApplTag" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSIH_APPLTAG">Application Name</Label>
+               <Description NLSID="QM_QSIH_APPLTAG_DESC">Name of the application using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ApplType" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSIH_APPTYPE">Application Type</Label>
+               <Description NLSID="QM_QSIH_APPTYPE_DESC">Type of the application using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="OpenOptions" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSIH_OO">Open Options</Label>
+               <Description NLSID="QM_QSIH_OO_DESC">Queue open options</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="UserIdentifier" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSIH_USRIDN">User Identifier</Label>
+               <Description NLSID="QM_QSIH_USRIDN_DESC">User id of the application</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ChannelName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSIH_CHNNAME">Channel Name</Label>
+               <Description NLSID="QM_QSIH_CHNNAME_DESC">Channel used for message input</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ConnectionName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSIH_CONNAME">Connection Name</Label>
+               <Description NLSID="QM_QSIH_CONNAME_DESC">Channel connection name</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="MQFetchlet">
+			<Property NAME="metric" SCOPE="GLOBAL">QueueStatusInputHandle</Property>
+			<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+			<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+			<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+			<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+			<Property NAME="password" SCOPE="INSTANCE">password</Property>
+			<Property NAME="COMMAND" SCOPE="GLOBAL">41</Property>
+			<Property NAME="package" SCOPE="GLOBAL">com.ibm.mq.pcf</Property>
+			<Property NAME="ATTRIBUTES" SCOPE="GLOBAL">string,2016;int,1024;int,1025;string,3058;int,1;int,1022;string,3025;string,3501;string,3506</Property>
+			<Property NAME="parameters" SCOPE="GLOBAL">string,2016,*;int,1103,1104;int,1023,2;int[],1026,1009</Property>
+            <Property NAME="ValueMap" SCOPE="GLOBAL">1,7,QMgrProcess,30,ChannelInitiator,25,UserProcess</Property>
+            <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    	</QueryDescriptor>
+
+	</Metric>
+
+	<!-- QueueStatusOutputHandle -->
+	<Metric NAME="QueueStatusOutputHandle" TYPE="TABLE">
+      <Display>
+         <Label NLSID="QM_QSOH">Queue Status Output Handle</Label>
+      </Display>
+      <TableDescriptor>
+	 <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_QSOH_NAME">Name</Label>
+               <Description NLSID="QM_QSOH_NAME_DESC">Name</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ProcessId" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_QSOH_PRCID">Process Id</Label>
+               <Description NLSID="QM_QSOH_PRCID_DESC">Process id of the application using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ThreadId" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="QM_QSOH_THRDID">Thread Id</Label>
+               <Description NLSID="QM_QSOH_THRDID_DESC">ID of the thread using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ApplTag" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSOH_APPTAG">Application Name</Label>
+               <Description NLSID="QM_QSOH_APPTAG_DESC">Name of the application using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ApplType" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSOH_APPTYPE">Application Type</Label>
+               <Description NLSID="QM_QSOH_APPTYPE_DESC">Type of the application using this queue</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="OpenOptions" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSOH_OOPTION">Open Options</Label>
+               <Description NLSID="QM_QSOH_OOPTION_DESC">Queue open options</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="UserIdentifier" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSOH_USRIDNT">User Identifier</Label>
+               <Description NLSID="QM_QSOH_USRIDNT_DESC">Userid of the application</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ChannelName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSOH_CHANNAME">Channel Name</Label>
+               <Description NLSID="QM_QSOH_CHANNAME_DESC">Channel used for message output</Description>
+            </Display>
+         </ColumnDescriptor>
+	 <ColumnDescriptor NAME="ConnectionName" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="QM_QSOH_CONNAME">Connection Name</Label>
+               <Description NLSID="QM_QSOH_CONNAME_DESC">Channel connection name</Description>
+            </Display>
+         </ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="MQFetchlet">
+			<Property NAME="metric" SCOPE="GLOBAL">QueueStatusOutputHandle</Property>
+			<Property NAME="MachineName" SCOPE="INSTANCE">MachineName</Property>
+			<Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+			<Property NAME="JARPath" SCOPE="INSTANCE">JARPath</Property>
+			<Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+			<Property NAME="password" SCOPE="INSTANCE">password</Property>
+			<Property NAME="COMMAND" SCOPE="GLOBAL">41</Property>
+			<Property NAME="ATTRIBUTES" SCOPE="GLOBAL">string,2016;int,1024;int,1025;string,3058;int,1;int,1022;string,3025;string,3501;string,3506</Property>
+			<Property NAME="parameters" SCOPE="GLOBAL">string,2016,*;int,1103,1104;int,1023,3;int[],1026,1009</Property>
+            <Property NAME="ValueMap" SCOPE="GLOBAL">1,7,QMgrProcess,30,ChannelInitiator,25,UserProcess</Property>
+            <Property NAME="ServerChannel" SCOPE="INSTANCE" OPTIONAL="TRUE">ServerChannel</Property>
+    	</QueryDescriptor>
+    </Metric>
+   
+	<InstanceProperties>
+      <InstanceProperty NAME="MachineName">
+         <Display>
+            <Label NLSID="MACHINENAME_LABEL">Machine Name</Label>
+            <ShortName NLSID="MACHINENAME_NAME">Machine Name</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="Port">
+         <Display>
+            <Label NLSID="PORT_LABEL">Port Number</Label>
+            <ShortName NLSID="PORT_NAME">Port Number</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="UserName">
+         <Display>
+            <Label NLSID="USERNAME_LABEL">Username</Label>
+            <ShortName NLSID="USERNAME_NAME">Username</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="password" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="PASSWORD_LABEL">Password</Label>
+            <ShortName NLSID="PASSWORD_NAME">Password</ShortName>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JARPath">
+         <Display>
+            <Label NLSID="JARPATH_LABEL">Jar Path</Label>
+            <ShortName NLSID="JARPATH_NAME">Jar Path</ShortName>
+         </Display>
+       </InstanceProperty>
+       <InstanceProperty NAME="ServerChannel" OPTIONAL="TRUE">
+         <Display>
+           <Label NLSID="ServerChannel_LABEL">Server Connection Channel</Label>
+           <ShortName NLSID="ServerChannel_NAME">Server Connection Channel</ShortName>
+         </Display>
+       </InstanceProperty>
+   </InstanceProperties>
+
+</TargetMetadata>
+
+

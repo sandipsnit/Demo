@@ -1,0 +1,802 @@
+# M215NET.def: Collects Network Information
+# $Id: M215NET.def,v 1.15 2012/08/20 11:56:03 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M215NET.def,v 1.15 2012/08/20 11:56:03 mschenke Exp $
+#
+# Change History
+# 20120820  JGS  Add nfsstat -m, dladm show-aggr -x and -L collections.
+
+=head1 NAME
+
+M215NET - Collects Network Information
+
+=head1 DESCRIPTION
+
+This module collects network information.
+
+=cut
+
+use Buffer
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('netinfo')
+
+#------------------------------------------------------------------------------
+# XPLR_net section
+#------------------------------------------------------------------------------
+
+section XPLR_net
+
+# Validate the execution context
+call log_run('Processing NET sections ...')
+
+=head2 Network information
+
+Gathers network related information using the following commands:
+
+=over 2
+
+=item o C</etc/fw/bin/fw ver>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -conf lacp>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -conf>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -stats ${DEVICE} device=ge type=1>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -stats ${DEVICE} device=ge type=2>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -stats ${DEVICE} device=qfe type=1>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -stats ${DEVICE} device=qfe type=2>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -stats ${DEVICE} type=1>
+
+=item o C</etc/opt/SUNWconn/bin/nettr -stats ${DEVICE} type=2>
+
+=item o C</usr/bin/echo "*ibtf_debug_buf/s" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "*rdsv3_debug_buf/s" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/echo "*sol_ofs_debug_buf/s" | /usr/bin/mdb -k>
+
+=item o C</usr/bin/ibv_devinfo>
+
+=item o C</usr/bin/kstat -c net 3 3>
+
+=item o C</usr/bin/kstat -p>
+
+=item o C</usr/bin/netstat -an>
+
+=item o C</usr/bin/netstat -gn>
+
+=item o C</usr/bin/netstat -in>
+
+=item o C</usr/bin/netstat -m>
+
+=item o C</usr/bin/netstat -pn>
+
+=item o C</usr/bin/netstat -rn>
+
+=item o C</usr/bin/netstat -rvan>
+
+=item o C</usr/bin/netstat -s>
+
+=item o C</usr/bin/nfsstat>
+
+=item o C</usr/bin/nfsstat -m>
+
+=item o C</usr/bin/niscat -o ${NIS}>
+
+=item o C</usr/bin/nisdefaults>
+
+=item o C</usr/bin/nisls -lR>
+
+=item o C</usr/bin/rds-info -n>
+
+=item o C</usr/bin/rds-info>
+
+=item o C</usr/bin/rpcinfo -m>
+
+=item o C</usr/bin/rpcinfo>
+
+=item o C</usr/lib/nis/nisping -u org_dir>
+
+=item o C</usr/lib/nis/nisshowcache -v>
+
+=item o C</usr/lib/nis/nisstat>
+
+=item o C</usr/sbin/dladm show-aggr -L>
+
+=item o C</usr/sbin/dladm show-aggr -Z>
+
+=item o C</usr/sbin/dladm show-aggr -x>
+
+=item o C</usr/sbin/dladm show-bridge>
+
+=item o C</usr/sbin/dladm show-dev>
+
+=item o C</usr/sbin/dladm show-ether -Z>
+
+=item o C</usr/sbin/dladm show-etherstub -Z>
+
+=item o C</usr/sbin/dladm show-ib>
+
+=item o C</usr/sbin/dladm show-iptun -Z>
+
+=item o C</usr/sbin/dladm show-link>
+
+=item o C</usr/sbin/dladm show-linkprop>
+
+=item o C</usr/sbin/dladm show-part>
+
+=item o C</usr/sbin/dladm show-phys -L>
+
+=item o C</usr/sbin/dladm show-phys -Z>
+
+=item o C</usr/sbin/dladm show-secobj>
+
+=item o C</usr/sbin/dladm show-vlan -Z>
+
+=item o C</usr/sbin/dladm show-vnic -Z>
+
+=item o C</usr/sbin/dladm show-wifi -Z>
+
+=item o C</usr/sbin/dlstat -A>
+
+=item o C</usr/sbin/dlstat -Z>
+
+=item o C</usr/sbin/flowadm show-flow -P>
+
+=item o C</usr/sbin/flowadm show-flow>
+
+=item o C</usr/sbin/flowadm show-flowprop -P>
+
+=item o C</usr/sbin/flowadm show-flowprop>
+
+=item o C</usr/sbin/flowstat -A>
+
+=item o C</usr/sbin/ibdiagnet -o >
+
+=item o C</usr/sbin/idmap dump -n>
+
+=item o C</usr/sbin/idmap dump>
+
+=item o C</usr/sbin/idmap list>
+
+=item o C</usr/sbin/ilbadm export-config>
+
+=item o C</usr/sbin/ipadm show-addr>
+
+=item o C</usr/sbin/ipadm show-addrprop>
+
+=item o C</usr/sbin/ipadm show-if -o all>
+
+=item o C</usr/sbin/ipadm show-ifprop>
+
+=item o C</usr/sbin/ipf -V>
+
+=item o C</usr/sbin/ipmpstat -a>
+
+=item o C</usr/sbin/ipmpstat -an>
+
+=item o C</usr/sbin/ipmpstat -g>
+
+=item o C</usr/sbin/ipmpstat -g>
+
+=item o C</usr/sbin/ipmpstat -i>
+
+=item o C</usr/sbin/ipmpstat -i>
+
+=item o C</usr/sbin/ipmpstat -pn & sleep 5 && kill $!>
+
+=item o C</usr/sbin/ipmpstat -tn>
+
+=item o C</usr/sbin/ipqosconf -l>
+
+=item o C</usr/sbin/netadm list -x>
+
+=item o C</usr/sbin/netcfg export>
+
+=item o C</usr/sbin/routeadm -p>
+
+=item o C</usr/sbin/sharectl get autofs>
+
+=item o C</usr/sbin/sharectl get nfs>
+
+=item o C</usr/sbin/sharectl get smb>
+
+=item o C</usr/sbin/smbadm show-domains>
+
+=item o C</usr/sbin/smbadm show-groups -mp>
+
+=item o C</usr/sbin/soconfig -l>
+
+=item o C</usr/sbin/svccfg -s idmap listprop>
+
+=item o C</usr/sbin/svccfg -s smb listprop>
+
+=item o C</usr/sbin/svccfg -s smb/client listprop>
+
+=item o C</usr/sbin/svccfg -s smb/server listprop>
+
+=item o C</usr/sbin/vrrpadm show-router -x>
+
+=back
+
+Also collects the following configuration files:
+
+=over 2
+
+=item o F</etc/aggregation.conf>
+
+=item o F</etc/net/ticlts/hosts>
+
+=item o F</etc/net/ticots/hosts>
+
+=item o F</etc/net/ticotsord/hosts>
+
+=item o F</etc/opt/SUNWconn/trunking/bin/nettr.sh>
+
+=item o F</etc/named.conf>
+
+=item o F</var/run/nfs4_domain>
+
+=item o F<ibdiagnet*>
+
+=back
+
+=cut
+
+debug ' Inside NET collection, gathering NET information'
+pretoc '2:Network information'
+
+# Determine the files to collect
+var @fil = (['G','etc/aggregation.conf','/etc/aggregation.conf'],\
+  ['G','netinfo/ticlts-hosts/hosts','/etc/net/ticlts/hosts'],\
+  ['G','netinfo/ticots-hosts/hosts','/etc/net/ticots/hosts'],\
+  ['G','netinfo/ticotsord-hosts/hosts','/etc/net/ticotsord/hosts'],\
+  ['G','netinfo/nettr.sh','/etc/opt/SUNWconn/trunking/bin/nettr.sh'],\
+  ['B','netinfo/named.conf','/etc/named.conf'],\
+  ['B','netinfo/nfs4_domain','/var/run/nfs4_domain'])
+
+# Perform the collection
+loop $rec (get_zones(true))
+{if $loc = defined($nam = $rec->[0])
+  var ($ttl,$pre,$exe) = (concat('From Zone ',$nam),\
+                          concat('zones/',$nam),\
+                          concat('/usr/sbin/zlogin ',$nam))
+ else
+  var ($ttl,$pre,$exe) = ('From Global Zone')
+ var $top = $rec->[1]
+
+ # Create the report
+ debug ' Inside NET collection, collecting from ',nvl($nam,'global'),' zone'
+ report concat('net_z_',nvl($nam,'global'))
+ title '---+!! ',$ttl
+ title $TOC
+
+ # Collect ARP information
+ var @cmd = ()
+ if or($loc,not(${OS.solaris}))
+  call push(@cmd,\
+    '---+ Network Status Information',\
+    ['netinfo/arp-a',\
+     '/usr/sbin/arp','-a',\
+     '---++ Address Resolution Display and Control'])
+ else
+ {# Define a macro to extract information from the arp report
+  macro extract_hosts
+  {var ($rpt,$wrk) = @arg
+   import @hst
+
+   var $skp = 3
+   while ?$lin = $wrk->get_line()
+   {call $rpt->write(chomp($lin))
+    next expr('>=',decr($skp),0)
+    if match($lin,'^\S*\s+(\S+)')
+     call push(@hst,last)
+   }
+  }
+
+  # Collect the command
+  var ($rpt,$cmd,@hst) = ('netinfo/arp-hostnames','/usr/sbin/arp -a')
+  write '---+ Network Status Information'
+  prefix
+  {write '---++ Address Resolution Display and Control'
+   write '---## Using: ',encode($cmd)
+  }
+  call collectCommand({nam=>'netinfo/arp-a',\
+    out=>{blk=>true,flt=>true,idx=>true,rpt=>${CUR.REPORT},\
+          dup=>['T',$rpt],fct=>'extract_hosts'},\
+    err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+    },$cmd)
+  if hasOutput(true)
+   write $TOP
+
+  # Collect the ARP details
+  if @hst
+  {call addBlock('E','T',$rpt)
+   call writeComment('-------------------------------------------------')
+   loop $hst (@hst)
+   {var $cmd = concat('/usr/sbin/arp ',$hst)
+    prefix
+    {write '---## Using: ',encode($cmd)
+     call addBlock('E','T',$rpt)
+    }
+    call writeCommand($cmd)
+    if hasOutput(true)
+     write $TOP
+   }
+  }
+ }
+
+ # Collect netstat, nfsstat, rpcinfo, and sharectl information
+ call push(@cmd,\
+   ['netinfo/netstat-an',\
+    '/usr/bin/netstat','-an',\
+    '---++ Sockets, Routing Table Entries, and Interfaces'],\
+   ['netinfo/netstat-gn',\
+    '/usr/bin/netstat','-gn',\
+    '---++ Multicast Group Memberships for all Interfaces'],\
+   ['netinfo/netstat-in',\
+    '/usr/bin/netstat','-in',\
+    '---++ Interfaces IP Traffic'],\
+   ['netinfo/netstat-m',\
+    '/usr/bin/netstat','-m',\
+    '---++ Streams Memory Statistics'],\
+   ['netinfo/netstat-pn',\
+    '/usr/bin/netstat','-pn',\
+    '---++ Net to Media Mapping Table'],\
+   ['netinfo/netstat-rn',\
+    '/usr/bin/netstat','-rn',\
+    '---++ Routing Tables'],\
+   ['netinfo/netstat-rvan',\
+    '/usr/bin/netstat','-rvan',\
+    '---++ Routing Tables with Additional Information'],\
+   ['netinfo/netstat-s',\
+    '/usr/bin/netstat','-s',\
+    '---++ Per-protocol Statistics'],\
+   ['netinfo/nfsstat',\
+    '/usr/bin/nfsstat',undef,\
+    '---++ NFS Statistics'],\
+   ['netinfo/nfsstat-m',\
+    '/usr/bin/nfsstat','-m',\
+    '---++ NFS Mountpoints Statistics'],\
+   ['netinfo/rpcinfo',\
+    '/usr/bin/rpcinfo',undef,\
+    '---++ RPC Information'],\
+   ['netinfo/rpcinfo-m',\
+    '/usr/bin/rpcinfo','-m',\
+    '---++ RPC Bind Statistics'],\
+   ['netinfo/sharectl-get-autofs',\
+    '/usr/sbin/sharectl','get autofs',\
+    '---++ Property Values for AUTOFS File Sharing Service'],\
+   ['netinfo/sharectl-get-nfs',\
+    '/usr/sbin/sharectl','get nfs',\
+    '---++ Property Values for NFS File Sharing Service'],\
+   ['netinfo/sharectl-get-smb',\
+    '/usr/sbin/sharectl','get smb',\
+    '---++ Property Values for SMB File Sharing Service'])
+
+ # Collect nettr information
+ if and(not($loc),testFile('x','/etc/opt/SUNWconn/bin/nettr'))
+ {call push(@cmd,\
+    '---+ Trunking information',\
+    ['netinfo/nettr-conf',\
+     '/etc/opt/SUNWconn/bin/nettr','-conf',\
+     '---++ Configuration'],\
+    ['netinfo/nettr-conf_lacp',\
+     '/etc/opt/SUNWconn/bin/nettr','-conf lacp',\
+     '---++ Configuration with LACP Mode'])
+  loop $lin (grepCommand('/etc/opt/SUNWconn/bin/nettr -conf','ge|qfe'))
+  {var ($fst,$snd) = split('\s+',$lin,3)
+   if match($fst,$snd)
+   {if match(substr($fst,0,3),'qfe')
+    {var $dev = substr($fst,3)
+     call push(@cmd,\
+       [concat('netinfo/nettr-stats_',$dev,'_qfe_1'),\
+        '/etc/opt/SUNWconn/bin/nettr',\
+        concat('-stats ',$dev,' device=qfe type=1'),\
+        '---++ QFE Performance Statistics Type 1'],\
+       [concat('netinfo/nettr-stats_',$dev,'_qfe_2'),\
+        '/etc/opt/SUNWconn/bin/nettr',\
+        concat('-stats ',$dev,' device=qfe type=2'),\
+        '---++ QFE Performance Statistics Type 2'])
+    }
+    else
+    {var $dev = substr($fst,2)
+     call push(@cmd,\
+       [concat('netinfo/nettr-stats_',$dev,'_ge_1'),\
+        '/etc/opt/SUNWconn/bin/nettr',\
+        concat('-stats ',$dev,' device=ge type=1'),\
+        '---++ GE Performance Statistics Type 1'],\
+       [concat('netinfo/nettr-stats_',$dev,'_ge_2'),\
+        '/etc/opt/SUNWconn/bin/nettr',\
+        concat('-stats ',$dev,' device=ge type=2'),\
+        '---++ GE Performance Statistics Type 2'])
+    }
+   }
+  }
+  loop $lin (grepCommand('/etc/opt/SUNWconn/bin/nettr -conf','Key'))
+  {var ($fst,$snd) = split('\s+',$lin,3)
+   var $dev = replace($snd,'[^0-9]+')
+   call push(@cmd,\
+     [concat('netinfo/nettr-stats_',$dev,'_ce_1'),\
+      '/etc/opt/SUNWconn/bin/nettr',\
+      concat('-stats ',$dev,' type=1'),\
+      '---++ CE Statistics Type 1'],\
+     [concat('netinfo/nettr-stats_',$dev,'_ce_2'),\
+      '/etc/opt/SUNWconn/bin/nettr',\
+      concat('-stats ',$dev,' type=2'),\
+      '---++ CE Statistics Type 2'])
+  }
+ }
+
+ # Collect kstat, routeadm, and IPF information
+ if compare('VALID',$rec->[2],'5.8')
+  call push(@cmd,\
+    '---+ Kernel Statistics',\
+    ['netinfo/kstat-p',\
+     '/usr/bin/kstat','-p',\
+     '---++ All Statistics'],\
+    ['netinfo/kstat-c_net_3_3',\
+     '/usr/bin/kstat','-c net 3 3',\
+     '---++ Kernel Network Statistics'])
+ if compare('VALID',$rec->[2],'5.10')
+ {if !$loc
+  call push(@cmd,\
+    ['netinfo/routeadm-p',\
+     '/usr/sbin/routeadm','-p',\
+     '---+ IP Forwarding and Routing Configuration'])
+  if testFile('x',catFile($top,'usr','sbin','ipf'))
+   call push(@cmd,\
+     ['netinfo/ipf-V',\
+      '/usr/sbin/ipf','-V',\
+      '---+ IP Filter Information'])
+ }
+
+ # Collect FireWall-1 information
+ if !$loc
+  call push(@cmd,\
+    ['netinfo/firewall-1_fw_ver',\
+     '/etc/fw/bin/fw','ver',\
+     '---+ FireWall-1 Version'])
+
+ # Collect NIS+ information
+ if expr('>',countCommand(join(' ',$exe,'ls -l /var/nis/* 2>/dev/null')),0)
+ {call push(@cmd,\
+    '---+ NIS+ Information',\
+    ['netinfo/nisdefaults',\
+     '/usr/bin/nisdefaults',undef,\
+     '---++ Default Values'],\
+    ['netinfo/nisls-lR',\
+     '/usr/bin/nisls','-lR',\
+     '---++ Contents Listing'],\
+    ['netinfo/nisping-u',\
+     '/usr/lib/nis/nisping','-u org_dir',\
+     '---++ Time of the Last Update'],\
+    ['netinfo/nisshowcache-v',\
+     '/usr/lib/nis/nisshowcache','-v',\
+     '---++ Contents of the Shared Cache File'],\
+    ['netinfo/nisstat',\
+     '/usr/lib/nis/nisstat',undef,\
+     '---++ Server Statistics'])
+  var ($nis) = command(join(' ',$exe,'/usr/bin/domainname'))
+  if $nis
+   call push(@cmd,\
+     [concat('netinfo/niscat-o_',$nis),\
+      '/usr/bin/niscat',concat('-o ',$nis),\
+      concat('---++ ',$nis,' Object Information')])
+ }
+
+ # Collect DLAM information (up to Solaris 10)
+ if !$loc
+ {if compare('VALID',$rec->[2],'5.11')
+  {# Collect dlam information (Solaris 11)
+   call push(@cmd,\
+     '---+ Data-Link Interface',\
+     ['netinfo/dladm/dladm_show-aggr_-L',\
+      '/usr/sbin/dladm','show-aggr -L',\
+      '---++ LAPC Aggregation Configuration'],\
+     ['netinfo/dladm/dladm_show-aggr_-x',\
+      '/usr/sbin/dladm','show-aggr -x',\
+      '---++ Extended Aggregation Configuration'],\
+     ['netinfo/dladm/dladm_show-aggr_-Z',\
+      '/usr/sbin/dladm','show-aggr -Z',\
+      '---++ Aggregation Configuration with Zone'],\
+     ['netinfo/dladm/dladm_show-bridge',\
+      '/usr/sbin/dladm','show-bridge',\
+      '---++ Bridge Configuration'],\
+     ['netinfo/dladm/dladm_show-ether_-Z',\
+      '/usr/sbin/dladm','show-ether -Z',\
+      '---++ Physical Ethernet Link Information'],\
+     ['netinfo/dladm/dladm_show-etherstub_-Z',\
+      '/usr/sbin/dladm','show-etherstub -Z',\
+      '---++ Configured Etherstubs'],\
+     ['netinfo/dladm/dladm_show-ib',\
+      '/usr/sbin/dladm','show-ib',\
+      '---++ InfiniBand Physical Link Information'],\
+     ['netinfo/dladm/dladm_show-iptun_-Z',\
+      '/usr/sbin/dladm','show-iptun -Z',\
+      '---++ IP Tunnel Link Configuration'],\
+     ['netinfo/dladm/dladm_show-part',\
+      '/usr/sbin/dladm','show-part',\
+      '---++ InfiniBand Partition Link Information'],\
+     ['netinfo/dladm/dladm_show-phys_-L',\
+      '/usr/sbin/dladm','show-phys -L',\
+      '---++ Physical Devices and Attributes (with Location Information)'],\
+     ['netinfo/dladm/dladm_show-phys_-Z',\
+      '/usr/sbin/dladm','show-phys -Z',\
+      '---++ Physical Devices and Attributes'],\
+     ['netinfo/dladm/dladm_show-secobj',\
+      '/usr/sbin/dladm','show-secobj',\
+      '---++ Secure Object Information'],\
+     ['netinfo/dladm/dladm_show-vlan_-Z',\
+      '/usr/sbin/dladm','show-vlan -Z',\
+      '---++ VLAN Configuration'],\
+     ['netinfo/dladm/dladm_show-vnic_-Z',\
+      '/usr/sbin/dladm','show-vnic -Z',\
+      '---++ VNIC Configuration'],\
+     ['netinfo/dladm/dladm_show-wifi_-Z',\
+      '/usr/sbin/dladm','show-wifi -Z',\
+      '---++ WiFi Configuration'],\
+     ['netinfo/dlstat-A',\
+      '/usr/sbin/dlstat','-A',\
+      '---++ All Statistics'],\
+     ['netinfo/dlstat-Z',\
+      '/usr/sbin/dlstat','-Z',\
+      '---++ Statistics'])
+  }
+  else
+  {# Collect DLAM information (earlier than Solaris 10)
+   call push(@cmd,\
+     '---+ Data-Link Interface',\
+     ['netinfo/dladm/dladm_show-aggr_-L',\
+      '/usr/sbin/dladm','show-aggr -L',\
+      '---++ Aggregation Configuration'],\
+     ['netinfo/dladm/dladm_show-dev',\
+      '/usr/sbin/dladm','show-dev',\
+      '---++ Device Information'],\
+     ['netinfo/dladm/dladm_show-link',\
+      '/usr/sbin/dladm','show-link',\
+      '---++ Link Configuration'])
+  if !grepCommand('/usr/sbin/dladm show-linkprop 2>&1','unknown subcommand','f')
+   call push(@cmd,\
+     ['netinfo/dladm/dladm_show-linkprop',\
+      '/usr/sbin/dladm','show-linkprop',\
+      '---++ Property Values'])
+  }
+ }
+
+ # Collect ipmpstat information
+ if compare('VALID',$rec->[2],'5.11')
+ {if command(join(' ',$exe,'/usr/bin/pgrep in.mpathd > /dev/null'))
+  {call push(@cmd,\
+     '---+ IPMP Subsystem Status',\
+     ['netinfo/ipmpstat_an',\
+      '/usr/sbin/ipmpstat','-an',\
+      '---++ Address Information'],\
+     ['netinfo/ipmpstat_g',\
+      '/usr/sbin/ipmpstat','-g',\
+      '---++ Group Information'],\
+     ['netinfo/ipmpstat_i',\
+      '/usr/sbin/ipmpstat','-i',\
+      '---++ Interface Information'],\
+     ['netinfo/ipmpstat_tn',\
+      '/usr/sbin/ipmpstat','-tn',\
+      '---++ Target Information'])
+   if grepCommand(\
+     join(' ',$exe,'/usr/sbin/ipmpstat -o mode -P -tn 2>/dev/null'),\
+     'disabled','v')
+    call push(@cmd,\
+      ['netinfo/ipmpstat_pn',\
+       '/usr/sbin/ipmpstat','-pn & sleep 5 && kill $!',\
+       '---++ Probe Information'])
+  }
+
+  # Collect network configuration information
+  call push(@cmd,\
+    '---+ Bandwidth Resource Control',\
+    ['netinfo/flowadm_show-flow',\
+     '/usr/sbin/flowadm','show-flow'],\
+     '---++ Flow Configuration',\
+    ['netinfo/flowadm_show-flow_-P',\
+     '/usr/sbin/flowadm','show-flow -P',\
+     '---++ Persistent Flow Information'],\
+    ['netinfo/flowadm_show-flowprop',\
+     '/usr/sbin/flowadm','show-flowprop',\
+     '---++ Flow Properties'],\
+    ['netinfo/flowadm_show-flowprop_-P',\
+     '/usr/sbin/flowadm','show-flowprop -P',\
+     '---++ Persistent Flow Properties'],\
+    ['netinfo/flowstat_-A',\
+     '/usr/sbin/flowstat','-A',\
+     '---++ Flow Statistics'])
+  if testFile('x',catFile($top,'usr','sbin','ilbadm'))
+   call push(@cmd,\
+     ['netinfo/ilbadm_export-config',\
+      '/usr/sbin/ilbadm','export-config',\
+      '---++ Integrated Load Balancer Current Configuration'])
+  call push(@cmd,\
+    '---+ IP Network Interfaces',\
+    ['netinfo/ipadm_show-addr',\
+     '/usr/sbin/ipadm','show-addr',\
+     '---++ Address Information'],\
+    ['netinfo/ipadm_show-addrprop',\
+     '/usr/sbin/ipadm','show-addrprop',\
+     '---++ Address Properties'],\
+    ['netinfo/ipadm_show-if_-o_all',\
+     '/usr/sbin/ipadm','show-if -o all',\
+     '---++ Interface Information'],\
+    ['netinfo/ipadm_show-ifprop',\
+     '/usr/sbin/ipadm','show-ifprop',\
+     '---++ Interface Properties'])
+  if !$loc
+   call push(@cmd,\
+     '---+ IPMP Subsystem Status',\
+     ['netinfo/ipmpstat_-a',\
+      '/usr/sbin/ipmpstat','-a',\
+      '---++ Address Information'],\
+     ['netinfo/ipmpstat_-g',\
+      '/usr/sbin/ipmpstat','-g',\
+      '---++ Group Information'],\
+     ['netinfo/ipmpstat_-i',\
+      '/usr/sbin/ipmpstat','-i',\
+      '---++ Interface Information'])
+  call push(@cmd,\
+    '---+ Network Profiles',\
+    ['netinfo/netadm_list_-x',\
+     '/usr/sbin/netadm','list -x',\
+     '---++ Available Profiles and Status'],\
+    ['netinfo/netcfg_export',\
+     '/usr/sbin/netcfg','export',\
+     '---++ Configuration'],\
+    ['netinfo/soconfig_-l',\
+     '/usr/sbin/soconfig','-l',\
+     '---+ In-kernel Socket Configuration Table Dump'])
+  if testFile('x',catFile($top,'usr','sbin','ipqosconf'))
+   call push(@cmd,\
+     ['netinfo/ipqosconf_-l',\
+      '/usr/sbin/ipqosconf','-l',\
+      '---++ IPQoS Configuration'])
+  if testFile('x',catFile($top,'usr','sbin','vrrpadm'))
+   call push(@cmd,\
+     ['netinfo/vrrpadm_show-router_-x',\
+      '/usr/sbin/vrrpadm','show-router -x',\
+      '---++ Virtual Router Redundancy Protocol Information'])
+
+  # Collect IDMAP nformation
+  call push(@cmd,\
+    '---+  Native Identity Mapping Configuration',\
+    ['netinfo/svccfg_s_idmap_listprop',\
+     '/usr/sbin/svccfg','-s idmap listprop',\
+     '---++ IDMAP Service Properties'],\
+    ['netinfo/idmap_dump',\
+     '/usr/sbin/idmap','dump',\
+     '---++ Cached Mappings Dump'],\
+    ['netinfo/idmap_dump_n',\
+     '/usr/sbin/idmap','dump -n',\
+     '---++ Cached Mappings Dump (with Names)'],\
+    ['netinfo/idmap_list',\
+     '/usr/sbin/idmap','list',\
+     '---++ Mapping Rules'])
+
+  # Collect CIFS information
+  call push(@cmd,\
+    '---++ Domain Information',\
+    ['netinfo/smbadm_show_domains',\
+     '/usr/sbin/smbadm','show-domains',\
+     '---+ SMB/CIFS Configuration'],\
+    ['netinfo/smbadm_show_groups_mp',\
+     '/usr/sbin/smbadm','show-groups -mp',\
+     '---++ Group Information'],\
+    ['netinfo/svccfg_s_smb_listprop',\
+     '/usr/sbin/svccfg','-s smb listprop',\
+     '---++ SMB Service Properties'],\
+    ['netinfo/svccfg_s_smb_client_listprop',\
+     '/usr/sbin/svccfg','-s smb/client listprop',\
+     '---++ SMB/Client Service Properties'],\
+    ['netinfo/svccfg_s_smb_server_listprop',\
+     '/usr/sbin/svccfg','-s smb/server listprop',\
+     '---++ SMB/Server Service Properties'])
+ }
+
+ # Collect InfiniBand diagnostics and other miscellaneous information
+ if !$loc
+ {if testFile('x','/usr/bin/ibv_devinfo')
+   call push(@cmd,\
+     ['netinfo/ibv_devinfo',\
+      '/usr/bin/ibv_devinfo',undef,\
+      '---+ InfiniBand Device Information'])
+  if testFile('x','/usr/bin/rds-info')
+   call push(@cmd,\
+     ['netinfo/rds-info',\
+      '/usr/bin/rds-info',undef,\
+      '---+ RDS Kernel Module Information'],\
+     ['netinfo/rds-info-n',\
+      '/usr/bin/rds-info','-n',\
+      '---+ RDS Connections Information'])
+ }
+
+ # Collect the command outputs
+ do_remote($pre,$exe,$top,@cmd)
+
+ # Collect MDB debug commands
+ if !$loc
+ {if testFile('x','/usr/bin/mdb')
+  {loop $inp ('ibtf_debug_buf','rdsv3_debug_buf','sol_ofs_debug_buf')
+   {prefix
+    {write '---+ Debug Information: ',$inp
+     write '---## Using: echo "*',$inp,'/s" | /usr/bin/mdb -k'
+    }
+    call collectCommand({nam=>concat('netinfo/',$inp),\
+      inp=>concat("*",$inp,"/s\012"),\
+      out=>{blk=>true,flt=>true,idx=>true,rpt=>${CUR.REPORT}},\
+      err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+      },'/usr/bin/mdb -k')
+    if hasOutput(true)
+     write $TOP
+   }
+  }
+
+  # Collect ibdiagnet and all the files produced
+  if testFile('x','/usr/sbin/ibdiagnet')
+  {var $box = cleanBox()
+   call do_exec(['netinfo/ibdiagnet/ibdiagnet',\
+                 '/usr/sbin/ibdiagnet',concat('-o ',quote($box,'x')),\
+                 '---+ InfiniBand Fabric Diagnostic'])
+   loop $fil (grepDir($box,'^\.+$','nv'))
+   {if testFile('fT',catFile($box,$fil))
+     call collectFile(concat('netinfo/ibdiagnet/',$fil),lastFile(),\
+       ['C',concat('ibdiagnet (',$fil,')')])
+   }
+  }
+ }
+
+ # Collect the files
+ prefix
+ {write '---+ Configuration Files'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use the \
+              link to save them and use an adequate viewer.'
+  write '|*File Path*| *Size*|*Last Modified Date*|'
+ }
+ call do_collect_rem($pre,$top,@fil)
+ if hasOutput(true)
+  write $TOP
+
+ # Add the report in the table of content
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',$ttl,']]'
+}
+unpretoc 2
+
+if $tmp
+ call unlinkTemp('ARP')
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

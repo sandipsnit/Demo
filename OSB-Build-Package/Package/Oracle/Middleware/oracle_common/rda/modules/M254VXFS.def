@@ -1,0 +1,138 @@
+# M254VXFS.def: Collects Veritas File System Information
+# $Id: M254VXFS.def,v 1.3 2012/04/02 07:29:18 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M254VXFS.def,v 1.3 2012/04/02 07:29:18 mschenke Exp $
+#
+# Change History
+# 20120402  MSC  Extend the collection macros.
+
+=head1 NAME
+
+M254VXFS - Collects Veritas File System Information
+
+=head1 DESCRIPTION
+
+This module collects Veritas File System (VxFS) information.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('vxfs')
+
+# -----------------------------------------------------------------------------
+# XPLR_vxfs section
+# -----------------------------------------------------------------------------
+
+section XPLR_vxfs
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing VXFS sections ...')
+if !is_pkg_installed('VRTSvxfs')
+ return log_info('VxFS not installed')
+
+pretoc '2:Veritas File System (VxFS)'
+
+=head2 vxfs_cmd - Overview
+
+Gathers Veritas File System information using the following commands:
+
+=over 2
+
+=item o C</usr/lib/fs/vxfs/fsadm -ED file-system>
+
+=item o C</usr/lib/fs/vxfs/vxtunefs -p device>
+
+=item o C</usr/sbin/fstyp -v device>
+
+=back
+
+=cut
+
+debug ' Inside VXFS collection, gathering VXFS information'
+var @cmd = ()
+loop $lin (grepCommand('/usr/sbin/df -lFvxfs','\(.*\)'))
+{var ($dir,$dev) = match($lin,'^(.*?)\s*\(\s*(.*?)\s*\)')
+ var $dev = replace($dev,'[\(\)]','',true)
+ var $nam = replace($dir,'\/','_',true)
+ call push(@cmd,\
+   [concat('disks/vxfs/fsadm_-ED=',$nam),\
+    '/usr/lib/fs/vxfs/fsadm',concat('-ED ',$dir),\
+    concat('---+ Extent and Directory Fragmentation Report (',$dir,')')],\
+   [concat('disks/vxfs/fstyp_-v=',$nam),\
+    '/usr/sbin/fstyp',concat('-v ',$dev),\
+    concat('---+ File System Information (',$dev,')')],\
+   [concat('disks/vxfs/vxtunefs_-p=',$nam),\
+    '/usr/lib/fs/vxfs/vxtunefs',concat('-p ',$dev),\
+    concat('---+ File System I/O Parameters (',$dev,')')])
+}
+report vxfs_cmd
+title '---+!! Veritas Information for VxFS Commands'
+title $TOC
+call do_exec(@cmd)
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Overview]]'
+
+=head2 vxfs_files - Key Files
+
+Gathers the following files:
+
+=over 2
+
+=item o F</etc/vx/elm/*>
+
+=item o F</etc/vx/licenses/*>
+
+=item o F</etc/vx/tunefstab>
+
+=back
+
+=cut
+
+debug ' Inside VXFS collection, gathering files'
+report vxfs_files
+prefix
+{write '---+!! Key Veritas File System Files'
+ write '   * Links point to files that have been collected in their original \
+            format. Opening them directly in your browser can present \
+            risks. To prevent them, access the file outside the browser or \
+            use the link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_fil(\
+  ['etc/vx/tunefstab','/etc/vx/tunefstab'],\
+  ['etc/vx/elm',      '/etc/vx/elm'],\
+  ['etc/vx/licenses', '/etc/vx/licenses',true])
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Key Files]]'
+}
+
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

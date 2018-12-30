@@ -1,0 +1,460 @@
+<!-- Copyright (c) 2007, 2010, Oracle and/or its affiliates. 
+All rights reserved. -->
+<!--
+     These are the metrics for a deployed application
+     
+     MODIFIED   (MM/DD/YY)
+        jiarwu   09/08/10 - update captions of metric columns for PS3 
+        scgrover 06/22/10 - remove version prop not needed
+        scgrover 04/06/10 - make welogic specific
+        jiarwu   10/20/08 - add policy fault metrics
+        klmichae 10/08/07 - fix NLS ids
+        jiarwu   05/08/07 - fix ValidIf referes to non existent category
+                            property
+        jiarwu   05/08/07 - ValidIf referes to non existent category property
+     
+     jiarwu   10/30/08 - update 
+     jiarwu   03/13/07 - initial version      
+-->
+
+                 
+<Metric NAME="j2ee_app_webservices_port" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="serverType" CHOICES="weblogic" />
+  </ValidIf>
+    <Display>
+    <Label NLSID="j2ee_app_webservices_endpoint">Oracle Infrastructure Web Service Endpoint Metrics</Label>
+    </Display>
+    <TableDescriptor>
+        <!--C1-->
+        <ColumnDescriptor NAME="webserviceName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C2-->
+        <ColumnDescriptor NAME="portName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_name">Endpoint Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C3-->
+        <ColumnDescriptor NAME="Faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_faults">Faults</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C4-->
+        <ColumnDescriptor NAME="Requests" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_requests">Requests</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C5-->
+        <ColumnDescriptor NAME="Requests.averageTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_requests_average_time">Requests Average Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C6-->
+        <ColumnDescriptor NAME="Requests.totalTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_requests_total_time">Requests Total Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_service_throughput">Requests Processed per Second</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C11-->
+        <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_service_time">Request Processing Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C12-->
+        <ColumnDescriptor NAME="startTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_endpoint_start_time">Start Time (msec)</Label>
+            </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+    <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">j2ee_application:webservices_port_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">webserviceName;portName;Faults;Requests;Requests.averageTime;Requests.totalTime;service.throughput;service.time;startTime</Property>
+         <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+         <Property NAME="webserviceName.parameter" SCOPE="USER" OPTIONAL="TRUE">webserviceName.parameter</Property>
+         <Property NAME="portName.parameter" SCOPE="USER" OPTIONAL="TRUE">portName.parameter</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>appName.parameter</key>
+                        <value type="java.lang.String">%appName.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webserviceName.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>portName.parameter</key>
+                        <value type="java.lang.String">%portName.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric> <!-- j2ee_app_ws_port_rollup -->
+
+<!-- j2ee_app_weblogic_ws_endpoint -->
+<Metric NAME="j2ee_app_weblogic_ws_endpoint" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="serverType" CHOICES="weblogic" />
+  </ValidIf>
+    <Display>
+    <Label NLSID="j2ee_app_weblogic_ws_endpoint">Java EE Web Service Endpoint Metrics</Label>
+    </Display>
+    <TableDescriptor>
+    <ColumnDescriptor NAME='webserviceName' TYPE='STRING' IS_KEY='TRUE'>
+      <Display><Label NLSID='j2ee_app_weblogic_ws_webservice_name'>Web Service Name</Label>
+       </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME="portName" TYPE="STRING" IS_KEY="TRUE">
+      <Display><Label NLSID="j2ee_app_weblogic_ws_endpoint_name">Endpoint Name</Label>
+       </Display>
+    </ColumnDescriptor>
+
+    <ColumnDescriptor NAME='InvocationCount' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='j2ee_app_weblogic_ws_invocation_count_col_label'>Invocation Count</Label>
+       <ShortName NLSID='j2ee_app_weblogic_ws_invocation_count_col_sname'>Invocation Count</ShortName>
+       <Description NLSID='j2ee_app_weblogic_ws_invocation_count_col_desc'>Invocation Count</Description>
+       <Unit NLSID='ops'>ops</Unit>
+       </Display>
+     </ColumnDescriptor>
+
+    <ColumnDescriptor NAME='ResponseCount' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='j2ee_app_weblogic_ws_response_count_col_label'>Response Count</Label>
+       <ShortName NLSID='j2ee_app_weblogic_ws_response_count_col_sname'>Response Count</ShortName>
+       <Description NLSID='j2ee_app_weblogic_ws_response_count_col_desc'>Response Count</Description>
+       <Unit NLSID='ops'>ops</Unit>
+       </Display>
+     </ColumnDescriptor>
+
+    <ColumnDescriptor NAME='ResponseErrorCount' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='j2ee_app_weblogic_ws_response_error_count_col_label'>Response Error Count</Label>
+       <ShortName NLSID='j2ee_app_weblogic_ws_response_error_count_col_sname'>Response Error Count</ShortName>
+       <Description NLSID='j2ee_app_weblogic_ws_response_error_count_col_desc'>Response Error Count</Description>
+       <Unit NLSID='ops'>ops</Unit>
+       </Display>
+     </ColumnDescriptor>
+
+     <ColumnDescriptor NAME='DispatchTimeTotal' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='j2ee_app_weblogic_ws_dispatch_time_total_col_label'>Dispatch Time Total</Label>
+       <ShortName NLSID='j2ee_app_weblogic_ws_dispatch_time_total_col_sname'>Dispatch Time Total</ShortName>
+       <Description NLSID='j2ee_app_weblogic_ws_dispatch_time_total_col_desc'>Dispatch Time Total(msec)</Description>
+       <Unit NLSID='msecs'>msecs</Unit>
+       </Display>
+     </ColumnDescriptor>
+
+     <ColumnDescriptor NAME='ExecutionTimeTotal' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='j2ee_app_weblogic_ws_execution_time_total_col_label'>Execution Time Total</Label>
+       <ShortName NLSID='j2ee_app_weblogic_ws_execution_time_total_col_sname'>Execution Time Total</ShortName>
+       <Description NLSID='j2ee_app_weblogic_ws_execution_time_total_col_desc'>Execution Time Total(msec)</Description>
+       <Unit NLSID='msecs'>msecs</Unit>
+       </Display>
+     </ColumnDescriptor>
+
+     <ColumnDescriptor NAME='ResponseTimeTotal' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='j2ee_app_weblogic_ws_response_time_total_col_label'>Response Time Total</Label>
+       <ShortName NLSID='j2ee_app_weblogic_ws_response_time_total_col_sname'>Response Time Total</ShortName>
+       <Description NLSID='j2ee_app_weblogic_ws_response_time_total_col_desc'>Response Time Total(msec)</Description>
+       <Unit NLSID='msecs'>msecs</Unit>
+       </Display>
+     </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+    <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">j2ee_application:weblogic_webservices_port_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">webserviceName;portName;InvocationCount;ResponseCount;ResponseErrorCount;DispatchTimeTotal;ExecutionTimeTotal;ResponseTimeTotal</Property>
+         <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+         <Property NAME="webserviceName.parameter" SCOPE="USER" OPTIONAL="TRUE">webserviceName.parameter</Property>
+         <Property NAME="portName.parameter" SCOPE="USER" OPTIONAL="TRUE">portName.parameter</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>appName.parameter</key>
+                        <value type="java.lang.String">%appName.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webserviceName.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>portName.parameter</key>
+                        <value type="java.lang.String">%portName.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric> <!-- j2ee_app_ws_port_rollup -->
+
+
+<Metric NAME="j2ee_app_webservices_operation" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="serverType" CHOICES="weblogic" />
+  </ValidIf>
+    <Display>
+    <Label NLSID="j2ee_app_webservices_operation">Oracle Infrastructure Web Service Operation Metrics</Label>
+    </Display>
+    <TableDescriptor>
+        <ColumnDescriptor NAME="moduleName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_module_name">Module Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C1-->
+        <ColumnDescriptor NAME="webserviceName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C2-->
+        <ColumnDescriptor NAME="portName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_port_name">Endpoint Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="operationName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_operation_name">Operation Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C3-->
+        <ColumnDescriptor NAME="Faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_faults">Faults</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C4-->
+        <ColumnDescriptor NAME="Invocation.completed" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_invocation_completed">Invocation Completed</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C5-->
+        <ColumnDescriptor NAME="Invocation.avg" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_invocation_avg_time">Invocation Average Time (msec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C6-->
+        <ColumnDescriptor NAME="Invocation.time" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_invocation_total_time">Invocation Total Time (msec)</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="Invocation.active" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_active">Active Invocations</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C11-->
+        <ColumnDescriptor NAME="Request.avgSize" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_request_avg_size">Average Request Size (bytes)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C12-->
+        <ColumnDescriptor NAME="Response.avgSize" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_operation_response_avg_size">Average Response Size (bytes)</Label>
+            </Display>
+        </ColumnDescriptor>
+         <ColumnDescriptor NAME="Response.count" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_weblogic_ws_response_count_col_sname">Response Count</Label>
+            </Display>
+        </ColumnDescriptor>
+        
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+    <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">j2ee_application:webservices_operation</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">moduleName;webserviceName;portName;operationName;Faults;Invocation.completed;Invocation.avg;Invocation.time;Invocation.active;Request.avgSize;Response.avgSize;Response.count</Property>
+         <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+         <Property NAME="webserviceName.parameter" SCOPE="USER" OPTIONAL="TRUE">webserviceName.parameter</Property>
+         <Property NAME="portName.parameter" SCOPE="USER" OPTIONAL="TRUE">portName.parameter</Property>
+         <Property NAME="operationName.parameter" SCOPE="USER" OPTIONAL="TRUE">operationName.parameter</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>appName.parameter</key>
+                        <value type="java.lang.String">%appName.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webserviceName.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>portName.parameter</key>
+                        <value type="java.lang.String">%portName.parameter%</value>
+                    </item>
+                    <item>
+                        <key>operationName.parameter</key>
+                        <value type="java.lang.String">%operationName.parameter%</value>
+                    </item> 
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric>
+
+<Metric NAME="j2ee_app_webservices_policy_enforcement" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="serverType" CHOICES="weblogic" />
+  </ValidIf>
+
+    <Display>
+        <Label NLSID="j2ee_app_webservices_policy_enforcement_metrics">OWSM Policy Violation Metrics</Label>
+    </Display>
+    <TableDescriptor>
+
+        <ColumnDescriptor NAME="webserviceName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="portName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_port_name">Web Service Port Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policyName" TYPE="STRING" IS_KEY="TRUE"> 
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_policy_name">OWSM Policy Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policyCategory" TYPE="STRING" IS_KEY="FALSE"> 
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_policy_category">OWSM Policy Category</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policyVersion" TYPE="STRING" IS_KEY="TRUE"> 
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_policy_version">OWSM Policy Version</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="authentication_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_authentication_faults">Authentication Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="authentication_successes" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_authentication_successes">Authentication Successes</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="authorization_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_authorization_faults">Authorization Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="authorization_successes" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_authorization_successes">Authorization Successes</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="confidentiality_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_confidentiality_faults">Confidentiality Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="confidentiality_successes" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_confidentiality_successes">Confidentiality Successes</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="integrity_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_integrity_faults">Integrity Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="integrity_successes" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_integrity_successes">Integrity Successes</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="total_policy_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="j2ee_app_webservices_policy_enforcement_total_policy_faults">Total Web Services Policy Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">        
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">j2ee_application:webservices_policy_fault</Property> 
+        <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">webserviceName;portName;policyName;policyCategory;policyVersion;authentication_faults;authentication_successes;authorization_faults;authorization_successes;confidentiality_faults;confidentiality_successes;integrity_faults;integrity_successes;total_policy_faults</Property>
+        <Property NAME="webserviceName.parameter" SCOPE="USER" OPTIONAL="TRUE">webserviceName.parameter</Property>
+        <Property NAME="portName.parameter" SCOPE="USER" OPTIONAL="TRUE">portName.parameter</Property>
+        <Property NAME="policyName.parameter" SCOPE="USER" OPTIONAL="TRUE">policyName.parameter</Property>
+        <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>webserviceName.parameter</key>
+                        <value type="java.lang.String">%webserviceName.parameter%</value>
+                    </item>
+                    <item>
+                        <key>portName.parameter</key>
+                        <value type="java.lang.String">%portName.parameter%</value>
+                    </item>
+                    <item>
+                        <key>policyName.parameter</key>
+                        <value type="java.lang.String">%policyName.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric>
+

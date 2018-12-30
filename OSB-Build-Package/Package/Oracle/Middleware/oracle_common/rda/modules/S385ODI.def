@@ -1,0 +1,1020 @@
+# S385ODI.def: Collects Oracle Data Integrator Information
+# $Id: S385ODI.def,v 2.12 2012/05/22 21:28:08 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S385ODI.def,v 2.12 2012/05/22 21:28:08 mschenke Exp $
+#
+# Change History
+# 20120522  KRA  Extend the collection.
+
+=head1 NAME
+
+S385ODI - Collects Oracle Data Integrator Information
+
+=head1 DESCRIPTION
+
+This module collects information related to Oracle Data Integrator 10.1.3.4 or
+later.
+
+The following reports can be generated and are regrouped under C<Oracle Data
+Integrator>:
+
+=cut
+
+use Java
+
+echo tput('bold'),'Processing ODI module ...',tput('off')
+echo tput('reverse'),\
+     'The data collection in this module can take minutes even hours.',\
+     tput('off')
+
+# Initialization
+var $ODI_HOME = getSetting('ODI_HOME','')
+var $UNZIP    = findCommand('unzip')
+
+# Identify the install type
+if ?$TYPE = getSetting('ODI_TYPE')
+{var $ORACLE_HOME = getSetting('ODI_ORACLE_HOME','')
+
+ var $ODI11  = true
+ var $AGENT  = compare('eq',$TYPE,'AGENT')
+ var $STUDIO = compare('eq',$TYPE,'STUDIO')
+ var $WLS    = compare('eq',$TYPE,'WLS')
+
+ if $WLS
+  var $DOMAIN = getSetting('ODI_DOM_REQ_DOMAIN','')
+ else
+ {var $AGENT_HOME = catDir($ODI_HOME,'agent')
+  var $ODI_BIN    = catDir($AGENT_HOME,'bin')
+
+  # Source the environment
+  call source(getNativePath(catFile($ODI_BIN,${AS.BAT:'odiparams'})))
+
+  # Set the ODI home to Agent home
+  var $env = setEnv('ODI_HOME',$AGENT_HOME)
+ }
+}
+else
+{var $ODI10     = true
+ var $ODI_BIN   = catDir($ODI_HOME,'bin')
+
+ # Source the environment
+ call source(getNativePath(catFile($ODI_BIN,${AS.BAT:'odiparams'})))
+}
+
+# Product specific settings
+if or($ODI10,$AGENT)
+{var $ODI_BEGIN = getSetting('ODI_BEGIN')
+ var $ODI_END   = getSetting('ODI_END')
+}
+
+# JDBC initialization
+if or($ODI10,$AGENT,$STUDIO)
+{var @tbl = ()
+ if $STUDIO
+ {loop $dir (findDir(catDir($ORACLE_HOME,'modules'),\
+                     '^(dms|odl)_\d+(\.\d+){2,}','np'))
+   call push(@tbl,grepDir($dir,'^(dms|ojdl)\.jar$','ip'))
+ }
+ var $hom = getEnv('ODI_JAVA_HOME')
+ call setInlineInfo('Java','JAVA',catFile($hom,'bin',${AS.EXE:'java'}))
+ call setInlineInfo('Java','JAVAC',catFile($hom,'bin',${AS.EXE:'javac'}))
+ call setInlinePath('Java','CLASSPATH',\
+   grepDir(catDir(cond($ODI10,$ODI_HOME,$AGENT_HOME),'drivers'),'\.jar$','ip'),\
+   @tbl)
+}
+elsif $WLS
+{if testDir('d',$DOMAIN)
+ {call setCurrent($tgt = addTarget('DOM_Req$$',{DOMAIN_HOME=>$DOMAIN}))
+  var $hom = getDomainAttr('JAVA_HOME')
+  call setInlineInfo('Java','JAVA',catFile($hom,'bin',${AS.EXE:'java'}))
+  call setInlineInfo('Java','JAVAC',catFile($hom,'bin',${AS.EXE:'javac'}))
+  call setInlinePath('Java','CLASSPATH',\
+    grepDir(catDir($tgt->get_wl_home('.'),'server','lib'),'\.jar$','ip'))
+ }
+}
+
+var (%pwd,%tb_db) = ()
+var %tb_typ = ('env','technical environment',\
+               'mst','master repository',\
+               'log','log',\
+               'wrk','work repository')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle Data Integrator'
+
+# Load the common macros
+run INSTinfo()
+run library()
+
+# Define data extraction macros
+macro extract_db_xml
+{var ($fil,$id) = @arg
+ import %tb_db
+
+ var $top = xmlLoadFile($fil)
+ if xmlFind($top,'jdbc-data-source')
+ {var ($xml) = last
+  if xmlFind($xml,'name')
+   var $tb_db{$id,'nam'} = xmlData(last)
+  if xmlFind($xml,'jdbc-driver-params')
+  {var ($con) = last
+   if xmlFind($con,'url')
+    var $tb_db{$id,'url'} = xmlData(last)
+   if xmlFind($con,'driver-name')
+    var $tb_db{$id,'drv'} = xmlData(last)
+   if xmlFind($con,'properties/property/value')
+    var $tb_db{$id,'usr'} = xmlData(last)
+  }
+ }
+}
+
+macro extract_db_logins
+{var (\%cnv,$fil,$pre) = @arg
+ import %tb_db
+
+ var $pat = join('|',keys(%cnv))
+ var $top = xmlLoadFile($fil)
+ loop $xml (xmlFind($top,'SnpsLogin/Object'))
+ {# Get the identifier
+  var $id = xmlData(xmlFind($xml,'Field name="ILogin"'))
+  next !length($id)
+  var $id = sprintf('%s%d',$pre,$id)
+
+  # Get the fields
+  loop $fld (xmlFind($xml,concat('Field name="(',$pat,')"')))
+  {var $key = $cnv{xmlValue($fld,'name')}
+   var $val = xmlData($fld)
+   if compare('eq',$val,'null')
+    var $val = ''
+   var $tb_db{$id,$key} = $val
+  }
+ }
+}
+
+macro grep_db_bat
+{var (\%cnv,$fil,$id) = @arg
+ import %tb_db
+
+ var $pat = concat('^\s*set\s+(',join('|',keys(%cnv)),')=')
+ loop $lin (grepFile($fil,$pat))
+ {var $lin = replace($lin,'^\s*set\s+')
+  var $key = $cnv{key($lin)}
+  var $tb_db{$id,$key} = value($lin)
+ }
+}
+
+macro grep_db_sh
+{var (\%cnv,$fil,$id) = @arg
+ import %tb_db
+
+ var $pat = concat('^\s*(',join('|',keys(%cnv)),')=')
+ loop $lin (grepFile($fil,$pat))
+ {var $lin = replace($lin,'#.*')
+  var $key = $cnv{key($lin)}
+  var $tb_db{$id,$key} = trim(value($lin),"[\042\047]")
+ }
+}
+
+# Extract database details from odiparams.(bat|sh) 
+if or($ODI10,$AGENT)
+{if $ODI10
+  var %cnv = ('ODI_SECU_DRIVER','drv',\
+              'ODI_SECU_URL',   'url',\
+              'ODI_SECU_USER',  'usr')
+ else
+  var %cnv = ('ODI_MASTER_DRIVER','drv',\
+              'ODI_MASTER_URL',   'url',\
+              'ODI_MASTER_USER',  'usr')
+ if or(${RDA.CYGWIN},${RDA.WINDOWS})
+ {var $fil = catFile($ODI_BIN,'odiparams.bat')
+  call grep_db_bat(\%cnv,$fil,'ODI_M')
+  var $cnv{'ODI_SECU_WORK_REP'} = 'wrk'
+  call grep_db_bat(\%cnv,$fil,'ODI_W')
+ }
+ else
+ {var $fil = catFile($ODI_BIN,'odiparams.sh')
+  call grep_db_sh(\%cnv,$fil,'ODI_M')
+  var $cnv{'ODI_SECU_WORK_REP'} = 'wrk'
+  call grep_db_sh(\%cnv,$fil,'ODI_W')
+ }
+}
+
+# Extract database details from snps_login_(security|work).xml
+if $ODI10
+{var %tbl = ('LoginDbdriver','drv',\
+             'LoginDburl',   'url',\
+             'LoginDbuser',  'usr')
+ # Extract database details from snps_login_security.xml
+ call extract_db_logins(\%tbl,\
+  catFile($ODI_BIN,'snps_login_security.xml'),'ODI_M')
+
+ var $tbl{'LoginWorkRepository'} = 'wrk'
+ # Extract database details from snps_login_work.xml
+ call extract_db_logins(\%tbl,catFile($ODI_BIN,'snps_login_work.xml'),'ODI_W')
+}
+
+# Extract database details from snps_login_work.xml
+if $STUDIO
+{if or(${RDA.CYGWIN},${RDA.WINDOWS})
+  var $dir = catDir(getEnv('APPDATA'),'odi')
+ else
+  var $dir = catDir(getEnv('HOME'),'.odi')
+ var $fil = catFile($dir,'oracledi','snps_login_work.xml')
+ var %tbl = ('LoginDbdriver','drv',\
+             'LoginDburl',   'url',\
+             'LoginDbuser',  'usr')
+ call extract_db_logins(\%tbl,$fil,'ODI_M')
+ var $tbl{'LoginWorkRepository'} = 'wrk'
+ call extract_db_logins(\%tbl,$fil,'ODI_W')
+}
+
+# Extract database details from WebLogic
+if $WLS
+{# Extract database details from jdbc_odiMasterRepository-jdbc.xml
+ var $fil = catFile($DOMAIN,'config','jdbc',\
+                    'jdbc_odiMasterRepository-jdbc.xml')
+ call extract_db_xml($fil,'ODI_M')
+
+ # Extract database details from jdbc_odiWorkRepository-jdbc.xml
+ var $fil = catFile($DOMAIN,'config','jdbc',\
+                    'jdbc_odiWorkRepository-jdbc.xml')
+ call extract_db_xml($fil,'ODI_W')
+}
+
+macro get_wrk_user
+{var ($id,$sid) = @arg
+ import %pwd,%tb_db
+
+ var $log = $tb_db{$id,'usr'}
+ var $pwd = $tb_db{$id,'pwd'}
+ call switchDb('JDBC',$log,$pwd,concat($tb_db{$id,'drv'},'|',$tb_db{$id,'url'}))
+ set $job
+ {# SQL
+ "SELECT 'RDA=' || c.user_name
+ " FROM snp_rem_rep w,snp_connect c
+ " WHERE w.i_connect = c.i_connect
+ "   AND w.rep_name = ':1'
+ "/
+ }
+ loop $lin (grepDb(bindDb($job,$tb_db{$id,'wrk'}),'^RDA='))
+ {var $tb_db{$id,'usr'} = $log = value($lin)
+  if exists($pwd{$log})
+  {var $tb_db{$id,'pwd'} = $pwd{$log}
+   next
+  }
+  var $tb_db{$id,'pwd'} = $pwd = askPassword(\
+   concat('Enter ',join('@',$log,$sid),' user password:'))
+  var $pwd{$log} = $pwd
+ }
+}
+
+# Macro to get the password
+macro get_password
+{var ($src,$flg) = @arg
+ import %pwd,%tb_db
+
+ loop $id (split(',',getSetting(concat('ODI_',$src,'_SET'))))
+ {next missing($tb_db{$id})
+  next !getSetting(concat($id,'_',$src,'_DB'))
+  if getSetting(concat('SQL_PASSWORD_ODI_REPOS_USER_',$id))
+   var ($pwd) = unpack('u',last)
+  else
+  {var $log = $tb_db{$id,'usr'}
+   var $sid = replace(replace($tb_db{$id,'url'},'^.*@(\/{2})?'),'\/',':')
+   if exists($pwd{$log})
+   {var $tb_db{$id,'pwd'} = $pwd{$log}
+    if match($id,'^ODI_M')
+     next
+    call get_wrk_user($id,$sid)
+    next
+   }
+   else
+   {var $pwd = askPassword(\
+     concat('Enter ',join('@',$log,$sid),' user password:'))
+    var $pwd{$log} = $pwd
+   }
+  }
+  var $tb_db{$id,'pwd'} = $pwd
+  if $flg
+  {var $tb_db{replace($id,'^ODI_W','ODI_M'),'pwd'} = $tb_db{$id,'pwd'}
+   call get_wrk_user($id,$sid)
+  }
+ }
+}
+
+# Get the repository password
+if $STUDIO
+ call get_password('WORK',true)
+else
+{loop $src ('MASTER','WORK')
+  call get_password($src)
+}
+
+=head2 product_info - Product Information
+
+Gathers the product information if Oracle Data Integrator is installed in a
+separate Oracle home.
+
+=cut
+
+if $ODI11
+{if getSetting('ODI_DISTINCT_HOME')
+ {debug ' Inside ODI module, processing Product Information (can take time)'
+  report product_info
+  write '---+!! Oracle Data Integrator Home Product Information'
+  write $TOC
+
+  write '---+ Files in Data Integrator Oracle Home'
+  call statDir('an',$ORACLE_HOME)
+  write $TOP
+
+  call inventory_details(catDir($ORACLE_HOME,'inventory'),\
+                         getSetting('ODI_INTERIM'))
+  toc '2:[[',getFile(),'][rda_report][Product Information]]'
+ }
+}
+
+=head2 version - Version
+
+Detects the Oracle Data Integrator version information from the
+F<$ODI_HOME/lib/sunopsis.zip> file.
+
+It requires the availability of F<unzip> command.
+
+=cut
+
+if and($ODI10,length($UNZIP))
+{debug ' Inside ODI module, getting version information'
+ report version
+ var $cmd = concat($UNZIP,' -p ',catFile($ODI_HOME,'lib','sunopsis.zip'),\
+                   'com/sunopsis/res/snpsver.properties')
+ prefix
+ {write '---+ Oracle Data Integrator Version'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Version]]'
+}
+
+=head2 odi_env - Environment Information
+
+Gathers the product information if Oracle Data Integrator is installed in a
+separate Oracle home.
+
+=cut
+
+if or($ODI10,$AGENT)
+{debug ' Inside ODI module, gathering environment information'
+ report odi_env
+ write '---+ Environment Information'
+ write '|*Variable*|*Value*|'
+ loop $key ('ODI_JAVA_HOME','ODI_CLASSPATH','ODI_ADDITIONAL_CLASSPATH',\
+            'ODI_JAVA_START','ODI_JAVAW_START','ODI_ADDITIONAL_JAVA_OPTIONS',\
+            'ODI_REPOSITORY_PARAMS')
+  write '|',$key,'|',getEnv($key),' |'
+ toc '2:[[',getFile(),'][rda_report][Environment Information]]'
+}
+
+=head2 java_version - Java Version
+
+Detects the Oracle Java version used by Oracle Data Integrator.
+
+=cut
+
+if or($ODI10,$AGENT,$STUDIO)
+{debug ' Inside ODI module, getting java version information'
+ report java_version
+ var $dir = getEnv('ODI_JAVA_HOME')
+ if $STUDIO
+ {if first(grepFile(catFile($ODI_HOME,'client','odi','bin','odi.conf'),\
+      '^SetJavaHome\s+','if'))
+   var ($dir) = match(last,'^SetJavaHome\s+(.*)',true)
+ }
+ if testFile('e',catFile($dir,'bin',${AS.EXE:'java'}))
+ {var $cmd = concat(lastCommand(),' -version 2>&1')
+  prefix
+  {write '---+ Oracle Data Integrator Java Version'
+   write '---## Using: ',encode($cmd)
+  }
+  call writeCommand($cmd)
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Java Version]]'
+ }
+}
+
+=head2 process - Processes
+
+Displays the information about ODI processes. For Windows, RDA gets the
+processes only if the tasklist command is available.
+
+=cut
+
+if or($ODI10,$AGENT)
+{debug ' Inside ODI module, gathering information about processes'
+ report process
+ prefix
+ {write '---+ ODI Processes'
+  write '<verbatim>'
+ }
+ if isUnix()
+ {var $OSP = testCommand('ps -ef','/bin/ps -ef','/usr/bin/ps -ef')
+  loop $lin (grepCommand($OSP,'oracle\.odi|com\.sunopsis'))
+   write $lin
+ }
+ elsif or(isWindows(),isCygwin())
+ {if findCommand('tasklist')
+  {var $cmd = last
+   loop $lin (grepCommand(concat($cmd,' /V'),'oracle\.odi|com\.sunopsis','i'))
+    write $lin
+  }
+ }
+ if isCreated(true)
+ {write '</verbatim>'
+  toc '2:[[',getFile(),'][rda_report][Processes]]'
+ }
+}
+
+=head2 jar_info - Java Archive Information
+
+Collects Java archive manifest information from the files identified from
+C<ODI_CLASSPATH> environment variable on ODI version 10g and Standalone Agent
+11g.
+
+For ODI Studio 11g the files are identified from
+F<$ODI_HOME/client/odi/bin/odi.conf> file,
+F<$APPDATA/odi/oracledi/userlib> directory on Windows,
+F<$HOME/.odi/oracledi/userlib> directory on UNIX,
+F<$APPDATA/odi/oracledi/userlib/additional_path.txt> file on Windows, and
+F<$HOME/.odi/oracledi/userlib/additional_path.txt> file on UNIX.
+
+It requires the availability of F<unzip> command.
+
+=cut
+
+debug ' Inside ODI module, gathering java archive information'
+
+macro get_files
+{var (\@fil,$pth) = @arg
+ if testDir('d',$pth)
+  call push(@fil,grepDir($pth,'\.jar$','ip'))
+ elsif match($pth,'^(.*?)[\\\/]\*\.jar$',true)
+ {var ($pth) = last
+  call push(@fil,grepDir($pth,'\.jar$','ip'))
+ }
+ elsif and(testFile('fr',$pth),match($pth,'\.jar$',true))
+  call push(@fil,$pth)
+}
+
+var (@fil,%fil) = ()
+if or($ODI10,$AGENT)
+{loop $pth (@{ENV.ODI_CLASSPATH})
+ {next match($pth,'\.zip$',true)
+  if !isAbsolute($pth)
+   var $pth = catDir($ODI_BIN,$pth)
+  call get_files(\@fil,$pth)
+ }
+}
+elsif $STUDIO
+{loop $lin (grepFile(catFile(catDir(\
+   $ODI_HOME,'client','odi','bin'),'odi.conf'),'^AddJavaLibFile\s+','i'))
+ {var ($pth) = match($lin,'^AddJavaLibFile\s+(.*)',true)
+  next match($pth,'\.zip$',true)
+  if !isAbsolute($pth)
+   var $pth = catFile(lastDir(),$pth)
+  call get_files(\@fil,$pth)
+ }
+ if or(${RDA.CYGWIN},${RDA.WINDOWS})
+  var $odi = catDir(getEnv('APPDATA'),'odi')
+ elsif ${RDA.UNIX}
+  var $odi = catDir(getEnv('HOME'),'.odi')
+ else
+  var $odi = undef
+ if ?$odi
+ {call push(@fil,grepDir(catDir($odi,'oracledi','userlib'),'\.jar$','ip'))
+  loop $lin (grepFile(catFile(lastDir(),'additional_path.txt'),'^[^;]'))
+  {var ($pth) = match($lin,'^\s*(.*)')
+   next match($pth,'\.zip$',true)
+   next !isAbsolute($pth)
+   call get_files(\@fil,$pth)
+  }
+ }
+}
+loop $fil (@fil)
+ var $fil{dirname($fil),basename($fil)} = $fil
+
+# Collect the JAR information
+report jar_info
+title '---+!! Java Archive Information'
+title $TOC
+loop $grp (keys(%fil))
+{# Start a new directory
+ prefix
+ {write '---++ From ',encode($grp),' Directory'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+
+ # Get the manifest information associated with the files
+ loop $bas (keys($fil{$grp}))
+ {var $fil = $fil{$grp,$bas}
+  suspend report
+  output F,$bas
+  var $lnk = encode($bas)
+  prefix
+   write '---+ Manifest Information'
+  call writeCommand(concat($UNZIP,' -p ',$fil,' META-INF/MANIFEST.MF'))
+  if hasOutput(true)
+  {write $TOP
+   var $lnk = concat('[[',getFile(),'][rda_report][',$lnk,']]')
+  }
+  resume report
+  write '|',$lnk,' | ',getSize($fil),'|',\
+        getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+
+ # End the directory
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Java Archive Information]]'
+
+=head2 Configuration Files
+
+Gathers Oracle Data Integrator 11g-related configuration files.
+
+=cut
+
+if $STUDIO
+{debug ' Inside ODI module, gathering configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(3,0,catFile($ODI_HOME,'client','ide','bin','ide.conf'),\
+                     catFile($ODI_HOME,'client','odi','bin','odi.conf'),\
+                     catFile($odi,'oracledi','userlib','additional_path.txt'))
+ unpretoc
+}
+
+=head2 Master Repositories
+
+=head3 master_db - Master Repository Information
+
+Collects the master repositories information from the database.
+
+=cut
+
+pretoc '2:Master Repositories'
+
+# Define the reporting macro
+macro get_db_data
+{var ($typ,$id,$nam) = @arg
+ import %tb_db,%tb_typ,$TOC,$TOP
+ keep %tb_db,%tb_typ,$TOC,$TOP
+
+ debug " Inside ODI module, collecting the database '",$nam,"' ",$tb_typ{$typ}
+ suspend report
+ var $log = $tb_db{$id,'usr'}
+ var $pwd = $tb_db{$id,'pwd'}
+ var $sid = concat($tb_db{$id,'drv'},'|',$tb_db{$id,'url'})
+ call switchDb('JDBC',$log,$pwd,$sid)
+ report concat($typ,'_',lc($id))
+ var $fil = getFile()
+ if testDb()
+ {write '**Repository database connection disabled**%BR%',getDbMessage()
+  var $lnk = concat('[[',$fil,'][rda_report][No Repository Access]]')
+ }
+ else
+ {if or(compare('eq',$typ,'mst'),compare('eq',$typ,'studio_mst'))
+  {title '---+!! Information from SNP_LOC_REP and SNP_REM_REP'
+   title $TOC
+
+   # SNP_LOC_REP information
+   prefix
+   {write '---+ From SNP_LOC_REP'
+    write '|*Short Id*|*Name*|*Type*|'
+   }
+   set $job
+   {# SQL
+   "SELECT '|' ||
+   "       rep_short_id || ' |' ||
+   "       rep_name || ' |' ||
+   "       rep_type || ' |'
+   " FROM snp_loc_rep
+   "/
+   }
+   call writeDb($job)
+   if hasOutput(true)
+    write $TOP
+
+   # SNP_REM_REP information
+   prefix
+   {write '---+ From SNP_REM_REP'
+    write '|*Short Id*|*Name*|*Type*|'
+   }
+   set $job
+   {# SQL
+   "SELECT '|' ||
+   "       rep_id || ' |' ||
+   "       rep_name || ' |' ||
+   "       rep_type || ' |'
+   " FROM snp_rem_rep
+   "/
+   }
+   call writeDb($job)
+   if hasOutput(true)
+    write $TOP
+  }
+  elsif compare('eq',$typ,'wrk')
+  {prefix
+   {write '---+ Information from SNP_LOC_REPW'
+    write '|*Short Id*|*Name*|*Type*|'
+   }
+   set $job
+   {# SQL
+   "SELECT '|' ||
+   "       rep_short_id || ' |' ||
+   "       rep_name || ' |' ||
+   "       rep_type || ' |'
+   " FROM snp_loc_repw
+   "/
+   }
+   call writeDb($job)
+  }
+  if isCreated(true)
+   var $lnk = concat('[[',$fil,'][rda_report][Repository Details]]')
+ }
+ resume report
+ return $lnk
+}
+
+# Collect the data
+report master_db
+prefix
+{write '---+ Master Repositories'
+ write '|*Login Name*|*Master Repository*|'
+}
+var $src = cond($STUDIO,'WORK','MASTER')
+var $chk = cond($STUDIO,'studio_mst','mst')
+loop $id (split(',',getSetting(concat('ODI_',$src,'_SET'))))
+{# Get repository parameters
+ next missing($tb_db{$id})
+ var ($nam,$lnk) = (getSetting(concat($id,'_LOGIN')))
+
+ # Collect the master repository
+ if getSetting(concat($id,'_',$src,'_DB'))
+ {if $STUDIO
+   var $id = replace($id,'^ODI_W','ODI_M')
+  var $lnk = get_db_data($chk,$id,$nam)
+ }
+
+ # Write the record
+ write '|',$nam,' |',$lnk,' |'
+}
+if hasOutput(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Master Repository Information]]'
+}
+
+=head3 master_export - Exported Master Data
+
+Collects the master repositories and the technical environment.
+
+=cut
+
+if or($ODI10,$AGENT)
+{var $FMT1 = ' "-CHARSET=UTF8" "-TODIR=:1" "-FILE_NAME=:2"'
+ var $FMT2 = ' "-XML_CHARSET=UTF-8" "-JAVA_CHARSET=UTF8" \
+               "-TODIR=:1" "-ZIPFILE_NAME=:2"'
+ var $pgm = catFile($ODI_BIN,${AS.BAT:'startcmd'})
+ var %tb_cmd = ('env',concat(lastCommand(),' OdiExportEnvironmentInformation'),\
+                'mst',concat(lastCommand(),' OdiExportMaster'),\
+                'log',concat(lastCommand(),' OdiExportLog'),\
+                'wrk',concat(lastCommand(),' OdiExportWork'))
+ var %tb_def = ()
+ var %tb_ext = ('env','.csv',\
+                'mst','.zip',\
+                'log','.zip',\
+                'wrk','.zip')
+ var %tb_fmt = ('env',$FMT1,\
+                'mst',$FMT2,\
+                'log',$FMT2,\
+                'wrk',$FMT2)
+
+ # Check the command availability
+ var $tst = cond(isWindows(),'f',\
+                 isCygwin(), 'f',\
+                             'fx')
+ if !testFile($tst,$pgm)
+ {echo 'Cannot find or execute ',$pgm
+  echo 'Please check the collection configuration.'
+ }
+
+ # Validate the date format
+ var $pat = '^\d{4}-[01]\d-[0-3]\d [0-2]\d:[0-5]\d:[0-5]\d$'
+ if and($ODI_BEGIN,not(match($ODI_BEGIN,$pat)))
+  echo "Invalid format for the 'From date'"
+ if and($ODI_END,not(match($ODI_END,$pat)))
+  echo "Invalid format for the 'To date'"
+
+ # Purge old data files
+ call purge('C','.*\.zip$',0)
+
+ # Define data extraction macros
+ macro extract_logins
+ {var (\%cnv,$fil,$pre) = @arg
+  import %tb_def
+
+  var $pat = join('|',keys(%cnv))
+  var $top = xmlLoadFile($fil)
+  loop $xml (xmlFind($top,'SnpsLogin/Object'))
+  {# Get the identifier
+   var $id = xmlData(xmlFind($xml,'Field name="ILogin"'))
+   next !length($id)
+   var $id = sprintf('%s%d',$pre,$id)
+
+   # Get the fields
+   var %fld = ()
+   loop $fld (xmlFind($xml,concat('Field name="(',$pat,')"')))
+   {var $key = $cnv{xmlValue($fld,'name')}
+    var $val = xmlData($fld)
+    if compare('eq',$val,'null')
+     var $val = ''
+    var $fld{$key} = concat(' "',$key,'=',$val,'"')
+   }
+   var $tb_def{$id} = concat(values(%fld))
+  }
+ }
+
+ macro grep_bat
+ {var (\%cnv,$fil,$id) = @arg
+  import %tb_def
+
+  var $pat = concat('^\s*set\s+(',join('|',keys(%cnv)),')=')
+  loop $lin (grepFile($fil,$pat))
+  {var $lin = replace($lin,'^\s*set\s+')
+   var $key = $cnv{key($lin)}
+   var $fld{$key} = concat(' "',$key,'=',value($lin),'"')
+  }
+  var $tb_def{$id} = concat(values(%fld))
+ }
+
+ macro grep_sh
+ {var (\%cnv,$fil,$id) = @arg
+  import %tb_def
+
+  var $pat = concat('^\s*(',join('|',keys(%cnv)),')=')
+  loop $lin (grepFile($fil,$pat))
+  {var $lin = replace($lin,'#.*')
+   var $key = $cnv{key($lin)}
+   var $fld{$key} = concat(' "',$key,"=",trim(value($lin),"[\042\047]"),'"')
+  }
+  var $tb_def{$id} = concat(values(%fld))
+ }
+
+ # Extract odiparams.(bat|sh) information
+ var %cnv = ('ODI_ENCODED_PASS',     '-PASSWORD',\
+             'ODI_SECU_DRIVER',      '-SECURITY_DRIVER',\
+             'ODI_SECU_ENCODED_PASS','-SECURITY_PWD',\
+             'ODI_SECU_URL',         '-SECURITY_URL',\
+             'ODI_SECU_USER',        '-SECURITY_USER',\
+             'ODI_USER',             '-USER')
+ if or(isWindows(),isCygwin())
+ {var $fil = catFile($ODI_BIN,'odiparams.bat')
+  call grep_bat(\%cnv,$fil,'ODI_M')
+  var $cnv{'ODI_SECU_WORK_REP'} = '-WORK_REP_NAME'
+  call grep_bat(\%cnv,$fil,'ODI_W')
+ }
+ else
+ {var $fil = catFile($ODI_BIN,'odiparams.sh')
+  call grep_sh(\%cnv,$fil,'ODI_M')
+  var $cnv{'ODI_SECU_WORK_REP'} = '-WORK_REP_NAME'
+  call grep_sh(\%cnv,$fil,'ODI_W')
+ }
+
+ # Extract snps_login_security.xml information
+ var %tbl = ('LoginDbdriver','-SECURITY_DRIVER',\
+             'LoginDbpass',  '-SECURITY_PWD',\
+             'LoginDburl',   '-SECURITY_URL',\
+             'LoginDbuser',  '-SECURITY_USER',\
+             'LoginPass',    '-PASSWORD',\
+             'LoginUser',    '-USER')
+ call extract_logins(\%tbl,catFile($ODI_BIN,'snps_login_security.xml'),'ODI_M')
+
+ # Extract snps_login_work.xml information
+ var $tbl{'LoginWorkRepository'} = '-WORK_REP_NAME'
+ call extract_logins(\%tbl,catFile($ODI_BIN,'snps_login_work.xml'),'ODI_W')
+
+ # Define the reporting macro
+ macro get_data
+ {var ($typ,$dir,$id,$nam,@tbl) = @arg
+  import $ODI_BIN,%tb_cmd,%tb_def,%tb_ext,%tb_fmt,%tb_typ
+  keep $ODI_BIN,%tb_cmd,%tb_def,%tb_ext,%tb_fmt,%tb_typ
+
+  debug " Inside ODI module, collecting the '",$nam,"' ",$tb_typ{$typ}
+  suspend report
+  data concat($typ,'_',lc($id),$tb_ext{$typ})
+  var $fil = getFile('.')
+  var $tmp = quote(createTemp('ODI','.bat',true),'x')
+  if or(isWindows(),isCygwin())
+  {call writeTemp('ODI','@echo off')
+   call writeTemp('ODI','cd /d "',getNativePath($ODI_BIN),'"')
+  }
+  else
+   call writeTemp('ODI','cd "',$ODI_BIN,'"')
+  call writeTemp('ODI',$tb_cmd{$typ},bindSql($tb_fmt{$typ},$dir,$fil),\
+                       @tbl,$tb_def{$id})
+  call closeTemp('ODI')
+  var (undef,$lin1,$lin2,$lin3,$lin4,$lin5) = command(concat($tmp,' 2>&1'))
+  if status()
+   var $lnk = replace(join('%BR%',concat('Error: ',last),\
+                           $lin1,$lin2,$lin3,$lin4,$lin5),'\s','&nbsp;',true)
+  elsif testFile('r',getFile('/'))
+   var $lnk = concat('[[',$fil,'][rda_report][',$fil,']]')
+  else
+   var $lnk = replace(join('%BR%','Missing output',\
+                           $lin1,$lin2,$lin3,$lin4,$lin5),'\s','&nbsp;',true)
+  call unlinkTemp('ODI')
+  resume report
+  return $lnk
+ }
+
+ # Collect the data
+ report master_export
+ prefix
+ {write '---+ Master Repositories Exported'
+  write '|*Login Name*|*Master Repository*|*Technical Environment*|'
+ }
+ if !isAbsolute($dir = ${OUT.C})
+  var $dir = getGroupDir('D_CWD',$dir)
+ loop $id (split(',',getSetting('ODI_MASTER_SET')))
+ {# Get repository parameters
+  next missing($tb_def{$id})
+  var ($nam,$lnk1,$lnk2) = (getSetting(concat($id,'_LOGIN')))
+
+  # Collect the master repository
+  if getSetting(concat($id,'_MASTER_EXPORT'))
+   var $lnk1 = get_data('mst',$dir,$id,$nam)
+
+  # Collect the technical environment
+  if getSetting(concat($id,'_TECH_EXPORT'))
+   var $lnk2 = get_data('env',$dir,$id,$nam)
+
+  # Write the record
+  write '|',$nam,' |',$lnk1,' |',$lnk2,' |'
+ }
+ if hasOutput(true)
+ {write $TOP
+  toc '3:[[',getFile(),'][rda_report][Exported Master Data]]'
+ }
+}
+unpretoc
+
+=head2 Work Repositories
+
+=head3 work_db - Work Repository Information
+
+Collects the work repositories information from the database.
+
+=cut
+
+pretoc '2:Work Repositories'
+
+report work_db
+prefix
+{write '---+ Work Repositories'
+ write '|*Login Name*|*Work Repository*|'
+}
+loop $id (split(',',getSetting('ODI_WORK_SET')))
+{# Get repository parameters
+ next missing($tb_db{$id})
+ var ($nam,$lnk) = (getSetting(concat($id,'_LOGIN')))
+
+ # Collect the work repository
+ if getSetting(concat($id,'_WORK_DB'))
+  var $lnk = get_db_data('wrk',$id,$nam)
+
+ # Write the record
+ write '|',$nam,' |',$lnk,' |'
+}
+if hasOutput(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Work Repository Information]]'
+}
+
+=head3 work_export - Exported Work Data
+
+Collects work directories and execution log data.
+
+=cut
+
+if or($ODI10,$AGENT)
+{report work_export
+ prefix
+ {write '---+ Work Repositories Exported'
+  if $ODI_BEGIN
+  {write '   * Log information extracted between:'
+   write '      * From date: ',$ODI_BEGIN
+   write '      * To date: ',$ODI_END
+   write '%BR%'
+  }
+  write '|*Login Name*|*Work Repository*|*Execution Log*|'
+ }
+ loop $id (split(',',getSetting('ODI_WORK_SET')))
+ {# Get repository parameters
+  next missing($tb_def{$id})
+  var ($nam,$lnk1,$lnk2) = (getSetting(concat($id,'_LOGIN')))
+
+  # Collect the work repository
+  if getSetting(concat($id,'_WORK_EXPORT'))
+   var $lnk1 = get_data('wrk',$dir,$id,$nam)
+
+  # Collect the execution log
+  if getSetting(concat($id,'_LOG_EXPORT'))
+  {var $lnk2 = get_data('log',$dir,$id,$nam,\
+     concat(' "-FROMDATE=',$ODI_BEGIN,'" "-TODATE=',$ODI_END,'"'))
+  }
+  # Write the record
+  write '|',$nam,' |',$lnk1,' |',$lnk2,' |'
+ }
+ if hasOutput(true)
+ {write $TOP
+  toc '3:[[',getFile(),'][rda_report][Exported Work Data]]'
+ }
+}
+unpretoc
+
+=head2 Log Files
+
+Gathers Oracle Data Integrator 11g-related C<.log> log files from the
+F<$ODI_HOME/log> directory structure on Standalone Agent install and
+F<$ODI_HOME/client/log> directory structure on Studio install.
+
+=cut
+
+if or($AGENT,$STUDIO)
+{debug ' Inside ODI module, gathering log files'
+ pretoc '2:Log Files'
+ call sort_files(3,$TAIL,grepDir(cond(\
+  $AGENT, catDir($ODI_HOME,'log'),\
+  $STUDIO,catDir($ODI_HOME,'client','log')),'\.log$','inp'))
+ unpretoc
+}
+
+=head2 Oracle WebLogic Server Domain Information
+
+Includes all reports collected for the specified Oracle WebLogic Server domain.
+
+=cut
+
+if $WLS
+{toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1+:Oracle WebLogic Server Overview")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_WREQ_ODI_TOP.toc")%'
+ toc '%POP2%'
+ toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1+:Oracle WebLogic Server Domain")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_WREQ_ODI_DOM.toc")%'
+ toc '%POP2%'
+}
+
+# Restore the previous environment
+if or($AGENT,$STUDIO)
+ call setEnv('ODI_HOME',$env)
+elsif $WLS
+ call setCurrent()
+
+unpretoc
+
+=head1 SEE ALSO
+
+L<S301WREQ.def|modules::S301WREQ>,
+L<INSTinfo.def|modules::INSTinfo>,
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.10: Benoit Gagnon, FX Nicolas.
+
+=item RDA 4.16: Greg Cook, Andrew Salt, Scott Wade.
+
+=item RDA 4.18: FX Nicolas.
+
+=item RDA 4.24: Laura Dumitru.
+
+=item RDA 4.28: Laura Dumitru.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

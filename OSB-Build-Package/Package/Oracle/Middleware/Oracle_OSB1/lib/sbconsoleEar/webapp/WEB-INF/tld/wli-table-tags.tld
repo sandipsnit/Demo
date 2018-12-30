@@ -1,0 +1,1022 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE taglib PUBLIC "-//Sun Microsystems, Inc.//DTD JSP Tag Library 1.2//EN" "http://java.sun.com/dtd/web-jsptaglibrary_1_2.dtd">
+
+<taglib>
+    <tlib-version>1.0</tlib-version>
+    <jsp-version>1.2</jsp-version>
+    <short-name>tbl</short-name>
+    <uri>wli-table-tags</uri>
+    <display-name>WLI Table Tags</display-name>
+    <description>
+        Tags used by the WLI and Service Bus management consoles.
+    </description>
+
+    <tag>
+        <name>simple-table</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.table.SimpleTableTag</tag-class>
+        <body-content>JSP</body-content>
+        <attribute>
+            <name>id</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                id for this table unique within the page. This is an optional attribute. However
+                you are encouraged to have ids for tables if they will be more than one table
+                in a page. simple ids, such as "1", "a", "Z" are perfectly ok, as long as two
+                page in the *same* page do not share the same id. If there is one table in a page
+                you need not specify this attribute.
+            </description>
+        </attribute>
+        <attribute>
+            <name>collection</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.util.Collection</type>
+            <description>
+                The list that will supply the rows. Either this or array attribute must be supplied.
+            </description>
+        </attribute>
+        <attribute>
+            <name>array</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The array that will supply the rows. Either this or list attribute must be supplied.
+            </description>
+        </attribute>
+        <attribute>
+            <name>maxrows</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>int</type>
+            <description>
+                This specifies the maximum number of rows in a table to display before
+                pagination occurs. Default is 20 rows.
+            </description>
+        </attribute>
+        <attribute>
+            <name>nullOrEmptyString</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The string value to be displayed if the column value is null or empty collection.
+                If one is not supplied, then the header for all the sub-columns will be
+                printed, but no rows will be printed.
+            </description>
+        </attribute>
+        <attribute>
+            <name>isCompact</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                if true, no column lines will be displayed. The table will look simpler and more compact.
+                Also it will not expand to fill the width of the screen. Default is false.
+            </description>
+        </attribute>
+        <attribute>
+            <name>width</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the width of the table.
+            </description>
+        </attribute>
+        <attribute>
+            <name>wrap</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Describes the text wrapping strategy for elements of type label. valid values are
+                - yes|true: indicates wrapping is enabled. However if the text does not have any spaces
+                    it will not be wrapped.
+                - no|false: indicates wrapping is disabled. The text will not be wrapped even if it has spaces.
+                - force|forced: forces wrapping of long text without spaces, by injecting zero-width spaces into the text.
+
+                the default is no (do not wrap)
+            </description>
+        </attribute>
+        <attribute>
+            <name>tableStyle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the overall table.
+            </description>
+        </attribute>
+        <attribute>
+            <name>headerStyle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the table headers.
+            </description>
+        </attribute>
+        <attribute>
+            <name>rowStyle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the table rows.
+            </description>
+        </attribute>
+        <attribute>
+            <name>sortLink</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.CommandId</type>
+            <description>
+                This attribute uses the action name to construct the sorting and pagination links.
+                If this attribute is not specificed then the action from the current request is used for the sorting
+                and pagination links.
+           </description>
+        </attribute>
+        <attribute>
+            <name>defaultSortColumnNo</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The column number which will determine the initial sorting order of the rows when the table is
+                initially displayed e.g. "0","1" etc.
+            </description>
+        </attribute>
+      <attribute>
+          <name>preferences</name>
+          <required>false</required>
+          <rtexprvalue>true</rtexprvalue>
+          <type>boolean</type>
+          <description>
+              Identifies whether preferences are enabled on this table.
+          </description>
+      </attribute>
+      <attribute>
+          <name>summary</name>
+          <required>false</required>
+          <rtexprvalue>true</rtexprvalue>
+          <type>boolean</type>
+          <description>
+              Identifies whether summary for this table is required.
+          </description>
+      </attribute>
+      <attribute>
+            <name>toSubmitForm</name>
+            <required>no</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                This is for sorting and pagination links with form data.
+                If true, the sorting/pagination links will first submit the form specified in the formName attribute and
+                pass the URL constructed with the sortLink attribute as a hidden parameter for redirection after the form
+                fields are processed.
+                If true then the sortLink attribute and formName attributes must also be specified,
+                otherwise regular sorting/pagination hyperlinks will be generated. Default is false.
+            </description>
+      </attribute>
+        <attribute>
+              <name>formName</name>
+              <required>no</required>
+              <rtexprvalue>true</rtexprvalue>
+              <type>java.lang.String</type>
+              <description>
+                  This is for sorting and pagination. If toSubmitForm is true, then the form
+                  name should be provided.
+              </description>
+        </attribute>
+        <attribute>
+              <name>noPagination</name>
+              <required>no</required>
+              <rtexprvalue>true</rtexprvalue>
+              <type>boolean</type>
+              <description>
+                  If the attribute value is "true", pagination links will not appear. By default
+                  pagination links will appear and default value of this attribute is "false"
+              </description>
+        </attribute>
+        <attribute>
+              <name>matchingColumnId</name>
+              <required>no</required>
+              <rtexprvalue>true</rtexprvalue>
+              <type>int</type>
+              <description>
+                  This attribute is used to the column value to match with the given value, by default its zero 
+              </description>
+        </attribute>
+        <attribute>
+            <name>summaryTitle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                Summary title for summary attribute of the table tag
+            </description>
+        </attribute>
+        <attribute>
+            <name>onRowMouseOver</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                takes javascript function for  mouse over event on the row
+            </description>
+        </attribute>
+        <attribute>
+            <name>onRowMouseOut</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                takes javascript function for  mouse out event on the row
+            </description>
+        </attribute>
+        <attribute>
+            <name>oddRowBGColor</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                styles class that carries odd row bg color. If not specified default color will be applied.
+            </description>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>simple-column</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.table.SimpleColumnTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>attribute</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The name of the attribute that will be displayed by this column.
+                This attribute name is used to derive the name of the getter method
+                if one is not provided by the "getter" attribute. attribute is also
+                used as the column header if one is not provided by the "header"
+                attribute. If "linkURL" attribute is present and "linkAttribute"
+                attribute is not present, the "attribute" is used in place of "linkAttribute".
+                This string is also used as a parameter to identify the sort column if the
+                sorting attribute is set.
+            </description>
+        </attribute>
+        <attribute>
+            <name>header</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The column header to be displayed
+            </description>
+        </attribute>
+        <attribute>
+            <name>constantValue</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                provides a constant value for the column.
+            </description>
+        </attribute>
+        <attribute>
+            <name>delegate</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.taglibs.table.SimpleTableColumn$Delegate</type>
+            <description>
+                when present, indicates an object that will supply the value for the column,
+                instead of the row object.
+            </description>
+        </attribute>
+        <attribute>
+            <name>getter</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The getter method to be invoked on the row object to obtain the value of
+                the column. If "getter" attribute is not specified the getter method is
+                computed by first making the first letter of the attribute upper-case and
+                then prepending it with the word "get". For example, the getter for
+                the "logLevel" attribute would be "getLogLevel". The boolean attributes
+                whose names start with "is..." are treated in the same way. So the getter
+                for "isSuspended" attribute would be "getIsSuspended" unless a getter
+                is expicitly specified.
+            </description>
+        </attribute>
+        <attribute>
+            <name>nullOrEmptyString</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The string value to be displayed if the column value is null or empty collection.
+                If one is not supplied, the following will be written: If the column value is
+                null, then &lt;null&gt; will be displayed. If the column value is an empty string
+                nothing will be displayed.
+            </description>
+        </attribute>
+        <attribute>
+            <name>linkURL</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                This attribute is used to specify the base URL, when this column is linkified,
+                so that it could be clicked on.  The full URL is computed by appending either
+                the "?[a]=[val]" or "&amp;[a]=[val] depending
+                on whether the base URL has other parameters as well. [a] is found as follows:
+                if "parameter" attribute is present the value of that attribute is used
+                as the parameter name. Otherwise, the value of "attribute" attribute is
+                used. [val] represents the value of the parameter. It is found as follows:
+                if the "parameterValueMethod" attribute is present, its value indicates a
+                method on the row object, and is called to obtain the parameter value. If
+                "parameterValueMethod" is not present the value is the same as the column
+                value. In any case the parameter value is transformed by using the
+                "java.net.URLEncoder.encode(val, "UTF-8")" method to encode spaces and other
+                special characters correctly.
+            </description>
+        </attribute>
+        <attribute>
+            <name>link</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.CommandId</type>
+            <description>
+                This attribute uses the action name to construct the link, so that
+                the actual URL is computed based on the struts configuration. The
+                rest of the URL processing for additional paraemters is identical
+                to the linkURL attribute.
+            </description>
+        </attribute>
+        <attribute>
+            <name>parameter</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                name of the parameter to be used if this column is linkified.
+            </description>
+        </attribute>
+        <attribute>
+            <name>parameterValueMethod</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                name of the method (of the rowobject) to be called to obtain the
+                parameter value.
+            </description>
+        </attribute>
+        <attribute>
+            <name>size</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                the maximum width of the column in number of characters. if the column contents
+                is an array or a collection, the size applies to individual elements.
+            </description>
+        </attribute>
+        <attribute>
+            <name>width</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the maximum width of the column in number of pixels. Used as in "width='100'".
+                Provides a constant width for a cell for cases like checkboxes.
+            </description>
+        </attribute>
+        <attribute>
+            <name>sorting</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Specifies whether the column is sortable, and what the default sorting is.
+                the value can be one of the following:
+                        - na    (this column is not sortable)
+                        - asc   (this column is sortable, default ordering is ascending)
+                        - desc  (this column is sortable, default ordering is descending)
+                The default is "na", i.e. the column is assumed to be non-sortable.
+
+                This attribute effectively causes the header to be linkified, which will sort
+                this column when clicked. The sorting order toggles between ascending and descending
+                each time it is clicked.
+
+                The actual sorting logic is done by the table that owns this column. This
+                attribute only declares that a column is sortable.
+
+                Columns that delegate cannot be sorted. Their sort attribute will be ignored.
+
+                When the table is initially displayed, the first column that has sorting enabled
+                will determine the initial sorting order of the rows.
+            </description>
+        </attribute>
+        <attribute>
+            <name>sortValueGetter</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the name of the method that will supply the value which the sorting of this column
+                will be based on. If this attribute is not specified the default (column) value
+                will be used (i.e., as returned by the value getter). THis attribute makes sense
+                only if this column is sortable.
+            </description>
+        </attribute>
+        <attribute>
+            <name>noRepeat</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                Indicates whether the contents for this column should be displayed if the same column in the previous
+                row has the same value. For instance if a row has the values ("value_col1", "value_col2") and the next
+                row has values ("value_col1", "value_col2_different") and if noRepeat is set to true, the "value_col1"
+                for the second row will not be displayed, and it will be empty. Default is false. i.e., the values
+                will be displayed even if they are repeated. The first row in a page will always have its value displayed
+                regardless of the values of the previous row (which happen to be in the previous page).
+                Notice that this attribute only affects the html generated by the table. It does not affect the actual
+                attribute value that is returned, or the sorting value.
+            </description>
+        </attribute>
+        <attribute>
+            <name>align</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                horizontal alignment. The valid values are left/center/right, case insensitive.
+                The default is left.
+            </description>
+        </attribute>
+        <attribute>
+            <name>valign</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                vertical alignment. The valid values are top/center/bottom, case insensitive. The default
+                is top.
+            </description>
+        </attribute>
+        <attribute>
+            <name>preference</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                This parameter is used only if table the parent "preferences" attribute is set to true.
+                The string value is case insensitive.
+                Required  - This column is required and cannot be removed
+                Show      - This column is optional, but will be displayed (default) but can be hidden
+                Hide      - This column is optional, but will not be displayed (default) but can be shown
+                Show_Only - This column is required and cannot be removed, furthermore it cannot be moved.
+                Make sure every table has atleast one attribute with preference="required" to avoid showing page with
+                no columns.
+            </description>
+        </attribute>
+      <attribute>
+          <name>filter</name>
+          <required>false</required>
+          <rtexprvalue>true</rtexprvalue>
+          <type>boolean</type>
+          <description>
+            Indicates that this column will to used for creating a summary table for this table. For this
+            to work the filter="true" should be defined on the table
+          </description>
+      </attribute>
+        <attribute>
+            <name>wrap</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Describes the text wrapping strategy for elements of type label. valid values are
+                - yes|true: indicates wrapping is enabled. However if the text does not have any spaces
+                    it will not be wrapped.
+                - no|false: indicates wrapping is disabled. The text will not be wrapped even if it has spaces.
+                - force|forced: forces wrapping of long text without spaces, by injecting zero-width spaces into the text.
+
+                the default is to inherit from the simple-table tag's wrap attribute (do not wrap)
+            </description>
+        </attribute>
+        <attribute>
+            <name>cellClass</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Style class for the cell. If not specified, default class will be assigned.
+            </description>
+        </attribute>
+    </tag>
+  <tag>
+        <name>multiple-item-column</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.table.MultipleItemColumnTag</tag-class>
+        <body-content>JSP</body-content>
+ 	  <attribute>
+            <name>columnHTMLProperty</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+			This will wrap the column item around this property
+		</description>
+        </attribute>
+	  <attribute>
+            <name>skipParentCollection</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+			A value true will skip introspectation of the objects of the parent collection
+			
+            </description>
+        </attribute>
+	  <attribute>
+            <name>noDataMessage</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The string value to be displayed if the column value is null or empty collection.
+                If one is not supplied, the following will be written: If the column value is
+                null, then &lt;null&gt; will be displayed. If the column value is an empty string
+                nothing will be displayed.
+            </description>
+        </attribute>
+        <attribute>
+            <name>size</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                the maximum width of the column in number of characters. if the column contents
+                is an array or a collection, the size applies to individual elements.
+            </description>
+        </attribute>
+        <attribute>
+            <name>width</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the maximum width of the column in number of pixels. Used as in "width='100'".
+                Provides a constant width for a cell for cases like checkboxes.
+            </description>
+        </attribute>
+        <attribute>
+            <name>align</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                horizontal alignment. The valid values are left/center/right, case insensitive.
+                The default is left.
+            </description>
+        </attribute>
+        <attribute>
+            <name>valign</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                vertical alignment. The valid values are top/center/bottom, case insensitive. The default
+                is top.
+            </description>
+        </attribute>
+	  <attribute>
+            <name>numItems</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                Number of items to be displayed in a column.
+            </description>
+        </attribute>
+
+        
+    </tag>
+
+ <tag>
+        <name>custom-table</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.table.MultipleItemColumnTableTag</tag-class>
+        <body-content>JSP</body-content>
+        <attribute>
+            <name>id</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                id for this table unique within the page. This is an optional attribute. However
+                you are encouraged to have ids for tables if they will be more than one table
+                in a page. simple ids, such as "1", "a", "Z" are perfectly ok, as long as two
+                page in the *same* page do not share the same id. If there is one table in a page
+                you need not specify this attribute.
+            </description>
+        </attribute>
+ 	 <attribute>
+            <name>nullOrEmptyString</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The string value to be displayed if the column value is null or empty collection.
+                If one is not supplied, the following will be written: If the column value is
+                null, then &lt;null&gt; will be displayed. If the column value is an empty string
+                nothing will be displayed.
+            </description>
+        </attribute>
+
+        <attribute>
+            <name>collection</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.util.Collection</type>
+            <description>
+                The list that will supply the rows. Either this or array attribute must be supplied.
+            </description>
+        </attribute>
+        <attribute>
+            <name>array</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>
+                The array that will supply the rows. Either this or list attribute must be supplied.
+            </description>
+        </attribute>
+        <attribute>
+            <name>maxrows</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>int</type>
+            <description>
+                This specifies the maximum number of rows in a table to display before
+                pagination occurs. Default is 20 rows.
+            </description>
+        </attribute>
+        <attribute>
+            <name>nullOrEmptyText</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                The string value to be displayed if the column value is null or empty collection.
+                If one is not supplied, then the header for all the sub-columns will be
+                printed, but no rows will be printed.
+            </description>
+        </attribute>
+        <attribute>
+            <name>width</name>
+            <required>no</required>
+            <rtexprvalue>yes</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                the width of the table.
+            </description>
+        </attribute>
+        <attribute>
+            <name>wrap</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Describes the text wrapping strategy for elements of type label. valid values are
+                - yes|true: indicates wrapping is enabled. However if the text does not have any spaces
+                    it will not be wrapped.
+                - no|false: indicates wrapping is disabled. The text will not be wrapped even if it has spaces.
+                - force|forced: forces wrapping of long text without spaces, by injecting zero-width spaces into the text.
+
+                the default is no (do not wrap)
+            </description>
+        </attribute>
+        <attribute>
+            <name>tableStyle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the overall table.
+            </description>
+        </attribute>
+        <attribute>
+            <name>headerStyle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the table headers.
+            </description>
+        </attribute>
+        <attribute>
+            <name>rowStyle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the table rows.
+            </description>
+        </attribute>
+ 	  <attribute>
+            <name>columnStyle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the table rows.
+            </description>
+        </attribute>
+  	  <attribute>
+            <name>headerBanner</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the table rows.
+            </description>
+        </attribute>
+	   <attribute>
+            <name>numberOfCols</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                Identifies a style class to be applied to the table rows.
+            </description>
+        </attribute>
+        <attribute>
+            <name>numberOfItemsPerCol</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+                Identifies a style class to be applied to the table rows.
+            </description>
+        </attribute>
+       <attribute>
+            <name>summaryLinkName</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+                Identifies a style class to be applied to the table rows.
+            </description>
+       </attribute>
+
+	 <attribute>
+            <name>imageCompactLayout</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                Should this table include to display an image in a compact table style
+            </description>
+       </attribute>
+
+	  
+    </tag>
+
+    <tag>
+        <name>column-item</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.table.ColumnItemTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>attributeName</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+            </description>
+       </attribute>
+	 <attribute>
+            <name>attributeType</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+            </description>
+       </attribute>
+      <attribute>
+               <name>commandId</name>
+               <required>false</required>
+               <rtexprvalue>true</rtexprvalue>
+               <type>com.bea.alsb.console.common.support.CommandId</type>
+               <description>
+               </description>
+          </attribute>
+	 <attribute>
+            <name>index</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+            </description>
+       </attribute>
+ 	 <attribute>
+            <name>imageInclude</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+            </description>
+       </attribute>
+ 	 <attribute>
+            <name>imageScope</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>int</type>
+            <description>
+            </description>
+       </attribute>
+	 <attribute>
+            <name>includeSpanEle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+            </description>
+       </attribute>
+	 <attribute>
+            <name>colorStyleAttribute</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>
+            </description>
+       </attribute>
+
+   </tag>
+
+  <tag>
+      <name>summary-table</name>
+      <tag-class>com.bea.alsb.console.common.taglibs.table.SummaryTableTag</tag-class>
+      <body-content>empty</body-content>
+      <attribute>
+          <name>filterTypes</name>
+          <required>true</required>
+          <rtexprvalue>true</rtexprvalue>
+          <type>java.util.Map</type>
+          <description>
+          </description>
+     </attribute>
+    <attribute>
+        <name>dataMap</name>
+        <required>false</required>
+        <rtexprvalue>true</rtexprvalue>
+        <type>java.util.Map</type>
+        <description>
+          Can be used to pass in map of data object in format HashMap&lt;String, Integer&gt; to create a summary column,
+          without it being a child of the table tag
+        </description>
+   </attribute>
+ <attribute>
+          <name>URL</name>
+          <required>true</required>
+          <rtexprvalue>true</rtexprvalue>
+          <type>java.lang.String</type>
+          <description>
+          </description>
+     </attribute>
+     <attribute>
+            <name>commandId</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>com.bea.alsb.console.common.support.CommandId</type>
+            <description>
+                This attribute uses the action name to construct summary link
+            </description>
+     </attribute>
+
+  </tag>
+
+
+    <!--    This tag displays a table with header row.
+            This table can contain other tables
+    -->
+    <tag>
+        <name>task-table</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.table.TaskTableTag</tag-class>
+        <body-content>JSP</body-content>
+        <attribute>
+            <name>icon</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+            <description>Icon to be displayed in the header</description>
+        </attribute>
+        <attribute>
+            <name>title</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>Text to be displayed in the header</description>
+        </attribute>
+        <attribute>
+            <name>description</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>Text to be displayed on hover to the heading/icon</description>
+        </attribute>
+        <attribute>
+            <name>textlink</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>Link in the form of text</description>
+        </attribute>
+        <attribute>
+            <name>toggle</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>Whether to show the toggle button</description>
+        </attribute>
+        <attribute>
+            <name>toggleId</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>div id for toggle section</description>
+        </attribute>
+        <attribute>
+            <name>scripts</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>toggle scripts</description>
+        </attribute>
+        <attribute>
+            <name>newrow</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>Adds a new row with a class in style</description>
+        </attribute>
+        <attribute>
+            <name>nostartrow</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>
+                This doesn't add a starting row of the table for data portion (not header potion).
+                For some modules of sb console the start row should not be added.
+                Otherwise the data table which has borders will be inserted inside
+                a cell of this table, which also has borders. So more borders are displayed
+                than what are required. Setting this attribute to 'true' will not
+                give the starting row. This attribute implementation should be removed
+                after fixing the borders of the data table.
+            </description>
+        </attribute>
+        <attribute>
+            <name>smallimage</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>boolean</type>
+            <description>Displays the image in the smaller width and height</description>
+        </attribute>
+        <attribute>
+            <name>hspace</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>Horozontal space, basically width in percentage</description>
+        </attribute>
+        <attribute>
+            <name>class</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>Style class used in startrow</description>
+        </attribute>
+    </tag>
+
+    <!--    This tag displays a table with a header row.
+            This table can contain other tables
+    -->
+    <tag>
+        <name>task-table-header</name>
+        <tag-class>com.bea.alsb.console.common.taglibs.table.TaskTableHeaderTag</tag-class>
+        <body-content>JSP</body-content>
+        <attribute>
+            <name>width</name>
+            <required>false</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.String</type>
+            <description>Width of the row</description>
+        </attribute>
+    </tag>
+
+</taglib>

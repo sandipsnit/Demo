@@ -1,0 +1,286 @@
+# S563HPL.def: Collects Oracle Hyperion Planning Information
+# $Id: S563HPL.def,v 2.10 2012/04/17 13:44:22 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S563HPL.def,v 2.10 2012/04/17 13:44:22 mschenke Exp $
+#
+# Change History
+# 20120412  KRA  Extend collection.
+
+=head1 NAME
+
+S563HPL - Collects Oracle Hyperion Planning Information
+
+=head1 DESCRIPTION
+
+This module collects information for Oracle Hyperion Planning.
+
+The following reports can be generated and are regrouped under C<Planning>:
+
+=cut
+
+echo tput('bold'),'Processing HPL module ...',tput('off')
+
+# Initialization
+var $AGE           = getSetting('HPL_LOG_AGE',15)
+var $EPM_HOME      = ${EPM_HOME:${ENV.EPM_ORACLE_HOME:${ENV.HYPERION_HOME:''}}}
+var $HPL_REQUESTS  = getSetting('HPL_REQUESTS')
+var $ORACLE_HOME   = getSetting('ORACLE_HOME',getEnv('ORACLE_HOME',''))
+var $TAIL          = getSetting('HPL_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Planning'
+
+# Load the common library
+run library()
+
+=head2 plan_files - Planning Home Files
+
+Reports the contents of F<$EPM_HOME/Planning> directory.
+
+=cut
+
+report plan_files
+debug ' Inside HPL module, getting contents of Planning directory'
+prefix
+{write '---+!! Contents of Planning directory'
+ write '---## Information Taken from ',encode($dir)
+ write $TOC
+}
+var $dir = catDir($EPM_HOME,'Planning')
+loop $fil ($dir,grepDir($dir,'^\.+$','drv'))
+{if testDir('d',$fil)
+ {write '---++ Contents of ',encode($fil)
+  call statDir('an',$fil)
+  write $TOP
+ }
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Planning Home Files]]'
+
+=head2 Configuration Files
+
+Collects configuration files.
+
+=cut
+
+pretoc '2:Configuration Files'
+debug ' Inside HPL module, getting configuration files'
+call sort_files(3,0,\
+  catFile($EPM_HOME,'Planning','Planning.SystemDBproperties'),\
+  catFile($EPM_HOME,'Planning','HBRServer.properties'),\
+  catFile($EPM_HOME,'Planning','config','essbase.properties'),\
+  catFile($EPM_HOME,'deployments','WebLogic9','config','config.xml'),\
+  grepDir(catDir($EPM_HOME,'deployments','Tomcat5'),\
+          'Deploy\.properties$','p'),\
+  grepDir(catDir($EPM_HOME,'deployments'),'CSS\.xml','r'),\
+  grepDir(catDir($EPM_HOME,'common','config','product','planning',\
+                 '9.3.1.0'),\
+          '\.(xml|properties)$','p'),\
+  grepDir(catDir($EMP_HOME,'common','config','9.5.0.0','product',\
+                 'planning','9.5.0.0'),\
+          '\.(xml|properties)$','p'),\
+  grepDir(catDir($EPM_HOME,'deployments','Tomcat5','HyperionPlanning',\
+                 'webapps','HyperionPlanning','WEB-INF','classes'),\
+          '\.(xml|properties)$','p'),\
+  grepDir(catDir($EPM_HOME,'deployments','WebLogic9','servers',\
+                 'HyperionPlanning','webapps','HyperionPlanning','WEB-INF',\
+                 'classes'),\
+          '\.(xml|properties)$','p'),\
+  grepDir(catDir($EPM_HOME,'deployments','WebSphere6','profile',\
+                 'installedApps','hyslCell','HyperionPlanning.ear',\
+                 'HyperionPlanning.war','WEB-INF','classes'),\
+          '\.(xml|properties)$','p'),\
+  grepDir(catDir($ORACLE_HOME,'j2ee','HyperionPlanning','applib'),\
+          '\.(xml|properties)$','p'))
+
+=head2 Business Rules log files
+
+Collects business rules log files.
+
+=cut
+
+pretoc '2:Business Rules Log Files'
+debug ' Inside HPL module, getting business rule log files'
+call sort_files(3,$TAIL,\
+  catFile($EPM_HOME,'AnalyticAdministrationServices','console','bin',\
+          'hbrclient.log'),\
+  catFile($EPM_HOME,'deployments','Tomcat5','bin','hbrserver.log'),\
+  catFile($EPM_HOME,'deployments','WebSphere6','profile',\
+          'hbrserver.log'),\
+  catFile($EPM_HOME,'AnalyticAdministrationServices','AppServer',\
+          'InstalledApps','WebLogic','8.1','aasDomain','hbrserver.log'),\
+  catFile($EPM_HOME,'deployments','WebLogic9','hbrserver.log'),\
+  catFile($EPM_HOME,'deployments','Tomcat5','bin','hbrlaunch.log'),\
+  catFile($EPM_HOME,'deployments','WebSphere6','profile',\
+          'hbrlaunch.log'),\
+  catFile($EPM_HOME,'AnalyticAdministrationServices','AppServer',\
+          'InstalledApps','WebLogic','8.1','aasDomain','hbrlaunch.log'),\
+  catFile($EPM_HOME,'deployments','WebLogic9','hbrlaunch.log'))
+
+=head2 Other log Files
+
+Collects other log files.
+
+=cut
+
+pretoc '2:Other log Files'
+debug ' Inside HPL module, getting other log files'
+var $opt = concat('pm',$AGE)
+call sort_files(3,$TAIL,\
+  catFile($EPM_HOME,'deployments','WebSphere6','profile','logs',\
+          'HyperionPlanning','SystemErr.log'),\
+  catFile($EPM_HOME,'deployments','WebSphere6','profile','logs',\
+          'HyperionPlanning','SystemOut.log'),\
+  catFile($EPM_HOME,'deployments','Tomcat5','HyperionPlanning',\
+          'logs','Planning_log.txt'),\
+  catFile($EPM_HOME,'deployments','WebLogic9','servers',\
+          'HyperionPlanning','logs','HyperionPlanning.log'),\
+  grepDir(catDir($EPM_HOME,'logs'),\
+          '\.log$',$opt),\
+  grepDir(catDir($EPM_HOME,'Planning','logs'),\
+          '\.log$',$opt),\
+  grepDir(catDir($ORACLE_HOME,'j2ee','HyperionPlanning',\
+                 'application-deployments','HyperionPlanning'),\
+          '\.log$',$opt),\
+  grepDir(catDir($EPM_HOME,'deployments','Tomcat5','HyperionPlanning',\
+          'logs'),\
+          '\.log$',$opt),\
+  grepDir(catDir($EPM_HOME,'WebSphere6','profile','logs',\
+                 'HyperionPlanning'),\
+          '\.log$',$opt),\
+  grepDir(catDir($EPM_HOME,'deployments','Tomcat5','HyperionPlanning',\
+                 'webapps','HyperionPlanning','WEB-INF','classes'),\
+          '\.log$',$opt),\
+  grepDir(catDir($EPM_HOME,'deployments','WebLogic9','servers',\
+                 'HyperionPlanning','webapps','HyperionPlanning','WEB-INF',\
+                 'classes'),\
+          '\.log$',$opt),\
+  grepDir(catDir($EPM_HOME,'deployments','WebSphere6','profile',\
+                 'installedApps','hyslCell','HyperionPlanning.ear',\
+                 'HyperionPlanning.war','WEB-INF','classes'),\
+          '\.log$',$opt),\
+  grepDir(catDir($ORACLE_HOME,'j2ee','HyperionPlanning','applib'),\
+          '\.log$',$opt),\
+  grepDir(catDir($ORACLE_HOME,'opmn','logs'),\
+          '.',$opt))
+
+=head1 DEPLOYMENT REPORTS
+
+Available on version 11.1.2 and later.
+
+=cut
+
+if ?$HPL_REQUESTS
+{loop $uid (split('\|',$HPL_REQUESTS))
+ {next !$uid
+  var $ins = getSetting(concat('HPL_HOME',$uid))
+  call setAbbr(concat('HPL_i',$uid))
+  toc '%SPLIT%'
+  toc "1+:'",getSetting(concat('HPL_INSTANCE',$uid)),"' Deployment"
+
+=head2 diaglogs - Diagnostic Log Files
+
+Collects the diagnostic log files from F<$INSTANCE_HOME/diagnostics/logs>
+directory.
+
+=cut
+
+  report diaglogs
+  var $log = catDir($ins,'diagnostics','logs')
+  prefix
+  {write '---+!! Diagnostic Log Files'
+   write '---## From: ',$log
+   write '   * Last ',$TAIL,' lines from the log files captured'
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser or \
+               use the link to save them and use an adequate viewer.'
+   write '|*File Name*| *Size*|*Last Modified Date*|'
+  }
+  loop $fil (grepDir($log,'\.log$','irt'))
+  {var $lnk = encode($fil)
+   var $siz = getSize($fil)
+   if $siz
+   {output d,concat('L_',basename($fil))
+    if ${CUR.LAST}->write_tail($fil,$TAIL)
+     var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+    end ${CUR.LAST}
+   }
+   write '|',$lnk,' | ',$siz,'|',\
+             getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Diagnostic Log Files]]'
+
+=head2 Oracle WebLogic Server Information
+
+Includes the Oracle WebLogic reports generated by the WREQ module for the
+associated Oracle WebLogic Server domain.
+
+=cut
+
+  if ?getSetting(concat('HPL_DOM',$uid,'_REQ_DOMAIN'))
+  {var $dom = basename(last)
+   toc '%PUSH("%SPLIT%")%'
+   toc '%PUSH("1++:Oracle WebLogic Server Overview")%'
+   toc '%INCLUDE("',${CUR.GROUP},'_WREQ_HPL_TOP',$uid,'.toc",1)%'
+   toc '%POP2%'
+   toc '%PUSH("%SPLIT%")%'
+   toc '%PUSH("1++:',"'",$dom,"'",' Domain")%'
+   toc '%INCLUDE("',${CUR.GROUP},'_WREQ_HPL_DOM',$uid,'.toc",1)%'
+   toc '%POP2%'
+  }
+  unpretoc 2
+ }
+}
+
+=head1 PRODUCT REPORTS
+
+Collects the following reports on versions earlier than 11.1.2:
+
+=head2 Oracle WebLogic Server Information
+
+Includes the Oracle WebLogic Server reports generated by the WREQ module for
+the associated Oracle WebLogic Server domain (on versions having a product
+registry).
+
+=cut
+
+elsif ?${HPL_DOM_REQ_DOMAIN}
+{var $dom = basename(last)
+ toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1+:Oracle WebLogic Server Overview")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_WREQ_HPL_TOP.toc")%'
+ toc '%POP2%'
+ toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1+:',"'",$dom,"'",' Domain")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_WREQ_HPL_DOM.toc")%'
+ toc '%POP2%'
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.16: Sudev Alampalli.
+
+=item RDA 4.28: Chethan Kopparam.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

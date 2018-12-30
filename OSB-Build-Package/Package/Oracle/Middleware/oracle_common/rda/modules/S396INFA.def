@@ -1,0 +1,160 @@
+# S396INFA.def: Collects Informatica Information
+# $Id: S396INFA.def,v 1.3 2012/04/17 10:40:29 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S396INFA.def,v 1.3 2012/04/17 10:40:29 mschenke Exp $
+#
+# Change History
+# 20120409  KRA  Improve functionality.
+
+=head1 NAME
+
+S396INFA - Collects Informatica Information
+
+=head1 DESCRIPTION
+
+This module collects the Informatica-related information for Oracle Business
+Intelligence Applications.
+
+The following reports can be generated and are regrouped under C<Informatica>:
+
+=cut
+
+echo tput('bold'),'Processing INFA module ...',tput('off')
+
+# Initialization
+var $INFA_HOME   = getSetting('INFA_HOME','')
+var $INFA_DOMAIN = getSetting('INFA_DOMAIN')
+var $INFA_USER   = getSetting('INFA_USER')
+var $INFA_REPOS  = getSetting('INFA_REPOSITORY')
+var $TAIL        = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+var $MOD = cond(isWindows(),'f',\
+                isCygwin(), 'f',\
+                            'fx')
+
+pretoc '1:Informatica'
+
+# Load the common macros
+run library()
+
+=head2 domain_log - Domain Log
+
+Collect domain log using the command F<$INFA_HOME\server\bin\infacmd.sh> on
+UNIX and F<$INFA_HOME\server\bin\infacmd.bat> on Windows.
+
+=cut
+
+if and($INFA_DOMAIN,$INFA_USER,\
+  testFile($MOD,catFile($INFA_HOME,'server','bin',${AS.BAT:'infacmd'})))
+{var $pgm = lastCommand()
+ report domain_log
+ var $pwd = askPassword(\
+   concat('Enter the Administration Console password for user ',$INFA_USER,':'))
+ var $cmd = concat($pgm,' getlog -dn ',$INFA_DOMAIN,' -un ',$INFA_USER,\
+                   ' -pd ',$pwd,' -fm TEXT -ro')
+ prefix
+ {write '---+!! Domain Log Information'
+  write '---## Using: infacmd getlog'
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Domain Log]]'
+
+=head2 service_log - Repository Service Log
+
+Collect repository service log using the command
+F<$INFA_HOME\server\bin\infacmd.sh> on UNIX and
+F<$INFA_HOME\server\bin\infacmd.bat> on Windows.
+
+=cut
+
+ if $INFA_REPOS
+ {report service_log
+  var $cmd = concat($pgm,' getlog -dn ',$INFA_DOMAIN,' -un ',$INFA_USER,\
+                    ' -pd ',$pwd,' -fm TEXT -ro -st RS -sn ',$INFA_REPOS)
+  prefix
+  {write '---+!! Repository Service Log Information'
+   write '---## Using: infacmd getlog'
+  }
+  call writeCommand($cmd)
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Repository Service Log]]'
+ }
+}
+
+=head2 Workflow Logs
+
+Gathers F<$INFA_HOME/server/infa_shared/WorkflowLogs/*.log> files.
+
+=cut
+
+debug ' Inside INFA module, collecting the workflow log files'
+pretoc '2:Workflow Logs'
+call sort_files(3,$TAIL,\
+  grepDir(catDir($INFA_HOME,'server','infa_shared','WorkflowLogs'),'\.log$',\
+          'ip'))
+unpretoc
+
+=head2 Session Logs
+
+Gathers F<$INFA_HOME/server/infa_shared/SessLogs/*.log> files.
+
+=cut
+
+debug ' Inside INFA module, collecting the session log files'
+pretoc '2:Session Logs'
+call sort_files(3,$TAIL,\
+  grepDir(catDir($INFA_HOME,'server','infa_shared','SessLogs'),'\.log$','ip'))
+unpretoc
+
+=head2 Tomcat Logs
+
+Collects the F<catalina.out>, F<exceptions.log>, F<node.log>, and
+F<localhost_log> files from the F<$INFA_HOME/server/tomcat/logs> directory.
+
+=cut
+
+debug ' Inside INFA module, collecting the tomcat log files'
+if or(testDir('d',catDir($INFA_HOME,'tomcat')),\
+      testDir('d',catDir($INFA_HOME,'server','tomcat')))
+{var $dir = lastDir()
+ pretoc '2:Tomcat Logs'
+ call sort_files(3,$TAIL,\
+   catFile($dir,'logs','catalina.out'),\
+   catFile($dir,'logs','exceptions.log'),\
+   catFile($dir,'logs','node.log'),\
+   grepDir(catDir($dir,'logs'),'^localhost_log.*\.txt$','ipt'))
+ unpretoc
+}
+
+unpretoc
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.24: Annie Myatt.
+
+=item RDA 4.28: Ian Bristow.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut
+

@@ -1,0 +1,192 @@
+# M272LDOM.def: Collects Logical Domains Information
+# $Id: M272LDOM.def,v 1.1 2012/04/01 18:05:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M272LDOM.def,v 1.1 2012/04/01 18:05:43 mschenke Exp $
+#
+# Change History
+# 20120229  PRO  Initial version.
+
+=head1 NAME
+
+M272LDOM - Collects Logical Domains Information
+
+=head1 DESCRIPTION
+
+Collects information on Logical Domains.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('ldom')
+
+#------------------------------------------------------------------------------
+# XPLR_ldom section
+#------------------------------------------------------------------------------
+
+section XPLR_ldom
+
+# Validate the execution context
+call log_run('Processing LDOM sections ...')
+if !is_pkg_installed('SUNWldm')
+ return log_info('SUNWldm not installed')
+
+=head2 ldom - Logical Domains Information
+
+Gathers the Logical Domain information using the following commands:
+
+=over 2
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-bindings primary>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-constraints>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-constraints -p>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-constraints -x>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-devices>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-devices cpu>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-devices io>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-devices mau>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-devices memory>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-services>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-spconfig>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm list-variable>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm ls-dom>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm ls-dom -l>
+
+=item o C<${LDM}/opt/SUNWldm/bin/ldm ls-dom -p>
+
+=back
+
+where ${LDM} is obtained from the output of command:
+
+C</usr/bin/pkgparam SUNWldm BASEDIR>
+
+Collects the following Files:
+
+=over 2
+
+=item o F</var/opt/SUNWldm/ldom-db.xml>
+
+=item o F</var/opt/SUNWldm/mac_allocation.xml>
+
+=back
+
+=cut
+
+debug ' Inside LDOM collection, gathering the LDOM information'
+report ldom
+title '---+!! Logical Domains Information'
+title $TOC
+
+# Determine the program path
+var ($dir) = command('/usr/bin/pkgparam SUNWldm BASEDIR 2>/dev/null')
+var $ldm = catFile($dir,'opt','SUNWldm','bin','ldm')
+
+# Collect the command outputs
+call do_exec(\
+  ['ldom/ldm_list',\
+   $ldm,'list',\
+   '---+ Domains - Short Listing'],\
+  ['ldom/ldm_list-bindings_primary',\
+   $ldm,'list-bindings primary',\
+   '---+ Bound Resources'],\
+  ['ldom/ldm_list-constraints',\
+   $ldm,'list-constraints',\
+   '---+ Constraints'],\
+  ['ldom/ldm_list-constraints_-p',\
+   $ldm,'list-constraints -p',\
+   '---+ Constraints in Paseable Format'],\
+  ['ldom/ldm_list-constraints_-x',\
+   $ldm,'list-constraints -x',\
+   '---+ Constraints in XML format'],\
+  ['ldom/ldm_list-devices',\
+   $ldm,'list-devices',\
+   '---+ All Server Resources'],\
+  ['ldom/dm_list-devices_cpu',\
+   $ldm,'list-devices cpu',\
+   '---+ CPU Resources'],\
+  ['ldom/ldm_list-devices_io',\
+   $ldm,'list-devices io',\
+   '---+ Input/Output Resources'],\
+  ['ldom/ldm_list-devices_mau',\
+   $ldm,'list-devices mau',\
+   '---+ Modular Arithmetic Unit Resources'],\
+  ['ldom/ldm_list-devices_memory',\
+   $ldm,'list-devices memory',\
+   '---+ Memory Resources'],\
+  ['ldom/ldm_list-services',\
+   $ldm,'list-services',\
+   '---+ Exported Services'],\
+  ['ldom/ldm_list-spconfig',\
+   $ldm,'list-spconfig',\
+   '---+ Service Processor'],\
+  ['ldom/ldm_list-variable',\
+   $ldm,'list-variable',\
+   '---+ Variables and Values'],\
+  ['ldom/ldm_ls-dom',\
+   $ldm,'ls-dom',\
+   '---+ Logical Domains'],\
+  ['ldom/ldm_ls-dom_-l',\
+   $ldm,'ls-dom -l',\
+   '---+ Logical Domains - Long Listing'],\
+  ['ldom/ldm_ls-dom_-p',\
+   $ldm,'ls-dom -p',\
+   '---+ Logical Domains - Parseable Format'])
+
+# Collect the files
+loop $rec (['ldom/ldom-db.xml',\
+            '/var/opt/SUNWldm/ldom-db.xml'],\
+           ['ldom/mac_allocation.xml',\
+            '/var/opt/SUNWldm/mac_allocation.xml'])
+{prefix
+ {write '---+ Display of ',encode(basename($rec->[1])),' File'
+  write '---## Information Taken from ',encode($rec->[1])
+  call addBlock('E','D',$rec->[0])
+ }
+ call writeFile($rec->[1])
+ if hasOutput(true)
+  write $TOP
+}
+
+# Add the report to the table of content
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Logical Domains Information]]'
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

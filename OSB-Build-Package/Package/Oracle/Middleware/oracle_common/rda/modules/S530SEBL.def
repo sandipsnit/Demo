@@ -1,0 +1,768 @@
+# S530SEBL.def: Collects Siebel Information
+# $Id: S530SEBL.def,v 2.19 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S530SEBL.def,v 2.19 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S530SEBL - Collects Siebel Information
+
+=head1 DESCRIPTION
+
+This module collects Siebel information for any or all of the following:
+
+=over 2
+
+=item o Siebel Server
+
+=item o Siebel Gateway
+
+=item o Siebel Web Server
+
+=back
+
+The following reports can be generated and are regrouped under C<Siebel>:
+
+=cut
+
+echo tput('bold'),'Processing Siebel module ...',tput('off')
+
+# Initialization
+var $ADMIN   = getSetting('SEBL_GATE_USER','sadmin')
+var $APPL    = getSetting('SEBL_APPL')
+var $APPLTOP = getSetting('SEBL_APPL_TOP','')
+var $ENT     = getSetting('SEBL_APPL_ENTERPRISE')
+var $GATE    = getSetting('SEBL_GATE')
+var $GATETOP = getSetting('SEBL_GATE_TOP','')
+var $NODE    = getSetting('SEBL_GATE_NODE',${RDA.NODE})
+var $PORT    = getSetting('SEBL_GATE_PORT',2320)
+var $SVR     = getSetting('SEBL_APPL_SERVER')
+var $TAIL    = getSetting('RDA_TAIL',1000)
+var $WEB     = getSetting('SEBL_WEB')
+var $WEBTOP  = getSetting('SEBL_WEB_TOP','')
+var $OWNER   = uc(getSetting('SEBL_OWNER'))
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Siebel'
+
+# Define the duplicate file hash
+var %DUP
+
+# Load the common macros
+run library()
+
+# Macro to encode the version from a file
+macro fmt_version
+{var ($flg,@fil) = @arg
+ import $TOP,%DUP
+ keep $TOP,%DUP
+
+ loop $fil (@fil)
+ {if testFile('frT',$fil)
+  {output F,concat('log_',$nam = basename($fil))
+   prefix
+   {write '---+ Display of ',encode($nam),' File'
+    write '---## Information Taken from ',encode($fil)
+    call statFile('b',$fil)
+    write '<pre>'
+   }
+   call loadFile($fil)
+   if $flg
+   {loop $lin (getLines(0,1))
+     write replace($lin,'\.','&#46;',true)
+    loop $lin (getLines(2))
+     write $lin
+   }
+   else
+   {loop $lin (getLines())
+     write replace($lin,'\.','&#46;',true)
+   }
+   if hasOutput(true)
+   {write '</pre>'
+    write $TOP
+    var $DUP{$fil} = getFile()
+   }
+  }
+ }
+}
+
+=head2 registry - ODBC Registry Information
+
+For Windows, collects system ODBC Registry information.
+
+=cut
+
+if or(isWindows(),isCygwin())
+{debug ' Inside SEBL module, gathering registry information'
+ report registry
+ write '---+!! ODBC Registry information'
+ call writeRegistry('HKLM\SOFTWARE\ODBC\ODBC.INI')
+ toc '2:[[',getFile(),'][rda_report][ODBC Registry Information]]'
+}
+
+=head2 dbinfo - Database Information
+
+Collects Oracle Database information for Siebel.
+
+=cut
+
+if and(getSetting('SEBL_DB'),match($OWNER,'^[A-Z0-9][\w\$\#]{0,127}$'))
+{run DBinfo()
+
+ # Change the database context
+ if getSetting('SEBL_LOCAL')
+ {var $sid = getSetting('ORACLE_SID')
+  var $usr = getSetting('SQL_LOGIN')
+ }
+ elsif getSetting('SEBL_SID')
+ {var $sid = last
+  var $usr = uc(getSetting('SEBL_LOGIN','SIEBEL'))
+
+  # Determine the user password
+  if compare('eq',$usr,'/')
+   var ($usr,$pwd) = ('','')
+  elsif hasSqlPassword($usr,$sid)
+   var $pwd = undef
+  else
+   var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+
+  # Change the current user
+  var $old = setSqlLogin($usr,$pwd,$sid)
+
+  # If requested, change the database context
+  if getSetting('SEBL_SWITCH')
+   var $env = setSqlSid($sid)
+  else
+   var $env = undef
+  var $try = setSqlFailure(0)
+
+ }
+ else
+ {var $sid = undef
+
+  # Disable the database access
+  var $env = undef
+  var $old = setSqlLogin('','')
+  var $try = setSqlFailure(-1)
+ }
+
+ # Test the database connection and collect information
+ debug ' Inside SEBL module, getting database information'
+ report dbinfo
+
+ if testSql()
+ {echo ''
+  echo tput('bold'),\
+       'The schema containing Siebel repository is not accessible.',tput('off')
+  if getSqlMessage()
+  {echo last
+   write '---+!! Database Information'
+   write $TOC
+   write "Siebel repository not accessible (",getSqlMessage(),')'
+   toc '2:[[',getFile(),'][rda_report][Database Information]]'
+  }
+  echo ''
+ }
+ else
+ {var $TTL = '---+!! Database Information'
+  var @TTL = ('',\
+              '---+ Asynchronous Server Requests',\
+              '---+ Workflow Policies',\
+              '---+ Remote Mininum and Maximum Transaction Log',\
+              '---+ Remote Count of Transaction Set',\
+              '---+ Remote Count of Transaction Skipped',\
+              '---+ Process History',\
+              '---+ Running Processes',\
+              '---+ System Errors',\
+              '---+ Web Services Port Information',\
+              '---+ Workflows',\
+              '---+ Email Marketing Server Port Information',\
+              '---+ Email Marketing Server Parameter Information')
+  var @HDR = ('',\
+              '|*Name*|*Status*|*Description*|*Display Name*|*Enterprise Name*|\
+                *Exec Server Name*| *Count*|',\
+              '| *Count*|*Name*|',\
+              '| *Minimum Transaction Id*| *Maximum Transaction Id*| *Count*|',\
+              '| *Count*|',\
+              '| *Count*|',\
+              '|*Component Name*|*Server Name*|',\
+              '|*Component Name*|*Server Name*| *Count*|',\
+              '|*Server Name*|*Component Name*|*Last Updated*|*Logfile Name*|',\
+              '|*Port Address*|*Name*|',\
+              '|*Name*|*Status*|',\
+              '|*Port Address*|*Name*|',\
+              '|*Type*|*Value*|')
+  set $sql
+  {SELECT '|' ||
+  "       t3.name || ' |' ||
+  "       t1.status || ' |' ||
+  "       t3.desc_text || ' |' ||
+  "       t3.display_name || ' |' ||
+  "       t1.enterprise_name || ' |' ||
+  "       t1.exec_srvr_name || ' | ' ||
+  "       COUNT(t3.name) || '|'
+  " FROM :1.s_srm_request t1,
+  "      :1.s_srm_data t2,
+  "      :1.s_srm_action t3
+  " WHERE t1.row_id = t2.par_id(+)
+  "   AND t1.ACTION_ID = t3.row_id(+)
+  " GROUP BY t3.name,t1.status,t3.desc_text,t3.display_name,t1.enterprise_name,
+  "          t1.exec_srvr_name;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '| ' ||
+  "       COUNT(t1.req_id) || '|' ||
+  "       t2.name || ' |'
+  " FROM :1.s_escl_req t1, :1.s_escl_rule t2
+  " WHERE t1.rule_id = t2.row_id
+  " GROUP BY t2.name;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '| ' ||
+  "       MIN(txn_id) || '| ' ||
+  "       MAX(txn_id) || '| ' ||
+  "       COUNT(1) || ' |'
+  " FROM :1.s_dock_txn_log;
+  "PROMPT ___Macro_separator(4)___
+  "SELECT '| ' ||
+  "       COUNT(1) || '|'
+  " FROM :1.s_dock_txn_set;
+  }
+  if getSqlColumns('RDA',$OWNER,'S_DOCK_TXN_SKIP')
+  {append $sql
+   {PROMPT ___Macro_separator(5)___
+   "SELECT '| ' ||
+   "       COUNT(1) || '|'
+   " FROM :1.s_dock_txn_skip;
+   }
+  }
+  call clearSqlColumns('RDA')
+  if getSqlColumns('RDA',$OWNER,'S_SRM_TASK_HIST')
+  {append $sql
+   {PROMPT ___Macro_separator(6)___
+   "SELECT '|' ||
+   "       srvr_comp_name || ' |' ||
+   "       srvr_name || ' |'
+   " FROM :1.s_srm_task_hist
+   " WHERE srvr_end_ts IS NULL
+   "   AND srvr_task_type='Process';
+   "PROMPT ___Macro_separator(7)___
+   "SELECT '|' ||
+   "       srvr_comp_name || ' |' ||
+   "       srvr_name || ' | ' ||
+   "       COUNT(1) || '|'
+   " FROM :1.s_srm_task_hist
+   " WHERE srvr_task_type='Process'
+   " GROUP BY srvr_comp_name, srvr_name;
+   "PROMPT ___Macro_separator(8)___
+   "SELECT '|' ||
+   "       srvr_name || ' |' ||
+   "       srvr_comp_name || ' |' ||
+   "       last_upd || ' |' ||
+   "       srvr_logfile_name || ' |'
+   " FROM :1.s_srm_task_hist
+   " WHERE srvr_task_type='Normal Task' 
+   "   AND srvr_status = 'ERROR';
+   }
+  }
+  call clearSqlColumns('RDA')
+  append $sql
+  {PROMPT ___Macro_separator(9)___
+  "SELECT '|' ||
+	"       t1.port_address || ' |' ||
+	"	      t1.name || ' |'
+	" FROM :1.s_ws_port t1
+  "	WHERE t1.web_service_id IN (SELECT row_id
+  "                              FROM :1.s_ws_webservice
+  "                              WHERE name IN ('WebCatalogService',
+  "                                             'SAWSessionService',
+  "                                             'JobManagementService',
+  "                                             'SendMailingService'));
+  "PROMPT ___Macro_separator(10)___
+  "SELECT	'|' ||
+  "       t1.name || ' |' ||
+	"       t1.deploy_status_cd || ' |'
+  " FROM :1.s_wfa_dploy_def t1
+  "  LEFT OUTER JOIN :1.s_lst_of_val t2 ON t1.deploy_status_cd = t2.name
+	"	  AND t2.type = 'WFA_DPLY_STAT_CD'
+	"   AND t2.lang_id = 'ENU'
+  " WHERE	t1.type_cd = 'PROCESS'
+	"   AND (t1.deploy_status_cd = 'ACTIVE'
+  "        AND t1.processing_grp_cd = 'Marketing');
+  "PROMPT ___Macro_separator(11)___
+  "SELECT '|' ||
+  "       t1.port_address || ' |' ||
+  "       t1.name || ' |'
+	" FROM :1.s_ws_port t1
+  "	WHERE t1.web_service_id IN (SELECT row_id
+  "                              FROM :1.s_ws_webservice
+	"                              WHERE name = 'SendMailingService');
+  "PROMPT ___Macro_separator(12)___
+  "SELECT '|' ||
+  "       t1.type_cd || ' |' ||
+  "       t1.type_val || ' |'
+  " FROM :1.s_db_cnctr_svc t1
+  "  INNER JOIN :1.s_dd_db_cnctr t2 ON t1.db_cnctr_id = t2.row_id
+  "  LEFT OUTER JOIN :1.s_ws_port t3 ON t1.ws_port_id = t3.row_id
+  " WHERE t1.db_cnctr_id IN (SELECT row_id
+  "                           FROM :1.s_dd_db_cnctr
+  "                           WHERE name = 'Email Marketing Server');
+  "PROMPT ___Capture_Only_Url___
+  "SELECT 'address=' || t1.port_address
+	" FROM :1.s_ws_port t1
+  "	WHERE t1.name = 'JobManagementServiceSoap';
+  }
+  call separator(1)
+  call writeSql(bindSql($sql,$OWNER))
+  call separator(0,'Database Information')
+  var $url = value(grepSqlBuffer('Url','^address=','f'))
+ }
+
+ # Restore the previous database context
+ if defined($env)
+  call setSqlSid($env)
+ call setSqlFailure($try)
+ call setSqlLogin($old)
+}
+
+=head1 SIEBEL SERVER
+
+Collects Siebel Server files like following:
+
+=over 32
+
+=item F<upgrade.txt>
+
+Upgrade history
+
+=item F<siebsrvr/base.txt>
+
+Base FP information, which includes the build number
+
+=item F<siebsrvr/enu.txt>
+
+Language-specific build information
+
+=item F<siebsrvr/siebenv.sh>
+
+Environment definitions for Bourne or Korn shell
+
+=item F<siebsrvr/siebenv.csh>
+
+Environment definitions for C shell
+
+=item F<siebsrvr/admin/srvrdefs.dat>
+
+Server default definitions
+
+=item F<siebsrvr/admin/srvrdefs_sia.dat>
+
+SIA server default definitions
+
+=item F<siebsrvr/bin/siebmtshw>
+
+Collected on AIX only.
+
+=item F<siebsrvr/sys/.odbc.ini>
+
+=back
+
+Collects the Enterprise log file.
+
+=cut
+
+if $APPL
+{debug ' Inside SEBL Module, collecting the Siebel Server files'
+ pretoc '2:Siebel Server'
+ var ($dir,@tbl) = (cond(\
+   isWindows(),catDir($APPLTOP,'siebsrvr','log'),\
+   isCygwin(), catDir($APPLTOP,'siebsrvr','log'),\
+               catDir($APPLTOP,'siebsrvr','enterprises',$ENT,$SVR,'log')))
+ if ${OS.aix}
+  call push(@tbl,catFile($APPLTOP,'siebsrvr','bin','siebmtshw'))
+ call fmt_version(false,catFile($APPLTOP,'upgrade.txt'),\
+                        catFile($APPLTOP,'siebsrvr','base.txt'),\
+                        catFile($APPLTOP,'siebsrvr','enu.txt'))
+ call sort_files(3,$TAIL,\
+   catFile($APPLTOP,'upgrade.txt'),\
+   catFile($APPLTOP,'siebsrvr','base.txt'),\
+   catFile($APPLTOP,'siebsrvr','enu.txt'),\
+   catFile($APPLTOP,'siebsrvr','siebenv.sh'),\
+   catFile($APPLTOP,'siebsrvr','siebenv.csh'),\
+   catFile($APPLTOP,'siebsrvr','admin','srvrdefs.dat'),\
+   catFile($APPLTOP,'siebsrvr','admin','srvrdefs_sia.dat'),\
+   catFile($APPLTOP,'siebsrvr','sys','.odbc.ini'),\
+   catFile($dir,concat($ENT,'.',$SVR,'.log')),\
+   @tbl)
+
+=head2 crash - Crash Files
+
+Collects C<crash*.txt> files found in the F<siebsrvr/bin> directory.
+
+=cut
+
+ debug ' Inside SEBL Module, collecting the crash files'
+ report crash
+ prefix
+ {write '---+!! Crash Files Found'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              risks. To prevent them, access the file outside the browser or \
+              use the link to save them and use an adequate viewer.'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ loop $fil (grepDir(catDir($APPLTOP,'siebsrvr','bin'),'^crash.*\.txt$','inp'))
+ {var $siz = getSize($fil)
+  var $lnk = encode($fil)
+  if $siz
+  {output d,basename($fil)
+   if ${CUR.LAST}->write_tail($fil,$TAIL)
+    var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+   call $[OUT]->end_report(${CUR.LAST})
+  }
+  write '|',$lnk,' | ',$siz,'|',\
+            getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Crash Files]]'
+
+=head2 fdr - .fdr Files
+
+Lists C<.fdr> files found in the F<siebsrvr/bin> directory.
+
+=cut
+
+ debug ' Inside SEBL Module, listing the .fdr files'
+ report fdr
+ prefix
+  write '---+ .fdr Files Found'
+ call statFile('p',grepDir(catDir($APPLTOP,'siebsrvr','bin'),\
+                           '\.fdr$','inp'))
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][.fdr Files]]'
+
+=head2 evt_result - EVT Result
+
+Collects the results generated using Environment Verification Tool.
+
+=cut
+
+ debug ' Inside SEBL Module, getting EVT result'
+ if testFile('x',catFile($APPLTOP,'siebsrvr','bin',${AS.EXE:'evt'}))
+ {var $pgm = concat(lastCommand(),' -r ',$APPLTOP,' -e ',$ENT,' -s ',$SVR,\
+                    ' -d SHOWERRORS -o TEXT -f ',\
+                    catCommand($APPLTOP,'siebsrvr','bin','evt.ini'))
+  if isUnix()
+   call source(catFile($APPLTOP,'siebsrvr','siebenv.sh'),true)
+  var $out = newTemp('EVT')
+  call command(concat($pgm,' >',quote($out,'x')))
+  report evt_result
+  prefix
+  {write '---+ Environment Verification Tool Result'
+   write '---## Using: ',encode($pgm)
+  }
+  call writeFile($out)
+  if hasOutput(true)
+  {write $TOP
+   toc '3:[[',getFile(),'][rda_report][EVT Result]]'
+  }
+  if isUnix()
+   call unsource()
+  call unlinkTemp('EVT')
+ }
+
+=head2 obisrvr_status - OBI Server Availability
+
+Checks for the availability of OBI Server.
+
+=cut
+
+ if length($url)
+ {debug ' Inside SEBL Module, checking OBI server availability'
+  report obisrvr_status
+  title '---+!! OBI Server Availability'
+  title $TOC
+
+  # Run ping test
+  run &{check(getOsName(),'aix',            'OSaix',\
+                          'darwin',         'OSdarwin',\
+                          'dec_osf',        'OSosf',\
+                          'dynixptx',       'OSptx',\
+                          'hpux',           'OShpux',\
+                          'linux',          'OSlinux',\
+                          'solaris',        'OSsunos',\
+                          cond(isCygwin(),  'OSwin32',\
+                               isUnix(),    'OSunix',\
+                               isVms(),     'OSvms',\
+                               isWindows(), 'OSwin32'))}('SEBL')
+  var $hst = ''
+  if match($url,'^http:\/\/(.*?)\/')
+   var ($hst) = last
+  var $cmd = ping_command($hst)
+  prefix
+  {write '---+ Ping ',$hst
+   write '---## Using: ',encode($cmd)
+  }
+  call writeCommand($cmd)
+  if hasOutput(true)
+   write $TOP
+
+  # HTTP request
+  var $req = createRequest('GET',$url)
+  var $rsp = submitRequest($req)
+  prefix
+  {write '---+ HTTP Request'
+   write '---## Using: ',encode($url)
+  }
+  if isSuccess($rsp)
+   write 'OBISRVR is alive%BR%'
+  else
+   write 'Unable to reach OBISRVR (',join(',',getRspCode($rsp)),\
+         ' - ',getRspMessage($rsp),')%BR%'
+  if hasOutput(true)
+   write $TOP
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][OBI Server Availability]]'
+ }
+ unpretoc
+}
+
+=head1 SIEBEL GATEWAY
+
+Collects important Siebel Gateway files like following:
+
+=over 32
+
+=item F<upgrade.txt>
+
+Upgrade history
+
+=item F<gtwysrvr/base.txt>
+
+Base FP information, which includes the build number
+
+=item F<gtwysrvr/enu.txt>
+
+Language-specific build information
+
+=item F<gtwysrvr/admin/gtwydefs.dat>
+
+Gateway default definitions
+
+=item F<gtwysrvr/admin/siebns.dat>
+
+Server and application definitions on Windows
+
+=item F<gtwysrvr/admin/srvrdefs.dat>
+
+Server default definitions
+
+=item F<gtwysrvr/admin/srvrdefs_sia.dat>
+
+SIA server default definitions
+
+=item F<gtwysrvr/bin/gateway.cfg>
+
+Gateway configuration file
+
+=item F<gtwysrvr/log/NameSrvr.log>
+
+Current gateway server log file
+
+=item F<gtwysrvr/sys/siebns.dat>
+
+Server and application definitions on UNIX
+
+=back
+
+=cut
+
+if $GATE
+{debug ' Inside SEBL Module, collecting Siebel Gateway files'
+ pretoc '2:Siebel Gateway'
+ call fmt_version(false,catFile($GATETOP,'upgrade.txt'),\
+                        catFile($GATETOP,'gtwysrvr','base.txt'),\
+                        catFile($GATETOP,'gtwysrvr','enu.txt'))
+ var $fil = cond(isUnix(),catFile($GATETOP,'gtwysrvr','sys','siebns.dat'),\
+                          catFile($GATETOP,'gtwysrvr','admin','siebns.dat'))
+ call fmt_version(true,$fil)
+ call sort_files(3,$TAIL,\
+   catFile($GATETOP,'upgrade.txt'),\
+   catFile($GATETOP,'gtwysrvr','base.txt'),\
+   catFile($GATETOP,'gtwysrvr','enu.txt'),\
+   catFile($GATETOP,'gtwysrvr','admin','gtwydefs.dat'),\
+   catFile($GATETOP,'gtwysrvr','admin','srvrdefs.dat'),\
+   catFile($GATETOP,'gtwysrvr','admin','srvrdefs_sia.dat'),\
+   catFile($GATETOP,'gtwysrvr','bin','gateway.cfg'),\
+   catFile($GATETOP,'gtwysrvr','log','NameSrvr.log'),\
+   $fil)
+
+=head2 param_info - Parameter Information
+
+Collects C<Marketing File System>, C<Maximum Tasks>, C<Maximum MT Servers>,
+and C<Minimum MT Servers> parameter information using F<srvrmgr> command.
+
+=cut
+
+ if and($ADMIN,$APPL,$ENT,$NODE,$PORT,$SVR)
+ {if isUnix()
+   call source(catFile($GATETOP,'gtwysrvr','siebenv.sh'),true)
+  var $job = createTemp('JOB')
+  var $out = getTemp('OUT')
+  call writeTemp('JOB','list ent param MarketingFileSystem')
+  call writeTemp('JOB','list param maxtasks for comp wfprocmgr')
+  call writeTemp('JOB','list param maxmtservers for comp wfprocmgr')
+  call writeTemp('JOB','list param minmtservers for comp wfprocmgr')
+  call writeTemp('JOB','exit')
+  call closeTemp('JOB')
+  var $cmd = concat(catCommand($GATETOP,'gtwysrvr','bin',${AS.EXE:'srvrmgr'}),\
+                    ' /g ',$NODE,':',$PORT,' /e ',$ENT,' /s ',$SVR,\
+                    ' /u ',$ADMIN)
+  if getSetting('SQL_PASSWORD_SEBL_GATE_USER')
+   var ($pwd) = unpack('u',last)
+  else
+   var $pwd = askPassword(concat('Enter ',$ADMIN,' user password:'))
+  output | concat($cmd,' /i ',quote($job,'x'),' >',quote($out,'x'),' 2>&1')
+  write $pwd
+  close
+  report param_info
+  prefix
+  {write '---+ Parameter Information'
+   write '---## Using: ',encode($cmd)
+  }
+  call writeFile($out)
+  if hasOutput(true)
+  {write $TOP
+   toc '3:[[',getFile(),'][rda_report][Parameter Information]]'
+  }
+  if isUnix()
+   call unsource()
+  call unlinkTemp('JOB')
+  call unlinkTemp('OUT')
+ }
+ unpretoc
+}
+
+=head1 SIEBEL WEB SERVER
+
+Collects important Siebel Web Server files like following:
+
+=over 25
+
+=item F<sweapp/upgrade.txt>
+
+Upgrade history
+
+=item F<sweapp/base.txt>
+
+Base FP information, which includes the build number
+
+=item F<sweapp/enu.txt>
+
+Language-specific build information
+
+=item F<sweapp/log.txt>
+
+Installation log
+
+=item F<sweapp/bin/eapps.cfg>
+
+Web application details
+
+=item F<sweapp/bin/eapps_sia.cfg>
+
+SIA web application details
+
+=back
+
+=cut
+
+if $WEB
+{debug ' Inside SEBL Module, collecting Siebel Web Server files'
+ pretoc '2:Siebel Web Server'
+ call fmt_version(false,catFile($WEBTOP,'sweapp','base.txt'),\
+                        catFile($WEBTOP,'sweapp','enu.txt'),\
+                        catFile($WEBTOP,'sweapp','upgrade.txt'))
+ call sort_files(3,$TAIL,\
+   catFile($WEBTOP,'sweapp','base.txt'),\
+   catFile($WEBTOP,'sweapp','enu.txt'),\
+   catFile($WEBTOP,'sweapp','log.txt'),\
+   catFile($WEBTOP,'sweapp','upgrade.txt'),\
+   catFile($WEBTOP,'sweapp','bin','eapps.cfg'),\
+   catFile($WEBTOP,'sweapp','bin','eapps_sia.cfg'))
+
+=head2 swselog - Extension Log Files
+
+Gathers Siebel Web Server extension log files.
+
+=cut
+
+ debug ' Inside SEBL Module, collecting the Web Server Extension log files'
+ report swselog
+ prefix
+ {write '---+!! Siebel Web Server Extension Log Files'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              risks. To prevent them, access the file outside the browser or \
+              use the link to save them and use an adequate viewer.'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ var $cnt = 100
+ loop $fil (grepDir(catDir($APPLTOP,'sweapp','log'),'^ss\d+_\d+\.log$','ipt'))
+ {var $lnk = encode($fil)
+  var $siz = getSize($fil)
+  if $siz
+  {output d,basename($fil)
+   if ${CUR.LAST}->write_tail($fil,$TAIL)
+    var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+   call $[OUT]->end_report(${CUR.LAST})
+  }
+  write '|',$lnk,' | ',$siz,'|',\
+            getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  decr $cnt
+  break !$cnt
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Extension Log Files]]'
+ unpretoc
+}
+
+# Do not generate an empty table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>,
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.18: Taylor Schock.
+
+=item RDA 4.19: Dave Henriquez.
+
+=item RDA 4.20: Dave Henriquez.
+
+=item RDA 4.23: Taylor Schock.
+
+=item RDA 4.24: Taylor Schock.
+
+=item RDA 4.25: Gabriel Gonzalez, Taylor Schock.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

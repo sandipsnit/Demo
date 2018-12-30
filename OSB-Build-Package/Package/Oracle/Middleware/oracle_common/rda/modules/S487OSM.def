@@ -1,0 +1,126 @@
+# S487OSM.def: Collects Oracle Communications OSM Information
+# $Id: S487OSM.def,v 1.6 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S487OSM.def,v 1.6 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S487OSM - Collect Oracle Communications OSM Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Communications Order and Service Management-related
+information. The following reports can be generated and are regrouped under
+C<Order and Service Management>:
+
+=cut
+
+echo tput('bold'),'Processing OSM module ...',tput('off')
+
+# Initialization
+var $OSM_DOMAIN = getSetting('OSM_DOMAIN','')
+var $OSM_LIMIT  = getSetting('OSM_LIMIT',5000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+toc '1:Order and Service Management'
+
+=head2 domain_directories - Domain Directory Listing
+
+Lists the content of the domain.
+
+=cut
+
+macro stat_tree
+{var ($dir) = @arg
+ import $TOP
+ keep $TOP
+
+ prefix
+ {
+ }
+ call statDir('n',$dir)
+ if hasOutput(true)
+  write $TOP
+
+ loop $pth (grepDir($dir,'^\.+$','npv'))
+ {if testFile('dr',$pth)
+  {next testFile('l',$pth)
+   call stat_tree($pth)
+  }
+ }
+}
+
+debug ' Inside OSM module, listing domain directory structure'
+report domain_directories
+write '---+ Adminserver Domain Listing'
+write '---## Recursively Searched from ',encode($OSM_DOMAIN)
+call stat_tree($OSM_DOMAIN)
+toc '2:[[',getFile(),'][rda_report][Domain Directory Listing]]'
+
+=head2 domain_logs - Domain Log Files
+
+Collects domain log files.
+
+=cut
+
+debug ' Inside OSM module, getting domain log files'
+report domain_logs
+
+write '---+!! Domain Log Files (',$OSM_LIMIT,' lines of each type)'
+write '---## From ',$OSM_DOMAIN
+write $TOC
+
+loop $fil (grepDir($OSM_DOMAIN,'log$','np'))
+{prefix
+ {if isCreated()
+   write '---'
+  write '---+',encode($fil)
+ }
+ call writeTail($fil,$OSM_LIMIT)
+ if hasOutput(true)
+  write $TOP
+}
+
+loop $dir (grepDir($OSM_DOMAIN,'logs','dr'))
+{loop $log (grepDir($dir,'log$','dr'))
+ {var $max = $OSM_LIMIT
+  loop $fil (grepDir(dirname($log),concat('^',quote(basename($log))),'tr'))
+  {break expr('<=',$max,0)
+   prefix
+   {if isCreated()
+     write '---'
+    write '---+',encode($fil)
+   }
+   call writeTail($fil,$max)
+   decr $max,getWriteLength()
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+}
+toc '2:[[',getFile(),'][rda_report][Domain Log Files]]'
+
+=begin credits
+
+=over 10
+
+=item RDA 4.19: Robert Finley
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

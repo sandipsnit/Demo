@@ -1,0 +1,323 @@
+# S730PWEB.def: Collects PeopleSoft Information from Web Application Server
+# $Id: S730PWEB.def,v 2.7 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S730PWEB.def,v 2.7 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S730PWEB - Collects PeopleSoft Information from Web Application Server
+
+=head1 DESCRIPTION
+
+This module collects PeopleSoft diagnostic information from Web Application
+Server. Tbis module is applicable for Oracle Application Server, Oracle
+WebLogic Server, and IBM WebSphere only.
+
+The following reports can be generated and are regrouped under C<PeopleSoft/Web
+Application Server>:
+
+=cut
+
+echo tput('bold'),'Processing PeopleSoft information from Web Application \
+                   Server ...',tput('off')
+
+# Initialization
+var $PWEB_HOME = getSetting('PSFT_HOME',getEnv('PS_HOME',''))
+var $PWEB_PATH = getSetting('PWEB_PATH','')
+var $PWEB_TYPE = getSetting('PWEB_TYPE')
+var $PWEB_VERS = getSetting('PWEB_VERSION')
+var $TAIL      = getSetting('PSFT_TAIL',1000)
+
+var $PS1 = cond(length($PWEB_HOME),concat('^',quote($PWEB_HOME),'\b'),'^$')
+var $AS1 = cond(length($PWEB_PATH),concat('^',quote($PWEB_PATH),'\b'),'^$')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+var %tbl = (oas       => 'Oracle Application Server',\
+            weblogic  => 'Oracle WebLogic Server',\
+            websphere => 'IBM WebSphere Server')
+
+# Validate the Web server type
+if !match($PWEB_TYPE,'(oas|weblogic|websphere)')
+{echo 'Invalid web server type'
+ return
+}
+
+# Initialize the table of content
+pretoc '^1:PeopleSoft'
+pretoc '1+:',nvl($tb{$PWEB_TYPE},'Web Application Server')
+
+# Load the common macros
+run PSFTlib()
+
+=head2 generic - General Information
+
+Reports the PeopleSoft home directory and displays information about the Web
+application server.
+
+=cut
+
+report generic
+write '---+!! General Information'
+write '|*PeopleSoft Home*|',$PWEB_HOME,'|'
+write '|*Web Application Server Home*|',$PWEB_PATH,'|'
+write '|*Web Application Server Type*|',nvl($tbl{$PWEB_TYPE},$PWEB_TYPE),'|'
+write '|*Web Application Server Version*|',$PWEB_VERS,'|'
+toc '2:[[',getFile(),'][rda_report][General Information]]'
+
+=head1 FOR ORACLE APPLICATION SERVER
+
+=head2 info - Information
+
+Reports that Oracle Application Server information is collected by the IAS
+module.
+
+=cut
+
+if compare('eq',$PWEB_TYPE,'oas')
+{report info
+ write 'Web Application Server to be collected by the IAS module'
+ toc '2:[[',getFile(),'][rda_report][Information]]'
+}
+
+=head1 FOR ORACLE WEBLOGIC SERVER
+
+Collects PeopleSoft information from Oracle Weblogic Server domains. It looks
+for all domains containg a file F<piaInstallLog.xml>. For each of them, it
+collects the related configuration and log files.
+
+=cut
+
+elsif compare('eq',$PWEB_TYPE,'weblogic')
+{# Identify the relevant domains
+ var @dom = ()
+ loop $dom (grepDir(catDir($PWEB_HOME,'webserv'),'^\.+$','nv'))
+ {if testFile('f',catFile($PWEB_HOME,'webserv',$dom,'piaInstallLog.xml'))
+   call push(@dom,$dom)
+ }
+ 
+ # Get domain information
+ loop $dom (@dom)
+ {var $dir = catDir($PWEB_HOME,'webserv',$dom)
+  pretoc '%SPLIT%'
+  pretoc "1++:'",$dom,"' Domain"
+
+  # Collect configuration files
+  pretoc '2: Configuration Files'
+  var @fil = ()
+  loop $pth (grepDir(catDir($dir,'applications','peoplesoft','PORTAL',\
+                            'WEB-INF','psftdocs'),'^\.+$','pv'))
+  {if testDir('d',$pth)
+    call push(@fil,catFile($pth,'configuration.properties'),\
+                  catFile($pth,'pstools.properties'),\
+                  grepDir(catDir($pth,'webprof'),'^\.+$','rv'))
+  }
+  call sort_psft(3,0,$PS1,'$PS_HOME',@fil,\
+    catFile($dir,'config.xml'),\
+    catFile($dir,'setEnv.sh'),\
+    catFile($dir,'bin','setEnv.sh'),\
+    catFile($dir,'config','config.xml'),\
+    catFile($dir,'applications','peoplesoft','PORTAL','WEB-INF','web.xml'),\
+    catFile($dir,'applications','peoplesoft','PORTAL','WEB-INF',\
+            'weblogic.xml'),\
+    catFile($dir,'applications','peoplesoft','PSIGW','WEB-INF','web.xml'),\
+    catFile($dir,'applications','peoplesoft','PSIGW','WEB-INF','weblogic.xml'),\
+    catFile($dir,'applications','peoplesoft','PSIGW','WEB-INF',\
+            'integrationGateway.properties'),\
+    catFile($dir,'applications','peoplesoft','PSIGW','msgLog.html'),\
+    catFile($dir,'applications','peoplesoft','PSIGW','errorLog.html'))
+  unpretoc
+
+  # Collect log files
+  pretoc '2: Log Files'
+  call sort_psft(3,$TAIL,$PS1,'$PS_HOME',\
+    grepDir(catDir($dir,'logs'),'\.log$','p'),\
+    grepDir(catDir($dir,'servers','PIA','logs'),'\.log$','p'))
+  unpretoc 3
+ }
+}
+
+=head1 FOR IBM WEBSPHERE SERVER
+
+Collects cell and application configuration files and log files.
+
+=cut
+
+elsif compare('eq',$PWEB_TYPE,'websphere')
+{if compare('same',$PWEB_VERS,'5.1')
+ {# Get data for WebSphere 5.1
+
+  pretoc '%SPLIT%'
+  pretoc '1++:Generic Information'
+
+  # Collect the configuration files
+  pretoc '2: Configuration Files'
+  var @fil = ()
+  loop $cel (grepDir(catDir($PWEB_PATH,'config','cells'),'^\.+$','pv'))
+  {call push(@fil,catFile($cel,'virtualhosts.xml'))
+   loop $nod (grepDir(catDir($cel,'nodes'),'^\.+$','pv'))
+    call push(@fil,catFile($nod,'serverindex.xml'),\
+                   grepDir(catDir($nod,'servers'),'^server\.xml$','r',2))
+  }
+  call sort_psft(3,0,$AS1,'$AS_HOME',@fil)
+  unpretoc
+
+  # Collect the log files
+  pretoc '2: Log Files'
+  call sort_psft(3,$TAIL,$AS1,'$AS_HOME',\
+    grepDir(catDir($PWEB_PATH,'logs'),'\.log$','r',2))
+  unpretoc 3
+
+  # Identify the relevant domains/applications
+  var @tbl = ()
+  loop $dom (grepDir(catDir($PWEB_HOME,'webserv'),'^\.+$','nv'))
+  {loop $app (grepDir(catDir($PWEB_HOME,'webserv',$dom),'^\.+$','nv'))
+   {if testFile('f',catFile($PWEB_HOME,'webserv',$dom,$app,'setEnv.sh'))
+     call push(@tbl,[$dom,$app])
+   }
+  }
+
+  # Get application information
+  loop $itm (@tbl)
+  {var ($dom,$app) = @{$itm}
+   var $dir = catDir($PWEB_HOME,'webserv',$dom,$app)
+   pretoc '%SPLIT%'
+   pretoc "1++:'",$dom,"/",$app,"' Domain/Application"
+
+   # Collect application configuration files
+   pretoc '2: Configuration Files'
+   var @fil = ()
+   loop $pth (grepDir(catDir($dir,'PORTAL','WEB-INF','psftdocs'),'^\.+$','pv'))
+   {if testDir('d',$pth)
+     call push(@fil,catFile($pth,'configuration.properties'),\
+                    catFile($pth,'pstools.properties'),\
+                    grepDir(catDir($pth,'webprof'),'^\.+$','rv'))
+   }
+   call sort_psft(3,0,$PS1,'$PS_HOME',@fil,\
+     catFile($dir,'setEnv.sh'),\
+     catFile($dir,'PORTAL','WEB-INF','web.xml'),\
+     catFile($dir,'PSIGW','WEB-INF','web.xml'),\
+     catFile($dir,'PSIGW','WEB-INF','integrationGateway.properties'),\
+     catFile($dir,'PSIGW','msgLog.html'),\
+     catFile($dir,'PSIGW','errorLog.html'))
+   unpretoc 3
+  }
+ }
+ elsif compare('same',$PWEB_VERS,'6.1')
+ {# Collect generic log files for IBM WebSphere 6.1
+  pretoc '%SPLIT%'
+  pretoc '1++:Generic Information'
+  pretoc '2: Log Files'
+  var @fil = ()
+  loop $dom (grepDir(catDir($PWEB_HOME,'webserv'),'^\.+$','pv'))
+   call push(@fil,grepDir(catDir($dom,'logs'),'\.log$','r',2))
+  call sort_psft(3,$TAIL,$PS1,'$PS_HOME',@fil)
+  unpretoc 3
+
+  # Identify the relevant cells
+  var @tbl = ()
+  loop $dom (grepDir(catDir($PWEB_HOME,'webserv'),'^\.+$','nv'))
+  {loop $cel (grepDir(catDir($PWEB_HOME,'webserv',$dom,'config','cells'),\
+                      '^\.+$','nv'))
+   {if testFile('f',catFile($PWEB_HOME,'webserv',$dom,'config','cells',$cel,\
+                            'virtualhosts.xml'))
+     call push(@tbl,[$dom,$cel])
+   }
+  }
+
+  # Get cell information
+  loop $itm (@tbl)
+  {var ($dom,$cel) = @{$itm}
+   var $dir = catDir($PWEB_HOME,'webserv',$dom,'config','cells',$cel)
+
+   pretoc '%SPLIT%'
+   pretoc "1+:'",$dom,"/",$cel,"' Domain/Cell"
+   pretoc '2: Configuration Files'
+   var @fil = ()
+   loop $pth (grepDir(catDir($dir,'nodes'),'^\.+$','pv'))
+   {if testDir('d',$pth)
+     call push(@fil,catFile($pth,'serverindex.xml'),\
+                    grepDir(catDir($pth,'servers'),'^server\.xml$','r',2))
+   }
+   call sort_psft(3,0,$PS1,'$PS_HOME',@fil,\
+     catFile($dir,'virtualhosts.xml'),\
+     catFile($dir,'security.xml'))
+   unpretoc 3
+  }
+
+  # Identify the relevant applications
+  var @tbl = ()
+  loop $dom (grepDir(catDir($PWEB_HOME,'webserv'),'^\.+$','nv'))
+  {loop $nod (grepDir(catDir($PWEB_HOME,'webserv',$dom,'installedApps'),\
+                      '^\.+$','nv'))
+   {loop $app (grepDir(catDir($PWEB_HOME,'webserv',$dom,'installedApps',$nod),\
+                       '^\.+$','nv'))
+    {if testDir('d',catDir($PWEB_HOME,'webserv',$dom,'installedApps',$nod,$app,\
+                           'PORTAL.war'))
+      call push(@tbl,[$dom,$nod,$app])
+    } 
+   }
+  }
+
+  # Collects the application configuration files
+  loop $itm (@tbl)
+  {var ($dom,$nod,$app) = @{$itm}
+   var $dir = catDir($PWEB_HOME,'webserv',$dom,'installedApps',$nod,$app)
+
+   pretoc '%SPLIT%'
+   pretoc "1+:'",$dom,"/",$nod,"/",$app,"' Domain/Node/Application"
+   pretoc '2: Configuration and Log Files'
+   var @fil = ()
+   loop $pth (grepDir(catDir($dir,'PORTAL.war','WEB-INF','psftdocs'),'^\.+$',\
+                      'pv'))
+   {if testDir('d',$pth)
+     call push(@fil,catFile($pth,'configuration.properties'),\
+                    catFile($pth,'pstools.properties'),\
+                    grepDir(catDir($pth,'webprof'),'^\.+$','rv'))
+   }
+   call sort_psft(3,0,$PS1,'$PS_HOME',@fil,\
+     catFile($dir,'setEnv.sh'),\
+     catFile($dir,'PORTAL.war','WEB-INF','web.xml'),\
+     catFile($dir,'PSIGW.war','WEB-INF','web.xml'),\
+     catFile($dir,'PSIGW.war','WEB-INF','integrationGateway.properties'),\
+     catFile($dir,'PSIGW.war','msgLog.html'),\
+     catFile($dir,'PSIGW.war','errorLog.html'))
+   unpretoc 3
+  }
+ }
+}
+
+# Disable the group title in next index
+if isTocCreated(true)
+ toc '-:PeopleSoft'
+
+=head1 SEE ALSO
+
+L<PSFTlib.def|modules::PSFTlib>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.18: Sudev Alampalli, Ramesh Jayaraman, Lorenzo Jimenez,
+Nirmal Kumar, Lucian Sadacliev.
+
+=item RDA 4.19: Lucian Sadacliev.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

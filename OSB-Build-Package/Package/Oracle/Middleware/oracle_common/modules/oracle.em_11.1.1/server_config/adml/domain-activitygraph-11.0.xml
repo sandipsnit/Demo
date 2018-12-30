@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+
+<!-- Copyright (c) 2009, 2012, Oracle and/or its affiliates. 
+All rights reserved. -->
+
+<!--
+   This file contains the metric rules for the WebLogic Server.  It contains
+   rules that must be evaluated by looking at all servers in the domain. This is 
+   necessary for the Response metric since a server will only have a runtime
+   mbean if it is up.  In this case, we need to look at all ServerRuntime mbeans
+   in the domain and see if we can find the one that we are looking for.
+
+   MODIFIED    (MM/DD/YY)
+   mmuppago    04/23/12 - ADML warning for no key column fix
+   yeelcha     06/10/10 - Portlet Producers Status needs to be Union of WebLogic Server and WebSphere Server Status
+
+-->
+
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="activitygraph">
+
+
+<Table Name="Response">
+  <ColumnDef Name="Status" Type="Integer"/>
+  <ColumnDef Name="serverName" Type="String" Key="true"/>
+
+  <Select Name="Response_result">
+   <TableFrom Name="weblogic_j2eeserver:Response"/>
+   <TableFrom Name="websphere_j2eeserver:Response"/>
+   <Column Name="serverName" Type="String">
+     <ColumnFrom Name="serverName"/>
+   </Column>
+   <Column Name="Status" Type="Integer">
+    <If>
+     <Or>
+     <Condition Operator="EQ">
+       <ColumnFrom Name="Status" Table="weblogic_j2eeserver:Response" />
+       <Value>1</Value>
+      </Condition>
+      <Condition Operator="EQ">
+       <ColumnFrom Name="Status" Table="websphere_j2eeserver:Response" />
+       <Value>1</Value>
+      </Condition>
+     </Or>
+     <Then>
+       <Value>1</Value>
+     </Then>
+     <Else>
+       <Value>0</Value>
+     </Else>
+    </If>
+    <Default>0</Default>
+   </Column>
+  </Select>
+ </Table>
+</Adml>

@@ -1,0 +1,91 @@
+# TSTodi.def: Displays the Current Oracle Data Integrator Module Setup
+# $Id: TSTodi.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TSTodi.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+TSTodi - Displays the Current Oracle Data Integrator Module Setup
+
+=head1 DESCRIPTION
+
+This test module displays the current Oracle Data Integrator module setup,
+indicating which master and work repositories, which technical environments,
+and which journals are collected.
+
+=cut
+
+macro display_setup
+{var ($set,$id1,$id2) = @arg
+ var @tbl = split(',',$set)
+ var $fmt = ' %-*s %-7s%-7s'
+ var $lgt = 4
+ var %ttl = ('env','Tech.',\
+             'mst','Master',\
+             'log','Journal',\
+             'wrk','Work')
+ var %var = ('env','_TECH_EXPORT',\
+             'mst','_MASTER_EXPORT',\
+             'log','_LOG_EXPORT',\
+             'wrk','_WORK_EXPORT')
+
+ # Determine the biggest name length
+ loop $id (@tbl)
+ {var $log = getSetting(concat($id,'_LOGIN'))
+  var $lgt = max($lgt,length($log))
+  var $log{$id} = $log
+ }
+ var $lgt = min($lgt,50)
+
+ # Display the set
+ dump $ttl{$id1},' Repository Export Setup:'
+ dump tput('bold'),sprintf($fmt,$lgt,'Name',\
+                                $ttl{$id1},\
+                                $ttl{$id2}),tput('off')
+ loop $id (@tbl)
+  dump sprintf($fmt,$lgt,$log{$id},\
+                    cond(getSetting(concat($id,$var{$id1})),'Yes','No'),\
+                    cond(getSetting(concat($id,$var{$id2})),'Yes','No'))
+ dump
+}
+
+if getSetting('ODI_MASTER_SET')
+ call display_setup(last,'mst','env')
+
+if getSetting('ODI_WORK_SET')
+ call display_setup(last,'wrk','log')
+
+dump 'Other Settings:'
+var %ttl = ('ODI_BEGIN','From date',\
+            'ODI_END',  'To date')
+loop $key ('ODI_HOME','ODI_BEGIN','ODI_END')
+{if getSetting($key)
+  dump sprintf(' %-10s %s',concat(nvl($ttl{$key},$key),':'),last)
+}
+
+=head1 SEE ALSO
+
+L<S385ODI|modules::S385ODI>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.10:  Sarath Babu, Benoit Gagnon, FX Nicolas.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

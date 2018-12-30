@@ -1,0 +1,135 @@
+# M260LIC.def: Collects License Information
+# $Id: M260LIC.def,v 1.3 2012/04/01 10:44:29 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M260LIC.def,v 1.3 2012/04/01 10:44:29 mschenke Exp $
+#
+# Change History
+# 20120401  MSC  Improve the handling of commands without arguments.
+
+=head1 NAME
+
+M260LIC - Collects License Information
+
+=head1 DESCRIPTION
+
+Collects license information.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('lic')
+
+# -----------------------------------------------------------------------------
+# XPLR_lic section
+# -----------------------------------------------------------------------------
+
+section XPLR_lic
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing LIC sections ...')
+
+=head2 lic - License Information
+
+Gathers the license information using the following commands:
+
+=over 2
+
+=item o F</etc/fw/bin/fw printlic>
+
+=item o C</sbin/vxlicrep>
+
+=item o F</usr/sbin/vxlicense -p>
+
+=item o F</usr/sbin/vxfsserial -p>
+
+=item o F</usr/sbin/vxserial -p>
+
+=item o F<${LICDIR}/lmstat -a -c ${LICDIR}/${LICFILE}>
+
+=back
+
+Collects the following File:
+
+=over 2
+
+=item o C</var/tmp/license_log>
+
+=back
+
+=cut
+
+# Determine the commands to collect
+var @cmd = (['license/fw.printlic',\
+             '/etc/fw/bin/fw','printlic',\
+             '---+ Firewall Licenses'],\
+	    ['license/vxlicense-p',\
+             '/usr/sbin/vxlicense','-p',\
+             '---+ Available Veritas Licenses'],\
+	    ['license/vxlicrep',\
+             '/sbin/vxlicrep',undef,\
+             '---+ Symantec Licenses Keys'],\
+	    ['license/vxserial-p',\
+             '/usr/sbin/vxserial','-p',\
+             '---+ Available Volume Manager Licenses'],\
+	    ['license/vxfsserial-p',\
+             '/usr/sbin/vxfsserial','-p',\
+             '---+ State of the VxFS Licence'])
+if testFile('r',$fil = '/etc/rc2.d/S85lmgrd')
+{var ($dir) = grepFile($fil,'licdir\s*=\s*(\S.*)','f1')
+ var ($nam) = grepFile($fil,'licfile\s*=\s*(\S.*)','f1')
+ if and(defined($dir),defined($nam))
+  call push(@cmd,['license/lmstat',\
+    catFile($dir,'lmstat'),concat('-a -c ',quote(catFile($dir,$nam),'x')),\
+    '---+ Status on License Manager Daemons'])
+}
+
+# Collect command outputs
+debug ' Inside LIC collection, gathering the LIC information'
+report lic
+title '---+!! License Information'
+title $TOC
+call do_exec(@cmd)
+
+# Collect the license log file
+if testFile('f',$fil = '/var/tmp/license_log')
+{prefix
+ {write '---+ License Log File'
+  write '---## Information Taken from ',encode($fil)
+  call addBlock('E','D','license/workshop.license_log')
+ }
+ call writeFile($fil)
+ if hasOutput(true)
+  write $TOP
+}
+
+# Add the report to the table of content
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][License Information]]'
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

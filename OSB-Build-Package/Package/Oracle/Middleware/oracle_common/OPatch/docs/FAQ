@@ -1,0 +1,197 @@
+                          OPatch Frequently Asked Questions
+ Copyright (c) 2008, 2009, Oracle and/or its affiliates. All rights reserved. 
+
+General Questions:
+
+Q1.	What are some of the new options in OPatch?
+
+        '-property_file' is a new option available for 'opatch apply' 
+        and 'opatch rollback' operations. This option can be used to 
+        provide the user defined property file, giving details like 
+        the path to system commands like 'fuser', 'ar', etc...
+
+Q2.	What does:
+	" Exception in thread "main" java.lang.UnsatisfiedLinkError:
+	no oraInstaller in java.library.path" mean?
+
+	This is a unix specific issue.
+
+	The most frequent reason for this is the liboraInstaller shared
+        object file cannot be located at run time. The extension is
+	".so" for most systems, ".sl" for most other systems. It means
+	LD_LIBRARY_PATH (or SHLIB_PATH, LIBPATH, DYLD_LIBRARY_PATH or
+	it's equivalent) doesn't include a path to liboraInstaller file.
+
+	The file is located under the "oui" hierarchy (normally under
+	oui/bin/<plaform name>, like oui/bin/solaris). The "oui" directory
+	should be in the same directory as the oraInventory directory that 
+	is pointed to by the oraInst.loc file.  
+
+Q3.	Where does OPatch officially reside?
+
+        Currently, OPatch resides in $ORACLE_HOME/OPatch. 
+  	Some people prefer to keep a central copy. Some download it 
+        each time given it's small size.
+
+
+Q4.    When applying a patch I got the following error:
+       "sh: ar: not found"
+
+       This means that the patch involves archiving a file, and OPatch
+       can not find the executable "ar" in your PATH.  Reset your PATH
+       and try OPatch again.
+  
+Q5.    Where can I find information about patch 123456 
+       that I applied last year?
+
+       If the patch is not rolled back, then look at the files in
+       $ORACLE_HOME/inventory/oneoffs/<patch>. It has info. about the 
+       patch such as bugs fixed and bugs descr. You can also use 
+       'opatch lsinventory -detail' to see which files had been 
+       modified by the patch.
+
+       A copy of original patch will be kept in 
+       $ORACLE_HOME/.patch_storage/<patchID>/original_patch
+       Whether the patch is rolled back or not, you can get the 
+       information from here also.
+
+Q6.	What is a rolling RAC patch and how do I enable it?
+
+	Rolling RAC patching allows the interoperation of a patched
+	node and an unpatched node simultaneously. This means only one
+	node is out of commission while it is patched.
+
+	This cannot be enabled from the command line. Oracle supplies
+	a patch that is recognized as being suitable for rolling RAC.
+
+	To test if a patch is a rolling patch, you can use 'opatch query -all'
+
+Q7.     When I apply a patch I get an error that reads 
+        "Failed to load the patch object. 
+        Possible causes are: The specified path is not an interim 
+        patchshiphome. Meta-data files are missing from the patch area ". 
+        What do I do?
+
+        This simply means the directory OPatch is using to find the patch 
+        doesn't match the template it is checking for. 
+        For more information on this error, refer to section "Not a
+        valid patch area" in OPatch User Guide.
+
+Q8.     When I apply a patch I get an error that reads 
+        "Syntax error.....Patch location not valid". What do I do?
+
+        This simply means the directory OPatch is using to find the
+	patch doesn't match the template for what it's checking for.
+	Normally your running OPatch on directory out from where you
+	think you are.
+
+	When starting OPatch the directory needs to have:
+
+	a. a directory .../etc that has the files that drive OPatch,
+	b. a directory .../files that has patches for the files, and
+	c. the directory should have the same name as patch id.
+
+	If you didn't start OPatch from the directory <patch_id> then
+	you can tell OPatch where to look for this directory by giving
+	the directory as the last argument to "apply", i.e.
+
+	$ <path to opatch> apply /tmp/<patch_id>
+
+
+Q9.     When I apply a patch, I get an error that reads "OPatch cannot find the 
+        required command ar from Property file and your PATH". What do I do?
+
+        ar is a command used by OPatch. This message may appear if OPatch
+        is not able to locate this command. For more details and workaround 
+        for this problem, refer to OPatch User Guide.
+
+Q10.    When I apply a patch, I get an error that reads "OPatch cannot find 
+        the required command fuser from Property file and your PATH". 
+        What do I do?
+
+        fuser is a command used by OPatch. This message may appear if OPatch 
+        is not able to locate this command. For more details and workaround for
+        this problem, refer to OPatch User Guide.
+    
+Q11.    Can I run patching in scripted mode?
+ 
+        Yes, it is possible by using the command opatch <option> -silent. 
+        For more information, refer to OPatch User guide.
+
+Q12.    Before applying a patch I want to know what is the impact of the patch?
+
+        You can use the command opatch <option> -report. For more information, 
+        refer to OPatch User Guide.
+
+Q13.    What versions of OPatch can I use with Oracle Universal Installer 10.2?
+        
+        Oracle recommends using OPatch version 10.2 from the Oracle home with
+        Oracle Universal Installer 10.2. Also note that OPatch is compatible 
+        only with the version of Oracle Universal Installer that is installed 
+        in the Oracle home.
+
+Q14.    When I apply a patch, I get an error that reads as follows:
+        "OPatchSession cannot load inventory for the given Oracle Home <Home_Location>.
+        Possible causes are:
+        No read or write permission to ORACLE_HOME/.patch_storage
+        Central Inventory is locked by another OUI instance
+        No read permission to Central Inventory
+        The lock file exists in ORACLE_HOME/.patch_storage
+        The Oracle Home does not exist in Central Inventory"
+        What do I do?
+
+        This error may occur because of any one or more of the following reasons:
+        1. The ORACLE_HOME/.patch_storage may not have read/write permissions.
+           Ensure that you give read/write permissions to this folder and apply
+           the patch again.
+        2. There may be another Oracle Universal Installer instance running. Stop
+           it and try applying the patch again.
+        3. The Central Inventory may not have read permission. Ensure that you give
+           read permission to the Central Inventory and apply the patch again.
+        4. The ORACLE_HOME/.patch_storage directory might be locked. If this directory
+           is locked, you will find a file named patch_locked inside this directory.
+           This may be due to a previously failed installation of a patch. To remove
+           the lock, restore the Oracle home and remove the patch_locked file from
+           the ORACLE_HOME/.patch_storage directory.    
+           For more information on restoring the Oracle home, refer to section 
+           "Restoring Oracle Homes" on page 8-23 of OPatch User Guide.
+        5. The Oracle home may not be present in the Central Inventory. This may 
+           be due to a corrupted or lost inventory or the inventory may not be 
+           registered in the Central Inventory. For more information, refer to section
+           "Diagnosing and Recovering from Central Inventory Corruption" on page 3-10.
+           of OPatch User Guide.
+
+
+Q15.    I see some patch verification being done during apply, but the same
+        does not happen during rollback. Why?
+
+        Yes, during application of the oneoff patch, after the inventory
+        updation the inventory and file system is checked to confirm that all
+        the required changes are made. This is a step which confirms the proper
+        patch application.
+        But the same thing is not done during rollback, because during rollback
+        OPatch does not have a target to be compared against.
+
+
+Q16.    In a RAC Setup, if -remote_nodes is given with a list of nodes to be patched
+        and the RAC Setup results in a set of nodes greater than the list,how would 
+        OPatch behave?
+
+        OPatch when invoked with -remote_nodes option works only on those nodes 
+        specified and it will not do any detection to determine the actual nodes 
+        of the RAC. Using this option can lead to inconsistent patch level between 
+        different nodes. Please read the OPatch User's Guide to find the exact usage 
+        of this option.
+
+Q17.   If manual rollback is done using rollback.sh or rollback.bat, does the patch
+       gets rolled back completely?
+
+       In manual rollback via rollback.sh or rollback.bat only the files in the 
+       Oracle Home is rolled back. It will not do the following:
+       - Inventory is not updated.
+       - Make targets are not run.
+       - Init/Pre/Post scripts are not run.
+       - Changes made to respository are not rolled back.
+       - Online patch cannot be rolled back using the scripts.
+
+======================================================================================

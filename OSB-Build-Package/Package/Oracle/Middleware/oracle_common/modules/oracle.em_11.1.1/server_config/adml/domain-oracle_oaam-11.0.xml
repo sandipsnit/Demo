@@ -1,0 +1,288 @@
+<?xml version="1.0"?>
+
+<!--  $Header: emas/sysman/admin/adml/domain-oracle_oaam-11.0.xml /st_emasgc_11.1as/5 2012/04/18 15:22:05 rayleung Exp $ -->
+
+<!-- 
+ Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved. 
+
+NAME
+domain-oracle_oaam-11.0.xml - <one-line expansion of the name>
+
+    DESCRIPTION
+    <short description of component this file declares/defines>
+
+        NOTES
+        <other useful comments, qualifications, etc.>
+
+            MODIFIED   (MM/DD/YY)
+            rayleung    10/31/11 - key columns fixes
+            sunilkum    04/30/10 - ADML parse exception
+            sunilkum    10/15/09 - Change table space name
+            sunilkum    10/15/09 - OAAM domain adml rules
+            sunilkum    10/15/09 - OAAM domain ADML rules
+            kchander    10/15/09 - ADML file for domain wide OAAM Metrics.
+            kchander    10/15/09 - Creation
+
+-->
+
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    TableSpace="domain_oracle_oaam">
+    <Table Name="OAAM_Datasource">
+        <ColumnDef Name="JDBCURL" Type="String" Key="true"/>
+        <Select Name="OAAM_Login_Metrics_result1">
+            <TableFrom Name="weblogic.j2ee.descriptor.wl.JDBCDriverParamsBean"/>
+            <Column Name="JDBCURL" Type="String">
+                <ColumnFrom Name="Url"/>
+            </Column>
+            <Where>
+                <Condition Type="String" Operator="EQ">
+                    <ColumnFrom Name="Name"/>
+                    <Value>OAAM_SERVER_DS</Value>
+                </Condition>
+            </Where>       
+        </Select>
+    </Table>
+    <Table Name="OAAM_Login_Metrics_rollup">
+        <ColumnDef Type="String" Key="true" Name="ServerName"/>
+        <ColumnDef Name="Login_Blocked" Type="Integer"/>
+        <ColumnDef Name="Login_Failed" Type="Integer"/>
+        <ColumnDef Name="Login_Success" Type="Integer"/>
+        <ColumnDef Name="Login_Challenged" Type="Integer"/>
+        <ColumnDef Name="Login_Total" Type="Integer"/>
+        <Select Name="OAAM_Login_Metrics_result1">
+            <TableFrom Name="oracle_oaam:OAAM_Login_Metrics"/>
+            <Column Name="Login_Blocked" Type="Integer">
+                <Aggregation Operator="Sum" Name="Login_Blocked"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="Login_Failed" Type="Integer">
+                <Aggregation Operator="Sum" Name="Login_Failed"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="Login_Success" Type="Integer">
+                <Aggregation Operator="Sum" Name="Login_Success"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="Login_Challenged" Type="Integer">
+                <Aggregation Operator="Sum" Name="Login_Challenged"/>
+                <Default>0</Default>
+            </Column>
+           
+            <Column Name="Login_Total" Type="Integer">
+                <Aggregation Operator="Sum" Name="Login_Total"/>
+                <Default>0</Default>
+            </Column>
+        </Select>
+    </Table>
+    <Table Name="OAAM_Login_Metrics_delta">
+        <ColumnDef Type="String" Key="true" Name="ServerName"/>
+        <ColumnDef Name="Login_Total_delta" Type="Integer"/>
+        <ColumnDef Name="Login_Challenged_delta" Type="Integer"/>
+        <ColumnDef Name="Login_Challenged.percent" Type="Double"/>
+        <ColumnDef Name="Login_Success_delta" Type="Integer"/>
+        <ColumnDef Name="Login_Success.percent" Type="Double"/>
+        <ColumnDef Name="Login_Failed_delta" Type="Integer"/>
+        <ColumnDef Name="Login_Failed.percent" Type="Double"/>
+        <ColumnDef Name="Login_Blocked_delta" Type="Integer"/>
+        <ColumnDef Name="Login_Blocked.percent" Type="Double"/>
+        <Select Name="OAAM_Login_Metrics_result1">
+            <TableFrom Name="domain_oracle_oaam:OAAM_Login_Metrics_rollup"/>
+            <Column Name="Login_Total_prev" Type="Integer">
+                <Previous Index="0" Interval="300000">
+                    <ColumnFrom Name="Login_Total"/>
+                    <Default>0</Default>
+                </Previous>
+            </Column>
+             <Column Name="Login_Total_delta" Type="Integer">
+                 <If>
+              <Condition Operator="GT">
+                <ColumnFrom Name="Login_Total_prev"/>
+                <ColumnFrom Name="Login_Total"/>
+              </Condition>
+              <Then>
+                <ColumnFrom Name="Login_Total"/>
+                 </Then>
+                  <Else>
+                     <Expression Operator="Minus">
+                        <ColumnFrom Name="Login_Total"/>
+                        <ColumnFrom Name="Login_Total_prev"/>
+                     </Expression>
+                  </Else>
+               </If>
+               <Default>
+                  0
+               </Default>
+            </Column>
+             <Column Name="Login_Challenged_prev" Type="Integer">
+                    <Previous Index="0" Interval="300000">
+                        <ColumnFrom Name="Login_Challenged"/>
+                        <Default>0</Default>
+                    </Previous>
+            </Column>
+            <Column Name="Login_Challenged_delta" Type="Integer">
+                     <If>
+                  <Condition Operator="GT">
+                    <ColumnFrom Name="Login_Challenged_prev"/>
+                    <ColumnFrom Name="Login_Challenged"/>
+                  </Condition>
+                  <Then>
+                    <ColumnFrom Name="Login_Challenged"/>
+                     </Then>
+                      <Else>
+                         <Expression Operator="Minus">
+                            <ColumnFrom Name="Login_Challenged"/>
+                            <ColumnFrom Name="Login_Challenged_prev"/>
+                         </Expression>
+                      </Else>
+                   </If>
+                   <Default>
+                      0
+                   </Default>
+            </Column>
+            <Column Name="Login_Challenged.percent" Type="Double">
+                    <Expression Operator="Mult">
+                          <Expression Operator="Div">
+                                <ColumnFrom Name="Login_Challenged_delta"/>
+                                <ColumnFrom Name="Login_Total_delta"/>
+                                <Default>0</Default>
+                          </Expression>
+                          <Value>100</Value>
+                    </Expression>
+                    <Default>0</Default>
+            </Column>
+            <Column Name="Login_Success_prev" Type="Integer">
+                <Previous Index="0" Interval="300000">
+                    <ColumnFrom Name="Login_Success"/>
+                    <Default>0</Default>
+                </Previous>
+            </Column>
+             <Column Name="Login_Success_delta" Type="Integer">
+                 <If>
+              <Condition Operator="GT">
+                <ColumnFrom Name="Login_Success_prev"/>
+                <ColumnFrom Name="Login_Success"/>
+              </Condition>
+              <Then>
+                <ColumnFrom Name="Login_Success"/>
+                 </Then>
+                  <Else>
+                     <Expression Operator="Minus">
+                        <ColumnFrom Name="Login_Success"/>
+                        <ColumnFrom Name="Login_Success_prev"/>
+                     </Expression>
+                  </Else>
+               </If>
+               <Default>
+                  0
+               </Default>
+            </Column>
+            <Column Name="Login_Success.percent" Type="Double">
+                <Expression Operator="Mult">
+                      <Expression Operator="Div">
+                            <ColumnFrom Name="Login_Success_delta"/>
+                            <ColumnFrom Name="Login_Total_delta"/>
+                            <Default>0</Default>
+                      </Expression>
+                      <Value>100</Value>
+                </Expression>
+                <Default>0</Default>
+           </Column>
+           <Column Name="Login_Failed_prev" Type="Integer">
+                <Previous Index="0" Interval="300000">
+                <ColumnFrom Name="Login_Failed"/>
+                    <Default>0</Default>
+                </Previous>
+            </Column>
+             <Column Name="Login_Failed_delta" Type="Integer">
+                 <If>
+              <Condition Operator="GT">
+                <ColumnFrom Name="Login_Failed_prev"/>
+                <ColumnFrom Name="Login_Failed"/>
+              </Condition>
+              <Then>
+                <ColumnFrom Name="Login_Failed"/>
+                 </Then>
+                  <Else>
+                     <Expression Operator="Minus">
+                        <ColumnFrom Name="Login_Failed"/>
+                        <ColumnFrom Name="Login_Failed_prev"/>
+                     </Expression>
+                  </Else>
+               </If>
+               <Default>
+                  0
+               </Default>
+            </Column>
+             <Column Name="Login_Failed.percent" Type="Double">
+                <Expression Operator="Mult">
+                      <Expression Operator="Div">
+                            <ColumnFrom Name="Login_Failed_delta"/>
+                            <ColumnFrom Name="Login_Total_delta"/>
+                            <Default>0</Default>
+                      </Expression>
+                      <Value>100</Value>
+                </Expression>
+                <Default>0</Default>
+           </Column>
+           <Column Name="Login_Blocked_prev" Type="Integer">
+            <Previous Index="0" Interval="300000">
+            <ColumnFrom Name="Login_Blocked"/>
+                <Default>0</Default>
+            </Previous>
+        </Column>
+         <Column Name="Login_Blocked_delta" Type="Integer">
+             <If>
+          <Condition Operator="GT">
+            <ColumnFrom Name="Login_Blocked_prev"/>
+            <ColumnFrom Name="Login_Blocked"/>
+          </Condition>
+          <Then>
+            <ColumnFrom Name="Login_Blocked"/>
+             </Then>
+              <Else>
+                 <Expression Operator="Minus">
+                    <ColumnFrom Name="Login_Blocked"/>
+                    <ColumnFrom Name="Login_Blocked_prev"/>
+                 </Expression>
+              </Else>
+           </If>
+           <Default>
+              0
+           </Default>
+        </Column>
+         <Column Name="Login_Blocked.percent" Type="Double">
+            <Expression Operator="Mult">
+                  <Expression Operator="Div">
+                        <ColumnFrom Name="Login_Blocked_delta"/>
+                        <ColumnFrom Name="Login_Total_delta"/>
+                        <Default>0</Default>
+                  </Expression>
+                  <Value>100</Value>
+            </Expression>
+            <Default>0</Default>
+       </Column>
+        </Select>
+    </Table> 
+     <Table Name="OAAM_Login_Metrics_rollup_rate">
+         <ColumnDef Type="String" Key="true" Name="ServerName"/>
+        <ColumnDef Name="Login_Success.persec" Type="Double"/>
+        <ColumnDef Name="Login_Failed.persec" Type="Double"/>
+        <Select Name="OAAM_Login_Metrics_result1">
+            <TableFrom Name="domain_oracle_oaam:OAAM_Login_Metrics_rollup"/>
+            <Column Name="Login_Success.persec" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="Login_Success" Table="domain_oracle_oaam:OAAM_Login_Metrics_rollup"/>
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+            <Column Name="Login_Failed.persec" Type="Double">
+                <Rate Interval="1000">
+                    <ColumnFrom Name="Login_Failed" Table="domain_oracle_oaam:OAAM_Login_Metrics_rollup"/>
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+        </Select>
+    </Table>
+
+</Adml>

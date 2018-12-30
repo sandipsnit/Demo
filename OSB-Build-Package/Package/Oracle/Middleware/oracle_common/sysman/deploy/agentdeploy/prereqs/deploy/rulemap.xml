@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+
+<!--  $Header: rulemap.xml 20-mar-2008.11:06:15 supchoud Exp $ -->
+
+<!-- 
+ Copyright (c) 2007, Oracle. All rights reserved.  
+
+   NAME
+     rulemap.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   supchoud    03/10/08 - 
+   pjaganat    02/20/08 - add banner prereq
+   spramani    01/22/08 - 
+   pjaganat    01/02/08 - add prereq that checks for required files in master agent home
+   supchoud    05/12/07 - 
+   lihliu      04/05/07 - add ssh setup connection check
+   aamkumar    01/31/07 - Creation
+
+-->
+<RULEMAP>
+  <RULESET name="NetworkChecks" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.NetworkChecks">
+    <RULE name="AreNodesAlive" method="areNodesAlive"/>
+    <RULE name="CheckSSH" method="checkSSH"/>
+    <RULE name="CheckIfInterconnectsExist" method="checkIfInterconnectsExist"/>
+    <RULE name="CheckAtLeastOnePrivatePublicInterface" method="checkAtLeastOnePrivatePublicInterface"/>
+    <RULE name="CheckIPNodeNameConflict" method="checkIPNodeNameConflict"/>
+    <RULE name="CheckPrivateNodeSetup" method="checkPrivateNodeSetup"/>
+    <RULE name="CheckVIPAvailability" method="checkVIPAvailability"/>
+    <RULE name="CheckSSHEquivalence" method="checkSSHEquivalence"/>
+    <RULE name="CheckRSHEquivalence" method="checkRSHEquivalence"/>
+    <RULE name="CheckIfNodesInSameDomain" method="checkIfNodesInSameDomain"/>
+    <RULE name="CheckVIPPublic" method="checkVIPPublic"/>
+  </RULESET>
+  <RULESET name="ConnectionChecks" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.ConnectionChecks">
+     <RULE name="SetupConnection" method="setupConnection"/>
+  </RULESET>
+
+  <RULESET name="CheckSudoPrivilege" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.SudoChecks">
+    <RULE name="CheckingSudoPrivilege" method="checkSudo"/>
+  </RULESET>
+
+  <RULESET name="PathCheck" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.PathChecks">
+    <RULE name="CheckRemotePath" method="checkRemotePath"/>
+    <RULE name="CheckLocalPath" method="checkLocalPath"/>
+  </RULESET>
+
+  <RULESET name="ShipHomeCheck" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.ShipHomeChecks">
+    <RULE name="CheckShipHome" method="checkShipHome"/>
+  </RULESET>
+
+  <RULESET name="SourceSoftwareCheck" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.SourceSoftwareChecks">
+    <RULE name="CheckSourceSoftware" method="checkExistence"/>
+    <RULE name="CopyKitPrereqs" method="copyKitFromShipHome"/>
+    <RULE name="CopyKitPrereqsClone" method="copyKitFromShipHomeForClone"/>
+    <RULE name="CopySourceSoftware" method="copyShipHome"/>
+  </RULESET>
+
+  <RULESET name="RemoteDirChecks" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.DirChecks">
+    <RULE name="CheckDirWritableOnNodes" method="areDirWritableOnNodes"/>
+    <RULE name="CheckExistenceOfInstallBaseDirTemp" method="doDirsExistOnNodes"/>
+  </RULESET>
+
+  <RULESET name="PortChecks" class="oracle.sysman.core.agentdeploy.deploy.prereqs.remote.PortChecks">
+    <RULE name="CheckPortAvailability" method="checkPortAvailability"/>
+  </RULESET>
+
+  <RULESET name="InventoryChecks" class="oracle.sysman.core.agentdeploy.deploy.prereqs.remote.InventoryChecks">
+    <RULE name="CheckInventoryWritability" method="checkInventoryWritability"/>
+  </RULESET>
+
+  <RULESET name="OracleHomeChecks" class="oracle.sysman.core.agentdeploy.deploy.prereqs.remote.OracleHomeChecks">
+    <RULE name="CheckExistingHome" method="checkExistingHome"/>
+    <RULE name="CheckHomeWritability" method="checkHomeWritability"/>
+    <RULE name="CheckIfHomeLocEmpty" method="checkIfHomeLocEmpty"/>
+    <RULE name="CheckIfHomeNameUnique" method="checkIfHomeNameUnique"/>
+    <RULE name="CheckIfSpaceInOH" method="checkIfSpaceInOH"/>
+  </RULESET>
+
+  <RULESET name="MasterAgentChecks" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.MasterAgentChecks">
+    <RULE name="MasterAgentPathChecks" method="checkBinariesInMasterAgent"/>
+  </RULESET>
+
+  <RULESET name="BannerCheck" class="oracle.sysman.core.agentdeploy.deploy.prereqs.local.BannerCheck">
+    <RULE name="BannerCheck" method="checkBannerMsg"/>
+  </RULESET>
+</RULEMAP>

@@ -1,0 +1,238 @@
+<!--
+/*******************************************************************************
+ * Copyright (c) 2007-2010 Oracle and/or its affiliates.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Oracle IDE Developers - initial API and implementation
+ *******************************************************************************/
+ -->
+
+<project name="deployextension"  default="deploy.j2ee.web"  basedir=".">
+
+    <target name="tools" depends="replace.module.name.space">
+        <!--echo message="${sunappserver.rootdirectory}" />
+        <echo message="${sunappserver.serveraddress}" />
+        <echo message="${sunappserver.serverportnumber}" />
+        <echo message="${sunappserver.adminserverportnumber}" />
+        <echo message="${sunappserver.adminname}" />
+        <echo message="${sunappserver.adminpassword}" />
+        <echo message="${sunappserver.domainname}" /-->
+        
+        <condition property="sunappserver-script-suffix" value=".bat">
+            <os family="windows"/>
+        </condition>
+        <condition property="sunappserver-script-suffix" value="">
+            <not>
+                <os family="windows"/>
+            </not>
+        </condition>
+        <condition property="path.separator" value=";">
+            <os family="windows"/>
+        </condition>
+        <condition property="path.separator" value=":">
+            <not>
+                <os family="windows"/>
+            </not>
+        </condition>
+        <!-- setup properties for various Java EE tools -->
+        <property name="asadmin" value="${sunappserver.rootdirectory}/bin/asadmin${sunappserver-script-suffix}"/>
+        <property name="appclient" value="${sunappserver.rootdirectory}/bin/appclient${sunappserver-script-suffix}"/>
+        <echo file ="passw"  message="AS_ADMIN_PASSWORD=${sunappserver.adminpassword}"/>
+    </target>
+
+	<target name="replace.module.name.space">
+		<concat destfile="fooFile2.properties">module.name.nospace=${module.name}</concat>
+		<replace file="fooFile2.properties" token=" " value="_" />
+		<property file="fooFile2.properties" />
+		<!--echo message="new module name with no space is ${module.name.nospace}"/-->
+		<delete file="fooFile2.properties"/>
+	</target>
+
+    <target name="undeploy" depends="tools">
+        <echo message="Undeploying ${module.name.nospace}." />
+        <exec executable="${asadmin}">
+            <arg line="undeploy"/>
+            <arg line=" --host ${sunappserver.serveraddress}" />
+            <arg line=" --port ${sunappserver.adminserverportnumber}" />
+            <arg line=" --user ${sunappserver.adminname}" />
+            <arg line=" --passwordfile passw" />
+            <arg line="'${module.name.nospace}'" />
+        </exec> 
+    </target>
+
+    
+    <target name="deploy" depends="tools">
+        <fail unless="app.module" message="app.module must be set before invoking this target. Otherwise there is no application to deploy."/>
+        <fail unless="module.name" message="app.name must be set before invoking this target. Otherwise there is no application to deploy."/>
+        <condition property="app.url" value="http://${sunappserver.serveraddress}:${sunappserver.serverportnumber}/${module.name.nospace}">
+            <not>
+                <isset property="app.endpointuri"/>
+            </not>
+        </condition>
+        <property name="failonerror" value="true"/>
+    	<!--echo message="Context root: ${sunappserver.contextroot}"/-->
+        <exec executable="${asadmin}" failonerror="${failonerror}">
+            <arg line=" deploy "/>
+            <arg line=" --host ${sunappserver.serveraddress}" />
+            <arg line=" --port ${sunappserver.adminserverportnumber}" />
+            <arg line=" --user ${sunappserver.adminname}" />
+            <arg line=" --passwordfile passw" />
+
+            <arg line=" --name ${module.name.nospace}"/>
+            <arg line=" --contextroot ${sunappserver.contextroot}"/>
+            <arg line=" --force=true "/>
+            <arg line=" --upload=true "/>
+
+            <arg line="'${project.working.dir}/${app.module}'" />
+        </exec>
+        <antcall target="deploy-url-message"/>
+    </target>
+  
+    <target name="deploy-url-message" if="app.url">
+        <echo message="Application Deployed at: ${app.url}"/>
+    </target>
+    <target name="deploydir" depends="tools">
+        <fail unless="app.module" message="app.module must be set before invoking this target. Otherwise there is no application to deploy."/>
+        <fail unless="module.name" message="app.name must be set before invoking this target. Otherwise there is no application to deploy."/>
+        <condition property="app.url" value="http://${sunappserver.serveraddress}:${sunappserver.serverportnumber}/${module.name.nospace}">
+            <not>
+                <isset property="app.endpointuri"/>
+            </not>
+        </condition>
+        <property name="failonerror" value="true"/>
+    	<!--echo message="Context root: ${sunappserver.contextroot}"/-->
+        <exec executable="${asadmin}" failonerror="${failonerror}">
+            <arg line=" deploydir "/>
+            <arg line=" --port ${sunappserver.adminserverportnumber}" />
+            <arg line=" --user ${sunappserver.adminname}" />
+            <arg line=" --passwordfile passw" />
+
+            <arg line=" --name ${module.name.nospace}"/>
+            <arg line=" --contextroot ${sunappserver.contextroot}"/>
+            <arg line=" --force=true "/>
+ 
+            <arg line="'${project.working.dir}/${module.name}'" />
+        </exec>
+        <echo message="Application dir Deployed at: ${app.url}"/>
+    </target>
+  
+    
+    <target name="undeploy.j2ee.web">
+        <property name="app.module" value="${module.name.nospace}.war"/>
+        <antcall target="undeploy"/>
+    </target>
+    
+    <target name="undeploy.j2ee.ejb">
+        <property name="app.module" value="${module.name.nospace}.jar"/>
+        <antcall target="undeploy"/>
+    </target>
+	<target name="undeploy.j2ee.ear">
+        <property name="app.module" value="${module.name.nospace}.ear"/>
+        <antcall target="undeploy"/>
+    </target>
+	
+    <target name="deploy.j2ee.ejb" depends="replace.module.name.space">
+        <property name="app.module" value="${module.name.nospace}.jar"/>
+        <antcall target="addresources">
+        	<param name="subdirectory" value="META-INF" />
+        </antcall>
+        <jar destfile="${project.working.dir}/${module.name.nospace}.jar"> 
+            <!-- <zipfileset dir="${module.dir}"> -->
+            <zipfileset dir="${project.working.dir}/${module.name}">
+                <include name="**/*.*"/>
+                <exclude name="**/*.java"/>
+            </zipfileset>
+        </jar>
+
+           <antcall target="deploy"/>
+
+    </target>
+ 
+	<target name="resourcesfile.check">
+		<!--echo message="subdirectory=${subdirectory}"/-->
+		<condition property="resourcesfile.run">
+			<and>
+				<available file="${module.dir}/${subdirectory}/sun-resources.xml"/>
+				<not>
+					<available file="result1.html"/>
+				</not>
+			</and>
+		</condition>
+	</target>
+
+	<target name="addresources" depends="resourcesfile.check, tools" if="resourcesfile.run">
+		<!--echo message="subdirectory=${subdirectory}"/-->
+		<concat destfile="fooFile1.properties">resourcesfile=${module.dir}/${subdirectory}/sun-resources.xml</concat>
+		<replace file="fooFile1.properties" token=" " value="%20" />
+		<property file="fooFile1.properties" />
+		<exec executable="${asadmin}" failonerror="${failonerror}">
+			<arg line=" add-resources "/>
+            <arg line=" --user ${sunappserver.adminname}" />
+            <arg line=" --passwordfile passw" />
+			<arg line=" ${resourcesfile}" />
+		</exec>
+		<concat>
+			<fileset dir="." includes="result1.html" />
+		</concat>
+	</target>
+
+    <target name="deploy.j2ee.web">
+
+        <property name="app.module" value="${module.name.nospace}.war"/>
+		<antcall target="addresources">
+			<param name="subdirectory" value="WEB-INF" />
+		</antcall>
+        
+<!--echo message= "${project.working.dir}/${module.name}"/>
+        <jar destfile="${module.name}.war"> 
+            <zipfileset dir="${project.working.dir}/${module.name}">
+                <include name="**/*.*"/>
+                <exclude name="**/jsp_servlet/*.class"/>
+                <exclude name="**/*.war"/>
+            </zipfileset>
+        </jar-->
+        <antcall target="deploydir"/>
+<!--        
+        <delete>
+            <fileset dir="${server.publish.dir}" includes="${module.name}.war_*"/>
+        </delete>
+        
+        <move file="${module.name}.war" todir="${server.publish.dir}"/>
+        
+        <waitfor maxwait="60" maxwaitunit="second" checkevery="500">
+            <or>
+                <available file="${server.publish.dir}/${module.name}.war_deployed"/>
+                <available file="${server.publish.dir}/${module.name}.war_deployFailed"/>
+            </or>
+        </waitfor>
+        <fail message="${line.separator}Deployment failure. See the server log file (${server.publish.dir}/../logs/server.log) for an explanation.">
+            <condition>
+                <not>
+                    <available file="${server.publish.dir}/${module.name}.war_deployed"/>
+                </not>
+            </condition>
+        </fail>  
+        
+-->
+
+    </target>
+
+    <target name="deploy.j2ee.ear" depends="replace.module.name.space">
+        <property name="app.module" value="${module.name.nospace}.ear"/>
+    	<antcall target="addresources">
+    		<param name="subdirectory" value="" />
+    	</antcall>
+    <jar destfile="${project.working.dir}/${module.name.nospace}.ear"> 
+        <!-- <zipfileset dir="${module.dir}"> -->
+        <zipfileset dir="${project.working.dir}/${module.name}">
+            <include name="**/*.*"/>
+            <exclude name="**/*.java"/>
+        </zipfileset>
+    </jar>
+        <antcall target="deploy"/>
+    </target>
+</project>

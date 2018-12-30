@@ -1,0 +1,221 @@
+# RClinux.def: Linux Specific Multi-run Collection Code
+# $Id: RClinux.def,v 1.13 2012/07/28 15:07:14 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/RClinux.def,v 1.13 2012/07/28 15:07:14 mschenke Exp $
+#
+# Change History
+# 20120725  KRA  Extend system error log collection.
+
+=head1 NAME
+
+RClinux - Submodule Specific to the Linux Operating System
+
+=cut
+
+use Buffer
+use Mrc
+
+# Make the module persistent
+var @COMMON_SECTIONS = ('NET_ifconfig','OS_system_error_log')
+var @ROOT_SECTIONS = ('NET_net_summary','OS_dmsetup','OS_multipath')
+keep $KEEP_BLOCK,@COMMON_SECTIONS,@ROOT_SECTIONS
+
+# Initialization
+import $TOC,$TOP
+keep $TOC,$TOP
+
+=head1 CONTRIBUTION TO THE NET MODULE
+
+=head2 ifconfig - Interface Configuration
+
+Gets the network interface configuration.
+
+=cut
+
+section NET_ifconfig
+
+debug ' Inside NET module, getting network interface configuration (linux)'
+report ifconfig
+title '---+!! Interface Configuration'
+title $TOC
+
+if testFile('x','/sbin/ifconfig')
+{prefix
+ {
+  write '---+ Interface Configuration - ifconfig'
+  write '---## Using: ifconfig -a'
+ }
+ call writeCommand('/sbin/ifconfig -a')
+ if hasOutput(true)
+  write $TOP
+}
+
+if testFile('x','/sbin/ip')
+{prefix
+ {write '---+ Interface Configuration - ip'
+  write '---## Using: ip address'
+ }
+ call writeCommand('/sbin/ip address')
+ if hasOutput(true)
+  write $TOP
+}
+
+if isCreated(true)
+{call validate(true)
+ toc '2:[[',getFile(),'][rda_report][Interface Configuration]]'
+}
+
+=head2 net_summary - Network Device Summary
+
+Gets the network device summary information.
+
+=cut
+
+section NET_net_summary
+
+debug ' Inside NET module, getting network device summary information'
+var @eth = ()
+loop $lin (grepCommand('/sbin/ifconfig -a','eth'))
+ call push(@eth,field('\s+',0,$lin))
+if @eth
+{# Macro to get ethernet devices settings
+ macro get_eth
+ {var ($nam,\@eth) = @arg
+  import $TOP
+  keep $TOP
+
+  loop $eth (@eth)
+  {var $cmd = concat($nam,' ',$eth)
+   prefix
+    write '---++ Using: ',encode($cmd)
+   call writeCommand($cmd)
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+
+ # Produce the report
+ report net_summary
+ title '---+!! Network Device Summary Information'
+ title $TOC
+ call get_eth('/usr/sbin/ethtool',\@eth)
+ call get_eth('/usr/sbin/ethtool -S',\@eth)
+ if isCreated()
+ {call validate(true)
+  toc '2:[[',getFile(),'][rda_report][Network Device Summary]]'
+ }
+}
+
+=head1 CONTRIBUTION TO THE OS MODULE
+
+=head2 system_error_log - System Error Log
+
+Collects system error log data.
+
+=cut
+
+section OS_system_error_log
+
+report system_error_log
+write '---+!! System Error Log Data'
+write $TOC
+
+write '---+ Using: dmesg | tail -1000'
+call loadCommand('/bin/dmesg 2>&1',true,1,-1000)
+call writeLastFile()
+write $TOP
+
+write '---+ Contents of System Log File'
+output d,'system.log'
+if $buf = new('Buffer','r',$fil = '/var/log/messages')
+{if $lim = getSetting('OS_TAIL')
+  write '   * Last ',$lim,' log file lines collected'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present risks. \
+             To prevent them, access the file outside the browser or use \
+             the link to save them and use an adequate viewer.'
+ write '|*File Name*| *Size*|*Last Modified Date*|'
+ if $lim
+  call ${CUR.LAST}->write_tail($buf,$lim,['F',$fil,'T','T'])
+ else
+  call ${CUR.LAST}->write_data($buf)
+ write '|[[',${CUR.LAST}->get_raw(true),'][_blank][',encode($fil),']]| ',\
+       getSize($fil),'|',\
+       getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+}
+elsif testFile('e',$fil)
+{write 'Unable to read ',encode($fil),'%BR%\
+        May be file permission problem.%BR%\
+        Permissions are:%BR%'
+ call statFile('b',$fil)
+ write 'User: ',id(),'%BR%'
+}
+else
+ write $fil,' does not exist%BR%'
+write $TOP
+call $[OUT]->end_report(${CUR.LAST})
+
+if isCreated(true)
+{call validate(true)
+ toc '2:[[',getFile(),'][rda_report][System Error Log]]'
+}
+
+=head2 dmsetup - Low Level Logic Volume
+
+Gets low level logic volume information.
+
+=cut
+
+section OS_dmsetup
+
+report dmsetup
+var $cmd = '/sbin/dmsetup -v table'
+write '---+ Low Level Logic Volume'
+write '---## Using: ',$cmd
+call writeCommand($cmd)
+write $TOP
+if isCreated(true)
+{call validate(true)
+ toc '2:[[',getFile(),'][rda_report][Low Level Logic Volume]]'
+}
+
+=head2 multipath - Multipath Topology
+
+Gets multipath topology from all available information.
+
+=cut
+
+section OS_multipath
+
+report multipath
+var $cmd = '/sbin/multipath -v2 -ll'
+write '---+ Multipath Topology'
+write '---## Using: ',$cmd
+call writeCommand($cmd)
+write $TOP
+if isCreated(true)
+{call validate(true)
+ toc '2:[[',getFile(),'][rda_report][Multipath Topology]]'
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.25: Jaime Alcoreza.
+
+=item RDA 4.29: Pierre Lecomte.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

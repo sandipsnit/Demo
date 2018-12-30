@@ -1,0 +1,2538 @@
+<!-- Copyright (c) 2007, 2008, Oracle and/or its affiliates.
+All rights reserved. -->
+
+<!-- $Header: emas/sysman/admin/metadata/oracle_ias.xml /st_emasgc_project-21452/1 2008/11/20 10:55:18 klmichae Exp $ -->
+
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd"
+>
+
+<TargetMetadata META_VER="11.00000" TYPE="oracle_ias" CATEGORY_PROPERTIES="VersionCategory">
+  <Display>
+    <Label NLSID="ias_name">Oracle Application Server</Label>
+  </Display>
+
+  <AssocTarget ASSOCIATION_NAME="farm" ASSOC_TARGET_TYPE="oracle_mas_farm"/>
+
+  <!-- Metric ConfigFiles -->
+  <Metric NAME="ConfigFiles" TYPE="RAW" CONFIG="TRUE">
+    <ValidMidTierVersions START_VER="10.2.0.0.0" />
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <TableDescriptor TABLE_NAME="MGMT_IAS_CONFIGFILES">
+      <ColumnDescriptor NAME="DisplayFilePath"  COLUMN_NAME="DISPLAYFILEPATH"  TYPE="STRING" IS_KEY="TRUE" />
+      <ColumnDescriptor NAME="FilePath"         COLUMN_NAME="FILEPATH"         TYPE="STRING" />
+      <ColumnDescriptor NAME="FileSize"         COLUMN_NAME="FILESIZE"         TYPE="NUMBER" />
+      <ColumnDescriptor NAME="ModificationTime" COLUMN_NAME="MODIFICATIONTIME" TYPE="STRING" IS_DATE="TRUE" />
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/ias/listConfigFiles.pl" "%oracleHome%" "false" ""</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <Metric NAME="ConfigFiles_Upload" TYPE="RAW">
+    <ValidMidTierVersions START_VER="10.2.0.0.0" />
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <TableDescriptor TABLE_NAME="MGMT_IAS_CONFIGFILES_UPLOAD">
+      <ColumnDescriptor NAME="FilePath"         COLUMN_NAME="FILECONTENT"         TYPE="CLOB" IS_FILENAME="TRUE"/>
+      <ColumnDescriptor NAME="DisplayFilePath"  COLUMN_NAME="FILEPATH"  TYPE="STRING" IS_KEY="TRUE" />
+      <ColumnDescriptor NAME="ModificationTime" COLUMN_NAME="MODIFICATIONTIME" TYPE="STRING" IS_DATE="TRUE" />
+      <ColumnDescriptor NAME="TagetName" COLUMN_NAME="TARGET_NAME" TYPE="STRING" />
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken"  ON_TARGET="TRUE">
+      <Property NAME="TARGET_NAME" SCOPE="INSTANCE">NAME</Property>
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/ias/listConfigFiles.pl" "%oracleHome%" "true" "%NAME%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  <!-- Metric General -->
+  <Metric NAME="General" TYPE="RAW" CONFIG="TRUE">
+    <ValidMidTierVersions START_VER="10.2.0.0.0" />
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <TableDescriptor TABLE_NAME="MGMT_IAS_GENERAL">
+      <ColumnDescriptor NAME="InstallType"          COLUMN_NAME="INSTALLTYPE"           TYPE="STRING"/>
+      <ColumnDescriptor NAME="InfrastructureDBName" COLUMN_NAME="INFRASTRUCTUREDBNAME"  TYPE="STRING"/>
+      <ColumnDescriptor NAME="Version"              COLUMN_NAME="VERSION"               TYPE="STRING"/>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="InstallType" SCOPE="INSTANCE">InstallType</Property>
+      <Property NAME="Version" SCOPE="INSTANCE">Version</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/ias/getGeneral.pl" "%oracleHome%" "%InstallType%" "%Version%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric OPMNConfig -->
+  <Metric NAME="OPMNConfig" TYPE="RAW" CONFIG="TRUE">
+    <ValidMidTierVersions START_VER="10.2.0.0.0" />
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <TableDescriptor TABLE_NAME="MGMT_IAS_OPMNCONFIG">
+      <ColumnDescriptor NAME="RequestPort"              COLUMN_NAME="REQUESTPORT"               TYPE="NUMBER" />
+      <ColumnDescriptor NAME="RemotePort"               COLUMN_NAME="REMOTEPORT"                TYPE="NUMBER" />
+      <ColumnDescriptor NAME="LocalPort"                COLUMN_NAME="LOCALPORT"                 TYPE="NUMBER" />
+      <ColumnDescriptor NAME="UseSSL"                   COLUMN_NAME="USESSL"                    TYPE="NUMBER" />
+      <ColumnDescriptor NAME="ONSLogLevel"              COLUMN_NAME="ONSLOGLEVEL"               TYPE="NUMBER" />
+      <ColumnDescriptor NAME="ProcessManagerLogLevel"   COLUMN_NAME="PROCESSMANAGERLOGLEVEL"    TYPE="NUMBER" />
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken"  ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/ias/getOPMNInfo.pl" "%oracleHome%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric DCMConfig -->
+  <Metric NAME="DCMConfig" TYPE="RAW" CONFIG="TRUE">
+    <ValidMidTierVersions START_VER="10.2.0.0.0" />
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <TableDescriptor TABLE_NAME="MGMT_IAS_DCMCONFIG">
+      <ColumnDescriptor NAME="RepositoryType" COLUMN_NAME="REPOSITORYTYPE" TYPE="STRING"/>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/ias/getDCMInfo.pl" "%oracleHome%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric ConsoleConfig -->
+  <Metric NAME="ConsoleConfig" TYPE="RAW" CONFIG="TRUE">
+    <ValidMidTierVersions START_VER="10.2.0.0.0" />
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <TableDescriptor TABLE_NAME="MGMT_IAS_CONSOLECONFIG">
+      <ColumnDescriptor NAME="AgentProtocol"    COLUMN_NAME="AGENTPROTOCOL"     TYPE="STRING"/>
+      <ColumnDescriptor NAME="AgentHost"        COLUMN_NAME="AGENTHOST"         TYPE="STRING"/>
+      <ColumnDescriptor NAME="AgentPort"        COLUMN_NAME="AGENTPORT"         TYPE="NUMBER"/>
+      <ColumnDescriptor NAME="AgentPath"        COLUMN_NAME="AGENTPATH"         TYPE="STRING"/>
+      <ColumnDescriptor NAME="ConsoleProtocol"  COLUMN_NAME="CONSOLEPROTOCOL"   TYPE="STRING"/>
+      <ColumnDescriptor NAME="ConsoleHost"      COLUMN_NAME="CONSOLEHOST"       TYPE="STRING"/>
+      <ColumnDescriptor NAME="ConsolePort"      COLUMN_NAME="CONSOLEPORT"       TYPE="NUMBER"/>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="machine" SCOPE="INSTANCE">host</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/ias/getConsoleInfo.pl" "%oracleHome%" "%machine%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric DeployedApps -->
+  <Metric NAME="DeployedApps" TYPE="RAW" CONFIG="TRUE" KEYS_ONLY="TRUE">
+    <ValidMidTierVersions START_VER="10.2.0.0.0" />
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <TableDescriptor TABLE_NAME="MGMT_IAS_DEPLOYEDAPPS">
+      <ColumnDescriptor NAME="OC4JInstanceName" COLUMN_NAME="OC4JINSTANCENAME" TYPE="STRING" IS_KEY="TRUE" />
+      <ColumnDescriptor NAME="ApplicationName" COLUMN_NAME="APPLICATIONNAME"  TYPE="STRING" IS_KEY="TRUE" />
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oracleHome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="machine" SCOPE="INSTANCE">host</Property>
+      <Property NAME="VersionCategory" SCOPE="INSTANCE">VersionCategory</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/ias/ias/getDeployedApps.pl" "%oracleHome%" "%VersionCategory%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric Response -->
+  <Metric NAME="Response" TYPE="TABLE">
+    <ValidIf>
+     <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="ias_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="ias_resp_updown_stat">UpDown Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JavaWrapper">
+      <Property NAME="class" SCOPE="GLOBAL">oracle.sysman.ias.ias.ResponseMetric</Property>
+      <Property NAME="method" SCOPE="GLOBAL">getResponseMetric</Property>
+      <Property NAME="targetName" SCOPE="INSTANCE">NAME</Property>
+      <Property NAME="targetType" SCOPE="INSTANCE">TYPE</Property>
+      <Property NAME="emdURL" SCOPE="SYSTEMGLOBAL">EMD_URL</Property>
+      <Property NAME="versionCategory" SCOPE="INSTANCE">VersionCategory</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric ApplicationResponse -->
+  <Metric NAME="ApplicationResponse" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus" />
+    </ValidIf>
+    <Display>
+      <Label NLSID="ias_app_response">Application Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Timing.ms" TYPE="NUMBER" TRANSIENT="TRUE" HELP="NO_HELP">
+        <Display>
+          <Label NLSID="ias_resp_Timing_ms">Application URL Response Time (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="ias_resp_url_stat">Application URL Status</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="status_description" TYPE="STRING" TRANSIENT="TRUE" HELP="NO_HELP">
+        <Display>
+          <Label NLSID="ias_resp_status_desc">Status Description</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Timing.sec" TYPE="NUMBER" IS_KEY="FALSE"
+       COLUMN_NAME="Timing.sec"
+       COMPUTE_EXPR="Timing.ms/1000">
+       <Display>
+        <Label NLSID="DownloadTime_col_label">Application URL Response Time (seconds)</Label>
+        <Description NLSID="DownloadTime_col_desc">
+         Seconds to access the specified URL
+        </Description>
+      </Display></ColumnDescriptor>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="URLTiming">
+         <Property NAME="url0" SCOPE="INSTANCE">StatusURL</Property>
+         <Property NAME="metrics" SCOPE="GLOBAL">computed_response_time,status,status_description</Property>
+         <Property NAME="internetCertLoc" SCOPE="SYSTEMGLOBAL"
+                   OPTIONAL="TRUE">internetCertLoc</Property>
+         <Property NAME="proxyHost" SCOPE="SYSTEMGLOBAL"
+                   OPTIONAL="TRUE">proxyHost</Property>
+         <Property NAME="proxyPort" SCOPE="SYSTEMGLOBAL"
+                   OPTIONAL="TRUE">proxyPort</Property>
+         <Property NAME="dontProxyFor" SCOPE="SYSTEMGLOBAL"
+                   OPTIONAL="TRUE">dontProxyFor</Property>
+         <Property NAME="useProxy" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">useDefaultProxy</Property>
+         <Property NAME="proxyHostOverride" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">proxyHost</Property>
+         <Property NAME="proxyPortOverride" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">proxyPort</Property>
+      </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric OtherResourceUsage -->
+  <Metric NAME="OtherResourceUsage" TYPE="TABLE" HELP="NO_HELP"
+          USAGE_TYPE="HIDDEN_COLLECT">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="other_ResourceUsage">Other Resource Usage</Label>
+    </Display>
+    <TableDescriptor>
+       <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="other_resource_name">Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME='status.value' TYPE='NUMBER' TRANSIENT='TRUE'>
+        <Display>
+        <Label NLSID='other_resource_status_value'>status</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME='upTime.component' TYPE='NUMBER' TRANSIENT='TRUE'>
+        <Display>
+        <Label NLSID='other_resource_upTime_component'>Uptime (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME='startTime.component' TYPE='NUMBER' TRANSIENT='TRUE'>
+        <Display>
+        <Label NLSID='other_resource_startTime_component'>Start Time (ms since epoch)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="other_resource_cpu_component">CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" TRANSIENT="TRUE">
+          <Display>
+          <Label NLSID="other_resource_memory_component">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+        <Property NAME="emdRoot" SCOPE="SYSTEMGLOBAL">emdRoot</Property>
+        <Property NAME="oraclehome" SCOPE="INSTANCE">OracleHome</Property>
+        <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+        <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/iasotherresourceusage.pl" "%emdRoot%" "%oraclehome%"</Property>
+        <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+        <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+  </Metric>
+
+<!-- Metric opmn_process -->
+<Metric NAME='opmn_process' TYPE='TABLE' HELP="NO_HELP" USAGE_TYPE="HIDDEN_COLLECT">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+<Display>
+ <Label NLSID='opmn_process_metrics'>OPMN Process Metrics</Label>
+ <ShortName NLSID='opmn_process_stable'>opmn_process</ShortName>
+</Display><TableDescriptor>
+<ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='TRUE'>
+<Display><Label NLSID='name_col_label'>Name</Label>
+ <ShortName NLSID='name_col_sname'>Name</ShortName>
+<Description NLSID='name_col_desc'>Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='fullname' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='fullname_col_label'>Full Name</Label>
+ <ShortName NLSID='fullname_col_sname'>Full Name</ShortName>
+<Description NLSID='fullname_col_desc'>Full Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Host' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='host_col_label'>Host</Label>
+ <ShortName NLSID='host_col_sname'>Host</ShortName>
+<Description NLSID='host_col_desc'>Host Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Process' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='process_col_label'>Process</Label>
+ <ShortName NLSID='process_col_sname'>Process</ShortName>
+<Description NLSID='process_col_desc'>Process Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='cpuTime.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='cpuTime_value_col_label'>cpuTime.value</Label>
+ <ShortName NLSID='cpuTime_value_col_sname'>cpuTime.value</ShortName>
+<Description NLSID='cpuTime_value_col_desc'>process cpu usage</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='heapSize.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='heapSize_value_col_label'>heapSize.value</Label>
+ <ShortName NLSID='heapSize_value_col_sname'>heapSize.value</ShortName>
+<Description NLSID='heapSize_value_col_desc'>process heap size</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='iasCluster.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='iasCluster_value_col_label'>iasCluster.value</Label>
+ <ShortName NLSID='iasCluster_value_col_sname'>iasCluster.value</ShortName>
+<Description NLSID='iasCluster_value_col_desc'>IAS cluster name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='iasInstance.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='iasInstance_value_col_label'>iasInstance.value</Label>
+ <ShortName NLSID='iasInstance_value_col_sname'>iasInstance.value</ShortName>
+<Description NLSID='iasInstance_value_col_desc'>IAS instance name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='indexInSet.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='indexInSet_value_col_label'>indexInSet.value</Label>
+ <ShortName NLSID='indexInSet_value_col_sname'>indexInSet.value</ShortName>
+<Description NLSID='indexInSet_value_col_desc'>index in process set</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='memoryUsed.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='memoryUsed_value_col_label'>memoryUsed.value</Label>
+ <ShortName NLSID='memoryUsed_value_col_sname'>memoryUsed.value</ShortName>
+<Description NLSID='memoryUsed_value_col_desc'>memory used by the process</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='pid.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='pid_value_col_label'>pid.value</Label>
+ <ShortName NLSID='pid_value_col_sname'>pid.value</ShortName>
+<Description NLSID='pid_value_col_desc'>process ID</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='privateMemory.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='privateMemory_value_col_label'>privateMemory.value</Label>
+ <ShortName NLSID='privateMemory_value_col_sname'>privateMemory.value</ShortName>
+<Description NLSID='privateMemory_value_col_desc'>private memory used by the process</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='sharedMemory.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='sharedMemory_value_col_label'>sharedMemory.value</Label>
+ <ShortName NLSID='sharedMemory_value_col_sname'>sharedMemory.value</ShortName>
+<Description NLSID='sharedMemory_value_col_desc'>shared memory used by the process</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='startTime.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='startTime_value_col_label'>startTime.value</Label>
+ <ShortName NLSID='startTime_value_col_sname'>startTime.value</ShortName>
+<Description NLSID='startTime_value_col_desc'>process start time</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='status.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='status_value_col_label'>status.value</Label>
+ <ShortName NLSID='status_value_col_sname'>status.value</ShortName>
+<Description NLSID='status_value_col_desc'>process status</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='type.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='type_value_col_label'>type.value</Label>
+ <ShortName NLSID='type_value_col_sname'>type.value</ShortName>
+<Description NLSID='type_value_col_desc'>process type</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='uid.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='uid_value_col_label'>uid.value</Label>
+ <ShortName NLSID='uid_value_col_sname'>uid.value</ShortName>
+<Description NLSID='uid_value_col_desc'>unique process ID</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='upTime.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='upTime_value_col_label'>upTime.value</Label>
+ <ShortName NLSID='upTime_value_col_sname'>upTime.value</ShortName>
+<Description NLSID='upTime_value_col_desc'>process up time</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='opmn_col_label'>opmn</Label>
+ <ShortName NLSID='opmn_col_sname'>opmn</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_component' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='opmn_ias_component_col_label'>IAS Component Name</Label>
+ <ShortName NLSID='opmn_ias_component_col_sname'>opmn_ias_component</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_instance' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='opmn_ias_instance_col_label'>opmn_ias_instance</Label>
+ <ShortName NLSID='opmn_ias_instance_col_sname'>opmn_ias_instance</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_pm' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='opmn_pm_col_label'>opmn_pm</Label>
+ <ShortName NLSID='opmn_pm_col_sname'>opmn_pm</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_process_set' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='opmn_process_set_col_label'>opmn_process_set</Label>
+ <ShortName NLSID='opmn_process_set_col_sname'>opmn_process_set</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_process_type' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='opmn_process_type_col_label'>Process Type</Label>
+ <ShortName NLSID='opmn_process_type_col_sname'>opmn_process_type</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='cpuTime.delta' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='cpuTime.delta'
+ COMPUTE_EXPR="cpuTime.value-_cpuTime.value">
+ <Display>
+  <Label NLSID='cpuTime_delta_label'>Delta CPU time (ms)</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='cpuTime.delta.previous' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='cpuTime.delta.previous'
+ COMPUTE_EXPR="_cpuTime.delta == 0 ? _cpuTime.delta.previous : _cpuTime.delta">
+ <Display>
+  <Label NLSID='cpuTime_delta_previous_label'>Previous Delta CPU time (ms)</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='upTime.delta' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='upTime.delta'
+ COMPUTE_EXPR="_upTime.value > upTime.value ? upTime.value : upTime.value-_upTime.value">
+ <Display>
+  <Label NLSID='upTime_delta_label'>Delta Uptime (ms)</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='upTime.delta.previous' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='upTime.delta.previous'
+ COMPUTE_EXPR="_upTime.delta == 0 ? _upTime.delta.previous : _upTime.delta">
+ <Display>
+  <Label NLSID='upTime_delta_previous_label'>Previous Delta Uptime (ms)</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='interval' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='interval'
+ COMPUTE_EXPR="__interval">
+ <Display>
+  <Label NLSID='interval_col_label'>interval, seconds</Label>
+</Display></ColumnDescriptor>
+</TableDescriptor><QueryDescriptor FETCHLET_ID='DMS'>
+<Property NAME='oraclehome' SCOPE='INSTANCE'>OracleHome</Property>
+<Property NAME='machine' SCOPE='INSTANCE' OPTIONAL='TRUE'>host</Property>
+<Property NAME='version' SCOPE='INSTANCE'>Version</Property>
+<Property NAME='opmnport' SCOPE='INSTANCE' OPTIONAL='TRUE'>OPMNPort</Property>
+<Property NAME='metric' SCOPE='GLOBAL'>opmn_process</Property>
+<!-- do not include 'name', 'fullname', 'host' and 'process' columns in 'columnOrder' property. 
+Column names should be in the same order as they are declared. -->
+<Property NAME='columnOrder' SCOPE='GLOBAL' OPTIONAL='TRUE'>cpuTime.value;heapSize.value;iasCluster.value;iasInstance.value;indexInSet.value;memoryUsed.value;pid.value;privateMemory.value;sharedMemory.value;startTime.value;status.value;type.value;uid.value;upTime.value;opmn;opmn_ias_component;opmn_ias_instance;opmn_pm;opmn_process_set;opmn_process_type</Property>
+<Property NAME='usecache' SCOPE='GLOBAL' OPTIONAL='TRUE'>false</Property>
+<!-- The followings are properties for proxy settings. -->
+<Property NAME='proxyHost' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPort' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='dontProxyFor' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>dontProxyFor</Property>
+<Property NAME='useDefaultProxy' SCOPE='INSTANCE' OPTIONAL='TRUE'>useDefaultProxy</Property>
+<Property NAME='proxyHostOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPortOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyPort</Property>
+<!-- The followings are properties for Basic authorization settings. -->
+<Property NAME='authrealm' SCOPE='INSTANCE' OPTIONAL='TRUE'>authRealm</Property>
+<Property NAME='authuser' SCOPE='INSTANCE' OPTIONAL='TRUE'>authUser</Property>
+<Property NAME='authpwd' SCOPE='INSTANCE' OPTIONAL='TRUE'>authPasswd</Property>
+</QueryDescriptor></Metric>
+
+<!-- Metric opmn_process_prime_dms -->
+<Metric NAME='opmn_process_prime_dms' TYPE='TABLE' USAGE_TYPE="HIDDEN" HELP="NO_HELP">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+<Display>
+ <Label NLSID='opmn_process_metrics'>OPMN Process Metrics - latest processes</Label>
+ <ShortName NLSID='opmn_process_stable'>opmn_process</ShortName>
+</Display><TableDescriptor>
+<ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='TRUE'>
+<Display><Label NLSID='name_col_label'>Name</Label>
+ <ShortName NLSID='name_col_sname'>Name</ShortName>
+<Description NLSID='name_col_desc'>Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='fullname' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='fullname_col_label'>Full Name</Label>
+ <ShortName NLSID='fullname_col_sname'>Full Name</ShortName>
+<Description NLSID='fullname_col_desc'>Full Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Host' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='host_col_label'>Host</Label>
+ <ShortName NLSID='host_col_sname'>Host</ShortName>
+<Description NLSID='host_col_desc'>Host Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Process' TYPE='STRING' IS_KEY='FALSE' TRANSIENT='TRUE'>
+<Display><Label NLSID='process_col_label'>Process</Label>
+ <ShortName NLSID='process_col_sname'>Process</ShortName>
+<Description NLSID='process_col_desc'>Process Name</Description>
+</Display></ColumnDescriptor>
+</TableDescriptor><QueryDescriptor FETCHLET_ID='DMS'>
+<Property NAME='oraclehome' SCOPE='INSTANCE'>OracleHome</Property>
+<Property NAME='machine' SCOPE='INSTANCE' OPTIONAL='TRUE'>host</Property>
+<Property NAME='version' SCOPE='INSTANCE'>Version</Property>
+<Property NAME='opmnport' SCOPE='INSTANCE' OPTIONAL='TRUE'>OPMNPort</Property>
+<Property NAME='metric' SCOPE='GLOBAL'>opmn_process</Property>
+<!-- do not include 'name', 'fullname', 'host' and 'process' columns in 'columnOrder' property. 
+Column names should be in the same order as they are declared. -->
+<Property NAME='usecache' SCOPE='GLOBAL' OPTIONAL='TRUE'>refreshall</Property>
+<!-- The followings are properties for proxy settings. -->
+<Property NAME='proxyHost' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPort' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='dontProxyFor' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>dontProxyFor</Property>
+<Property NAME='useDefaultProxy' SCOPE='INSTANCE' OPTIONAL='TRUE'>useDefaultProxy</Property>
+<Property NAME='proxyHostOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPortOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyPort</Property>
+<!-- The followings are properties for Basic authorization settings. -->
+<Property NAME='authrealm' SCOPE='INSTANCE' OPTIONAL='TRUE'>authRealm</Property>
+<Property NAME='authuser' SCOPE='INSTANCE' OPTIONAL='TRUE'>authUser</Property>
+<Property NAME='authpwd' SCOPE='INSTANCE' OPTIONAL='TRUE'>authPasswd</Property>
+</QueryDescriptor></Metric>
+
+<!-- Metric opmn_managed_component_info -->
+<!-- THIS METRIC IS TEMPORARY UNTIL OPMN CAN PROVIDE US WITH INFORMATION -->
+<!-- ABOUT BOTH ENABLED AND DISABLED COMPONENTS.  WE CAN THEN REPLACE THIS -->
+<!-- METRIC WITH THE OPMN_PROCESS_TYPE METRIC -->
+<Metric NAME="opmn_managed_component_info" TYPE="TABLE" 
+        USAGE_TYPE="HIDDEN" HELP="NO_HELP" KEYS_ONLY="TRUE">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="opmn_managed_component_info">OPMN Managed Component Information</Label>
+  </Display>
+  <TableDescriptor>
+    <ColumnDescriptor NAME="opmn_ias_component" TYPE="STRING" IS_KEY="TRUE">
+      <Display>
+        <Label NLSID="ias_component_name">IAS Component Name</Label>
+      </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME="opmn_process_type" TYPE="STRING" IS_KEY="TRUE">
+      <Display>
+        <Label NLSID="opmn_process_type">Process Type</Label>
+      </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME="opmn_module_type" TYPE="STRING" IS_KEY="TRUE">
+      <Display>
+        <Label NLSID="opmn_module_type">Module Type</Label>
+      </Display>
+    </ColumnDescriptor>
+  </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="oraclehome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/opmnManagedList.pl" "%oraclehome%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  <!--
+  <ExecutionDescriptor>
+    <GetTable NAME="opmn_process_type"/>
+    <GroupBy NAME="opmn_process_type_with_column_names" FROM_TABLE="opmn_process_type">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type" COLUMN_NAME="name"/>      
+      <By NAME="opmn_module_type" COLUMN_NAME="moduleId.value"/>      
+    </GroupBy>
+  </ExecutionDescriptor>
+  -->
+</Metric>
+
+<!-- Metric opmn_managed_components -->
+<Metric NAME="opmn_managed_components" TYPE="TABLE" USAGE_TYPE="HIDDEN" 
+        HELP="NO_HELP" KEYS_ONLY="TRUE" >
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="opmn_managed_components">OPMN Managed Components</Label>
+  </Display>
+  <TableDescriptor>
+    <ColumnDescriptor NAME="component" TYPE="STRING" IS_KEY="TRUE">
+      <Display>
+        <Label NLSID="component_name">Component Name</Label>
+      </Display>
+    </ColumnDescriptor>
+  </TableDescriptor>
+  <ExecutionDescriptor>
+
+    <!--
+       USE THIS IMPLEMENTATION ONCE THE OPMN_PROCESS_TYPE METRIC INCLUDES
+       DISABLED COMPONENTS
+    <GetTable NAME="opmn_process_type"/>
+    -->
+    <GetTable NAME="opmn_managed_component_info" USE_CACHE="FALSE"/>
+
+    <!-- Get all oc4j components -->
+    <GetView  NAME="all_oc4j_components" FROM_TABLE="opmn_managed_component_info">
+      <Filter COLUMN_NAME="opmn_module_type" OPERATOR="EQ">OC4J</Filter> 
+    </GetView>
+    <GroupBy NAME="all_oc4j_components_by_name" FROM_TABLE="all_oc4j_components">
+      <By NAME="component" COLUMN_NAME="opmn_process_type"/>
+    </GroupBy>
+    <!--
+       USE THIS IMPLEMENTATION ONCE THE OPMN_PROCESS_TYPE METRIC INCLUDES
+       DISABLED COMPONENTS
+    <GetView  NAME="all_oc4j_components" FROM_TABLE="opmn_process_type">
+      <Filter COLUMN_NAME="moduleId.value" OPERATOR="EQ">OC4J</Filter> 
+    </GetView>
+    <GroupBy NAME="all_oc4j_components_by_name" FROM_TABLE="all_oc4j_components">
+      <By NAME="component" COLUMN_NAME="name"/>
+    </GroupBy>
+    -->
+
+    <!-- Get all non-oc4j components -->
+    <GetView  NAME="all_non_oc4j_components" FROM_TABLE="opmn_managed_component_info">
+      <Filter COLUMN_NAME="opmn_module_type" OPERATOR="NE">OC4J</Filter> 
+    </GetView>
+    <!--
+       USE THIS IMPLEMENTATION ONCE THE OPMN_PROCESS_TYPE METRIC INCLUDES
+       DISABLED COMPONENTS
+    <GetView  NAME="all_non_oc4j_components" FROM_TABLE="opmn_process_type">
+      <Filter COLUMN_NAME="moduleId.value" OPERATOR="NE">OC4J</Filter> 
+    </GetView>
+    -->
+    <GroupBy NAME="all_non_oc4j_components_by_name" FROM_TABLE="all_non_oc4j_components">
+      <By NAME="component" COLUMN_NAME="opmn_ias_component"/>
+    </GroupBy>
+
+    <!-- Union the oc4j and non-oc4j tables, giving us a table with all em components -->
+    <Union NAME="result">     
+        <Table NAME="all_oc4j_components_by_name" />
+        <Table NAME="all_non_oc4j_components_by_name" />
+    </Union>
+    
+  </ExecutionDescriptor>
+</Metric>
+
+
+<!-- Metric opmn_process_info -->
+<Metric NAME='opmn_process_info' TYPE='TABLE'>
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+  <Display>
+   <Label NLSID='opmn_process_info_metrics'>OPMN Process Information Metrics</Label>
+  </Display>
+  <TableDescriptor>
+  <ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='TRUE'>
+    <Display><Label NLSID='comp_name_col_label'>Component Name</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='cpu.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='cpu_component_col_label'>Component CPU Usage (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='cpu.idle' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='cpu_idle_col_label'>Idle CPU Time (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memory.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memory_component_col_label'>Component Memory Usage (MB)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memoryPercentage.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memoryPercentage_component_col_label'>Component Memory Usage (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memory.free' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memory_free_col_label'>Free Memory (MB)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memoryPercentage.free' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memoryPercentage_free_col_label'>Free Memory (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memory.total' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memory_total_col_label'>Total Memory (MB)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='startTime.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='startTime_component_col_label'>Component Start Time (ms since epoch)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='upTime.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='upTime_component_col_label'>Component Up Time (ms)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='status' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='status_col_label'>Component Up/down Status</Label></Display>
+  </ColumnDescriptor>
+  </TableDescriptor>
+  <ExecutionDescriptor>
+
+    <!-- Add the host metrics to the opmn_process_table -->
+    <GetTable NAME="opmn_host_statistics" USE_CACHE="TRUE_IF_COLLECT"/>
+    <GetTable NAME="opmn_process" USE_CACHE="TRUE_IF_COLLECT"/>
+    <JoinTables NAME="opmn_process_with_host_metrics"> 
+      <Table NAME="opmn_host_statistics" />
+      <Table NAME="opmn_process" />
+    </JoinTables> 
+    
+    <!-- Compute the cpu % and memory % numbers -->
+    <GroupBy NAME="opmn_process_by_process" FROM_TABLE="opmn_process_with_host_metrics">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="pid.value"/>
+      <By NAME="type.value"/>
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME = "startTime.value"
+                        OPERATOR="AVG" />                       
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="upTime.delta"
+                        COLUMN_NAME ="upTime.delta"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="upTime.delta.previous"
+                        COLUMN_NAME ="upTime.delta.previous"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="cpuTime.value"
+                        COLUMN_NAME ="cpuTime.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="cpuTime.delta"
+                        COLUMN_NAME ="cpuTime.delta"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="cpuTime.delta.previous"
+                        COLUMN_NAME ="cpuTime.delta.previous"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="interval"
+                        COLUMN_NAME ="interval"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="privateMemory.value"
+                        COLUMN_NAME ="privateMemory.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="sharedMemory.value"
+                        COLUMN_NAME ="sharedMemory.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memory.total"
+                        COLUMN_NAME = "memory.total"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="numProcessors.value"
+                        COLUMN_NAME = "numProcessors.value"
+                        OPERATOR="AVG" />                       
+      <ComputeColumn    NAME="cpu.component"
+                        EXPR="(interval*1000 > upTime.component) ? ((cpuTime.value*100)/(interval*1000))/numProcessors.value : ((upTime.delta != 0) ? ((cpuTime.delta*100)/upTime.delta)/numProcessors.value : ((cpuTime.delta.previous*100)/upTime.delta.previous)/numProcessors.value)" />
+    </GroupBy>    
+
+    <!-- OC4J instances correspond to process type.  Get the metrics for them -->
+    <GetView  NAME="opmn_process_by_process_for_oc4js" FROM_TABLE="opmn_process_by_process">
+      <Filter COLUMN_NAME="type.value" OPERATOR="EQ">OC4J</Filter> 
+    </GetView>
+
+    <!-- Components other than OC4J instances correspond to ias components. -->
+    <!-- Get the metrics for them -->
+    <GetView  NAME="opmn_process_by_process_for_nonoc4js" FROM_TABLE="opmn_process_by_process">
+      <Filter COLUMN_NAME="type.value" OPERATOR="NE">OC4J</Filter> 
+    </GetView>
+
+    <!-- rollup rows for each oc4j component -->
+    <GroupBy NAME="opmn_process_by_component_for_oc4js" 
+      FROM_TABLE="opmn_process_by_process_for_oc4js">
+    <By NAME="name" COLUMN_NAME="opmn_process_type"/>
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME ="startTime.component"
+                        OPERATOR="MIN" />
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.component"
+                        OPERATOR="MAX" />
+      <AggregateColumn  NAME="cpu.component"
+                        COLUMN_NAME ="cpu.component"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="totalPrivateMemory.value"
+                        COLUMN_NAME ="privateMemory.value"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="maxSharedMemory.value"
+                        COLUMN_NAME ="sharedMemory.value"
+                        OPERATOR="MAX" />
+      <AggregateColumn  NAME="memory.total"
+                        COLUMN_NAME = "memory.total"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="memory.component"
+                        EXPR="(totalPrivateMemory.value+maxSharedMemory.value)/1024"/>                        
+      <ComputeColumn    NAME="memoryPercentage.component"
+                        EXPR="(memory.component*100)/memory.total"/>
+    </GroupBy>    
+
+    <!-- rollup rows for each non-oc4j component -->
+    <GroupBy NAME="opmn_process_by_component_for_nonoc4js" 
+      FROM_TABLE="opmn_process_by_process_for_nonoc4js">
+    <By NAME="name" COLUMN_NAME="opmn_ias_component"/>
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME ="startTime.component"
+                        OPERATOR="MIN" />
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.component"
+                        OPERATOR="MAX" />
+      <AggregateColumn  NAME="cpu.component"
+                        COLUMN_NAME ="cpu.component"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="totalPrivateMemory.value"
+                        COLUMN_NAME ="privateMemory.value"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="maxSharedMemory.value"
+                        COLUMN_NAME ="sharedMemory.value"
+                        OPERATOR="MAX" />
+      <AggregateColumn  NAME="memory.total"
+                        COLUMN_NAME = "memory.total"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="memory.component"
+                        EXPR="(totalPrivateMemory.value+maxSharedMemory.value)/1024"/>                        
+      <ComputeColumn    NAME="memoryPercentage.component"
+                        EXPR="(memory.component*100)/memory.total"/>
+    </GroupBy>    
+
+    <!-- Union the oc4j and non-oc4j tables, giving us a table with metrics -->
+    <!-- for all components -->
+    <Union NAME="opmn_process_by_component">     
+        <Table NAME="opmn_process_by_component_for_oc4js" />
+        <Table NAME="opmn_process_by_component_for_nonoc4js" />
+    </Union>
+   
+    <!-- 
+         Build a list of components and their status 
+    -->
+    <!-- Join the process_set and process_type tables so that we get the -->
+    <!-- moduleId for each process set -->
+    <GetTable NAME="opmn_process_set" USE_CACHE="TRUE_IF_COLLECT"/>
+    <GetTable NAME="opmn_process_type" USE_CACHE="TRUE_IF_COLLECT"/>
+    <JoinTables NAME="opmn_process_set_with_type"> 
+      <Table NAME="opmn_process_set" />
+      <Table NAME="opmn_process_type" />
+      <Where  FROM_TABLE="opmn_process_set" JOIN_TABLE="opmn_process_type" 
+        FROM_KEY="opmn_ias_component" JOIN_KEY="opmn_ias_component" OPERATOR="EQ"/>    
+      <Where  FROM_TABLE="opmn_process_set" JOIN_TABLE="opmn_process_type" 
+        FROM_KEY="opmn_process_type" JOIN_KEY="name" OPERATOR="EQ"/>    
+    </JoinTables> 
+    
+    <!-- Get the process set metric with required processes -->
+    <GetView  NAME="opmn_process_set_required" 
+      FROM_TABLE="opmn_process_set_with_type">
+      <Filter COLUMN_NAME="restartOnDeath.value" OPERATOR="EQ">TRUE</Filter> 
+    </GetView>
+    <GroupBy NAME="opmn_process_set_required_with_req" 
+      FROM_TABLE="opmn_process_set_required">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set" COLUMN_NAME="name"/>
+      <By NAME="moduleId.value"/>
+      <ComputeColumn    NAME="required.value"
+                        EXPR="1"
+                        IS_VALUE="TRUE"/>
+    </GroupBy>    
+    <GetView  NAME="opmn_process_set_not_required" 
+      FROM_TABLE="opmn_process_set_with_type">
+      <Filter COLUMN_NAME="restartOnDeath.value" OPERATOR="NE">TRUE</Filter> 
+    </GetView>
+    <GroupBy NAME="opmn_process_set_not_required_with_req" 
+      FROM_TABLE="opmn_process_set_not_required">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set" COLUMN_NAME="name"/>
+      <By NAME="moduleId.value"/>
+      <ComputeColumn    NAME="required.value"
+                        EXPR="0"
+                        IS_VALUE="TRUE"/>
+    </GroupBy>    
+    <Union NAME="opmn_process_set_with_required">     
+        <Table NAME="opmn_process_set_required_with_req" />
+        <Table NAME="opmn_process_set_not_required_with_req" />
+    </Union>
+    
+    <!-- Get one row per process set for running processes -->
+    <GetView  NAME="up_process" FROM_TABLE="opmn_process">
+      <Filter COLUMN_NAME="status.value" OPERATOR="EQ">Alive</Filter> 
+    </GetView>
+    <GroupBy NAME="opmn_process_by_process_set" FROM_TABLE="up_process">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set"/>
+      <By NAME="type.value"/>
+      <AggregateColumn  NAME="numProcesses.value"
+                        COLUMN_NAME ="opmn_process_set"
+                        OPERATOR="COUNT" />
+    </GroupBy>    
+
+    <!-- Add the list of all processes -->
+    <JoinTables NAME="all_processes" OUTER="TRUE"> 
+      <Table NAME="opmn_process_set_with_required" />
+      <Table NAME="opmn_process_by_process_set" />
+      <Where  FROM_TABLE="opmn_process_set_with_required" JOIN_TABLE="opmn_process_by_process_set" 
+        FROM_KEY="opmn_process_set" JOIN_KEY="opmn_process_set" OPERATOR="EQ"/>    
+      <Where  FROM_TABLE="opmn_process_set_with_required" JOIN_TABLE="opmn_process_by_process_set" 
+        FROM_KEY="opmn_ias_component" JOIN_KEY="opmn_ias_component" OPERATOR="EQ"/>    
+      <Where  FROM_TABLE="opmn_process_set_with_required" JOIN_TABLE="opmn_process_by_process_set" 
+        FROM_KEY="opmn_process_type" JOIN_KEY="opmn_process_type" OPERATOR="EQ"/>    
+    </JoinTables> 
+
+    <!-- For components that are not in the opmn_process_table, set the -->
+    <!-- number of processes to zero -->
+    <GroupBy NAME="all_processes_with_number_up" FROM_TABLE="all_processes">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set"/>
+      <By NAME="moduleId.value"/>
+      <AggregateColumn  NAME="required.value"
+                        COLUMN_NAME ="required.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="_numProcesses.value"
+                        COLUMN_NAME ="numProcesses.value"
+                        OPERATOR="SUM" />
+      <ComputeColumn    NAME="numProcesses.value"
+                        EXPR="_numProcesses.value"
+                        DEFAULT_WHEN_EMPTY = "TRUE"/>
+      <!-- If it is required, make sure that we have at least one -->
+      <!-- process running -->
+      <ComputeColumn    NAME="status.value"
+                        EXPR="(required.value == 1) ? ((numProcesses.value > 0) ? 1 : 0) : 1"/>
+    </GroupBy>
+
+    <!-- Check for all oc4j components that the required processes are up -->
+    <GetView  NAME="all_processes_with_status_for_oc4js" 
+      FROM_TABLE="all_processes_with_number_up">
+      <Filter COLUMN_NAME="moduleId.value" OPERATOR="EQ">OC4J</Filter> 
+    </GetView>
+    <GroupBy NAME="status_for_oc4js" FROM_TABLE="all_processes_with_status_for_oc4js">
+      <By NAME="name" COLUMN_NAME="opmn_process_type"/>
+      <!-- For the component to be up, we must have at least one process up -->
+      <AggregateColumn  NAME="numProcesses.value"
+                        COLUMN_NAME ="numProcesses.value"
+                        OPERATOR="SUM" />
+      <!-- If all the status values are up, then the OC4J is up.  The values -->
+      <!-- will be 0 or 1, so get minimum.  If everything is up, we will get -->
+      <!-- 1, otherwise we will get 0 -->
+      <AggregateColumn  NAME="_status.value"
+                        COLUMN_NAME ="status.value"
+                        OPERATOR="MIN" />
+      <!-- If some process is up, check that all the required ones are up -->
+      <ComputeColumn    NAME="status.value"
+                        EXPR="(numProcesses.value == 0) ? 0 : _status.value"/>
+    </GroupBy>
+
+    <!-- Check for all non-oc4j components that the required processes are up -->
+    <!-- Here we are going to check for everything that is not under the OC4J -->
+    <!-- ias component.  This will mean that we can rollup status information -->
+    <!-- for oc4j instances that exist under other components -->
+    <GetView  NAME="all_processes_with_status_for_nonoc4js" 
+      FROM_TABLE="all_processes_with_number_up">
+      <Filter COLUMN_NAME="opmn_ias_component" OPERATOR="NE">OC4J</Filter> 
+    </GetView>
+    <GroupBy NAME="status_for_nonoc4js" FROM_TABLE="all_processes_with_status_for_nonoc4js">
+      <By NAME="name" COLUMN_NAME="opmn_ias_component"/>
+      <AggregateColumn  NAME="numProcesses.value"
+                        COLUMN_NAME ="numProcesses.value"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="_status.value"
+                        COLUMN_NAME ="status.value"
+                        OPERATOR="MIN" />
+      <ComputeColumn    NAME="status.value"
+                        EXPR="(numProcesses.value == 0) ? 0 : _status.value"/>
+    </GroupBy>
+
+    <!-- Combine OC4Js and non-OC4Js to get a single list of status by component -->
+    <Union NAME="status_by_component">     
+        <Table NAME="status_for_oc4js" />
+        <Table NAME="status_for_nonoc4js" />
+    </Union>
+
+    <!-- Get all components with metrics -->
+    <JoinTables NAME="opmn_all_processes_without_other" OUTER="TRUE"> 
+      <Table NAME="status_by_component" />
+      <Table NAME="opmn_process_by_component" />
+      <Column NAME="name" TABLE_NAME="status_by_component"/>      
+      <Column NAME="status.value" TABLE_NAME="status_by_component"/>
+      <Column NAME="startTime.component" TABLE_NAME="opmn_process_by_component"/>
+      <Column NAME="upTime.component" TABLE_NAME="opmn_process_by_component"/>
+      <Column NAME="cpu.component" TABLE_NAME="opmn_process_by_component"/>
+      <Column NAME="memory.component" TABLE_NAME="opmn_process_by_component"/>
+      <Column NAME="memoryPercentage.component" TABLE_NAME="opmn_process_by_component"/>
+      <Where  FROM_TABLE="status_by_component" JOIN_TABLE="opmn_process_by_component" 
+        FROM_KEY="name" JOIN_KEY="name" OPERATOR="EQ"/>    
+    </JoinTables> 
+
+    <!-- Get the non-opmn metrics -->
+    <GetTable NAME="OtherResourceUsage" USE_CACHE="TRUE"/>
+    <JoinTables NAME="other_with_system">
+      <Table NAME="OtherResourceUsage"/>
+      <Table NAME="opmn_host_statistics"/>
+    </JoinTables> 
+    <GroupBy NAME="other_usage_all_cols" FROM_TABLE="other_with_system">
+    <By NAME="name"/>    
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME ="startTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="status.value"
+                        COLUMN_NAME ="status.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memoryKB.total"
+                        COLUMN_NAME ="totalPhysicalMem.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memory.component"
+                        COLUMN_NAME ="memory.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="cpu.component"
+                        COLUMN_NAME ="cpu.component"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="memoryPercentage.component"
+                        EXPR="(memory.component*100)/(memoryKB.total/1024)"/>
+    </GroupBy>
+
+    <GroupBy NAME="other_usage" FROM_TABLE="other_usage_all_cols">
+      <By NAME="name"/>
+      <AggregateColumn  NAME="status.value"
+                        COLUMN_NAME ="status.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME ="startTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="cpu.component"
+                        COLUMN_NAME ="cpu.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memory.component"
+                        COLUMN_NAME ="memory.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memoryPercentage.component"
+                        COLUMN_NAME ="memoryPercentage.component"
+                        OPERATOR="AVG" />
+    </GroupBy>
+
+    <Union NAME="opmn_all_processes">
+      <Table NAME="other_usage"/>
+      <Table NAME="opmn_all_processes_without_other"/>
+    </Union>
+
+    <!-- Get all components, use zeros for down components -->    
+    <GroupBy NAME="all_components" FROM_TABLE="opmn_all_processes">
+    <By NAME="name"/>
+      <AggregateColumn  NAME="_status"
+                        COLUMN_NAME ="status.value"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="status"
+                        EXPR="_status"
+                        DEFAULT_WHEN_EMPTY = "TRUE"/>
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME ="startTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memory.component"
+                        COLUMN_NAME ="memory.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memoryPercentage.component"
+                        COLUMN_NAME ="memoryPercentage.component"
+                        OPERATOR="AVG" />
+      <!-- If CPU is negative, force division by zero to generate an empty value. -->
+      <AggregateColumn  NAME="_cpu.component"
+                        COLUMN_NAME ="cpu.component"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="cpu.component"
+                        EXPR="_cpu.component >= 0 ? _cpu.component : (1/0)"/>
+    </GroupBy>    
+
+    <!-- Add in the idle cpu and free memory metrics -->
+    <JoinTables NAME="result"> 
+      <Table NAME="all_components" />
+      <Table NAME="opmn_host_statistics" />
+    </JoinTables> 
+
+  </ExecutionDescriptor>
+</Metric>
+
+<!-- Metric opmn_process_info_by_process_type -->
+<Metric NAME="opmn_process_info_by_process_type" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP="NO_HELP">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+  <Display>
+   <Label NLSID='opmn_process_info_by_process_type_table'>OPMN Process Information By Process Type Metrics</Label>
+  </Display>
+  <TableDescriptor>
+  <ColumnDescriptor NAME='opmn_ias_component' TYPE='STRING' IS_KEY='TRUE'>
+    <Display><Label NLSID='opmn_ias_component_col_label'>IAS Component Name</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='opmn_process_type' TYPE='STRING' IS_KEY='TRUE'>
+    <Display><Label NLSID='opmn_process_type_col_label'>Process Type</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='cpu.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='cpu_component_col_label'>Component CPU Usage (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='cpu.idle' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='cpu_idle_col_label'>Idle CPU Time (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memory.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memory_component_col_label'>Component Memory Usage (MB)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memoryPercentage.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memoryPercentage_component_col_label'>Component Memory Usage (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memory.free' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memory_free_col_label'>Free Memory (MB)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memoryPercentage.free' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memoryPercentage_free_col_label'>Free Memory (%)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='memory.total' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='memory_total_col_label'>Total Memory (MB)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='startTime.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='startTime_component_col_label'>Component Start Time (ms since epoch)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='upTime.component' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='upTime_component_col_label'>Component Up Time (ms)</Label></Display>
+  </ColumnDescriptor>
+  <ColumnDescriptor NAME='status' TYPE='NUMBER' IS_KEY='FALSE'>
+    <Display><Label NLSID='status_col_label'>Component Up/down Status</Label></Display>
+  </ColumnDescriptor>
+  </TableDescriptor>
+  <ExecutionDescriptor>
+
+    <!-- Add the host metrics to the opmn_process_table -->
+    <GetTable NAME="opmn_host_statistics" USE_CACHE="FALSE"/>
+    <GetTable NAME="opmn_process" USE_CACHE="FALSE"/>
+    <JoinTables NAME="opmn_process_with_host_metrics"> 
+      <Table NAME="opmn_host_statistics" />
+      <Table NAME="opmn_process" />
+    </JoinTables> 
+    
+    <!-- Compute the cpu % and memory % numbers -->
+    <GroupBy NAME="opmn_process_by_process" FROM_TABLE="opmn_process_with_host_metrics">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME ="startTime.value"
+                        OPERATOR="MIN" />
+      <AggregateColumn  NAME="cpuTime.value"
+                        COLUMN_NAME ="cpuTime.value"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="cpuTime.delta"
+                        COLUMN_NAME ="cpuTime.delta"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="interval"
+                        COLUMN_NAME ="interval"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="totalPrivateMemory.value"
+                        COLUMN_NAME ="privateMemory.value"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="maxSharedMemory.value"
+                        COLUMN_NAME ="sharedMemory.value"
+                        OPERATOR="MAX" />
+      <AggregateColumn  NAME="memory.total"
+                        COLUMN_NAME = "memory.total"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="numProcessors.value"
+                        COLUMN_NAME = "numProcessors.value"
+                        OPERATOR="AVG" />                       
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="upTime.delta"
+                        COLUMN_NAME ="upTime.delta"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="cpu.component"
+                        EXPR="(interval*1000 > upTime.component) ? ((cpuTime.value*100)/upTime.component)/numProcessors.value : ((cpuTime.delta*100)/upTime.delta)/numProcessors.value"/>
+      <ComputeColumn    NAME="memory.component"
+                        EXPR="(totalPrivateMemory.value+maxSharedMemory.value)/1024"/>                        
+      <ComputeColumn    NAME="memoryPercentage.component"
+                        EXPR="(memory.component*100)/memory.total"/>
+    </GroupBy>    
+
+    <!-- 
+      Get the status of each process type
+    -->
+    <!-- Join the process_set and process_type tables so that we get the -->
+    <!-- moduleId for each process set -->
+    <GetTable NAME="opmn_process_set" USE_CACHE="FALSE"/>
+    <GetTable NAME="opmn_process_type" USE_CACHE="FALSE"/>
+    <JoinTables NAME="opmn_process_set_with_type"> 
+      <Table NAME="opmn_process_set" />
+      <Table NAME="opmn_process_type" />
+      <Where  FROM_TABLE="opmn_process_set" JOIN_TABLE="opmn_process_type" 
+        FROM_KEY="opmn_ias_component" JOIN_KEY="opmn_ias_component" OPERATOR="EQ"/>    
+      <Where  FROM_TABLE="opmn_process_set" JOIN_TABLE="opmn_process_type" 
+        FROM_KEY="opmn_process_type" JOIN_KEY="name" OPERATOR="EQ"/>    
+    </JoinTables> 
+    
+    <!-- Get the process set metric with required processes -->
+    <GetView  NAME="opmn_process_set_required" 
+      FROM_TABLE="opmn_process_set_with_type">
+      <Filter COLUMN_NAME="restartOnDeath.value" OPERATOR="EQ">TRUE</Filter> 
+    </GetView>
+    <GroupBy NAME="opmn_process_set_required_with_req" 
+      FROM_TABLE="opmn_process_set_required">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set" COLUMN_NAME="name"/>
+      <By NAME="moduleId.value"/>
+      <ComputeColumn    NAME="required.value"
+                        EXPR="1"
+                        IS_VALUE="TRUE"/>
+    </GroupBy>    
+    <GetView  NAME="opmn_process_set_not_required" 
+      FROM_TABLE="opmn_process_set_with_type">
+      <Filter COLUMN_NAME="restartOnDeath.value" OPERATOR="NE">TRUE</Filter> 
+    </GetView>
+    <GroupBy NAME="opmn_process_set_not_required_with_req" 
+      FROM_TABLE="opmn_process_set_not_required">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set" COLUMN_NAME="name"/>
+      <By NAME="moduleId.value"/>
+      <ComputeColumn    NAME="required.value"
+                        EXPR="0"
+                        IS_VALUE="TRUE"/>
+    </GroupBy>    
+    <Union NAME="opmn_process_set_with_required">     
+        <Table NAME="opmn_process_set_required_with_req" />
+        <Table NAME="opmn_process_set_not_required_with_req" />
+    </Union>
+    
+    <!-- Get one row per process set for running processes -->
+    <GetView  NAME="up_process" FROM_TABLE="opmn_process">
+      <Filter COLUMN_NAME="status.value" OPERATOR="EQ">Alive</Filter> 
+    </GetView>
+    <GroupBy NAME="opmn_process_by_process_set" FROM_TABLE="up_process">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set"/>
+      <By NAME="type.value"/>
+      <AggregateColumn  NAME="numProcesses.value"
+                        COLUMN_NAME ="opmn_process_set"
+                        OPERATOR="COUNT" />
+    </GroupBy>    
+
+    <!-- Add the list of all processes -->
+    <JoinTables NAME="all_processes" OUTER="TRUE"> 
+      <Table NAME="opmn_process_set_with_required" />
+      <Table NAME="opmn_process_by_process_set" />
+      <Where  FROM_TABLE="opmn_process_set_with_required" JOIN_TABLE="opmn_process_by_process_set" 
+        FROM_KEY="opmn_process_set" JOIN_KEY="opmn_process_set" OPERATOR="EQ"/>    
+      <Where  FROM_TABLE="opmn_process_set_with_required" JOIN_TABLE="opmn_process_by_process_set" 
+        FROM_KEY="opmn_ias_component" JOIN_KEY="opmn_ias_component" OPERATOR="EQ"/>    
+      <Where  FROM_TABLE="opmn_process_set_with_required" JOIN_TABLE="opmn_process_by_process_set" 
+        FROM_KEY="opmn_process_type" JOIN_KEY="opmn_process_type" OPERATOR="EQ"/>    
+    </JoinTables> 
+
+    <!-- For components that are not in the opmn_process_table, set the -->
+    <!-- number of processes to zero -->
+    <GroupBy NAME="all_processes_with_number_up" FROM_TABLE="all_processes">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_process_set"/>
+      <By NAME="moduleId.value"/>
+      <AggregateColumn  NAME="required.value"
+                        COLUMN_NAME ="required.value"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="_numProcesses.value"
+                        COLUMN_NAME ="numProcesses.value"
+                        OPERATOR="SUM" />
+      <ComputeColumn    NAME="numProcesses.value"
+                        EXPR="_numProcesses.value"
+                        DEFAULT_WHEN_EMPTY = "TRUE"/>
+      <!-- If it is required, make sure that we have at least one -->
+      <!-- process running -->
+      <ComputeColumn    NAME="status.value"
+                        EXPR="(required.value == 1) ? ((numProcesses.value > 0) ? 1 : 0) : 1"/>
+    </GroupBy>
+
+    <!-- Check that the required processes are up -->
+    <GroupBy NAME="status_by_process_type" FROM_TABLE="all_processes_with_number_up">
+      <By NAME="opmn_process_type"/>
+      <By NAME="opmn_ias_component"/>
+      <!-- For the component to be up, we must have at least one process up -->
+      <AggregateColumn  NAME="numProcesses.value"
+                        COLUMN_NAME ="numProcesses.value"
+                        OPERATOR="SUM" />
+      <!-- If all the status values are up, then the component is up.  The values -->
+      <!-- will be 0 or 1, so get minimum.  If everything is up, we will get -->
+      <!-- 1, otherwise we will get 0 -->
+      <AggregateColumn  NAME="_status.value"
+                        COLUMN_NAME ="status.value"
+                        OPERATOR="MIN" />
+      <!-- If some process is up, check that all the required ones are up -->
+      <ComputeColumn    NAME="status.value"
+                        EXPR="(numProcesses.value == 0) ? 0 : _status.value"/>
+    </GroupBy>
+
+    <!-- Get all components with metrics -->
+    <JoinTables NAME="opmn_all_processes" OUTER="TRUE"> 
+      <Table NAME="status_by_process_type" />
+      <Table NAME="opmn_process_by_process" />
+      <Column NAME="opmn_ias_component" TABLE_NAME="status_by_process_type"/>      
+      <Column NAME="opmn_process_type" TABLE_NAME="status_by_process_type"/>      
+      <Column NAME="status.value" TABLE_NAME="status_by_process_type"/>
+      <Column NAME="startTime.component" TABLE_NAME="opmn_process_by_process"/>
+      <Column NAME="upTime.component" TABLE_NAME="opmn_process_by_process"/>
+      <Column NAME="cpu.component" TABLE_NAME="opmn_process_by_process"/>
+      <Column NAME="memory.component" TABLE_NAME="opmn_process_by_process"/>
+      <Column NAME="memoryPercentage.component" TABLE_NAME="opmn_process_by_process"/>
+      <Where  FROM_TABLE="status_by_process_type" JOIN_TABLE="opmn_process_by_process" 
+        FROM_KEY="opmn_ias_component" JOIN_KEY="opmn_ias_component" OPERATOR="EQ"/>    
+      <Where  FROM_TABLE="status_by_process_type" JOIN_TABLE="opmn_process_by_process" 
+        FROM_KEY="opmn_process_type" JOIN_KEY="opmn_process_type" OPERATOR="EQ"/>    
+    </JoinTables> 
+
+    <!-- Get all components, use zeros for down components -->    
+    <GroupBy NAME="all_components" FROM_TABLE="opmn_all_processes">
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <AggregateColumn  NAME="_status"
+                        COLUMN_NAME ="status.value"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="status"
+                        EXPR="_status"
+                        DEFAULT_WHEN_EMPTY = "TRUE"/>
+      <AggregateColumn  NAME="startTime.component"
+                        COLUMN_NAME ="startTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="upTime.component"
+                        COLUMN_NAME ="upTime.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memory.component"
+                        COLUMN_NAME ="memory.component"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memoryPercentage.component"
+                        COLUMN_NAME ="memoryPercentage.component"
+                        OPERATOR="AVG" />
+      <!-- If CPU is negative, force division by zero to generate an empty value. -->
+      <AggregateColumn  NAME="_cpu.component"
+                        COLUMN_NAME ="cpu.component"
+                        OPERATOR="AVG" />
+      <ComputeColumn    NAME="cpu.component"
+                        EXPR="_cpu.component >= 0 ? _cpu.component : (1/0)"/>
+    </GroupBy>    
+
+    <!-- Add in the idle cpu and free memory metrics -->
+    <JoinTables NAME="result"> 
+      <Table NAME="all_components" />
+      <Table NAME="opmn_host_statistics" />
+    </JoinTables> 
+
+  </ExecutionDescriptor>
+</Metric>
+
+<!-- Metric ResourceUsage -->
+<Metric NAME="ResourceUsage" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus;11plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="ias_ResourceUsage">Resource Usage</Label>
+  </Display>
+  <TableDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="ias_resource_cpu_component">CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+       <Label NLSID="ias_resource_cpu_other">Other CPU Usage (%)</Label>
+      </Display></ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_cpu_idle">CPU Idle Time (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="ias_resource_memory_component">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memoryPercentage_component">Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memory_other">Other Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memoryPercentage_other">Other Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memory_free">Free Memory (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memoryPercentage_free">Free Memory (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+
+  </TableDescriptor>
+  <ExecutionDescriptor>
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+    </ValidIf>
+
+    <!-- put together the tables for opmn and other processes -->
+    <GetTable NAME="opmn_process_info" USE_CACHE="TRUE_IF_COLLECT"/>
+    <GetTable NAME="OtherResourceUsage" USE_CACHE="TRUE"/>
+    <JoinTables NAME="all_processes" OUTER="TRUE">
+      <Table NAME="opmn_process_info"/>
+      <Table NAME="OtherResourceUsage"/>
+      <Where  FROM_TABLE="OtherResourceUsage" JOIN_TABLE="opmn_process_info"
+        FROM_KEY="name" JOIN_KEY="name" OPERATOR="EQ"/>
+    </JoinTables>
+
+    <!-- Sum up all the rows in the opmn_process_info table, since this  -->
+    <!-- represents the iAS instance                                     -->
+    <GroupBy NAME="result" FROM_TABLE="opmn_process_info">
+      <AggregateColumn  NAME="_cpu.component"
+                        COLUMN_NAME ="cpu.component"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="_memory.component"
+                        COLUMN_NAME ="memory.component"
+                        OPERATOR="SUM" />
+      <AggregateColumn  NAME="_cpu.idle"
+                        COLUMN_NAME ="cpu.idle"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="memory.total"
+                        COLUMN_NAME ="memory.total"
+                        OPERATOR="AVG" />
+      <AggregateColumn  NAME="_memory.free"
+                        COLUMN_NAME ="memory.free"
+                        OPERATOR="AVG" />
+
+      <!-- Make sure CPU usage does not exceed 100% -->
+      <ComputeColumn    NAME="cpu.component"                        
+                        EXPR="(_cpu.component > 100) ? 100 : _cpu.component"/>
+      <ComputeColumn    NAME="cpu.idle"                        
+                        EXPR="((_cpu.idle+cpu.component)  > 100 ) ? (100 - cpu.component) : _cpu.idle"/>
+      <ComputeColumn    NAME="cpu.other"
+                        EXPR="100 - cpu.component - cpu.idle"/>
+
+      <!-- Make sure memory usage does not exceed total memory -->
+      <ComputeColumn    NAME="memory.component"                        
+                        EXPR="(_memory.component > memory.total) ? memory.total : _memory.component"/>
+      <ComputeColumn    NAME="memoryPercentage.component"                        
+                        EXPR="memory.component*100/memory.total"/>
+      <ComputeColumn    NAME="memory.free"
+                        EXPR="((_memory.free+memory.component)  > memory.total ) ? (memory.total - memory.component) : _memory.free"/>
+      <ComputeColumn    NAME="memoryPercentage.free"                        
+                        EXPR="memory.free*100/memory.total"/>
+      <ComputeColumn    NAME="memory.other"
+                        EXPR="memory.total - memory.component - memory.free"/>
+      <ComputeColumn    NAME="memoryPercentage.other"                        
+                        EXPR="memory.other*100/memory.total"/>
+    </GroupBy>    
+  </ExecutionDescriptor>
+
+  <QueryDescriptor FETCHLET_ID="JMX">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oracle_ias:ResourceUsage</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">cpu.component;cpu.other;cpu.idle;memory.component;memoryPercentage.component;memory.other;memoryPercentage.other;memory.free;memoryPercentage.free</Property>
+         <Property NAME="topologyNodeID.parameter" SCOPE="INSTANCE">topologyNodeID</Property>
+  </QueryDescriptor>
+
+</Metric>
+
+  <!-- Metric _ResourceUsage -->
+  <Metric NAME="_ResourceUsage" TYPE="TABLE" USAGE_TYPE="HIDDEN">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="ias_ResourceUsage">Resource Usage</Label>
+    </Display>
+    <TableDescriptor>
+        <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+            <Label NLSID="ias_resource_cpu_component">CPU Usage (%)</Label>
+          </Display>
+        </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memory_component">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="emdRoot" SCOPE="SYSTEMGLOBAL">emdRoot</Property>
+      <Property NAME="oraclehome" SCOPE="INSTANCE">OracleHome</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/iasresource.pl" "%emdRoot%" "%oraclehome%"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Metric ResourceUsage -->
+  <Metric NAME="ResourceUsage" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="900"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="ias_ResourceUsage">Resource Usage</Label>
+    </Display>
+    <TableDescriptor>
+        <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+          <Display FOR_SUMMARY_UI="TRUE">
+            <Label NLSID="ias_resource_cpu_component">CPU Usage (%)</Label>
+          </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+         <Display>
+       <Label NLSID="ias_resource_cpu_other">Other CPU Usage (%)</Label>
+        </Display></ColumnDescriptor>
+        <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+          <Display>
+            <Label NLSID="ias_resource_cpu_idle">CPU Idle Time (%)</Label>
+          </Display>
+        </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="ias_resource_memory_component">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.total" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memory_total">Total Memory (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memoryPercentage_component">Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memory_free">Free Memory (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.other" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+       <Label NLSID="ias_resource_memory_other">Other Memory Usage (MB)</Label>
+      </Display></ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memoryPercentage_other">Other Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="ias_resource_memoryPercentage_free">Free Memory (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+
+      <GetTable NAME="Load" ASSOC_TARGET="host"/>
+      <GetTable NAME="_ResourceUsage"/>
+      <JoinTables NAME="LoadAndResource">
+        <Table NAME="Load"/>
+        <Table NAME="_ResourceUsage"/>
+        <Column NAME="cpu.component" TABLE_NAME="_ResourceUsage"/>
+        <Column NAME="memory.component" TABLE_NAME="_ResourceUsage"/>
+        <Column NAME="cpu.total" TABLE_NAME="Load" COLUMN_NAME="cpuUtil"/>
+        <Column NAME="memoryKB.total" TABLE_NAME="Load" COLUMN_NAME="realMem"/>
+        <Column NAME="memoryKB.free" TABLE_NAME="Load" COLUMN_NAME="freeMem"/>
+      </JoinTables>
+     
+      <GroupBy NAME="result" FROM_TABLE="LoadAndResource">
+        <AggregateColumn  NAME="cpu.component"
+                          COLUMN_NAME="cpu.component"
+                          OPERATOR="AVG"/>
+        <AggregateColumn  NAME="_cpu.total"
+                          COLUMN_NAME="cpu.total"
+                          OPERATOR="AVG"/>
+        <ComputeColumn    NAME="cpu.total"
+                          EXPR="(cpu.component > _cpu.total) ? cpu.component : _cpu.total"/>
+        <ComputeColumn    NAME="cpu.other"
+                          EXPR="cpu.total-cpu.component"/>
+        <ComputeColumn    NAME="cpu.idle"
+                          EXPR="100-cpu.total"/>
+        <AggregateColumn  NAME="memory.component"
+                          COLUMN_NAME = "memory.component"
+                          OPERATOR="AVG"/>
+        <AggregateColumn  NAME="memoryKB.total"
+                          COLUMN_NAME = "memoryKB.total"
+                          OPERATOR="AVG"/>
+        <AggregateColumn  NAME="memoryKB.free"
+                          COLUMN_NAME = "memoryKB.free"
+                          OPERATOR="AVG"/>
+        <ComputeColumn    NAME="memory.total"
+                          EXPR="memoryKB.total/1024"/>
+        <ComputeColumn    NAME="memory.free"
+                          EXPR="memoryKB.free/1024"/>
+        <ComputeColumn    NAME="memory.other"
+                          EXPR="memory.total-memory.component-memory.free"/>
+        <ComputeColumn    NAME="memoryPercentage.component"
+                          EXPR="(memory.component*100)/memory.total"/>
+        <ComputeColumn    NAME="memoryPercentage.other"
+                          EXPR="(memory.other*100)/memory.total"/>
+        <ComputeColumn    NAME="memoryPercentage.free"
+                          EXPR="(memory.free*100)/memory.total"/>
+      </GroupBy>
+
+    </ExecutionDescriptor>
+  </Metric>
+
+   <!-- ResourceUsage_by_component -->
+   <Metric NAME="ResourceUsage_by_component" TYPE="TABLE">
+      <ValidIf>
+         <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+      </ValidIf>
+      <Display>
+         <Label NLSID="ResourceUsage_by_component">Resource Usage By Component Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="componentName" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="component_ru_component">Component Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="status" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_status">Component Status</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_cpu_component">Component CPU Usage (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_cpu_idle">CPU Idle Time (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_cpu_other">Other CPU Usage (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memory.component" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory">Component Memory Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memory.free" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory_free">Free Memory (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memory.other" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory_other">Other Memory Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Total Memory (MB)" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory_total">Total Memory (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory_percent">Component Memory Usage (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memoryPercentage.free" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory_free_percent">Free Memory (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memoryPercentage.other" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory_other_percent">Other Memory (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="startTime.value" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_start_time">Component Start Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="upTime.value" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_uptime">Component Up Time (milliseconds)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oracle_ias:ResourceUsage_by_component</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">componentName;status;cpu.component;cpu.idle;cpu.other;memory.component;memory.free;memory.other;memory.total;memoryPercentage.component;memoryPercentage.free;memoryPercentage.other;startTime.value;upTime.value</Property>
+         <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+      </QueryDescriptor>
+   </Metric>
+
+<!-- Metric opmn_host_statistics -->
+<Metric NAME="opmn_host_statistics" TYPE="TABLE" HELP="NO_HELP" USAGE_TYPE="HIDDEN_COLLECT">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+<Display>
+ <Label NLSID='opmn_host_statistics_table'>Host Level Metrics</Label>
+ <ShortName NLSID='opmn_host_statistics_stable'>opmn_host_statistics</ShortName>
+</Display><TableDescriptor>
+<ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='name_col_label'>Name</Label>
+ <ShortName NLSID='name_col_sname'>Name</ShortName>
+<Description NLSID='name_col_desc'>Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='fullname' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='fullname_col_label'>Full Name</Label>
+ <ShortName NLSID='fullname_col_sname'>Full Name</ShortName>
+<Description NLSID='fullname_col_desc'>Full Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Host' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='host_col_label'>Host</Label>
+ <ShortName NLSID='host_col_sname'>Host</ShortName>
+<Description NLSID='host_col_desc'>Host Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Process' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='process_col_label'>Process</Label>
+ <ShortName NLSID='process_col_sname'>Process</ShortName>
+<Description NLSID='process_col_desc'>Process Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='cpuIdle.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='cpuIdle_value_col_label'>cpuIdle.value</Label>
+ <ShortName NLSID='cpuIdle_value_col_sname'>cpuIdle.value</ShortName>
+<Description NLSID='cpuIdle_value_col_desc'>aggregrate of all CPU idle time</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='freePhysicalMem.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='freePhysicalMem_value_col_label'>freePhysicalMem.value</Label>
+ <ShortName NLSID='freePhysicalMem_value_col_sname'>freePhysicalMem.value</ShortName>
+<Description NLSID='freePhysicalMem_value_col_desc'>Free Physical Memory</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='numProcessors.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='numProcessors_value_col_label'>numProcessors.value</Label>
+ <ShortName NLSID='numProcessors_value_col_sname'>numProcessors.value</ShortName>
+<Description NLSID='numProcessors_value_col_desc'>process ID</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='timestamp.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='timestamp_value_col_label'>timestamp.value</Label>
+ <ShortName NLSID='timestamp_value_col_sname'>timestamp.value</ShortName>
+<Description NLSID='timestamp_value_col_desc'>host statistics timestamp</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='totalPhysicalMem.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='totalPhysicalMem_value_col_label'>totalPhysicalMem.value</Label>
+ <ShortName NLSID='totalPhysicalMem_value_col_sname'>totalPhysicalMem.value</ShortName>
+<Description NLSID='totalPhysicalMem_value_col_desc'>Total Physical Memory</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_col_label'>opmn</Label>
+ <ShortName NLSID='opmn_col_sname'>opmn</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_pm' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_pm_col_label'>opmn_pm</Label>
+ <ShortName NLSID='opmn_pm_col_sname'>opmn_pm</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='cpuIdle.delta' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='cpuIdle.delta'
+ COMPUTE_EXPR="cpuIdle.value-_cpuIdle.value">
+ <Display>
+  <Label NLSID='cpuIdle_delta_label'>Delta Idle CPU time (ms)</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='cpuIdle.delta.previous' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='cpuIdle.delta.previous'
+ COMPUTE_EXPR="_cpuIdle.delta == 0 ? _cpuIdle.delta.previous : _cpuIdle.delta">
+ <Display>
+  <Label NLSID='cpuIdle_delta_previous_label'>Previous Delta Idle CPU time (ms)</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='timestamp.delta' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='timestamp.delta'
+ COMPUTE_EXPR="timestamp.value-_timestamp.value">
+ <Display>
+  <Label NLSID='timestamp_delta_label'>Delta timestamp</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='timestamp.delta.previous' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT='TRUE'
+ COLUMN_NAME='timestamp.delta.previous'
+ COMPUTE_EXPR="_timestamp.delta == 0 ? _timestamp.delta.previous : _timestamp.delta">
+ <Display>
+  <Label NLSID='timestamp_delta_previous_label'>Previous Delta timestamp</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='cpu.idle' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE"
+ COMPUTE_EXPR="timestamp.delta != 0 ? (cpuIdle.delta*100)/timestamp.delta/numProcessors.value : (cpuIdle.delta.previous*100)/timestamp.delta.previous/numProcessors.value ">
+ <Display>
+  <Label NLSID='cpuIdlePercentage_value_label'>Idle CPU time (%)</Label>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='memory.free' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE"
+ COMPUTE_EXPR="freePhysicalMem.value/1024">
+<Display><Label NLSID='memory_free_col_label'>Free Memory (MB)</Label></Display>
+</ColumnDescriptor>
+<ColumnDescriptor NAME='memoryPercentage.free' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE"
+ COMPUTE_EXPR="(freePhysicalMem.value/totalPhysicalMem.value)*100">
+<Display><Label NLSID='memoryPercentage_free_col_label'>Free Memory (%)</Label></Display>
+</ColumnDescriptor>
+<ColumnDescriptor NAME='memory.total' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE"
+ COMPUTE_EXPR="totalPhysicalMem.value/1024">
+<Display><Label NLSID='memory_total_col_label'>Total Memory (MB)</Label></Display>
+</ColumnDescriptor>
+</TableDescriptor><QueryDescriptor FETCHLET_ID='DMS'>
+<Property NAME='oraclehome' SCOPE='INSTANCE'>OracleHome</Property>
+<Property NAME='machine' SCOPE='INSTANCE' OPTIONAL='TRUE'>host</Property>
+<Property NAME='version' SCOPE='INSTANCE'>Version</Property>
+<Property NAME='opmnport' SCOPE='INSTANCE' OPTIONAL='TRUE'>OPMNPort</Property>
+<Property NAME='metric' SCOPE='GLOBAL'>opmn_host_statistics</Property>
+<!-- do not include 'name', 'fullname', 'host' and 'process' columns in 'columnOrder' property. 
+Column names should be in the same order as they are declared. -->
+<Property NAME='columnOrder' SCOPE='GLOBAL' OPTIONAL='TRUE'>cpuIdle.value;freePhysicalMem.value;numProcessors.value;timestamp.value;totalPhysicalMem.value;opmn;opmn_pm</Property>
+<!-- The followings are properties for proxy settings. -->
+<Property NAME='proxyHost' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPort' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='dontProxyFor' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>dontProxyFor</Property>
+<Property NAME='useDefaultProxy' SCOPE='INSTANCE' OPTIONAL='TRUE'>useDefaultProxy</Property>
+<Property NAME='proxyHostOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPortOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyPort</Property>
+<!-- The followings are properties for Basic authorization settings. -->
+<Property NAME='authrealm' SCOPE='INSTANCE' OPTIONAL='TRUE'>authRealm</Property>
+<Property NAME='authuser' SCOPE='INSTANCE' OPTIONAL='TRUE'>authUser</Property>
+<Property NAME='authpwd' SCOPE='INSTANCE' OPTIONAL='TRUE'>authPasswd</Property>
+</QueryDescriptor></Metric>
+
+<!-- Metric opmn_host_statistics_prime_dms -->
+<Metric NAME="opmn_host_statistics_prime_dms" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP="NO_HELP">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+<Display>
+ <Label NLSID='opmn_host_statistics_table'>Host Level Metrics - latest processes</Label>
+ <ShortName NLSID='opmn_host_statistics_stable'>opmn_host_statistics</ShortName>
+</Display><TableDescriptor>
+<ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='name_col_label'>Name</Label>
+ <ShortName NLSID='name_col_sname'>Name</ShortName>
+<Description NLSID='name_col_desc'>Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='fullname' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='fullname_col_label'>Full Name</Label>
+ <ShortName NLSID='fullname_col_sname'>Full Name</ShortName>
+<Description NLSID='fullname_col_desc'>Full Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Host' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='host_col_label'>Host</Label>
+ <ShortName NLSID='host_col_sname'>Host</ShortName>
+<Description NLSID='host_col_desc'>Host Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Process' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='process_col_label'>Process</Label>
+ <ShortName NLSID='process_col_sname'>Process</ShortName>
+<Description NLSID='process_col_desc'>Process Name</Description>
+</Display></ColumnDescriptor>
+</TableDescriptor><QueryDescriptor FETCHLET_ID='DMS'>
+<Property NAME='oraclehome' SCOPE='INSTANCE'>OracleHome</Property>
+<Property NAME='machine' SCOPE='INSTANCE' OPTIONAL='TRUE'>host</Property>
+<Property NAME='version' SCOPE='INSTANCE'>Version</Property>
+<Property NAME='opmnport' SCOPE='INSTANCE' OPTIONAL='TRUE'>OPMNPort</Property>
+<Property NAME='metric' SCOPE='GLOBAL'>opmn_host_statistics</Property>
+<!-- do not include 'name', 'fullname', 'host' and 'process' columns in 'columnOrder' property. 
+Column names should be in the same order as they are declared. -->
+<!-- The followings are properties for proxy settings. -->
+<Property NAME='proxyHost' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPort' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='dontProxyFor' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>dontProxyFor</Property>
+<Property NAME='useDefaultProxy' SCOPE='INSTANCE' OPTIONAL='TRUE'>useDefaultProxy</Property>
+<Property NAME='proxyHostOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPortOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyPort</Property>
+<!-- The followings are properties for Basic authorization settings. -->
+<Property NAME='authrealm' SCOPE='INSTANCE' OPTIONAL='TRUE'>authRealm</Property>
+<Property NAME='authuser' SCOPE='INSTANCE' OPTIONAL='TRUE'>authUser</Property>
+<Property NAME='authpwd' SCOPE='INSTANCE' OPTIONAL='TRUE'>authPasswd</Property>
+<Property NAME='usecache' SCOPE='GLOBAL' OPTIONAL='TRUE'>refreshall</Property>
+</QueryDescriptor></Metric>
+
+<!-- Metric opmn_process_type -->
+<Metric NAME='opmn_process_type' TYPE='TABLE' HELP="NO_HELP" USAGE_TYPE="HIDDEN_COLLECT">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+<Display>
+ <Label NLSID='opmn_process_type_table'>Raw OPMN Process Type Metrics</Label>
+ <ShortName NLSID='opmn_process_type_stable'>opmn_process_type</ShortName>
+</Display><TableDescriptor>
+<ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='name_col_label'>Name</Label>
+ <ShortName NLSID='name_col_sname'>Name</ShortName>
+<Description NLSID='name_col_desc'>Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='fullname' TYPE='STRING' IS_KEY='TRUE'>
+<Display><Label NLSID='fullname_col_label'>Full Name</Label>
+ <ShortName NLSID='fullname_col_sname'>Full Name</ShortName>
+<Description NLSID='fullname_col_desc'>Full Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Host' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='host_col_label'>Host</Label>
+ <ShortName NLSID='host_col_sname'>Host</ShortName>
+<Description NLSID='host_col_desc'>Host Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Process' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='process_col_label'>Process</Label>
+ <ShortName NLSID='process_col_sname'>Process</ShortName>
+<Description NLSID='process_col_desc'>Process Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='moduleId.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='moduleId_value_col_label'>moduleId.value</Label>
+ <ShortName NLSID='moduleId_value_col_sname'>moduleId.value</ShortName>
+<Description NLSID='moduleId_value_col_desc'>process management module association</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_col_label'>opmn</Label>
+ <ShortName NLSID='opmn_col_sname'>opmn</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_component' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_ias_component_col_label'>IAS Component Name</Label>
+ <ShortName NLSID='opmn_ias_component_col_sname'>IAS Component Name</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_instance' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_ias_instance_col_label'>opmn_ias_instance</Label>
+ <ShortName NLSID='opmn_ias_instance_col_sname'>opmn_ias_instance</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_pm' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_pm_col_label'>opmn_pm</Label>
+ <ShortName NLSID='opmn_pm_col_sname'>opmn_pm</ShortName>
+</Display></ColumnDescriptor>
+</TableDescriptor><QueryDescriptor FETCHLET_ID='DMS'>
+<Property NAME='oraclehome' SCOPE='INSTANCE'>OracleHome</Property>
+<Property NAME='machine' SCOPE='INSTANCE' OPTIONAL='TRUE'>host</Property>
+<Property NAME='version' SCOPE='INSTANCE'>Version</Property>
+<Property NAME='opmnport' SCOPE='INSTANCE' OPTIONAL='TRUE'>OPMNPort</Property>
+<Property NAME='metric' SCOPE='GLOBAL'>opmn_process_type</Property>
+<!-- do not include 'name', 'fullname', 'host' and 'process' columns in 'columnOrder' property. 
+Column names should be in the same order as they are declared. -->
+<Property NAME='columnOrder' SCOPE='GLOBAL' OPTIONAL='TRUE'>moduleId.value;opmn;opmn_ias_component;opmn_ias_instance;opmn_pm</Property>
+<!-- The followings are properties for proxy settings. -->
+<Property NAME='proxyHost' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPort' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='dontProxyFor' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>dontProxyFor</Property>
+<Property NAME='useDefaultProxy' SCOPE='INSTANCE' OPTIONAL='TRUE'>useDefaultProxy</Property>
+<Property NAME='proxyHostOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPortOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyPort</Property>
+<!-- The followings are properties for Basic authorization settings. -->
+<Property NAME='authrealm' SCOPE='INSTANCE' OPTIONAL='TRUE'>authRealm</Property>
+<Property NAME='authuser' SCOPE='INSTANCE' OPTIONAL='TRUE'>authUser</Property>
+<Property NAME='authpwd' SCOPE='INSTANCE' OPTIONAL='TRUE'>authPasswd</Property>
+<Property NAME='usecache' SCOPE='USER' OPTIONAL='TRUE'>useCache</Property>
+</QueryDescriptor></Metric>
+
+<!-- Metric opmn_connect -->
+<Metric NAME='opmn_connect' TYPE='TABLE' USAGE_TYPE='HIDDEN' HELP='NO_HELP'>
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+<Display>
+ <Label NLSID='opmn_connect_table'>opmn_connect Metrics</Label>
+ <ShortName NLSID='opmn_connect_stable'>opmn_connect</ShortName>
+</Display><TableDescriptor>
+
+<ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='name_col_label'>Name</Label>
+ <ShortName NLSID='name_col_sname'>Name</ShortName>
+<Description NLSID='name_col_desc'>Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='fullname' TYPE='STRING' IS_KEY='TRUE'>
+<Display><Label NLSID='fullname_col_label'>Full Name</Label>
+ <ShortName NLSID='fullname_col_sname'>Full Name</ShortName>
+<Description NLSID='fullname_col_desc'>Full Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Host' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='host_col_label'>Host</Label>
+ <ShortName NLSID='host_col_sname'>Host</ShortName>
+<Description NLSID='host_col_desc'>Host Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Process' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='process_col_label'>Process</Label>
+ <ShortName NLSID='process_col_sname'>Process</ShortName>
+<Description NLSID='process_col_desc'>Process Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='desc.value' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='desc_value_col_label'>desc.value</Label>
+ <ShortName NLSID='desc_value_col_sname'>desc.value</ShortName>
+<Description NLSID='desc_value_col_desc'>port description</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='host.value' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='host_value_col_label'>host.value</Label>
+ <ShortName NLSID='host_value_col_sname'>host.value</ShortName>
+<Description NLSID='host_value_col_desc'>host name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='port.value' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='port_value_col_label'>port.value</Label>
+ <ShortName NLSID='port_value_col_sname'>port.value</ShortName>
+<Description NLSID='port_value_col_desc'>port number</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_col_label'>opmn</Label>
+ <ShortName NLSID='opmn_col_sname'>opmn</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_component' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_ias_component_col_label'>IAS Component Name</Label>
+ <ShortName NLSID='opmn_ias_component_col_sname'>IAS Component Name</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_instance' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_ias_instance_col_label'>opmn_ias_instance</Label>
+ <ShortName NLSID='opmn_ias_instance_col_sname'>opmn_ias_instance</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ons' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_ons_col_label'>opmn_ons</Label>
+ <ShortName NLSID='opmn_ons_col_sname'>opmn_ons</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_pm' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_pm_col_label'>opmn_pm</Label>
+ <ShortName NLSID='opmn_pm_col_sname'>opmn_pm</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_process' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_process_col_label'>opmn_process</Label>
+ <ShortName NLSID='opmn_process_col_sname'>opmn_process</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_process_set' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_process_set_col_label'>opmn_process_set</Label>
+ <ShortName NLSID='opmn_process_set_col_sname'>opmn_process_set</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_process_type' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='opmn_process_type_col_label'>Process Type</Label>
+ <ShortName NLSID='opmn_process_type_col_sname'>opmn_process_type</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='protocol.value' TYPE='STRING' IS_KEY='FALSE'>
+<Display><Label NLSID='protocol_value_col_label'>Protocol</Label>
+ <ShortName NLSID='protocol_value_col_sname'>Protocol</ShortName>
+</Display></ColumnDescriptor>
+</TableDescriptor><QueryDescriptor FETCHLET_ID='DMS'>
+<Property NAME='machine' SCOPE='INSTANCE'>host</Property>
+<Property NAME='oraclehome' SCOPE='INSTANCE'>OracleHome</Property>
+<Property NAME='version' SCOPE='INSTANCE'>Version</Property>
+<Property NAME='opmnport' SCOPE='INSTANCE' OPTIONAL='TRUE'>OPMNPort</Property>
+<!-- The followings are properties for Basic authorization settings. -->
+<Property NAME='authrealm' SCOPE='INSTANCE' OPTIONAL='TRUE'>authRealm</Property>
+<Property NAME='authuser' SCOPE='INSTANCE' OPTIONAL='TRUE'>authUser</Property>
+<Property NAME='authpwd' SCOPE='INSTANCE' OPTIONAL='TRUE'>authPasswd</Property>
+<Property NAME='metric' SCOPE='GLOBAL'>opmn_connect</Property>
+<!-- Since we don't every collect this metric, get the value directly.  We won't find it in the cache -->
+<Property NAME='usecache' SCOPE='GLOBAL' OPTIONAL='TRUE'>false</Property>
+<!-- do not include 'name', 'fullname', 'host' and 'process' columns in 'columnOrder' property. 
+Column names should be in the same order as they are declared. -->
+<Property NAME='columnOrder' SCOPE='GLOBAL' OPTIONAL='TRUE'>desc.value;host.value;port.value;opmn;opmn_ias_component;opmn_ias_instance;opmn_ons;opmn_pm;opmn_process;opmn_process_set;opmn_process_type;protocol.value</Property>
+<!-- The followings are properties for proxy settings. -->
+<Property NAME='proxyHost' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPort' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='dontProxyFor' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>dontProxyFor</Property>
+<Property NAME='useProxy' SCOPE='INSTANCE' OPTIONAL='TRUE'>useDefaultProxy</Property>
+<Property NAME='proxyHostOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPortOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyPort</Property>
+</QueryDescriptor></Metric>
+
+<!-- Metric opmn_connect_by_component -->
+<Metric NAME='opmn_connect_by_component' TYPE='TABLE' USAGE_TYPE='HIDDEN' HELP='NO_HELP'>
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+  <Display>
+   <Label NLSID='opmn_connect_by_component_table'>OPMN connection information by component</Label>
+   <ShortName NLSID='opmn_connect_by_component_stable'>opmn_connect_by_component</ShortName>
+  </Display>
+  <TableDescriptor>
+    <ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='TRUE'>
+      <Display><Label NLSID='name_col_label'>Name</Label></Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='desc.value' TYPE='STRING' IS_KEY='FALSE'>
+      <Display><Label NLSID='desc_value_col_label'>desc.value</Label></Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='type.value' TYPE='STRING' IS_KEY='TRUE'>
+      <Display><Label NLSID='type_value_col_label'>type.value</Label></Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='port.value' TYPE='STRING' IS_KEY='TRUE'>
+      <Display><Label NLSID='port_value_col_label'>port.value</Label></Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='component_name' TYPE='STRING' IS_KEY='FALSE'>
+      <Display><Label NLSID='component_name_col_label'>component_name</Label></Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='opmn_process_type' TYPE='STRING' IS_KEY='FALSE'>
+      <Display><Label NLSID='opmn_process_type_col_label'>Process Type</Label></Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='opmn_ias_component' TYPE='STRING' IS_KEY='FALSE'>
+      <Display><Label NLSID='opmn_ias_component_col_label'>IAS Component Name</Label></Display>
+    </ColumnDescriptor>
+  </TableDescriptor>
+  <ExecutionDescriptor>
+    <!-- Join the connection and process type tables, so we can get the type field -->
+    <GetTable NAME="opmn_connect" USE_CACHE="FALSE"/>
+    <GetTable NAME="opmn_process_type" USE_CACHE="FALSE"/>
+    <JoinTables NAME="opmn_connect_with_type" OUTER="TRUE">
+      <Table NAME="opmn_connect"/>
+      <Table NAME="opmn_process_type"/>
+      <Column NAME="name"               TABLE_NAME="opmn_connect"/>
+      <Column NAME="opmn_ias_component" TABLE_NAME="opmn_connect"/>
+      <Column NAME="opmn_ias_instance"  TABLE_NAME="opmn_connect"/>
+      <Column NAME="opmn_process_type"  TABLE_NAME="opmn_connect"/>
+      <Column NAME="opmn_process_set"   TABLE_NAME="opmn_connect"/>
+      <Column NAME="desc.value"         TABLE_NAME="opmn_connect"/>
+      <Column NAME="host.value"         TABLE_NAME="opmn_connect"/>
+      <Column NAME="port.value"         TABLE_NAME="opmn_connect"/>
+      <Column NAME="opmn_ons"           TABLE_NAME="opmn_connect"/>
+      <Column NAME="moduleId.value"     TABLE_NAME="opmn_process_type"/>
+
+      <Where  FROM_TABLE="opmn_connect" JOIN_TABLE="opmn_process_type"
+        FROM_KEY="opmn_process_type" JOIN_KEY="name" OPERATOR="EQ"/>
+      <Where  FROM_TABLE="opmn_connect" JOIN_TABLE="opmn_process_type"
+        FROM_KEY="opmn_ias_component" JOIN_KEY="opmn_ias_component" OPERATOR="EQ"/>
+    </JoinTables>
+
+    <!-- Get the opmn ports -->
+    <GetView NAME="opmn_connect_for_opmn"
+      FROM_TABLE="opmn_connect_with_type">
+      <Filter COLUMN_NAME="opmn_ons" OPERATOR="EQ">ons</Filter>
+    </GetView>
+    <GroupBy NAME="opmn_connect_for_opmn_with_name"
+      FROM_TABLE="opmn_connect_for_opmn">
+      <By NAME="name"/>
+      <By NAME="desc.value"/>
+      <By NAME="port.value"/>
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <ComputeColumn    NAME="component_name"
+                        EXPR="OPMN"
+                        IS_VALUE="TRUE"/>
+      <ComputeColumn    NAME="type.value"
+                        EXPR="OPMN"
+                        IS_VALUE="TRUE"/>
+    </GroupBy>
+
+    <!-- Get the ports for non-oc4j components -->
+    <GetView NAME="opmn_connect_for_non_oc4j"
+      FROM_TABLE="opmn_connect_with_type">
+      <Filter COLUMN_NAME="opmn_ons" OPERATOR="NE">ons</Filter>
+      <Filter COLUMN_NAME="moduleId.value" OPERATOR="NE">OC4J</Filter>
+    </GetView>
+    <GroupBy NAME="opmn_connect_for_non_oc4j_with_name"
+      FROM_TABLE="opmn_connect_for_non_oc4j">
+      <By NAME="name"/>
+      <By NAME="desc.value"/>
+      <By NAME="port.value"/>
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="component_name" COLUMN_NAME="opmn_ias_component"/>
+      <By NAME="type.value" COLUMN_NAME="moduleId.value"/>
+    </GroupBy>
+
+    <!-- Get the ports for oc4j components -->
+    <GetView NAME="opmn_connect_for_oc4j"
+      FROM_TABLE="opmn_connect_with_type">
+      <Filter COLUMN_NAME="opmn_ons" OPERATOR="NE">ons</Filter>
+      <Filter COLUMN_NAME="moduleId.value" OPERATOR="EQ">OC4J</Filter>
+    </GetView>
+    <GroupBy NAME="opmn_connect_for_oc4j_with_name"
+      FROM_TABLE="opmn_connect_for_oc4j">
+      <By NAME="name"/>
+      <By NAME="desc.value"/>
+      <By NAME="port.value"/>
+      <By NAME="opmn_ias_component"/>
+      <By NAME="opmn_process_type"/>
+      <By NAME="component_name" COLUMN_NAME="opmn_process_type"/>
+      <By NAME="type.value" COLUMN_NAME="moduleId.value"/>
+    </GroupBy>
+
+    <!-- Put all the tables together -->
+    <Union NAME="result">
+      <Table NAME="opmn_connect_for_opmn_with_name" />
+      <Table NAME="opmn_connect_for_non_oc4j_with_name" />
+      <Table NAME="opmn_connect_for_oc4j_with_name" />
+    </Union>
+
+  </ExecutionDescriptor>
+</Metric>
+
+<!-- Metric opmn_process_set -->
+<Metric NAME='opmn_process_set' TYPE='TABLE' HELP='NO_HELP' USAGE_TYPE="HIDDEN_COLLECT">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+  </ValidIf>
+<Display>
+ <Label NLSID='opmn_process_set_table'>Raw OPMN Process Set Metrics</Label>
+ <ShortName NLSID='opmn_process_set_stable'>opmn_process_set</ShortName>
+</Display><TableDescriptor>
+<ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='name_col_label'>Name</Label>
+ <ShortName NLSID='name_col_sname'>Name</ShortName>
+<Description NLSID='name_col_desc'>Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='fullname' TYPE='STRING' IS_KEY='TRUE'>
+<Display><Label NLSID='fullname_col_label'>Full Name</Label>
+ <ShortName NLSID='fullname_col_sname'>Full Name</ShortName>
+<Description NLSID='fullname_col_desc'>Full Instance Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Host' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='host_col_label'>Host</Label>
+ <ShortName NLSID='host_col_sname'>Host</ShortName>
+<Description NLSID='host_col_desc'>Host Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='Process' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='process_col_label'>Process</Label>
+ <ShortName NLSID='process_col_sname'>Process</ShortName>
+<Description NLSID='process_col_desc'>Process Name</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='numProcConf.value' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='numProcConf_value_col_label'>numProcConf.value</Label>
+ <ShortName NLSID='numProcConf_value_col_sname'>numProcConf.value</ShortName>
+<Description NLSID='numProcConf_value_col_desc'>number of process configured for this process set</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='reqFail.count' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='reqFail_count_col_label'>reqFail.count, ops</Label>
+ <ShortName NLSID='reqFail_count_col_sname'>reqFail.count</ShortName>
+<Description NLSID='reqFail_count_col_desc'>total number of falied http requests</Description>
+<Unit NLSID='ops'>ops</Unit>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='reqPartialSucc.count' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='reqPartialSucc_count_col_label'>reqPartialSucc.count, ops</Label>
+ <ShortName NLSID='reqPartialSucc_count_col_sname'>reqPartialSucc.count</ShortName>
+<Description NLSID='reqPartialSucc_count_col_desc'>total number of partially successful http requests</Description>
+<Unit NLSID='ops'>ops</Unit>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='reqSucc.count' TYPE='NUMBER' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='reqSucc_count_col_label'>reqSucc.count, ops</Label>
+ <ShortName NLSID='reqSucc_count_col_sname'>reqSucc.count</ShortName>
+<Description NLSID='reqSucc_count_col_desc'>total number of successful http requests</Description>
+<Unit NLSID='ops'>ops</Unit>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='restartOnDeath.value' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='restartOnDeath_value_col_label'>restartOnDeath.value</Label>
+ <ShortName NLSID='restartOnDeath_value_col_sname'>restartOnDeath.value</ShortName>
+<Description NLSID='restartOnDeath_value_col_desc'>process set restart on death flag</Description>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_col_label'>opmn</Label>
+ <ShortName NLSID='opmn_col_sname'>opmn</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_component' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_ias_component_col_label'>IAS Component Name</Label>
+ <ShortName NLSID='opmn_ias_component_col_sname'>opmn_ias_component</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_ias_instance' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_ias_instance_col_label'>opmn_ias_instance</Label>
+ <ShortName NLSID='opmn_ias_instance_col_sname'>opmn_ias_instance</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_pm' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_pm_col_label'>opmn_pm</Label>
+ <ShortName NLSID='opmn_pm_col_sname'>opmn_pm</ShortName>
+</Display></ColumnDescriptor>
+<ColumnDescriptor NAME='opmn_process_type' TYPE='STRING' IS_KEY='FALSE' TRANSIENT="TRUE">
+<Display><Label NLSID='opmn_process_type_col_label'>Process Type</Label>
+ <ShortName NLSID='opmn_process_type_col_sname'>opmn_process_type</ShortName>
+</Display></ColumnDescriptor>
+</TableDescriptor><QueryDescriptor FETCHLET_ID='DMS'>
+<Property NAME='machine' SCOPE='INSTANCE'>host</Property>
+<Property NAME='oraclehome' SCOPE='INSTANCE'>OracleHome</Property>
+<Property NAME='version' SCOPE='INSTANCE'>Version</Property>
+<Property NAME='opmnport' SCOPE='INSTANCE' OPTIONAL='TRUE'>OPMNPort</Property>
+<!-- The followings are properties for Basic authorization settings. -->
+<Property NAME='authrealm' SCOPE='INSTANCE' OPTIONAL='TRUE'>authRealm</Property>
+<Property NAME='authuser' SCOPE='INSTANCE' OPTIONAL='TRUE'>authUser</Property>
+<Property NAME='authpwd' SCOPE='INSTANCE' OPTIONAL='TRUE'>authPasswd</Property>
+<Property NAME='metric' SCOPE='GLOBAL'>opmn_process_set</Property>
+<!-- do not include 'name', 'fullname', 'host' and 'process' columns in 'columnOrder' property. 
+Column names should be in the same order as they are declared. -->
+<Property NAME='columnOrder' SCOPE='GLOBAL' OPTIONAL='TRUE'>numProcConf.value;reqFail.count;reqPartialSucc.count;reqSucc.count;restartOnDeath.value;opmn;opmn_ias_component;opmn_ias_instance;opmn_pm;opmn_process_type</Property>
+<!-- The followings are properties for proxy settings. -->
+<Property NAME='proxyHost' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPort' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='dontProxyFor' SCOPE='SYSTEMGLOBAL' OPTIONAL='TRUE'>dontProxyFor</Property>
+<Property NAME='useProxy' SCOPE='INSTANCE' OPTIONAL='TRUE'>useDefaultProxy</Property>
+<Property NAME='proxyHostOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyHost</Property>
+<Property NAME='proxyPortOverride' SCOPE='INSTANCE' OPTIONAL='TRUE'>proxyPort</Property>
+<Property NAME='usecache' SCOPE='USER' OPTIONAL='TRUE'>useCache</Property>
+</QueryDescriptor></Metric>
+
+<CredentialInfo>
+    <!-- The credential type for oracle_ias type target -->
+    <CredentialType NAME="IASHostCreds" >
+      <Display>
+        <Label NLSID="CREDS_IAS_HOSTCREDS">Application Server Host Credentials</Label>
+      </Display>
+      <CredentialTypeRef REF_NAME="HostRef" REF_TYPE="HostCreds" REF_TARGETTYPE="host" ASSOCIATION="host">
+        <CredentialTypeRefColumn NAME="HostUserName" REF_TYPECOLUMN="HostUserName"/>
+        <CredentialTypeRefColumn NAME="HostPassword" REF_TYPECOLUMN="HostPassword"/>
+      </CredentialTypeRef>
+    </CredentialType>
+ 
+    <!-- The oracle_ias target credential set -->
+    <CredentialSet NAME="IASOSCreds" CREDENTIAL_TYPE="IASHostCreds" USAGE="PREFERRED_CRED">
+      <Display>
+          <Label NLSID="CREDS_OS_HOSTCREDS">Application Server OS Credentials</Label>
+      </Display>
+      <CredentialSetColumn TYPE_COLUMN="HostUserName" SET_COLUMN="OSUsername">
+        <Display>
+          <Label NLSID="CREDS_OS_USER">Operating System Username</Label>
+        </Display>
+      </CredentialSetColumn>
+ 
+      <CredentialSetColumn TYPE_COLUMN="HostPassword"  SET_COLUMN="OSPassword">
+        <Display>
+          <Label NLSID="CREDS_OS_PASSWORD">Operating System Password</Label>
+        </Display>
+      </CredentialSetColumn>
+    </CredentialSet>
+  </CredentialInfo>
+
+  <InstanceProperties>
+
+   <InstanceProperty NAME="OracleInstance" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+    </ValidIf>
+      <Display>
+        <Label NLSID="oracle_instance_prop">Oracle Instance</Label>
+      </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="OracleHome" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <Display>
+        <Label NLSID="OracleHome_iprop">OracleHome</Label>
+      </Display>
+    </InstanceProperty>
+     <InstanceProperty NAME="OracleBinaryHome" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+       <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="OracleBinaryHome_iprop">Oracle Binary Home</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="host" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="host_iprop">host</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="StatusURL" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="StatusURL_iprop">URL to measure application response</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="useDefaultProxy" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="useProxy_iprop">Use default proxy?</Label>
+      </Display>
+      false
+    </InstanceProperty>
+    <InstanceProperty NAME="proxyHost" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="proxyHost_iprop">Proxy Host Override</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="proxyPort" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="proxyPort_iprop">Proxy Port Override</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="StandaloneConsoleURL" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="StandaloneConsoleURL_iprop">URL to contact Standalone Console</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="useDefaultProxy" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="useProxy_iprop">Use default proxy?</Label>
+      </Display>
+      false
+    </InstanceProperty>
+    <InstanceProperty NAME="proxyHost" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="proxyHost_iprop">Proxy Host Override</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="proxyPort" CREDENTIAL="FALSE" OPTIONAL="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID="proxyPort_iprop">Proxy Port Override</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME='OPMNPort' OPTIONAL='TRUE'>
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID='dms_OPMNPort'>OPMN port number</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME='authRealm' OPTIONAL='TRUE'>
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+        <Label NLSID='dms_authRealm_iprop'>Realm for Basic authorization</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME='authUser' OPTIONAL='TRUE'>
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="904plus;1013plus"/>
+      </ValidIf>
+      <Display>
+      <Label NLSID='dms_authUser_iprop'>Username for Basic authorization</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME='authPasswd' CREDENTIAL='TRUE' OPTIONAL='TRUE'>
+      <Display>
+        <Label NLSID='dms_authPasswd_iprop'>Password for Basic authorization</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME='DiscoveredVersion' OPTIONAL='TRUE'>
+      <Display>
+        <Label NLSID='DiscoveredVersion_iprop'>Version number found during discovery</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME='DiscoveredInstallType' OPTIONAL='TRUE'>
+      <Display>
+        <Label NLSID='DiscoveredInstallType_iprop'>Installation type found during discovery</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="MAS_OracleInstance">
+        <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+        </ValidIf>
+        <Display>
+            <Label NLSID="MAS_OracleInstanceLabel">MAS Oracle Instance Home</Label>
+        </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="topologyNodeID">
+     <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+     </ValidIf>
+     <Display>
+      <Label NLSID="MAS_topologyNodeIDLabel">Topology Node ID</Label>
+     </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="Version" IS_COMPUTED="TRUE">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="900;904plus;1013plus"/>
+      </ValidIf>
+     <Display>
+       <Label NLSID="version_iprop">Version</Label>
+     </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="Version">
+     <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+     </ValidIf>
+     <Display>
+       <Label NLSID="version_iprop">Version</Label>
+     </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="VersionCategory" IS_COMPUTED="TRUE">
+     <Display>
+       <Label NLSID="version_cat_iprop">Version Category</Label>
+     </Display>
+    </InstanceProperty>
+
+    <InstanceProperty NAME="InstallType" IS_COMPUTED="TRUE">
+     <Display>
+       <Label NLSID="install_type_iprop">Installation Type</Label>
+     </Display>
+    </InstanceProperty>
+
+    <DynamicProperties NAME="Config" FORMAT="ROW"
+                       PROP_LIST="Version;InstallType">
+      <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+        <Property NAME="oraclehome" SCOPE="INSTANCE">OracleHome</Property>
+        <Property NAME="discoveredVersion" SCOPE="INSTANCE" OPTIONAL="TRUE">DiscoveredVersion</Property>
+        <Property NAME="discoveredInstallType" SCOPE="INSTANCE" OPTIONAL="TRUE">DiscoveredInstallType</Property>
+        <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+        <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/iasconfig.pl" "%oraclehome%" "%discoveredVersion%" "%discoveredInstallType%"</Property>
+        <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+
+    <DynamicProperties NAME="ComputeVC" FORMAT="ROW"
+                   PROP_LIST="VersionCategory">
+      <QueryDescriptor FETCHLET_ID="VersionRangeComputer">
+        <Property NAME="Version" SCOPE="INSTANCE">Version</Property>
+        <Property NAME="DefaultRange" SCOPE="GLOBAL">900</Property>
+        <Property NAME="900" SCOPE="GLOBAL">9.0.2;</Property>
+        <Property NAME="904plus" SCOPE="GLOBAL">9.0.4;</Property>
+        <Property NAME="1013plus" SCOPE="GLOBAL">10.1.3;</Property>
+        <Property NAME="11plus" SCOPE="GLOBAL">11.0.0;</Property>
+      </QueryDescriptor>
+   </DynamicProperties>
+
+  </InstanceProperties>
+
+</TargetMetadata>

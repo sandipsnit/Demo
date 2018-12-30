@@ -1,0 +1,276 @@
+#!/bin/sh -f
+# $Header: emcore/rcu/bin/rcu.sh /st_emcore_11.1as/14 2012/10/09 10:34:17 rohitgup Exp $
+#
+# rcu.sh
+#
+# Copyright (c) 1997, 2012, Oracle and/or its affiliates. All rights reserved. 
+#
+
+#######################################################################
+# Variables set by Oracle Universal Installer for dependent components.
+#######################################################################
+
+#Define launching mode
+#set as DIALOG to launch in dialog mode, otherwise, rcu is launched in frame mode.
+LAUNCH_MODE=$LAUNCH_MODE
+#PLATFORM=%s_operatingSystem%
+
+#In the ship home environment, if ORACLE_HOME variable is not set
+#It is the parent directory of the "bin" dir where the rcu script is located
+basedir="`dirname $0`/.."
+d=`dirname ${basedir}`
+b=`basename ${basedir}`
+ORACLE_HOME="`cd \"${d}/${b}\" 2>/dev/null && pwd || echo \"${d}/${b}\"`"
+export ORACLE_HOME;
+
+# Define ORACLE_HOME -> OH
+OH=$ORACLE_HOME
+export OH;
+if [ "$SQLPLUS_HOME" = "" ]; then
+    SQLPLUS_HOME=$ORACLE_HOME
+    export SQLPLUS_HOME;
+fi
+
+LOG_LEVEL_VAR=""
+LOG_LOCATION_VAR=""
+LOG_NAME_VAR=""
+LOG_FORMATTER_VAR=""
+TIMESTAMP_LOG_DIR_VAR=""
+PRETTY_NAME_VAR=""
+OPERATION1_NAME_VAR=""
+OPERATION2_NAME_VAR=""
+OPERATION1_CMDLINE_VAR=""
+OPERATION2_CMDLINE_VAR=""
+DBMS_OUTPUT_IN_SEPARATE_FILE_VAR=""
+RCU_PRODUCT_NAME_VAR=""
+
+if [ "$RCU_OPERATION1_NAME" != "" ]
+then
+  OPERATION1_NAME_VAR="-DRCU_OPERATION1_NAME="$RCU_OPERATION1_NAME
+fi
+
+if [ "$RCU_OPERATION2_NAME" != "" ]
+then
+  OPERATION2_NAME_VAR="-DRCU_OPERATION2_NAME="$RCU_OPERATION2_NAME
+fi
+
+if [ "$RCU_OPERATION1_CMDLINE" != "" ]
+then
+  OPERATION1_CMDLINE_VAR="-DRCU_OPERATION1_CMDLINE="$RCU_OPERATION1_CMDLINE
+fi
+
+if [ "$RCU_OPERATION2_CMDLINE" != "" ]
+then
+  OPERATION2_CMDLINE_VAR="-DRCU_OPERATION2_CMDLINE="$RCU_OPERATION2_CMDLINE
+fi
+
+if [ "$RCU_DBMS_OUTPUT_IN_SEPARATE_FILE" != "" ]
+then
+ DBMS_OUTPUT_IN_SEPARATE_FILE_VAR="-DRCU_DBMS_OUTPUT_IN_SEPARATE_FILE="$RCU_DBMS_OUTPUT_IN_SEPARATE_FILE
+fi
+
+if [ "$RCU_PRODUCT_NAME" != "" ]
+then
+   RCU_PRODUCT_NAME_VAR="-DRCU_PRODUCT_NAME="$RCU_PRODUCT_NAME
+fi
+
+if [ "$RCU_TIMESTAMP_LOG_DIR" != "" ]
+then
+    TIMESTAMP_LOG_DIR_VAR="-DRCU_TIMESTAMP_LOG_DIR="$RCU_TIMESTAMP_LOG_DIR
+else
+    TIMESTAMP_LOG_DIR_VAR="-DRCU_TIMESTAMP_LOG_DIR=true"
+fi
+
+if [ "$RCU_LOG_LOCATION" != "" ]
+then
+    LOG_LOCATION_VAR="-DRCU_LOG_LOCATION="$RCU_LOG_LOCATION
+else
+   if [ "$ORACLE_BASE" != "" ]
+   then
+      LOG_LOCATION_VAR="-DRCU_LOG_LOCATION="$ORACLE_BASE
+   fi                
+fi
+
+if [ "$RCU_LOG_LEVEL" != "" ]
+then
+    LOG_LEVEL_VAR="-DRCU_LOG_LEVEL="$RCU_LOG_LEVEL
+else
+    LOG_LEVEL_VAR="-DRCU_LOG_LEVEL=NOTIFICATION"
+fi
+
+if [ "$RCU_LOG_NAME" != "" ]
+then
+    LOG_NAME_VAR="-DRCU_LOG_NAME="$RCU_LOG_NAME
+fi
+
+if [ "$RCU_LOG_FORMATTER" != "" ]
+then
+    LOG_FORMATTER_VAR="-DRCU_LOG_FORMATTER="$RCU_LOG_FORMATTER
+fi
+
+if [ "$USE_PRETTY_NAMES" != "" ]
+then
+     PRETTY_NAME_VAR="-DUSE_PRETTY_NAMES="$USE_PRETTY_NAMES
+fi
+
+export LOG_LOCATION_VAR;
+export LOG_LEVEL_VAR;
+export LOG_NAME_VAR;
+export LOG_FORMATTER_VAR;
+export PRETTY_NAME_VAR;
+export OPERATION1_NAME_VAR;
+export OPERATION2_NAME_VAR;
+export OPERATION1_CMDLINE_VAR;
+export OPERATION2_CMDLINE_VAR;
+export DBMS_OUTPUT_IN_SEPARATE_FILE_VAR;
+export RCU_PRODUCT_NAME_VAR;
+
+RCU_ENV_VARS="$LOG_LOCATION_VAR $LOG_LEVEL_VAR $LOG_NAME_VAR $LOG_FORMATTER_VAR $TIMESTAMP_LOG_DIR_VAR $PRETTY_NAME_VARi $OPERATION1_NAME_VAR $OPERATION2_NAME_VAR $OPERATION1_CMDLINE_VAR $OPERATION2_CMDLINE_VAR $DBMS_OUTPUT_IN_SEPARATE_FILE_VAR $RCU_PRODUCT_NAME_VAR"
+
+RCU_HOME=$ORACLE_HOME
+JLIB_DIR=$OH/jlib
+SQLSERVER_LIB_DIR=$OH/jlib
+JRE_DIR=$ORACLE_HOME/jdk/jre
+RCU_JAR_LOCATION=$JLIB_DIR
+OH_J2EE=$OH/j2ee/home
+
+# Version specific JAR files
+JEWT_FILE=jewt4.jar
+SHARE_FILE=share.jar
+HELP_FILE=help-share.jar
+HELP_SHARE=ohj.jar
+ORACLEICE_FILE=oracle_ice.jar
+ORAI18N_MAPPING_FILE=orai18n-mapping.jar 
+XMLPARSER_FILE=xmlparserv2.jar
+JDBC_FILE1=ojdbc6.jar
+JDBC_FILE2=ojdbc5.jar
+JDBC_FILE3=ojdbc6dms.jar
+DMS_FILE=dms.jar
+OJDL_FILE=ojdl.jar
+SQLSERVER_FILE=wlsqlserver.jar
+SQLSERVERBASE_FILE=wlbase.jar
+SQLSERVERUTIL_FILE=wlutil.jar
+DATADIRECT_LICENCE_FILE=fmwgenerictoken.jar
+DB2_FILE=wldb2.jar
+RCU_FILE=rcu.jar
+MYSQL_FILE=mysql-connector-java-commercial-5.1.16-bin.jar
+MYSQL_FILE1=mysql-connector-java-commercial-5.1.17-bin.jar 
+RCUHELP_FILE=rcuhelppages.jar
+
+#Component specific jars
+OIM_FILE1=commons-collections-3.1.jar
+OIM_FILE2=commons-dbcp-1.2.1.jar
+OIM_FILE3=commons-logging.jar
+OIM_FILE4=commons-pool-1.2.jar
+OIM_FILE5=quartz-1.6.0.jar
+OIM_FILE6=jta.jar
+OIM_FILE7=xml.jar
+OIM_FILE8=iam-platform-utils.jar
+OIM_FILE9=iam-platform-authz-service.jar
+OIM_FILE10=iam-features-identity.zip
+OIM_FILE11=iam-features-configservice.zip
+OIM_FILE12=jps-api.jar
+OIM_FILE13=jps-common.jar
+OIM_FILE14=jps-ee.jar
+OIM_FILE15=jps-internal.jar
+OIM_FILE16=jps-manifest.jar
+OIM_FILE17=MicroSM.jar
+OIM_FILE18=javax.persistence_1.0.0.0_1-0-2.jar    
+OIM_FILE19=org.eclipse.persistence_1.0.0.0_1-1-0.jar
+OIM_FILE20=identitystore.jar
+OIM_FILE21=jps-unsupported-api.jar  
+OIM_FILE22=pd-internal.jar
+                                                                                                                
+# Directory Variables
+LIB_DIR=$OH/lib
+LIB32_DIR=$OH/lib32
+
+# Classpath
+SHARE_CLASSPATH=$ORACLE_HOME/jlib/$SHARE_FILE
+JEWT_CLASSPATH=$ORACLE_HOME/jlib/$JEWT_FILE
+HELP_CLASSPATH=$ORACLE_HOME/jlib/$HELP_FILE:$ORACLE_HOME/jlib/$HELP_SHARE
+ORACLEICE_CLASSPATH=$ORACLE_HOME/jlib/$ORACLEICE_FILE
+ORAI18N_MAPPING_CLASSPATH=$ORACLE_HOME/jlib/$ORAI18N_MAPPING_FILE
+XMLPARSER_CLASSPATH=$ORACLE_HOME/lib/$XMLPARSER_FILE
+JDBC_CLASSPATH=$OH/jdbc/lib/$JDBC_FILE1:$OH/jdbc/lib/$JDBC_FILE2:$Oh/jdbc/lib/$JDBC_FILE3
+DMS_CLASSPATH=$OH/modules/oracle.dms_11.1.1/$DMS_FILE
+HELPSET_CLASSPATH=$JLIB_DIR/$RCUHELP_FILE
+
+RCU_CLASSPATH=$RCU_JAR_LOCATION/$RCU_FILE
+OJDL_CLASSPATH=$JLIB_DIR/$OJDL_FILE:$ORACLE_HOME/modules/oracle.odl_11.1.1/$OJDL_FILE
+AS_PATH=$JLIB_DIR/SchemaVersion.jar
+SQLSERVER_CLASSPATH=$SQLSERVER_LIB_DIR/$SQLSERVER_FILE:$SQLSERVER_LIB_DIR/$SQLSERVERBASE_FILE:$SQLSERVER_LIB_DIR/$SQLSERVERUTIL_FILE:$SQLSERVER_LIB_DIR/$DATADIRECT_LICENCE_FILE
+DB2_CLASSPATH=$SQLSERVER_LIB_DIR/$DB2_FILE
+MYSQL_CLASSPATH=$SQLSERVER_LIB_DIR/$MYSQL_FILE1:$OH/modules/mysql-connector-java-commercial-5.1.17/$MYSQL_FILE1:$OH/../oracle_common/modules/mysql-connector-java-commercial-5.1.17/$MYSQL_FILE1:$SQLSERVER_LIB_DIR/$MYSQL_FILE:$OH/modules/mysql-connector-java-commerciaL-5.1.16/$MYSQL_FILE:$OH/../oracle_common/modules/mysql-connector-java-commercial-5.1.16/$MYSQL_FILE
+
+#Component specific
+PORTAL_PATH=$ORACLE_HOME/assistants/opca/jlib/opca.jar:$ORACLE_HOME/portal/jlib/ptlshare.jar:$ORACLE_HOME/jlib/ldapjclnt11.jar
+OIM_CLASSPATH=$JLIB_DIR/$OIM_FILE1:$JLIB_DIR/$OIM_FILE2:$JLIB_DIR/$OIM_FILE3:$JLIB_DIR/$OIM_FILE4:$JLIB_DIR/$OIM_FILE5:$JLIB_DIR/$OIM_FILE6:$JLIB_DIR/$OIM_FILE7:$JLIB_DIR/$OIM_FILE8:$JLIB_DIR/$OIM_FILE9:$JLIB_DIR/$OIM_FILE10:$JLIB_DIR/$OIM_FILE11:$JLIB_DIR/$OIM_FILE12:$JLIB_DIR/$OIM_FILE13:$JLIB_DIR/$OIM_FILE14:$JLIB_DIR/$OIM_FILE15:$JLIB_DIR/$OIM_FILE16:$JLIB_DIR/$OIM_FILE17:$JLIB_DIR/$OIM_FILE18:$JLIB_DIR/$OIM_FILE19:$JLIB_DIR/$OIM_FILE20:$JLIB_DIR/$OIM_FILE21:$JLIB_DIR/$OIM_FILE22
+
+# Check for silent or help
+SILENT="false"
+for i in $*
+do 
+   if [ $i = "-silent"  ] || [ $i = "-help"  ] || [ $i = "-h"  ]; then
+      SILENT="true"
+      break
+   fi
+done
+
+# Check for DISPLAY
+if [ $SILENT = "false"  ]; then
+   case $DISPLAY in
+      "")
+      echo "DISPLAY not set."
+      echo "Set DISPLAY environment variable, then re-run."
+      exit 1;;
+   esac
+fi    
+
+# Basic error checking
+case $OH in
+    "") echo "*** ORACLE_HOME Not Set!"
+        echo "    Set and export ORACLE_HOME, then re-run"
+        echo "    ORACLE_HOME points to the main directory that"
+        echo "    contains all Oracle products."
+        exit 1;;
+esac
+
+#Platform Checking
+PLATFORM_VAR=`uname|grep 'Linux'| wc -l`
+if [ $PLATFORM_VAR -lt 1 ]; then
+    echo "Current Platform is not supported."
+    echo "Supported Platforms are : Linux and Windows."
+    exit;
+fi
+
+# Set the LD_LIBRARY_PATH to set the path for shared objects
+# Do not set it on AIX
+#if [ $PLATFORM <> IBM_AIX ]; then
+   LD_LIBRARY_PATH=$LIB_DIR:$OH/network/lib:$LD_LIBRARY_PATH:$LIB32_DIR:$OH/network/lib32
+   export LD_LIBRARY_PATH;
+#fi
+
+#add $OH/bin to PATH
+PATH=$OH/bin:$PATH
+export PATH;
+
+# Set SHLIB_PATH for HP to use 32bit native libraries
+SHLIB_PATH=$LIB32_DIR:$ORACLE_HOME/network/lib32:$SHLIB_PATH
+export SHLIB_PATH;
+
+# Set LIBPATH for AIX to use 32bit native libraries
+LIBPATH=$LIB32_DIR:$ORACLE_HOME/network/lib32:$LIBPATH
+export LIBPATH;
+
+# Set Classpath for Database Creation Assistant
+CLASSPATH=$RCU_CLASSPATH:$SHARE_CLASSPATH:$HELP_CLASSPATH:$ORAI18N_MAPPING_CLASSPATH:$XMLPARSER_CLASSPATH:$JDBC_CLASSPATH:$JEWT_CLASSPATH:$OJDL_CLASSPATH:$AS_PATH:$SQLSERVER_CLASSPATH:$DB2_CLASSPATH:$MYSQL_CLASSPATH:$DMS_CLASSPATH:$HELP_CLASSPATH:$ORACLEICE_CLASSPATH:$HELPSET_CLASSPATH:$PORTAL_PATH:$OIM_CLASSPATH
+
+ARGUMENTS=""
+NUMBER_OF_ARGUMENTS=$#
+if [ $NUMBER_OF_ARGUMENTS -gt 0 ]; then
+        ARGUMENTS=$*
+fi
+
+# Run RCU
+$JRE_DIR/bin/java -DRCU_HOME=$RCU_HOME -DSQLPLUS_HOME=$SQLPLUS_HOME -DORACLE_HOME=$OH $RCU_ENV_VARS -DDISPLAY=$DISPLAY -DLAUNCH_MODE=$LAUNCH_MODE -mx128m -DLD_LIBRARY_PATH=$LD_LIBRARY_PATH -classpath $CLASSPATH oracle.sysman.assistants.rcu.Rcu $ARGUMENTS

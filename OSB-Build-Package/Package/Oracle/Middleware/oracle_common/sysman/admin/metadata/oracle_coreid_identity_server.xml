@@ -1,0 +1,681 @@
+<?xml version="1.0" ?>
+<!-- $Header: oracle_coreid_identity_server.xml 06-feb-2008.23:36:07 skpanigr Exp $ -->
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="1.0" TYPE="oracle_coreid_identity_server" CATEGORY_PROPERTIES="VersionCategory;isRemote">
+  <Display>
+    <Label NLSID="identity_server_name_nlsid">Access Manager - Identity Server</Label>  
+	<Description NLSID="identity_desc_nlsid">Identity Server</Description>
+  </Display>
+   <AssocTarget ASSOCIATION_NAME="host" ASSOC_TARGET_TYPE="host"/>
+
+   <Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="COREID_IDENTITY_SERVER_RESPONSE">Response</Label>
+		  <Description NLSID="response_desc_nlsid">Response</Description>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="COREID_IDENTITY_SERVER_STATUS_LABEL">Status</Label>
+               <Description NLSID="COREID_IDENTITY_SERVER_DESC">Current Status of the Server</Description>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+	 <QueryDescriptor FETCHLET_ID="OSLineToken">
+		  <Property NAME="hostname" SCOPE="INSTANCE">hostname</Property>
+		  <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+		  <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+		  <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+		  <Property NAME="command" SCOPE="GLOBAL">
+			 %perlBin%/perl %scriptsDir%/coreid_identity_response.pl %hostname% %Port%
+		  </Property>
+		  <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+		  <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+		</QueryDescriptor>
+   </Metric>
+
+     <Metric NAME="coreid_identity_config" TYPE="RAW" CONFIG="TRUE">    
+		<Display>
+		  <Label NLSID="identity_mode_nlsid">Identity server configuration</Label>
+		  <Description NLSID="identity_config_desc_nlsid">Identity server configuration information</Description>
+		</Display>    
+		<TableDescriptor  TABLE_NAME="COREID_IDENTITY_CONFIG_INFO">
+			<ColumnDescriptor NAME="IdentityServerMode" COLUMN_NAME="IDENTITY_MODE" TYPE="STRING" IS_KEY="TRUE">
+			  <Display>
+				<Label NLSID="IdentityServerModeNLS">Identity Server Mode</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="ServiceThread" COLUMN_NAME="SERVICE_THREAD" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ServiceThreadNLS">Number of Service threads</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="LangConfigured" COLUMN_NAME="LANGUAGE_CONFIGURED" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="langConfigNLS">Number of Language Configured</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="ConfigSlotNotSufficient" COLUMN_NAME="CONFIG_SLOT_NOT_SUFFICIENT" TYPE="STRING" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ConfigSlotNLS">Config Slot Not Sufficient</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">TRUE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.4
+		                                           1.3.6.1.4.1.3831.10.1.1.2.1.6
+												   1.3.6.1.4.1.3831.10.1.1.2.1.7
+												   1.3.6.1.4.1.3831.10.1.1.2.1.18
+		  </Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="coreidStartTime" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="coreid_start_nlsid">Up Since</Label>
+		  <Description NLSID="coreid_start_desc_nlsid">Identity Server start time</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="StartTime" TYPE="STRING" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="StartTimeNLS">Up Since</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.5.%SNMP_TRANS_OIDS%D</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  
+	  <Metric NAME="coreidNumOfLogins" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="success_login_nlsid">Successful Logins</Label>
+		  <Description NLSID="success_login_desc_nlsid">Number of successful login</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="SuccessfulLogin" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="SuccessfulLoginNLS">Total Successful Logins</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="SuccessfulLoginRate" TYPE="NUMBER" IS_KEY="FALSE" 
+			          COMPUTE_EXPR="(SuccessfulLogin - _SuccessfulLogin) > 0 ? (SuccessfulLogin - _SuccessfulLogin) : 0">
+			  <Display>
+				<Label NLSID="SuccessfulLoginRateNLS">Successful Logins (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.8.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric> 
+	  
+	  <Metric NAME="coreidNumOfLoginsFailure" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="num_login_failure_nlsid">Failed Logins</Label>
+		  <Description NLSID="num_login_failure_desc_nlsid">Number of login failures</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="numberOfLoginFailures" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="loginFailuresNLS">Total Failed Logins</Label>
+			  </Display>
+			</ColumnDescriptor>
+		  <ColumnDescriptor NAME="numberOfLoginFailuresRate" TYPE="NUMBER" IS_KEY="FALSE" 
+			 COMPUTE_EXPR="(numberOfLoginFailures - _numberOfLoginFailures) > 0 ? (numberOfLoginFailures - _numberOfLoginFailures) : 0">
+			  <Display>
+				<Label NLSID="loginFailuresRateNLS">Failed Logins (since last collection)</Label>
+			  </Display>
+		  </ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.9.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="coreidRequestsProcessed" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="request_processed_nlsid">Request Processed</Label>
+          <Description NLSID="request_processed_desc_nlsid">Number of request processed</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="RequestProcessed" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="requestProcessedNLS">Total Request Processed</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="RequestProcessedRate" TYPE="NUMBER" IS_KEY="FALSE"
+			          COMPUTE_EXPR="(RequestProcessed - _RequestProcessed) > 0 ? (RequestProcessed - _RequestProcessed) : 0">
+			  <Display>
+				<Label NLSID="requestProcessedRateNLS">Request Processed (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.10.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="coreidNumOfRequestsSuccess" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="request_success_nlsid">Successful Requests</Label>
+          <Description NLSID="request_success_desc_nlsid">Number of request success</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="RequestSuccess" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="RequestSuccessNLS">Total Successful Requests</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="RequestSuccessRate" TYPE="NUMBER" IS_KEY="FALSE" 
+			        COMPUTE_EXPR="(RequestSuccess - _RequestSuccess) > 0 ? (RequestSuccess - _RequestSuccess) : 0">
+			  <Display>
+				<Label NLSID="RequestSuccessRateNLS">Successful Requests (since last colection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.11.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+	  <Metric NAME="coreidNumOfRequestsFail" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="auth_success_nlsid">Failed Requests</Label>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="RequestFail" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="RequestFailNLS">Number of requests fail</Label>
+                <Description NLSID="requestfail_desc_nlsid">Total Failed Requests</Description>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="RequestFailRate" TYPE="NUMBER" IS_KEY="FALSE" 
+			       COMPUTE_EXPR="(RequestFail - _RequestFail) > 0 ? (RequestFail - _RequestFail) : 0">
+			  <Display>
+				<Label NLSID="RequestFailRateNLS">Failed Requests (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.12.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric>  
+
+    <Metric NAME="coreidTotalServiceTime" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT">    
+		<Display>
+		  <Label NLSID="total_service_time_nlsid">Total Service Time</Label>
+		  <Description NLSID="total_service_time_desc_nlsid">Total Service Time</Description>
+		</Display>    
+		<TableDescriptor>
+		   <ColumnDescriptor NAME="TotalServiceTime" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="TotalServiceTimeNLS">Total Service Time(nano seconds)</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="ServiceTime" TYPE="NUMBER"  IS_KEY="FALSE" 
+			        COMPUTE_EXPR="(TotalServiceTime - _TotalServiceTime) > 0 ? (TotalServiceTime - _TotalServiceTime)/1000000000 : 0">
+			  <Display>
+				<Label NLSID="ServiceTimeNLS">Service Time(in Seconds)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.13.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric> 
+
+	  <Metric NAME="averageServiceTime" TYPE="TABLE">    
+		<Display>
+		  <Label NLSID="average_service_time_nlsid"></Label>
+		  <Description NLSID="total_service_time_desc_nlsid">Average Service Time per Request</Description>
+		</Display>    
+		<TableDescriptor>
+		   <ColumnDescriptor NAME="ServiceTimePerRequest" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="ServiceTimePerRequestNLS">Average Service Time per Request(seconds)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<ExecutionDescriptor>
+		 <GetTable NAME="coreidTotalServiceTime" USE_CACHE="FALSE"/>
+         <GetTable NAME="coreidRequestsProcessed" USE_CACHE="FALSE"/>
+		 <GetView NAME="coreidTotalServiceTimeView" FROM_TABLE="coreidTotalServiceTime">
+		    <Column NAME="ServiceTime" COLUMN_NAME="ServiceTime" TABLE_NAME="coreidTotalServiceTime"/>
+         </GetView>
+		 <GetView NAME="coreidRequestsProcessedView" FROM_TABLE="coreidRequestsProcessed">
+		    <Column NAME="RequestProcessedRate" COLUMN_NAME="RequestProcessedRate" TABLE_NAME="coreidRequestsProcessed"/>
+         </GetView>
+		  <JoinTables NAME="joinTable">
+			<Table NAME="coreidTotalServiceTimeView" />
+			<Table NAME="coreidRequestsProcessedView" />
+			<Column NAME="ServiceTime" COLUMN_NAME="ServiceTime" TABLE_NAME="coreidTotalServiceTimeView"/>
+			<Column NAME="RequestProcessedRate" COLUMN_NAME="RequestProcessedRate" TABLE_NAME="coreidRequestsProcessedView"/>
+		 </JoinTables>
+		 <GroupBy NAME="averageServiceTime" FROM_TABLE="joinTable">
+		      <AggregateColumn  NAME="ServiceTime"
+                          COLUMN_NAME="ServiceTime"
+                          OPERATOR="AVG"/>
+			  <AggregateColumn  NAME="RequestProcessedRate"
+                          COLUMN_NAME="RequestProcessedRate"
+                          OPERATOR="AVG"/>
+			   
+			 <ComputeColumn    NAME="ServiceTimePerRequest"
+                          EXPR="RequestProcessedRate == 0 ? 0 : (ServiceTime/RequestProcessedRate)" /> 
+        </GroupBy> 
+		</ExecutionDescriptor>
+	  </Metric> 
+
+
+	  <Metric NAME="coreidTotalNumOfCacheFlushRequestSuccess" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="total_cache_success_nlsid">Successful Cache Flush Requests</Label>
+		  <Description NLSID="total_cache_success_desc_nlsid">Successful cache flush requests</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="CacheFlushSuccess" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="CacheFlushSuccessNLS">Total Successful Cache Flush Requests</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="CacheFlushSuccessRate" TYPE="NUMBER" IS_KEY="FALSE"
+			             COMPUTE_EXPR="(CacheFlushSuccess - _CacheFlushSuccess) > 0 ? (CacheFlushSuccess - _CacheFlushSuccess) : 0">
+			  <Display>
+				<Label NLSID="CacheFlushSuccessRateNLS">Successful Cache Flush Requests (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.14.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric> 
+	  <Metric NAME="coreidTotalNumOfCacheFlushRequestFail" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="total_cache_fail_nlsid">Failed Cache Flush Requests</Label>
+		  <Description NLSID="total_cache_fail_desc_nlsid">Failed cache flush requests</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="CacheFlushFail" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="CacheFlushFailNLS">Total Failed Cache Flush Requests</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="CacheFlushFailRate" TYPE="NUMBER" IS_KEY="FALSE" 
+			      COMPUTE_EXPR="(CacheFlushFail - _CacheFlushFail) > 0 ? (CacheFlushFail - _CacheFlushFail) : 0">
+			  <Display>
+				<Label NLSID="CacheFlushFailRateNLS">Failed Cache Flush Requests (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.15.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric> 
+	  
+	   <Metric NAME="coreidNumOfEmailSentFail" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="email_sent_nlsid">Failed Sent Emails</Label>
+		  <Description NLSID="email_sent_desc_nlsid">Number of email sent fail</Description>
+		</Display>    
+		<TableDescriptor>
+			<ColumnDescriptor NAME="EmailSentFail" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="EmailSentNLS">Total Failed Sent Emails </Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="EmailSentFailRate" TYPE="NUMBER" IS_KEY="FALSE"  
+			        COMPUTE_EXPR="(EmailSentFail - _EmailSentFail) > 0 ? (EmailSentFail - _EmailSentFail) : 0">
+			  <Display>
+				<Label NLSID="EmailSentFailRateNLS">Failed Sent Emails (since last collection)</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="VERSION"    SCOPE="GLOBAL">V2c</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">FALSE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.2.1.17.%SNMP_TRANS_OIDS%</Property>
+		</QueryDescriptor>
+	  </Metric> 
+	  
+	  <Metric NAME="coreidDirectoryServerNoOfLiveConnections" TYPE="TABLE" USAGE_TYPE="VIEW_COLLECT">    
+		<Display>
+		  <Label NLSID="dir_server_conn_nlsid">Directory Server live connection</Label>
+		  <Description NLSID="dir_server_conn_desc_nlsid">Directory Server live connection</Description>
+		</Display>    
+		<TableDescriptor>
+		     <ColumnDescriptor NAME="DirServerHost" TYPE="STRING" IS_KEY="TRUE">
+			  <Display>
+				<Label NLSID="DirServerHostNLS">Directory Server Host</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="DirServerPort" TYPE="STRING" IS_KEY="TRUE">
+			  <Display>
+				<Label NLSID="DirServerPortNLS">Directory Server Port</Label>
+			  </Display>
+			</ColumnDescriptor>
+			<ColumnDescriptor NAME="DirLiveConnection" TYPE="NUMBER" IS_KEY="FALSE">
+			  <Display>
+				<Label NLSID="DirLiveConnectionNLS">Directory Server live connection</Label>
+			  </Display>
+			</ColumnDescriptor>
+		</TableDescriptor>
+		<QueryDescriptor FETCHLET_ID="Snmp">
+		  <Property NAME="hostname" SCOPE="INSTANCE">SnmpHost</Property>
+		  <Property NAME="PORT" SCOPE="INSTANCE">SnmpPort</Property>
+		  <Property NAME="COMMUNITY" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpCommunity</Property>
+		  <Property NAME="TIMEOUT" SCOPE="INSTANCE" OPTIONAL="TRUE">SnmpTimeout</Property>
+		  <Property NAME="SNMP_TRANS_OIDS" SCOPE="INSTANCE" OPTIONAL="TRUE">SNMP_TRANS_OIDS</Property>
+		  <Property NAME="TABLE"    SCOPE="GLOBAL">TRUE</Property>
+		  <Property NAME="OIDS"     SCOPE="GLOBAL">1.3.6.1.4.1.3831.10.1.1.4.1.2
+												   1.3.6.1.4.1.3831.10.1.1.4.1.3
+												   1.3.6.1.4.1.3831.10.1.1.4.1.5
+		  </Property>
+		</QueryDescriptor>
+	  </Metric>  
+	
+  <!-- Process Identity Server Resource Usage Metric -->
+  <Metric NAME="_ResourceUsage" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP="NO_HELP">
+	<ValidIf>
+      <CategoryProp NAME="isRemote" CHOICES="false"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="resourceUsageLbl">Resource Usage</Label>
+	  <Description NLSID="resourceUsageLbl_desc_nlsid">Resource Usage</Description>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="processName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="processNameLbl">Process Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cpuUsageLbl">CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cpuOtherLbl">CPU Other (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cpuIdleLbl">CPU Idle (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryUsageLbl">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryUsagePercentageLbl">Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="totalMemory" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label NLSID="totalMemoryLbl">Total Memory (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+      <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+      <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+      <Property NAME="emdRoot" SCOPE="SYSTEMGLOBAL">emdRoot</Property>
+      <Property NAME="OracleHome" SCOPE="INSTANCE" >OracleHome</Property>
+      <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/coreidresourceusage.pl" "%emdRoot%" "%OracleHome%" "oracle_coreid_identity_server"</Property>
+      <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+      <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  	 <!-- Process OS Resource Usage Metric -->
+  <Metric NAME="ResourceUsage" TYPE="TABLE" >
+	<ValidIf>
+      <CategoryProp NAME="isRemote" CHOICES="false"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="identity_resourceUsage">Resource Usage</Label>
+	  <Description NLSID="identity_resourceUsage_desc_nlsid">Resource Usage</Description>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="identity_cpuUsage">CPU Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="identity_cpuOther">CPU Other (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.idle" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="identity_cpuIdle">CPU Idle (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="identity_memoryUsage">Memory Usage (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="identity_memoryUsagePercentage">Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+	   <ColumnDescriptor NAME="memory.other" TYPE="NUMBER" IS_KEY="FALSE">
+          <Display>
+            <Label NLSID="memory_other">Other Memory Usage (MB)</Label>
+          </Display>
+	  </ColumnDescriptor>
+	  <ColumnDescriptor NAME="memoryPercentage.other" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryPercentage_other">Other Memory Usage (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+	  <ColumnDescriptor NAME="memoryPercentage.free" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="memoryPercentage_free">Free Memory (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+	  <ColumnDescriptor NAME="memory.total" TYPE="NUMBER" IS_KEY="FALSE">
+       <Display>
+         <Label NLSID="totalMemory">Total Memory (MB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+        <GetTable NAME="Load" ASSOC_TARGET="host"/>
+        <GetTable NAME="_ResourceUsage"/>
+		<JoinTables NAME="LoadAndResource">
+        <Table NAME="Load"/>
+        <Table NAME="_ResourceUsage"/>
+        <Column NAME="cpu.component" TABLE_NAME="_ResourceUsage"/>
+        <Column NAME="cpu.other" TABLE_NAME="_ResourceUsage"/>
+		<Column NAME="cpu.idle" TABLE_NAME="_ResourceUsage"/>
+		<Column NAME="memory.component" TABLE_NAME="_ResourceUsage"/>
+		<Column NAME="memoryPercentage.component" TABLE_NAME="_ResourceUsage"/>
+        <Column NAME="memoryKB.total" TABLE_NAME="Load" COLUMN_NAME="realMem"/>
+        <Column NAME="memoryKB.free" TABLE_NAME="Load" COLUMN_NAME="freeMem"/>
+      </JoinTables>
+     
+      <GroupBy NAME="result" FROM_TABLE="LoadAndResource">
+        <AggregateColumn  NAME="cpu.component"
+                          COLUMN_NAME="cpu.component"
+                          OPERATOR="AVG"/>
+        <AggregateColumn  NAME="cpu.other"
+                          COLUMN_NAME="cpu.other"
+                          OPERATOR="AVG"/>
+		<AggregateColumn  NAME="cpu.idle"
+                          COLUMN_NAME="cpu.idle"
+                          OPERATOR="AVG"/>
+		<AggregateColumn  NAME="memory.component"
+                          COLUMN_NAME="memory.component"
+                          OPERATOR="AVG"/>
+		<AggregateColumn  NAME="memoryPercentage.component"
+                          COLUMN_NAME="memoryPercentage.component"
+                          OPERATOR="AVG"/>
+
+        <AggregateColumn  NAME="memoryKB.total"
+                          COLUMN_NAME = "memoryKB.total"
+                          OPERATOR="AVG"/>
+        <AggregateColumn  NAME="memoryKB.free"
+                          COLUMN_NAME = "memoryKB.free"
+                          OPERATOR="AVG"/>
+
+        <ComputeColumn    NAME="memory.total"
+                          EXPR="memoryKB.total/1024"/>
+        <ComputeColumn    NAME="memory.free"
+                          EXPR="memoryKB.free/1024"/>
+
+        <ComputeColumn    NAME="memory.other"
+                          EXPR="memory.total-memory.component-memory.free"/>
+
+        <ComputeColumn    NAME="memoryPercentage.other"
+                          EXPR="(memory.other*100)/memory.total"/>
+
+        <ComputeColumn    NAME="memoryPercentage.free"
+                          EXPR="(memory.free*100)/memory.total"/>
+      </GroupBy>
+    </ExecutionDescriptor>
+  </Metric>
+	 
+	<InstanceProperties>
+	       <InstanceProperty NAME="OracleHome" >
+			 <Display>
+				<Label NLSID="oraclehome_label">COREid home</Label>
+				<ShortName NLSID="oraclehome_lbl">COREid home</ShortName>
+			 </Display>
+		   </InstanceProperty>
+		   <InstanceProperty NAME="isRemote" >
+			 <Display>
+				<Label NLSID="isRemote_label">Indicate whether Identity Server is remote</Label>
+				<ShortName NLSID="isRemote_lbl">Indicate whether Identity Server is remote</ShortName>
+			 </Display>
+		   </InstanceProperty>
+	       <InstanceProperty NAME="SnmpHost">
+			 <Display>
+				<Label NLSID="snmphostname_label">SNMP Agent Host</Label>
+				<ShortName NLSID="snmphostname_lbl">SNMP Agent Host</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		   <InstanceProperty NAME="SnmpPort">
+			 <Display>
+				<Label NLSID="snmpport_label">SNMP Agent Port</Label>
+				<ShortName NLSID="snmpport_lbl">SNMP Agent Port</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="hostname">
+			 <Display>
+				<Label NLSID="hostname_label">Identity Server Host</Label>
+				<ShortName NLSID="hostname_lbl">Identity Server Host</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="Port">
+			 <Display>
+				<Label NLSID="PORT_LABEL">Identity Server Port Number</Label>
+				<ShortName NLSID="port_name_lbl">Identity Server Port Number</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="SnmpCommunity" CREDENTIAL="TRUE">
+			 <Display>
+				<Label NLSID="community_label">Community Name</Label>
+				<ShortName NLSID="community_name_lbl">Community Name</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="SnmpTimeout">
+			 <Display>
+				<Label NLSID="timeout_label">Time out</Label>
+				<ShortName NLSID="timeout_lbl">Time out</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		   <InstanceProperty NAME="SNMP_TRANS_OIDS">
+			 <Display>
+				<Label NLSID="trans_oids_label">Translated OIDS</Label>
+				<ShortName NLSID="trans_oids_lbl">Translated OIDS</ShortName>
+			 </Display>
+		  </InstanceProperty>
+		  <InstanceProperty NAME="version">
+			  <Display>
+				<Label NLSID="identity_version_prop">Version of Identity Server</Label>
+			  </Display>
+		  </InstanceProperty>
+	 </InstanceProperties>
+  
+</TargetMetadata>

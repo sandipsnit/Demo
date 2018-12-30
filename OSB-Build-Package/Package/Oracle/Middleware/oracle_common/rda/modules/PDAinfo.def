@@ -1,0 +1,1380 @@
+# PDAinfo.def: Collects Generic Portal Information
+# $Id: PDAinfo.def,v 2.8 2012/08/03 09:34:34 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/PDAinfo.def,v 2.8 2012/08/03 09:34:34 mschenke Exp $
+#
+# Change History
+# 20120803  KRA  Update MOS URLs.
+
+=head1 NAME
+
+PDAinfo - Collects Generic Portal Information
+
+=head1 DESCRIPTION
+
+This module collects generic Portal information.
+
+=cut
+
+# Initialization
+import $TOC,$TOP
+var (\$OC4J_USED,\$VERSION) = @arg
+
+var $ADVANCED  = getSetting('PDA_ADVANCED',0)
+var $PDA_LOCAL = getSetting('PDA_LOCAL')
+
+# Load the common macros
+run DBinfo()
+
+# Change the database context
+if $PDA_LOCAL
+{var $sid = getSetting('ORACLE_SID')
+ var $usr = getSetting('SQL_LOGIN')
+ var $dba = getSetting('SQL_SYSDBA')
+}
+elsif getSetting('PDA_SID')
+{var $sid = last
+ var $usr = uc(getSetting('PDA_LOGIN','PORTAL'))
+ var $dba = getSetting('PDA_SYSDBA')
+
+ # Determine the user password
+ if compare('eq',$usr,'/')
+  var ($usr,$pwd) = ('','')
+ elsif hasSqlPassword($usr,$sid)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+
+ # Change the current user
+ var $old = setSqlLogin($usr,$pwd,$sid,$dba)
+
+ # If requested, change the database context
+ if getSetting('PDA_SWITCH')
+  var $env = setSqlSid($sid)
+ else
+  var $env = undef
+ var $try = setSqlFailure(0)
+
+}
+else
+{var $sid = undef
+
+ # Disable the database access
+ var $env = undef
+ var $old = setSqlLogin('','')
+ var $try = setSqlFailure(-1)
+}
+
+# Test the database connection
+if testSql()
+{echo ''
+ echo tput('bold'),'The schema containing the Portal repository is not \
+                    accessible.',tput('off')
+ echo tput('bold'),'Therefore RDA cannot collect repository information.',\
+                    tput('off')
+ if getSqlMessage()
+  echo last
+ echo ''
+}
+
+=head2 rep_info - Portal Repository Information
+
+Collects the repository information from the Portal database. Run PDA in
+advanced mode for a detailed report collection.
+
+=cut
+
+debug ' Inside PDA module, gathering the Portal Repository Information'
+report rep_info
+var $TTL = '---+!! Portal Repository Information '
+var @DBG = ('',\
+            ' Inside PDA repository, getting portal version',\
+            ' Inside PDA repository, getting database version',\
+            ' Inside PDA repository, getting oneoffs/patches applied',\
+            ' Inside PDA repository, getting patch inventory log information',\
+            ' Inside PDA repository, getting OWA PL/SQL toolkit version',\
+            ' Inside PDA repository, getting duplicate OWA packages',\
+            ' Inside PDA repository, getting OS user environment',\
+            ' Inside PDA repository, getting database characterset support',\
+            ' Inside PDA repository, getting INIT.ORA parameters',\
+            ' Inside PDA repository, getting SGA information',\
+            '',\
+            '',\
+            ' Inside PDA repository, getting total java objects',\
+            ' Inside PDA repository, getting total java objects owned by user',\
+            ' Inside PDA repository, \
+              getting total list of DB objects by object type',\
+            ' Inside PDA repository, getting total number of invalid objects',\
+            ' Inside PDA repository, getting list of invalid objects',\
+            ' Inside PDA repository, \
+              getting list of users with tablespace information',\
+            ' Inside PDA repository, getting free space in tablespace',\
+            ' Inside PDA repository, getting extents of tablespaces',\
+            ' Inside PDA repository, getting users tablespace quota',\
+            ' Inside PDA repository, getting proxy settings',\
+            ' Inside PDA repository, \
+              getting java.net.socketpermission permissions granted?',\
+            ' Inside PDA repository, getting java system permissions granted?',\
+            ' Inside PDA repository, \
+              getting java.util.propertypermission permissions granted?',\
+            '',\
+            '',\
+            '',\
+            ' Inside PDA repository, getting intermedia user',\
+            ' Inside PDA repository, getting total intermedia objects',\
+            ' Inside PDA repository, getting intermedia index status',\
+            '',\
+            ' Inside PDA repository, getting database locking information',\
+            '',\
+            ' Inside PDA repository, getting SSO hash object status',\
+            ' Inside PDA repository, getting login server enabler table',\
+            ' Inside PDA repository, getting language',\
+            ' Inside PDA repository, getting cookies',\
+            ' Inside PDA repository, getting WPIUTL information',\
+            ' Inside PDA repository, getting VPD policy',\
+            ' Inside PDA repository, getting OID cache settings',\
+            ' Inside PDA repository, getting webcache settings',\
+            ' Inside PDA repository, getting SSO query path')
+var @TTL = ('',\
+            '---+ Portal Version',\
+            '---+ Database Version',\
+            '---+ Oneoffs/Patches Applied',\
+            '---+ Patch Inventory Log Information',\
+            '---+ OWA PL/SQL Toolkit Version',\
+            '---+ Duplicate OWA Packages',\
+            '---+ OS User Environment',\
+            '---+ Database Characterset Support',\
+            '---+ INIT.ORA Parameters',\
+            '---+ SGA Information',\
+            '',\
+            '',\
+            '---+ Total Java Objects',\
+            '---+ Total Java Objects Owned by User ',\
+            '---+ Total List of Database Objects by Object Type',\
+            '---+ Total Number of Invalid Objects',\
+            '---+ List of Invalid Objects',\
+            '---+ List of Users With Tablespace Information',\
+            '---+ Free Space in Tablespace',\
+            '---+ Extents of Tablespaces',\
+            '---+ Users Tablespace Quota',\
+            '---+ Proxy Settings',\
+            '---+ Is java.net.SocketPermission Permissions Granted?',\
+            '---+ Is Java System Permissions Granted?',\
+            '---+ Is java.util.PropertyPermission Permissions Granted?',\
+            '---+ Provider settings that impact caching',\
+            '',\
+            '',\
+            '---+ Intermedia User',\
+            '---+ Total Intermedia Objects',\
+            '---+ Intermedia Index Status',\
+            '',\
+            '---+ Database Locking Information',\
+            '---+ DBA Blockers Information',\
+            '',\
+            '---+ SSO Hash Object Status',\
+            '---+ Login Server Enabler Table',\
+            '---+ Language',\
+            '---+ Cookies',\
+            '---+ WPIUTL Information',\
+            '---+ VPD Policy',\
+            '---+ OID Cache Settings',\
+            '---+ Webcache Settings',\
+            '---+ SSO Query Path')
+var @TXT = ('',\
+            '',\
+            "Check version / edition - Standard or Production. Check the \
+             [[https://support&#46;oracle&#46;com/epmos/faces/ui/certify/\
+             CertifyHome.jspx?id=h1e3fn9d][_blank][Certification Matrix]] \
+             for details.",\
+            "The list of patches applied to this instance. If no records are \
+             present that means that no patches were applied.",\
+            "This represents the log history for all patches.",\
+            "Check the toolkit version. If less than 9.0.4.0.1 then check the \
+             [[http://www&#46;oracle&#46;com/technetwork/middleware/portal/\
+             overview/index.html][_blank][upgrade]] information.",\
+            "Make sure you do not have duplicate copies of OWA packages. You \
+             should see the output as below:%BR%\
+             ``SYS.......PACKAGE``%BR%\
+             ``SYS.......PACKAGE BODY``%BR%\
+             ``PUBLIC....SYNONYM``",\
+            "If this script is run from the middle-tier, you should see the \
+             ``Terminal Name`` and the ``Language`` it is set to. Compare \
+             these settings with the ``Language, Database Characterset \
+             Support`` and the ``init.ora`` settings below",\
+            '',\
+            "Notes:\012   * The following parameters must be set per the \
+             recommended values. Refer to the documentation for the \
+             recommended values for the parameters.\012   * If the recommended \
+             values are set and you are still experiencing issues, contact \
+             Oracle Support.",\
+            '',\
+            '',\
+            '',\
+            '',\
+            '',\
+            '',\
+            "There should be no INVALID objects in the database pertaining to \
+             the owners within Portal and SYS owner. If there are any, \
+             recompile. Use the ``utlrp.sql`` script under the database \
+             home to recompile.",\
+            '',\
+            '',\
+            "Make sure you have enough free space in the tablespace that \
+             Portal uses. If it is low, increase the tablespace. Low space \
+             would affect the functioning of Portal.",\
+            "Check for the extents, extent Management and Segment Space \
+             Management for tablespace. If Segment Space Management is set to \
+             manual means the tablespace is not auto extentable.",\
+            "In a default settings, you should not get any output for this \
+             query. If the quota has been set for the user, then you will see \
+             some rows returned. Check the quota that is used and make sure \
+             that the user has not used all the quota allocated. Otherwise, \
+             you may encounter problems like WWC-41400.",\
+            "Check the Proxy and the client to see if they are correctly set. \
+             If they are not set correctly, you may have problems connecting \
+             to Portal.",\
+            "Ensure Portal Owner Java permissions are granted ``The \
+             java.io.InterruptedIOException Connection establishment timed \
+             out`` error can occur if the Portal owner is not granted the \
+             correct Java permissions. If the required permission has not been \
+             granted, the above browser error will be accompanied by the \
+             error ``java.security.AccessControlException the Permission \
+             (java.net.SocketPermission ip_address connect, resolve) has not \
+             been granted to portal_owner`` in the database trace file.",\
+            "If no rows are returned from either of the above queries, execute \
+             the following statement to grant the permission ``call \
+             dbms_java.grant_permission('portal_owner',\
+             'java.net.SocketPermission','*','connect,resolve')``. \
+             Ensure SYS Java permissions are granted. The error ``Java call \
+             terminated by uncaught Java exception \
+             java.lang.ExceptionInInitializerError(WWC-43000)`` is dumped in \
+             the database trace file when read, write permissions for Java \
+             properties are not granted to the SYS user. The permissions must \
+             be granted for the Java component in the Oracle9iAS Portal \
+             database to run correctly. The following query will indicate if \
+             these permissions have been granted.",\
+            "If the permissions are not granted (i.e. no rows are returned \
+             from the above query), execute the following statement when \
+             connected as SYS: ``call dbms_java.grant_permission\
+             ('SYS','SYS:java.util.PropertyPermission','*','read,write')``",\
+            "Provider settings that impact caching. There are a couple of \
+             settings in the [Web] provider registration that can impact the \
+             caching. In particular, the prompt setting of the Checkbox \
+             entitled [x] Require session specific information such as \
+             session id, user, and login time. If not required, it should not \
+             be set since it forces portlet caching to occur at the session \
+             level. You can check to see which providers have this set by \
+             issuing the following command from SQL*Plus when logged in as \
+             the Portal schema owner. You should receive output similar to the \
+             following ``NAME  CREATED_ON CREATED_BY Provider_Name 06-MAR-02 \
+             PORTAL_PUBLIC Provider_Test 06-MAR-02 PORTAL_PUBLIC``. If you do \
+             not need session specific information for these providers, you \
+             can update them through the user interface or issue the following \
+             command from SQL*Plus when logged in as the Portal schema \
+             owner.%BR%\
+             ``UPDATE wwpro_providers$``%BR%\
+             `` SET require_session_data = 0``%BR%\
+             `` WHERE name = [provider name you want to change];``%BR%\
+             ``COMMIT;``",\
+            '',\
+            '',\
+            '',\
+            "Make sure you have at least 245 Intermedia Objects in the \
+             database.",\
+            '',\
+            '',\
+            '',\
+            '',\
+            '',\
+            "These objects are important as they are used when logging in to \
+             Portal. If these objects does not exists than you may get errors \
+             like WWC-41439. They must be manually loaded. If they exists, \
+             check if they are VALID. See Knowledge Article 134729.1 for \
+             details.",\
+            "Check your ``httpd.conf`` file. Make sure that the servername, \
+             port used in the file is reflected exactly in the \
+             ``WWSEC_ENABLER_CONFIG_INFO$`` table. Make sure you are using the \
+             servername with the domain. Also, check for the slashes in the \
+             URL. If the settings are improper you may get error \
+             ``WWC-41439``. To rectify the problem, you can run the \
+             ``PTLASST`` script.%BR%\
+             ``PTLASST`` command line utility has been removed in the 10.1.2 \
+             release. All of the functionality that was provided by \
+             ``PTLASST`` in the previous release is now available through the \
+             Portal Dependency Settings tool ``PTLCONFIG``.%BR%\
+             This table also stores settings for the Partner Application.",\
+            '',\
+            '',\
+            "This would show whether if WPIUTL table exists and does it have \
+             the EXECUTE privilege. See Knowledge Article 161238.1 for \
+             details.",\
+            '',\
+            '',\
+            '',\
+            '')
+var @HDR = ('',\
+            '|*Version* |',\
+            '|*Version* |',\
+            '| *Bugno*|',\
+            '| *Bugno*|*Time* | *Action*|*Comments* |',\
+            '|*Version* |',\
+            '|*Owner* |*Object Type* |',\
+            '|*Terminal* |*Language* |',\
+            '|*Parameter* |*Value* |',\
+            '|*Name* |*Value* |',\
+            '|*Pool* |*Name* | *Value*|',\
+            '',\
+            '',\
+            '| *Count*|',\
+            '|*Owner* | *Count*|',\
+            '|*Owner* |*Object Type* | *Count*|',\
+            '| *Count*|',\
+            '|*Owner* |*Object Name* |*Object Type* |*Status* |',\
+            '|*User Name* |*Created* |*Default Tablespace* \
+             |*Temporary Tablespace* |',\
+            '|*Tablespace Name* | *Freespace*|',\
+            '|*Tablespace Name* | *Intial Extent*| *Next Extent*| \
+              *PCT Increase* |*Allocation Type* |*Segment Space Management* |\
+              *Extent Management* |',\
+            '|*Username* |*Tablespace Name* | *Quota*| *Used*|',\
+            '|*Proxy* |*Client* |',\
+            '|*Kind* |*Grantee* |*Type Schema* |*Type Name* |*Name* |\
+              *Action* |*Enabled* | *Seq*|',\
+            '|*Grantee* |*Granted Role* |*Admin Option* |*Default Role* |',\
+            '|*Kind*|*Grantee*|*Type Schema*|*Type Name*|*Name*|*Action*|\
+              *Enabled*| *Seq*|',\
+            '|*Name* |*Created On* |*Created By* |',\
+            '',\
+            '',\
+            '|*Username* |*Created* |*Default Tablespace* |\
+              *Temporary Tablespace* |',\
+            '| *Count*|',\
+            '|*Index Name* |*Index Type* |*Status* |',\
+            '',\
+            '|*Addr* |*Kaddr* | *SID*|*Type* | *ID1*| *ID2*| *Lmode*| \
+              *Request*| *Ctime*| *Block*|',\
+            '| *Holding Session*|',\
+            '',\
+            '|*Object Name* |*Owner* |*Status* |',\
+            '|*Lsnr Token* |*Site Token* |*Site ID* |*Ls Login URL* |\
+              *URLcookie Version* |*Encryption Key* |*Encryption Mask Pre* |\
+              *Encryption Mask Post* |*URL Cookie IP Check* |',\
+            '|*Language* |',\
+            '|*Cookie Name* |',\
+            '|*Table Name* |*Grantee* |*Owner* |*Grantor* |*Privilege* |',\
+            '|*Object Name* |*Policy Name* |*Enable* |',\
+            '|*Name* |*Value* |',\
+            '|*Name* |*Value* |',\
+            '|*Path* |')
+
+# Get the Portal version
+set $sql
+{SELECT '|' ||
+"       version || ' |'
+" FROM wwc_version$;
+}
+call separator(1)
+if loadSql($sql)
+ call writeLastSql()
+if field('\|',1,grepLastSql('\d+(\.\d+){1,}','f'))
+ var $VERSION = trim(last)
+else
+ var $VERSION = getVersion('oracle.portaltogo.server')
+var $OC4J_USED = match($VERSION,'^10\.1\.4')
+
+# Get other database information
+set $sql
+{SELECT '|' ||
+"       banner || ' |'
+" FROM v$version;
+"PROMPT ___Macro_separator(3)___
+"SELECT '| ' ||
+"       bugno || '|'
+" FROM wwutl_patch$
+" ORDER BY bugno;
+"PROMPT ___Macro_separator(4)___
+"SELECT '| ' ||
+"       bugno || '|' ||
+"       TO_CHAR(timestamp,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       DECODE(action,0,'START',1,'END') || ' |' ||
+"       comments || ' |'
+" FROM wwutl_patchlog$
+" ORDER BY timestamp;
+"PROMPT ___Macro_separator(5)___
+"SELECT '|' ||
+"       owa_util.get_version || ' |'
+" FROM dual;
+"PROMPT ___Macro_separator(6)___
+"SELECT '|' ||
+"       owner || ' |' ||
+"       object_type || ' |'
+" FROM dba_objects
+" WHERE object_name = 'OWA';
+"PROMPT ___Macro_separator(7)___
+"SELECT '|' ||
+"       NVL(USERENV('TERMINAL'),'UNKNOWN') || ' |' ||
+"       USERENV('LANGUAGE') || ' |'
+" FROM dual;
+"PROMPT ___Macro_separator(8)___
+"SELECT '|' ||
+"       parameter || ' |' ||
+"       value || ' |'
+" FROM nls_database_parameters;
+"PROMPT ___Macro_separator(9)___
+"SELECT '|' ||
+"       UPPER(name) || ' |' ||
+"       UPPER(NVL(value,'-')) || ' |'
+" FROM V$parameter
+" WHERE LOWER(name) IN ('java_pool_size','large_pool_size',
+"                       'shared_pool_size','_system_trig_enabled','db_name',
+"                       'db_domain','db_block_size','db_cache_size',
+"                       'instance_name','service_names','open_cursors',
+"                       'cursor_sharing','max_enabled_roles','mts_dispatchers',
+"                       'sessions','processes','compatible',
+"                       'o7_dictionary_accessibility','nls_language','event',
+"                       'optimizer_mode','job_queue_processes')
+" ORDER BY name;
+"PROMPT ___Macro_separator(10)___
+"SELECT '|' ||
+"       UPPER(NVL(pool,'-')) || ' |' ||
+"       UPPER(NVL(name,'-')) || ' | ' ||
+"       bytes || '|'
+" FROM v$sgastat
+" WHERE name IN ('fixed_sga','free memory','sessions','processes',
+"                'memory in use','db_block_buffers');
+"PROMPT ___Macro_separator(13)___
+"SELECT '| ' ||
+"       COUNT(1) || '|'
+" FROM all_objects
+" WHERE object_type LIKE 'JAVA%';
+"PROMPT ___Macro_separator(14)___
+"SELECT '|' ||
+"       owner || ' | ' ||
+"       COUNT(1) || '|'
+" FROM dba_objects
+" WHERE object_type LIKE 'JAVA%'
+" GROUP BY owner;
+"PROMPT ___Macro_separator(15)___
+"SELECT '|' ||
+"       owner || ' |' ||
+"       object_type || ' | ' ||
+"       COUNT(object_type) || '|'
+" FROM dba_objects
+" GROUP BY owner,object_type
+" ORDER BY owner,object_type;
+"PROMPT ___Macro_separator(16)___
+"SELECT '| ' ||
+"       COUNT(1) || '|'
+" FROM all_objects
+" WHERE status = 'INVALID';
+"PROMPT ___Macro_separator(17)___
+"SELECT '|' ||
+"       owner || ' |' ||
+"       object_name || ' |' ||
+"       object_type || ' |' ||
+"       status || ' |'
+" FROM all_objects
+" WHERE status = 'INVALID'
+" ORDER BY owner,object_name;
+"PROMPT ___Macro_separator(18)___
+"SELECT '|' ||
+"       username || ' |' ||
+"       TO_CHAR(created,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       default_tablespace || ' |' ||
+"       temporary_tablespace || ' |'
+" FROM dba_users
+" ORDER BY username;
+"PROMPT ___Macro_separator(19)___
+"SELECT '|' ||
+"       tablespace_name || ' | ' ||
+"       SUM(bytes)/1048576 || '|'
+" FROM dba_free_space
+" WHERE tablespace_name IN (
+"        SELECT default_tablespace
+"         FROM dba_users)
+" GROUP BY tablespace_name
+" ORDER BY tablespace_name;
+"PROMPT ___Macro_separator(20)___
+"SELECT '|' ||
+"       tablespace_name || ' | ' ||
+"       initial_extent || '| ' ||
+"       next_extent || '| ' ||
+"       pct_increase || '|' ||
+"       allocation_type || ' |' ||
+"       segment_space_management || ' |' ||
+"       extent_management || ' |'
+" FROM dba_tablespaces
+" ORDER BY tablespace_name;
+"PROMPT ___Macro_separator(21)___
+"SELECT '|' ||
+"       username || ' |' ||
+"       tablespace_name || ' | ' ||
+"       DECODE(GREATEST(max_bytes, -1),-1,'Unrestricted',
+"              TO_CHAR(max_bytes/1024,'999,999,990')) || '| ' ||
+"       bytes/1024 || '|'
+" FROM dba_ts_quotas;
+"PROMPT ___Macro_separator(22)___
+"SELECT '|' ||
+"       proxy || ' |' ||
+"       client || ' |'
+" FROM proxy_users;
+"PROMPT ___Macro_separator(23)___
+"SELECT '|' ||
+"       kind || ' |' ||
+"       grantee || ' |' ||
+"       type_schema || ' |' ||
+"       type_name || ' |' ||
+"       name || ' |' ||
+"       action || ' |' ||
+"       enabled || ' | ' ||
+"       seq || '|'
+" FROM dba_java_policy
+" WHERE type_name = 'java.net.SocketPermission'
+"   AND enabled = 'ENABLED';
+"PROMPT ___Macro_separator(24)___
+"SELECT '|' ||
+"       grantee || ' |' ||
+"       granted_role || ' |' ||
+"       admin_option || ' |' ||
+"       default_role || ' |'
+" FROM dba_role_privs
+" WHERE granted_role = 'JAVASYSPRIV';
+"PROMPT ___Macro_separator(25)___
+"SELECT '|' ||
+"       kind || ' |' ||
+"       grantee || ' |' ||
+"       type_schema || ' |' ||
+"       type_name || ' |' ||
+"       name || ' |' ||
+"       action || ' |' ||
+"       enabled || ' | ' ||
+"       seq || '|'
+" FROM dba_java_policy
+" WHERE grantee = 'SYS'
+"   AND type_name = 'java.util.PropertyPermission'
+"   AND enabled = 'ENABLED';
+"PROMPT ___Macro_separator(26)___
+"SELECT '|' ||
+"       name || ' |' ||
+"       TO_CHAR(created_on,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       created_by || ' |'
+" FROM wwpro_providers$
+" WHERE require_session_data = 1;
+"PROMPT ___Macro_separator(29)___
+"SELECT '|' ||
+"       username || ' |' ||
+"       TO_CHAR(created,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       default_tablespace || ' |' ||
+"       temporary_tablespace || ' |'
+" FROM dba_users
+" WHERE username LIKE ('%CTX%');
+"PROMPT ___Macro_separator(30)___
+"SELECT '| ' ||
+"       COUNT(*) || '|'
+" FROM all_objects
+" WHERE object_name LIKE '%CTX%';
+"PROMPT ___Macro_separator(31)___
+"SELECT '|' ||
+"       index_name || ' |' ||
+"       index_type || ' |' ||
+"       status || ' |'
+" FROM dba_indexes
+" WHERE index_name LIKE '%WWSBR%';
+"PROMPT ___Macro_separator(33)___
+"SELECT '|' ||
+"       addr || ' |' ||
+"       kaddr || ' | ' ||
+"       sid || '|' ||
+"       type || ' | ' ||
+"       id1 || '| ' ||
+"       id2 || '| ' ||
+"       lmode || '| ' ||
+"       request || '| ' ||
+"       ctime || '| ' ||
+"       block || '|'
+" FROM v$lock;
+"PROMPT ___Macro_separator(34)___
+"SELECT '| ' ||
+"       holding_session || '|'
+" FROM dba_blockers;
+"PROMPT ___Macro_separator(36)___
+"SELECT '|' ||
+"       object_name || ' |' ||
+"       owner || ' |' ||
+"       status || ' |'
+" FROM all_objects
+" WHERE object_name IN ('oracle/security/sso/SSOHash','SSOExtDB',
+"                       'WWSSO_AUTH_EXTERNAL')
+" ORDER BY object_name;
+"PROMPT ___Macro_separator(37)___
+"SELECT '|' ||
+"       lsnr_token || ' |' ||
+"       site_token || ' |' ||
+"       site_id || ' |' ||
+"       ls_login_url || ' |' ||
+"       urlcookie_version || ' |' ||
+"       encryption_key || ' |' ||
+"       encryption_mask_pre || ' |' ||
+"       encryption_mask_post || ' |' ||
+"       url_cookie_ip_check || ' |'
+" FROM wwsec_enabler_config_info$;
+"PROMPT ___Macro_separator(38)___
+"SELECT '|' ||
+"       language || ' |'
+" FROM wwnls_strings$
+" WHERE subscriber_id = 1
+"   AND ROWNUM < 2;
+"PROMPT ___Macro_separator(39)___
+"SELECT '|' ||
+"       cookie_name || ' |'
+" FROM wwctx_cookie_info$;
+"PROMPT ___Macro_separator(40)___
+"SELECT '|' ||
+"       table_name || ' |' ||
+"       grantee || ' |' ||
+"       owner || ' |' ||
+"       grantor || ' |' ||
+"       privilege || ' |'
+" FROM dba_tab_privs
+" WHERE grantee = 'PUBLIC'
+"   AND table_name = 'WPIUTL';
+"PROMPT ___Macro_separator(41)___
+"SELECT '|' ||
+"       object_name || ' |' ||
+"       policy_name || ' |' ||
+"       enable || ' |'
+" FROM user_policies;
+"PROMPT ___Macro_separator(42)___
+"SELECT '|' ||
+"       n.name || ' |' ||
+"       DECODE(n.type_name,'DATE',TO_CHAR(v.date_value,'DD-Mon-YYYY'),
+"                          'NUMBER',TO_CHAR(v.number_value),
+"                          'INTEGER',TO_CHAR(v.number_value),
+"                          'STRING',v.varchar2_value) || ' |'
+" FROM wwpre_name$ n,wwpre_path$ p,wwpre_value$ v
+" WHERE v.name_id = n.id
+"   AND n.path_id = p.id
+"   AND p.name = 'directory'
+" ORDER BY n.name;
+"PROMPT ___Macro_separator(43)___
+"SELECT '|' ||
+"       n.name || ' |' ||
+"       DECODE(n.type_name,'DATE',TO_CHAR(v.date_value,'DD-Mon-YYYY'),
+"                          'NUMBER',TO_CHAR(v.number_value),
+"                          'INTEGER',TO_CHAR(v.number_value),
+"                          'STRING',v.varchar2_value) || ' |'
+" FROM wwpre_name$ n,wwpre_path$ p,wwpre_value$ v
+" WHERE v.name_id = n.id
+"   AND n.path_id = p.id
+"   AND p.name = 'webcache'
+" ORDER BY n.name;
+"PROMPT ___Macro_separator(44)___
+"SELECT '|' ||
+"       varchar2_value || ' |'
+" FROM wwpre_value$
+" WHERE name_id = (
+"        SELECT /*+ INDEX(wwpre_name$ wwpre_name_uk1) */ id
+"         FROM wwpre_name$
+"         WHERE name='query_path'
+"           AND path_id = (
+"                SELECT id
+"                 FROM wwpre_path$
+"                 WHERE name = 'login_server'
+"                   AND parent_id = (
+"                        SELECT id
+"                         FROM wwpre_path$
+"                         WHERE name = 'portal'
+"                           AND parent_id = (
+"                                SELECT id
+"                                 FROM wwpre_path$
+"                                 WHERE name = 'oracle'
+"                                   AND parent_id IS NULL))))
+"   AND level_type = 'S'
+"   AND level_id = 0;
+}
+
+# Get the advanced level queries
+if $ADVANCED
+{var $DBG[11] = ' Inside PDA repository, getting analyzed table statistics'
+ var $DBG[12] = ' Inside PDA repository, getting analyzed index statistics'
+ var $DBG[27] = ' Inside PDA repository, getting portal objects and grantees'
+ var $DBG[28] = ' Inside PDA repository, getting privilege list'
+ var $DBG[32] = ' Inside PDA repository, \
+                  getting CTX_User_Index_Errors information'
+
+ var $TTL[11] = '---+ Analyzed Table Statistics'
+ var $TTL[12] = '---+ Analyzed Index Statistics'
+ var $TTL[27] = '---+ Portal Objects And Grantees'
+ var $TTL[28] = '---+ Privilege List'
+ var $TTL[32] = '---+ CTX_User_Index_Errors Information'
+
+ var $TXT[32] = "If you see errors in the CTX_User_Index_Errors table, \
+                 search the error in ``My Oracle Support`` for details."
+
+ var $HDR[11] = '|*Table Name* |'
+ var $HDR[12] = '|*Index Name* |'
+ var $HDR[27] = '|*Grantee* |*Privilege* |*Object* |'
+ var $HDR[28] = '|*Object Type* |*Allowable Privilege* | *Privilege Code*|'
+ var $HDR[32] = '|*Error Index Name* |*Error Text Key* |*Error Timestamp* |\
+                  *Error Text* |'
+
+ append $sql
+ {PROMPT ___Macro_separator(11)___
+ "SELECT '|' ||
+ "       table_name || ' |'
+ " FROM user_tables
+ " WHERE num_rows IS NOT NULL;
+ "PROMPT ___Macro_separator(12)___
+ "SELECT '|' ||
+ "       index_name || ' |'
+ " FROM user_indexes
+ " WHERE num_rows IS NOT NULL;
+ "PROMPT ___Macro_separator(27)___
+ "SELECT '|' ||
+ "       u.user_name || '(User)' || ' |' ||
+ "       p.object_type_name || '/' || p.privilege || ' |' ||
+ "       p.name || ' |'
+ " FROM wwsec_sys_priv$ p,wwsec_person$ u
+ " WHERE p.grantee_type = 'USER'
+ "   AND p.grantee_user_id = u.id
+ "UNION ALL
+ "SELECT '|' ||
+ "       g.name || '(Group)' || ' |' ||
+ "       p.object_type_name || '/' || p.privilege || ' |' ||
+ "       p.name  || ' |'
+ " FROM wwsec_sys_priv$ p,wwsec_group$ g
+ " WHERE p.grantee_type = 'GROUP'
+ "   AND p.grantee_group_id = g.id;
+ "PROMPT ___Macro_separator(28)___
+ "SELECT '|' ||
+ "       o.name || ' |' ||
+ "       p.name || ' | ' ||
+ "       p.privilege_code || '|'
+ " FROM wwsec_priv_object_type$ o,wwsec_privilege$ p
+ " WHERE o.id = p.object_type_id
+ " ORDER BY o.name ASC,p.privilege_code DESC;
+ "PROMPT ___Macro_separator(32)___
+ "SET long 65536
+ "SELECT '[[[' || CHR(10) || '|' ||
+ "       err_index_name || ' |' ||
+ "       err_textkey || ' |' ||
+ "       TO_CHAR(err_timestamp,'DD-Mon-YYYY HH24:MI:SS') ||' |' ||
+ "       REPLACE(REPLACE(REPLACE(LTRIM(err_text),
+ "        '|','&#124;'),
+ "        '<','&lt;'),
+ "        '>','&gt;') || '|' ||
+ "       CHR(10) || ']]]'
+ " FROM ctx_user_index_errors;
+ }
+}
+call separator(2)
+call writeSql($sql)
+call separator(0,'Portal Repository Information')
+
+=head2 users - Portal User Information
+
+Gathers the list of Portal users from C<WWSEC_Person$>.
+
+=cut
+
+debug ' Inside PDA module, gathering the WWSEC_Person$ table information'
+report users
+prefix
+{write '---+ WWSEC_Person$ Table Information'
+ write '|*User Name* |*DB User* |*Portal User* |'
+}
+set $sql
+{SELECT '|' ||
+"       user_name || ' |' ||
+"       db_user || ' |' ||
+"       portal_user || ' |'
+" FROM wwsec_person$;
+}
+call writeSql($sql)
+if hasOutput(true)
+ write $TOP
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Portal User Information]]'
+
+=head2 portal_status - Portal Tier HTTP Status
+
+Gathers the HTTP status of URLs from the Portal tier.
+
+=head2 infra_status - Infrastructure HTTP Status
+
+Gathers the HTTP status of URLs from Infrastructure.
+
+=cut
+
+pretoc '2:HTTP Request Status'
+debug ' Inside PDA module, getting server list for checking HTTP status'
+macro check_url
+{var ($sch,$srv,$pth,$tag) = @arg
+ if match($sch,'https?:')
+ {var $url = concat('http://',$srv,$pth)
+  var $req = createRequest('GET',$url)
+  var $rsp = submitRequest($req)
+  if isSuccess($rsp)
+   write '|',$tag,'|Success|',$url,'|'
+  else
+  {var ($sta) = getRspCode($rsp)
+   var $msg   = getRspMessage($rsp)
+   if compare('eq',$sch,'https:')
+   {write '|',$tag,'|Failed with http (',$sta,'-',$msg,')|',$url,'|'
+    return 1
+   }
+   write '|',$tag,'|Failed (',$sta,'-',$msg,')|',$url,'|'
+  }
+ }
+ else
+  write '|',$tag,'|Skipped|',$sch,'//',$srv,$pth,'|'
+ return 0
+}
+
+# Extract distinct server names
+set $sql
+{SELECT '1//'||home_url
+" FROM orasso.wwsso_papp_configuration_info$
+" WHERE home_url LIKE '%portal.home';
+"SELECT '2//'||ls_login_url
+" FROM orasso.wwsec_enabler_config_info$;
+}
+call loadSql($sql)
+var (%dup1,%dup2) = ()
+loop $lin (grepLastSql('^\d//'))
+{var ($qry,$sch,$key) = split('//',$lin,3)
+ var ($key) = match($key,'^([^\/]*)')
+ if !match($key,':\d+$')
+ {if compare('eq',$sch,'https:')
+   var $key = concat($key,':443')
+  elsif compare('eq',$sch,'http:')
+   var $key = concat($key,':80')
+ }
+ if compare('eq',$qry,'1')
+  var $dup1{$key} = $sch
+ else
+  var $dup2{$key} = $sch
+}
+
+# Get the HTTP status for portal tier
+if %dup1
+{debug ' Inside PDA module, gathering portal tier HTTP status'
+ report portal_status
+ write '---+!! Portal tier HTTP Status Information'
+ write '|*Operation*|*HTTP Status*|*URL Used*|'
+ var @pth = ('/images/home.gif','/pls/portal/portal.home')
+ var @tag = ('Webcache Access','Portal Access')
+ var $cnt = 0
+ loop $srv (keys(%dup1))
+ {incr $cnt,check_url($dup1{$srv},$srv,$pth[0],$tag[0])
+  incr $cnt,check_url($dup1{$srv},$srv,$pth[1],$tag[1])
+ }
+ if $cnt
+  write 'Note: The failure could be because of using http instead of https'
+ toc '3:[[',getFile(),'][rda_report][Portal Tier HTTP Status]]'
+}
+
+# Get the HTTP status for infrastructure
+if %dup2
+{debug ' Inside PDA module, gathering infrastructure HTTP status'
+ report infra_status
+ write '---+!! Infrastructure HTTP Status Information'
+ write '|*Operation*|*HTTP Status*|*URL Used*|'
+ var @pth = ('/images/home.gif','/pls/orasso/orasso.home','/oiddas')
+ var @tag = ('HTTP Server','SSO Access','OIDDAS Access')
+ var $cnt = 0
+ loop $srv (keys(%dup2))
+ {incr $cnt,check_url($dup2{$srv},$srv,$pth[0],$tag[0])
+  incr $cnt,check_url($dup2{$srv},$srv,$pth[1],$tag[1])
+  incr $cnt,check_url($dup2{$srv},$srv,$pth[2],$tag[2])
+ }
+ if $cnt
+  write 'Note: The failure could be because of using http instead of https'
+ toc '3:[[',getFile(),'][rda_report][Infrastructure HTTP Status]]'
+}
+unpretoc
+
+=head2 oiddiag - OID Diagnostics
+
+Gathers the OID connection information.
+
+=cut
+
+debug ' Inside PDA module, listing the OID Diagnostics information'
+report oiddiag
+prefix
+ write '---+!! OID Diagnostics Information'
+set $sql
+{SET serveroutput on
+"DECLARE
+" l_version  wwc_version$.version%type;
+" l_is_sso   BOOLEAN := wwctx_api.is_in_login_server;
+" l_host     VARCHAR2(100);
+" l_port     VARCHAR2(100);
+" l_app_dn   VARCHAR2(32000);
+" l_session  dbms_ldap.session;
+" l_vals     wwsec_oid.vc_arr;
+" l_found    BOOLEAN;
+" l_status   NUMBER;
+" l_id       NUMBER;
+" l_dns      owa.vc_arr;
+" error_oiddiag_continue    EXCEPTION;
+" error_oiddiag_discontinue EXCEPTION;
+"
+" FUNCTION get_oid_entry_dns(p_base   IN VARCHAR2,
+"                            p_filter IN VARCHAR2 DEFAULT 'objectclass=*')
+"  RETURN owa.vc_arr
+" IS
+"  l_session dbms_ldap.session;
+"  l_status  NUMBER;
+"  l_attrs   dbms_ldap.string_collection;
+"  l_result  dbms_ldap.message;
+"  l_count   NUMBER;
+"  l_dns     owa.vc_arr;
+" BEGIN
+"  l_session  := wwsec_oid.bind_application;
+"  l_attrs(1) := 'dn';
+"  l_status   := dbms_ldap.search_s(ld        => l_session,
+"                                   base      => p_base,
+"                                   scope     => dbms_ldap.SCOPE_SUBTREE,
+"                                   filter    => p_filter,
+"                                   attrs     => l_attrs,
+"                                   attronly  => 0,
+"                                   res       => l_result);
+"  IF l_status <> dbms_ldap.SUCCESS
+"  THEN
+"   RAISE value_error;
+"  END IF;
+"  l_count := dbms_ldap.count_entries(ld  => l_session,
+"                                     msg => l_result);
+"  IF l_count = 0
+"  THEN
+"   RETURN l_dns;
+"  END IF;
+"  l_result := dbms_ldap.first_entry(ld  => l_session,
+"                                    msg => l_result);
+"  l_dns(1) := wwsec_oid.get_normalized_dn(
+"               dbms_ldap.get_dn(ld        => l_session,
+"                                ldapentry => l_result));
+"  FOR i IN 2..l_count
+"  LOOP
+"   l_result := dbms_ldap.next_entry(ld  => l_session,
+"                                    msg => l_result);
+"   l_dns(i) := wwsec_oid.get_normalized_dn(
+"                dbms_ldap.get_dn(ld        => l_session,
+"                                 ldapentry => l_result));
+"  END LOOP;
+"  RETURN l_dns;
+" END get_oid_entry_dns;
+"
+" PROCEDURE check_user(p_username IN VARCHAR2)
+" IS
+"  l_guid      wwsec_person$.guid%type;
+"  l_dn        wwsec_person$.dn%type;
+"  l_birthdate VARCHAR2(100);
+"  l_hiredate  VARCHAR2(100);
+"  l_user_info wwsec_person%rowtype;
+" BEGIN
+"  l_user_info := wwsec_oid.get_user_info(p_username  => p_username,
+"                                         p_guid      => l_guid,
+"                                         p_dn        => l_dn,
+"                                         p_birthdate => l_birthdate,
+"                                         p_hiredate  => l_hiredate);
+"  IF l_dn IS NOT NULL
+"  THEN
+"   dbms_output.put_line('|*USER*|' || p_username || ' ' || l_dn || '|');
+"  END IF;
+" EXCEPTION
+"  WHEN wwsec_oid.multiple_matches_found THEN
+"   dbms_output.put_line('|*Error*|%RED%There are multiple ' ||
+"                        p_username ||
+"                        ' users%ENDCOLOR%|');
+"   l_dns := get_oid_entry_dns(wwsec_oid.get_user_create_base,
+"                              '(&(objectclass=orcluserv2)(' ||
+"                               wwsec_oid.get_user_nickname_attr ||
+"                               '=' ||
+"                               p_username ||'))');
+"   IF l_dns.count > 0
+"   THEN
+"    FOR i IN l_dns.FIRST..l_dns.LAST
+"    LOOP
+"     dbms_output.put_line(i || '. ' || l_dns(i));
+"    END LOOP;
+"   END IF;
+"  WHEN wwsec_oid.not_found_exception THEN
+"   l_dns := get_oid_entry_dns(wwsec_oid.get_user_create_base,
+"                              '(&(objectclass=orcluserv2)(cn=' ||
+"                               p_username || '))');
+"   IF l_dns.count > 0
+"   THEN
+"    dbms_output.put_line('|*Error*|%RED%The nickname value for ' ||
+"                         p_username ||
+"                         ' user is missing/incorrect.%ENDCOLOR%|');
+"    FOR i IN l_dns.FIRST..l_dns.LAST
+"    LOOP
+"     dbms_output.put_line(l_dns(i) || ':');
+"     dbms_output.put_line(
+"      '- ' ||
+"      wwsec_oid.get_user_nickname_attr ||
+"      '=>' ||
+"      wwsec_oid.get_attr_value(l_dns(i),wwsec_oid.get_user_nickname_attr));
+"    END LOOP;
+"   ELSE
+"    dbms_output.put_line('|*Error*|%RED%There is no ' ||
+"                         p_username ||
+"                         ' user%ENDCOLOR%|');
+"   END IF;
+"  WHEN OTHERS THEN
+"   dbms_output.put_line('|*Error*|%RED%Could not get the ' ||
+"                        p_username ||
+"                        ' user%ENDCOLOR%|');
+" END check_user;
+"
+" PROCEDURE check_group(p_group_id   IN NUMBER,
+"                       p_group_name IN VARCHAR2)
+" IS
+"  l_group_id   NUMBER                 := p_group_id;
+"  l_group_name wwsec_group$.name%type := p_group_name;
+"  l_group_dn   wwsec_group$.dn%type;
+" BEGIN
+"  BEGIN
+"   l_group_dn := wwsec_api_private.get_local_group_dn(l_group_id);
+"  EXCEPTION
+"   WHEN wwsec_api.group_not_found_exception THEN
+"    dbms_output.put_line('|*Error*|%RED%There is no local entry for ' ||
+"                         l_group_name ||
+"                         '%ENDCOLOR%|');
+"    wwsec_oid.unbind;
+"    RAISE error_oiddiag_continue;
+"    RETURN;
+"   WHEN OTHERS THEN
+"    dbms_output.put_line('|*Error*|%RED%Could not access the local entry for '
+"                         || l_group_name ||
+"                         '%ENDCOLOR%|');
+"    wwsec_oid.unbind;
+"    RAISE error_oiddiag_continue;
+"    RETURN;
+"  END;
+"  IF p_group_id = wwsec_api.GROUP_AUTHENTICATED_USERS
+"  THEN
+"   BEGIN
+"    l_vals := wwsec_oid.get_group_attr_vals(p_groupname => p_group_name,
+"                                            p_attr => 'owner',
+"                                            p_base =>
+"                                            wwsec_oid.get_group_install_base);
+"    l_found  := FALSE;
+"    l_app_dn := wwsec_oid.get_normalized_dn(l_app_dn);
+"    FOR i IN l_vals.first..l_vals.last
+"    LOOP
+"     IF wwsec_oid.get_normalized_dn(l_vals(i)) = l_app_dn
+"     THEN
+"      l_found := TRUE;
+"      EXIT;
+"     END IF;
+"    END LOOP;
+"    IF l_found
+"    THEN
+"     dbms_output.put_line(
+"      '|*Application Owner*|Application is an owner of ' ||
+"      l_group_name || '|');
+"    ELSE
+"     dbms_output.put_line('|*Error*|%RED%Application is NOT an owner of ' ||
+"                          l_group_name ||
+"                          '%ENDCOLOR%|');
+"     wwsec_oid.unbind;
+"     RAISE error_oiddiag_continue;
+"     RETURN;
+"    END IF;
+"   EXCEPTION
+"    WHEN OTHERS THEN
+"     dbms_output.put_line('[[[');
+"     dbms_output.put_line(
+"      '|*Error*|%RED%Accessing ' ||
+"      l_group_name ||
+"      ' group in OID.' ||
+"      REPLACE(REPLACE(REPLACE(LTRIM(wwsec_oid.get_last_error),
+"       '|','&#124;'),
+"       '<','&lt;'),
+"       '>','&gt;') ||
+"      '%ENDCOLOR%|');
+"      dbms_output.put_line(']]]');
+"     wwsec_oid.unbind;
+"     RAISE error_oiddiag_continue;
+"     RETURN;
+"   END;
+"  END IF;
+"  BEGIN
+"   l_vals := wwsec_oid.get_group_attr_vals(
+"              p_groupname => p_group_name,
+"              p_attr      => 'objectclass',
+"              p_base      => wwsec_oid.get_group_install_base);
+"   l_found := FALSE;
+"   FOR i IN l_vals.first..l_vals.last
+"   LOOP
+"    IF LOWER(l_vals(i)) = 'orclprivilegegroup'
+"     THEN
+"     l_found := TRUE;
+"     EXIT;
+"    END IF;
+"   END LOOP;
+"   IF l_found
+"   THEN
+"    dbms_output.put_line('|*Privileged Group*|' || l_group_name ||
+"                         ' is a privileged group in OID.' || '|');
+"   ELSE
+"    dbms_output.put_line('|*Error*|%RED%' ||
+"                         l_group_name ||
+"                         ' is NOT a privileged group in OID.%ENDCOLOR%|');
+"    wwsec_oid.unbind;
+"   RAISE error_oiddiag_continue;
+"    RETURN;
+"   END IF;
+"  EXCEPTION
+"   WHEN OTHERS THEN
+"    dbms_output.put_line('|*Error*|%RED%Accessing ' ||
+"                         l_group_name ||
+"                         ' group in OID.%ENDCOLOR%|');
+"    wwsec_oid.unbind;
+"   RAISE error_oiddiag_continue;
+"    RETURN;
+"  END;
+" EXCEPTION
+"  WHEN error_oiddiag_continue THEN
+"   RETURN;
+" END check_group;
+"BEGIN
+" dbms_output.put_line('|*Timestamp*|' ||
+"                      TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') || '|');
+" BEGIN
+"  SELECT version INTO l_version FROM wwc_version$;
+"  dbms_output.put_line('|*Version*|' || l_version || '|');
+" EXCEPTION
+"  WHEN OTHERS THEN
+"   dbms_output.put_line('|*Version*|Unknown|');
+"   dbms_output.put_line('|*Error*|%RED%' || sqlerrm || '%ENDCOLOR%|');
+" END;
+" BEGIN
+"  l_id := wwsec_api.id(user);
+"  IF NOT l_is_sso AND l_id <> 0
+"  THEN
+"   dbms_output.put_line('|*Error*|%RED%Schema owner ID is incorrect: ' ||
+"                        l_id || '%ENDCOLOR%|');
+"  END IF;
+" EXCEPTION
+"  WHEN wwsec_api.user_not_found_exception THEN
+"   dbms_output.put_line(
+"    '|*Error*|%RED%User profile for schema owner is missing' ||
+"    '%ENDCOLOR%|');
+"  WHEN OTHERS THEN
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Accessing user profile for schema owner' ||
+"    sqlerrm || '%ENDCOLOR%|');
+" END;
+" BEGIN
+"  l_id := wwsec_api.id('PUBLIC');
+"  IF NOT l_is_sso AND l_id <> 2
+"  THEN
+"   dbms_output.put_line('|*Error*|%RED%PUBLIC user ID is incorrect: ' ||
+"                        l_id || '%ENDCOLOR%|');
+"  END IF;
+" EXCEPTION
+"  WHEN wwsec_api.user_not_found_exception THEN
+"   dbms_output.put_line(
+"    '|*Error*|%RED%User profile for PUBLIC user is missing%ENDCOLOR%|');
+"  WHEN OTHERS THEN
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Accessing user profile for PUBLIC user' ||
+"    sqlerrm || '%ENDCOLOR%|');
+" END;
+" BEGIN
+"  l_host := wwsec_oid.get_preference_value('ldap_host');
+"  l_port := wwsec_oid.get_preference_value('ldap_port');
+"  dbms_output.put_line('|*Host*|' || l_host || '|');
+"  dbms_output.put_line('|*Port*|' || l_port || '|');
+" EXCEPTION
+"  WHEN OTHERS THEN
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Could not get OID host and/or port%ENDCOLOR%|');
+"   RAISE error_oiddiag_discontinue;
+"   RETURN;
+" END;
+" BEGIN
+"  l_session := dbms_ldap.init(l_host, l_port);
+"  l_status  := dbms_ldap.simple_bind_s(l_session,null,null);
+"  IF l_status = 0
+"  THEN
+"   dbms_output.put_line('|*Status*|OID server is up|');
+"  ELSE
+"   dbms_output.put_line('[[[');
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Could not connect to OID server.' ||
+"    REPLACE(REPLACE(REPLACE(LTRIM(dbms_ldap.err2string(l_status)),
+"     '|','&#124;'),
+"     '<','&lt;'),
+"     '>','&gt;') ||
+"     '%ENDCOLOR%|');
+"    dbms_output.put_line(']]]');
+"   RAISE error_oiddiag_discontinue;
+"   RETURN;
+"  END IF;
+"  l_status := dbms_ldap.unbind_s(l_session);
+" EXCEPTION
+"  WHEN OTHERS THEN
+"   dbms_output.put_line('[[[');
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Could not access the OID server.' ||
+"    REPLACE(REPLACE(REPLACE(LTRIM(wwsec_oid.get_last_error),
+"     '|','&#124;'),
+"     '<','&lt;'),
+"     '>','&gt;') ||
+"    '%ENDCOLOR%|');
+"   dbms_output.put_line(']]]');
+" END;
+" BEGIN
+"  l_app_dn  := wwsec_oid.get_application_dn;
+"  l_session := wwsec_oid.bind_application;
+"  dbms_output.put_line(
+"   '|*Application*|Application DN and password are correct|');
+"  wwsec_oid.unbind;
+" EXCEPTION
+"  WHEN OTHERS THEN
+"   dbms_output.put_line('[[[');
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Could not connect to the application.' ||
+"    REPLACE(REPLACE(REPLACE(LTRIM(wwsec_oid.get_last_error),
+"      '|','&#124;'),
+"      '<','&lt;'),
+"      '>','&gt;'));
+"   dbms_output.put_line('Application DN: ' ||
+"                        l_app_dn ||
+"                        'Application password: ' ||
+"                        wwsec_oid.get_application_pwd ||
+"                        '%ENDCOLOR%|');
+"   dbms_output.put_line(']]]');
+"   wwsec_oid.unbind;
+"   RAISE error_oiddiag_discontinue;
+"   RETURN;
+" END;
+" BEGIN
+"  dbms_output.put_line('|*Default Subscriber*|' ||
+"                      wwsec_oid.get_default_subscriber || '|');
+" EXCEPTION
+"  WHEN OTHERS THEN
+"   dbms_output.put_line('[[[');
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Could not get the default subscriber DN' ||
+"    REPLACE(REPLACE(REPLACE(LTRIM(wwsec_oid.get_last_error),'|','&#124;'),
+"     '<','&lt;'),
+"     '>','&gt;') ||
+"    '%ENDCOLOR%|');
+"   dbms_output.put_line(']]]');
+" END;
+" BEGIN
+"  l_found := wwsec_oid.is_group_member(p_user  => l_app_dn,
+"                                       p_group => 'cn=authenticationServices,
+"                                                   cn=Groups,
+"                                                   cn=OracleContext');
+"  IF l_found
+"  THEN
+"   dbms_output.put_line('|*Application Group*|' ||
+"                        'Application is a member of AuthenticationServices|');
+"  ELSE
+"   l_found := wwsec_oid.is_group_member(p_user  => l_app_dn,
+"                                        p_group =>'cn=OracleUserSecurityAdmins,
+"                                                   cn=Groups,
+"                                                   cn=OracleContext');
+"   IF l_found
+"   THEN
+"    dbms_output.put_line('|*Application Group*|Application is a member of ' ||
+"                         'OracleUserSecurityAdmins|');
+"   ELSE
+"    dbms_output.put_line('|*Error*|%RED%Application is NOT a member of ' ||
+"                         'AuthenticationServices%ENDCOLOR%|');
+"   END IF;
+"  END IF;
+"  IF NOT l_is_sso AND l_version LIKE '9.0.2%'
+"  THEN
+"   l_found := wwsec_oid.is_group_member(p_user  => l_app_dn,
+"                                        p_group => 'cn=userProxyPrivilege,
+"                                                    cn=Groups,
+"                                                    cn=OracleContext');
+"   IF l_found
+"   THEN
+"    dbms_output.put_line('|*Application Group*|' ||
+"                         'Application is a member of userProxyPrivilege|');
+"   ELSE
+"    dbms_output.put_line('|*Error*|%RED%Application is NOT a member of ' ||
+"                         'userProxyPrivilege%ENDCOLOR%|');
+"   END IF;
+"  END IF;
+" EXCEPTION
+"  WHEN OTHERS THEN
+"   dbms_output.put_line('[[[');
+"   dbms_output.put_line(
+"    '|*Error*|%RED%Could not check Application privileges.' ||
+"    REPLACE(REPLACE(REPLACE(LTRIM(wwsec_oid.get_last_error),
+"     '|','&#124;'),
+"     '<','&lt;'),
+"     '>','&gt;') ||
+"    '%ENDCOLOR%|');
+"   dbms_output.put_line(']]]');
+"   wwsec_oid.unbind;
+"   RAISE error_oiddiag_discontinue;
+"   RETURN;
+" END;
+" check_user('ORCLADMIN');
+" check_user('PUBLIC');
+" IF NOT l_is_sso
+" THEN
+"  check_group(wwsec_api.group_authenticated_users,'AUTHENTICATED_USERS');
+"  check_group(wwsec_api.group_dba,'DBA');
+"  check_group(wwsec_api.group_webdb_administrators,'PORTAL_ADMINISTRATORS');
+" END IF;
+" wwsec_oid.unbind;
+"EXCEPTION
+" WHEN error_oiddiag_continue THEN
+"  RETURN;
+" WHEN error_oiddiag_discontinue THEN
+"  NULL;
+"END;
+"/
+}
+call writeSql($sql)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][OID Diagnostics]]'
+
+# Restore the previous context
+if !$PDA_LOCAL
+{if defined($env)
+  call setSqlSid($env)
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+}
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.5:  Ersan Eser, Krishna Kumar, Rishi Mehrotra, Meraj Mohammed.
+
+=item RDA 4.6:  Ersan Eser.
+
+=item RDA 4.12: Meraj Mohammed.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

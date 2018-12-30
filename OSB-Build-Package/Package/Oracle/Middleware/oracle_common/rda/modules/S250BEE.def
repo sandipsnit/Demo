@@ -1,0 +1,594 @@
+#S250BEE.def: Collects Beehive Information
+# $Id: S250BEE.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S250BEE.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S250BEE - Collects Beehive Information
+
+=head1 DESCRIPTION
+
+This module collects the Beehive-related information.
+
+The following reports can be generated and are regrouped under C<Beehive>:
+
+=cut
+
+echo tput('bold'),'Processing BEE module ...',tput('off')
+
+# Initialization
+var $BEE_DMS_COUNT = getSetting('BEE_DMS_COUNT',10)
+var $BEE_DMS_DELAY = getSetting('BEE_DMS_DELAY',5)
+var $BEE_RUN_CMP   = getSetting('BEE_RUN_CMP')
+var $BEE_RUN_TBL   = getSetting('BEE_RUN_TBL')
+var $ORACLE_HOME   = getSetting('ORACLE_HOME','')
+var $TAIL          = getSetting('BEE_TAIL',5000)
+var $AGE           = getSetting('BEE_LOG_AGE',5)
+
+var $OH  = quote($ORACLE_HOME)
+var $OH2 = concat('^',$OH,'\b')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Beehive'
+
+# Validate settings
+if match($BEE_DMS_COUNT,'\D')
+ var $BEE_DMS_COUNT = 10
+if match($BEE_DMS_DELAY,'\D')
+ var $BEE_DMS_DELAY = 5
+
+# Load common macros
+run library()
+
+=head2 beectl_status - C<beectl status>
+
+Gathers C<beectl status> output.
+
+=head2 beectl_version - C<beectl version>
+
+Gathers C<beectl and version> output.
+
+=cut
+
+pretoc '2:beectl'
+if testFile('d',catDir($ORACLE_HOME,'beehive','bin'))
+{var $BEECTL = catCommand(lastDir(),'beectl')
+
+ debug ' Inside BEE module, getting beectl status information'
+ report beectl_status
+ write '---+ beectl status'
+ var $cmd = concat($BEECTL,' status 2>&1')
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ toc '3:[[',getFile(),'][rda_report][beectl status]]'
+
+ debug ' Inside BEE module, getting beectl version information'
+ report beectl_version
+ write '---+ beectl version'
+ var $cmd = concat($BEECTL,' version 2>&1')
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ toc '3:[[',getFile(),'][rda_report][beectl version]]'
+}
+unpretoc
+
+=head2 opmnctl_status - C<opmnctl status>
+
+Gathers C<opmnctl status> information.
+
+=cut
+
+debug ' Inside BEE module, getting opmnctl status information'
+report opmnctl_status
+var $cmd = concat(catCommand($ORACLE_HOME,'opmn','bin','opmnctl'),\
+                  ' status -l 2>&1')
+prefix
+{write '---+ opmnctl status'
+ write '---## Using: ',encode($cmd)
+}
+call writeCommand($cmd)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][opmnctl status]]'
+
+=head2 comp_prop - Components Properties
+
+When requested, the report gathers all components and their properties.
+
+=cut
+
+if and($BEECTL,$BEE_RUN_CMP)
+{# Define the extraction macro
+ macro dsp_components
+ {var ($typ) = @arg
+  import $TOP
+  keep $TOP
+
+  write '---+ ',$typ,' Type'
+  var @key = getDataKeys('P')
+  if expr('>',scalar(@key),8)
+  {loop $cmp (getDataKeys('C'))
+   {write '---++!! ',$cmp,' Component Properties'
+    prefix
+     write '|*Name*|*Value*|'
+    loop $key (@key)
+    {if existsData('P',$key,$cmp)
+      write '|',$key,'|',getDataValue('P',$key,$cmp),' |'
+    }
+    if !hasOutput(true)
+     write '**No properties found**%BR%'
+    write $TOP
+   }
+  }
+  else
+  {write '|*',join('*|*','Component',@key),'*|'
+   loop $cmp (getDataKeys('C'))
+   {var @val = ($cmp)
+    loop $key (@key)
+     var @val = (@val,nvl(getDataValue('P',$key,$cmp),''))
+    write '|',join(' |',@val),' |'
+   }
+   write $TOP
+  }
+
+  # Clear the type data structure
+  call clearData()
+ } 
+
+ macro get_properties
+ {var ($cmp) = @arg
+  import $BEECTL
+  keep $BEECTL
+
+  var @lin = grepCommand(\
+    concat($BEECTL," list_properties --no_wrap --component ",$cmp," 2>&1"),\
+    '^-+\s*$','v')
+  call setDataValue('C',$cmp,0)
+  var $key = ''
+  loop $lin (@lin)
+  {if match($lin,'^(\w\S*)\s*$')
+    var ($off,$key,$val) = (0,last)
+   elsif match($lin,'^((\w\S*)\s+\|\s)(.*?)\s*$')
+   {var ($off,$key,$val) = last
+    var ($off,$val) = (length($off),encode($val))
+   }
+   elsif match($lin,'^\s+\+\-+\s*$')
+   {next !$off
+    if $key
+     call setDataValue('P',$key,$cmp,replace($val,' ','&nbsp;',true))
+    var ($off,$key) = (0,'')
+   }
+   elsif match($lin,'^\-+\+\-+\s*$')
+   {if $key
+     call setDataValue('P',$key,$cmp,replace($val,' ','&nbsp;',true))
+    var ($off,$key) = (0,'')
+   }
+   elsif match($lin,'^(\s+\|\s)(.*?)\s*$')
+   {var ($off,$txt) = last
+    var ($off,$val) = (length($off),join('%BR%',$val,encode($txt)))
+   }
+   elsif $off
+   {if match($lin,concat('^\s{',$off,'}(.*?)\s*$'))
+     var ($txt) = last
+    else
+     var $txt = replace($lin,'\s+$')
+    var $val = join('%BR%',$val,encode($txt))
+   }
+  }
+ }
+
+ # Collect the components and their properties
+ debug ' Inside BEE module, getting the components list and properties'
+ debug ' (can take 15 minutes or more)'
+
+ debug ' - Getting the components list'
+ var ($cnt,$tot,$grp,$typ) = (0,0,'','?')
+ var @lin = grepCommand(concat($BEECTL,' list_components --no_wrap 2>&1'),\
+                        '^(\S+|\s+\|\s*\S+)\s*$')
+ loop $lin (@lin)
+ {if match($lin,'^\s+\|\s*(\S+)')
+  {var ($cmp) = (last)
+   incr $tot
+   var $tb_cmp{$cmp} = $typ
+  }
+  else
+   var $typ = trim($lin)
+ }
+
+ # Generate the report
+ report comp_prop
+ prefix
+ {write '---+!! Component Properties'
+  write $TOC
+ }
+ loop $cmp (keys(%tb_cmp,'SA'))
+ {# Detect a type change
+  var $typ = $tb_cmp{$cmp}
+  if compare('ne',$typ,$grp)
+  {if $grp
+    call dsp_components($grp)
+   var $grp = $typ
+  }
+
+  # Treat the component
+  incr $cnt
+  debug ' - ',$cmp,' (',$cnt,' of ',$tot,')'
+  call get_properties($cmp)
+ }
+ if $grp
+  call dsp_components($grp)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Component Properties]]'
+}
+
+=head2 table_info_jms - JMS Tables
+
+When requested, the report gathers JMS table information using the C<dmstool>
+command.
+
+=head2 table_info_jvm - JVM Table
+
+When requested, the report gathers JVM table information using the C<dmstool>
+command.
+
+=head2 table_info_oc4j - oc4j Tables
+
+When requested, the report gathers OC4J table information using the C<dmstool>
+command.
+
+=head2 table_info_ohs - ohs Tables
+
+When requested, the report gathers OHS table information using the C<dmstool>
+command.
+
+=head2 table_info_opmn - opmn Tables
+
+When requested, the report gathers OPMN table information using the C<dmstool>
+command.
+
+=head2 table_info_uds - uds Tables
+
+When requested, the report gathers uds table information using the C<dmstool>
+command.
+
+=cut
+
+if $BEE_RUN_TBL
+{# Define the parsing routines
+ macro begin_run
+ {var (\$run) = @arg
+
+  incr $run
+  return -1
+ }
+
+ macro begin_set
+ {var (\%tbl,$lin) = @arg
+
+  var ($key,$val) = split(':\s*',$lin,2)
+  var %tbl = ($key,$val)
+ }
+
+ macro end_set
+ {var (\%tbl,$tbl,$run) = @arg
+
+  var $set = join("\001",nvl($tbl{'Name'},''),\
+                         nvl($tbl{'Host'},''),\
+                         nvl($tbl{'Process'},''))
+  loop $key (keys(%tbl))
+  {next match($key,'^(Host|Name|Process)$')
+   if match($key,'\.')
+   {var $val = $tbl{$key}
+    if match($val,'^(.*?)\s+(\w+)$')
+    {var ($val,$unt) = last
+     call setDataValue('U',$tbl,$set,$key,$unt)
+    }
+    call setDataValue('R',$tbl,$set,$run,1)
+    call setDataValue('M',$tbl,$set,$key,$run,$val)
+   }
+   else
+   {call setDataValue('H',$tbl,$key,1)
+    call setDataValue('T',$tbl,$set,$key,$tbl{$key})
+   }
+  }
+ }
+
+ macro parse_item
+ {var (\%tbl,$lin) = @arg
+
+  var ($key,$val) = split(':\s*',$lin,2)
+  var $tbl{$key} = $val
+  return -1
+ }
+
+ macro parse_tbl
+ {var (\$tbl,$lin) = @arg
+
+  var $tbl = $lin
+  call parseLine()
+  return 1
+ }
+
+ # Define the table generation macro
+ macro dsp_tableinfo
+ {import $BEE_DMS_COUNT,$BEE_DMS_DELAY,$ORACLE_HOME,$TOP
+  keep $BEE_DMS_COUNT,$BEE_DMS_DELAY,$ORACLE_HOME,$TOP
+
+  # Get the table information
+  var $out = getTemp('tbl')
+  call command(concat(catCommand($ORACLE_HOME,'bin','dmstool'),\
+                      ' -table ',join(' ',@arg),\
+                      ' -count ',$BEE_DMS_COUNT,\
+                      ' -interval ',$BEE_DMS_DELAY,\
+                      ' >',quote($out,'x')))
+
+  # Extract information from command output
+  if createBuffer('OUT','R',$out)
+  {# Define a parser
+   call parseReset()
+   call parseInfo('TOP','rtr',true)
+   call parsePattern('TOP','^\w{3}\s.*\d{2}:\d{2}:\d{2}',begin_run(\$run))
+   call parseBegin('TOP','^-+$','TBL')
+   call parsePattern('TBL','^\w',parse_tbl(\$tbl,line))
+   call parseBegin('TOP','^\w+(\.\w+)*:','SET')
+   call parseInfo('SET','beg',begin_set(\%tbl,line))
+   call parsePattern('SET','^\w[^:]*:',parse_item(\%tbl,line))
+   call parseInfo('SET','end',end_set(\%tbl,$tbl,$run))
+   call parseEnd('SET','^$')
+
+   # Parse the file
+   var ($run,$tbl,%tbl) = (0,'')
+   call parse('OUT')
+   call deleteBuffer('OUT')
+  }
+
+  # Produce the report
+  loop $tbl (getDataKeys('H'))
+  {write '---+ ',$tbl
+
+   # Display the common elements
+   var @hdr = getDataKeys('H',$tbl)
+   write '|*',join('*|*','Name*|*Host*|*Process',@hdr),'*|'
+   loop $set (getDataKeys('T',$tbl))
+   {var @val = split('\001',$set)
+    loop $key (@hdr)
+     var @val = (@val,nvl(getDataValue('T',$tbl,$set,$key),''))
+    write '|',join(' |',@val),' |'
+   }
+   write $TOP
+
+   # Display the metrics elements
+   loop $set (getDataKeys('R',$tbl))
+   {write '---++!! ',replace($set,'\001','/',true)
+    var @run = getDataIndex('R',$tbl,$set)
+    var @val = ()
+    loop $run (@run)
+     var @val = (@val,sprintf('Run %d',$run))
+    write '|*Metric*|*Unit*| *',join('*| *',@val),'*|'
+    loop $key (getDataKeys('M',$tbl,$set))
+    {var @val = ($key,nvl(getDataValue('U',$tbl,$set,$key),' '))
+     loop $run (@run)
+      var @val = (@val,concat(' ',getDataValue('M',$tbl,$set,$key,$run)))
+     write '|',join('|',@val),'|'
+    }
+    write $TOP
+   }
+  }
+
+  # Clear tables and remove the temporary file
+  call clearData()
+  call unlinkTemp('tbl')
+ }
+
+ # Generate the table reports
+ pretoc '2:Table Information using dmstool Command'
+ debug ' Inside BEE module, getting the table information (can take 20 \
+         minutes or more)'
+
+ debug ' Getting JMS table information'
+ report table_info_jms
+ prefix
+ {write '---+!! JMS Table Information'
+  write $TOC
+ }
+ call dsp_tableinfo('JMSConsumerStats','JMSDestinationStats',\
+                    'JMSPersistenceStats','JMSStats','JMSStoreStats')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][JMS Tables]]'
+
+ debug ' Getting JVM table Information'
+ report table_info_jvm
+ prefix
+ {write '---+!! JVM Table Information'
+  write $TOC
+ }
+ call dsp_tableinfo('JVM')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][JVM Table]]'
+
+ debug ' Getting oc4j table information'
+ report table_info_oc4j
+ prefix
+ {write '---+!! oc4j Table Information'
+  write $TOC
+ }
+ call dsp_tableinfo('oc4j_context','oc4j_ejb_message-driven_bean',\
+                    'oc4j_ejb_method','oc4j_ejb_stateful_bean',\
+                    'oc4j_ejb_stateless_bean','oc4j_jspExec',\
+                    'oc4j_opmn','oc4j_servlet','oc4j_task','oc4j_taskManager',\
+                    'oc4j_web_module','oc4j_webservice_operation',\
+                    'oc4j_webservice_port','oc4j_workManagementPool')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][oc4j Tables]]'
+
+ debug ' Getting ohs table information'
+ report table_info_ohs
+ prefix
+ {write '---+!! ohs Table Information'
+  write $TOC
+ }
+ call dsp_tableinfo('ohs_child','ohs_ossl','ohs_responses','ohs_server',\
+                    'ohs_virtualHost')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][ohs Tables]]'
+
+ debug ' Getting opmn table information'
+ report table_info_opmn
+ prefix
+ {write '---+!! opmn Table Information '
+  write $TOC
+ }
+ call dsp_tableinfo('opmn_host_statistics','opmn_oc4j_proc','opmn_ons',\
+                    'opmn_process')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][opmn Tables]]'
+
+ debug ' Getting uds table information'
+ report table_info_uds
+ prefix
+ {write '---+!! uds Table Information'
+  write $TOC
+ }
+ call dsp_tableinfo('uds.service.addressbook','uds.service.directory')
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][uds Tables]]'
+ unpretoc
+}
+
+=head2 Log Files
+
+Gathers the most recent log files from the following directory structures:
+
+=over 4
+
+=item o F<$ORACLE_HOME/beehive/logs>
+
+=item o F<$ORACLE_HOME/clone/logs>
+
+=item o F<$ORACLE_HOME/install>
+
+=item o F<$ORACLE_HOME/opmn/logs>
+
+=back
+
+=cut
+
+macro get_logs
+{var ($dir,$pat) = @arg
+ import $cnt,$AGE,$OH2,$TAIL,$TOC,$TOP
+ keep $cnt,$AGE,$OH2,$TAIL,$TOC,$TOP
+
+ # Analyze the directory
+ var $ref = time()
+ decr $ref,expr('*',$AGE,86400)
+ loop $fil (grepDir($dir,$pat,'n'))
+ {var $pth = catFile($dir,$fil)
+
+  if match($fil,'^(\d{1,2})\.(\d{1,2})\.(\d{4})$')
+  {var @tbl = last
+   if match($dir,'\bBeehiveCoreConfiguration$',true)
+    var $log{$pth} = sprintf("%04d%02d%02d",$tbl[2],$tbl[0],$tbl[1])
+   else
+   {var $cur = mktime(59,59,23,$tbl[1],expr('-',$tbl[0],1),$tbl[2])
+    if expr('>',$cur,$ref)
+     var $log{$pth} = sprintf("%04d%02d%02d",$tbl[2],$tbl[0],$tbl[1])
+   }
+  }
+  elsif testDir('d',$pth)
+  {var $sub{$pth} = 1
+  }
+  elsif testDir('f',$pth)
+  {next and(isOlder($pth,$AGE),\
+     not(match($fil,'^(BeehiveCoreConfiguration_|schema_install\.log\.)',true)))
+   if getSize($pth)
+   {var $nam = replace($fil,\
+      '((_\d{2}){3}|\.\d{4}(-\d{2}){2}[_T]\d{2}(-\d{2}){2}(\.\d+)?)')
+    var $nam{$nam} = $fil
+   }
+  }
+  else
+   next
+  var @fil = (@fil,$pth)
+ }
+
+ # Report analysis results
+ if @fil
+ {# Display the directory content
+  report concat('dir',$dir)
+  write '---+!! Directory ',encode($dir)
+  write '   * Limited to files not older than ',$AGE,' days'
+  write '   * Empty files are not collected.'
+  call statFile('b',@fil)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][',encode(replace($dir,$OH2,'$OH')),']]'
+
+  # Collect individual files
+  loop $key (keys(%nam))
+  {incr $cnt
+   var $fil = $nam{$key}
+   report concat('log',$cnt,$fil)
+   if match($fil,'schema_install\.log\.',true)
+    call cat_file($dir,$fil)
+   else
+    call tail_file($dir,$fil,$TAIL)
+   toc '4:[[',getFile(),'][rda_report][',encode($fil),']]'
+  }
+
+  # Treat the subdirectories
+  loop $sub (keys(%log,'ND'))
+   call get_logs($sub,$pat)
+  loop $sub (keys(%sub))
+   call get_logs($sub,$pat)
+ }
+}
+
+# Get the log directories
+var %dir = ('Beehive',catDir($ORACLE_HOME,'beehive','logs'),\
+            'Clone',  catDir($ORACLE_HOME,'clone','logs'),\
+            'Install',catDir($ORACLE_HOME,'install'),\
+            'OPMN',   catDir($ORACLE_HOME,'opmn','logs'))
+var %pat = ('Beehive','[^\.]',\
+            'Clone',  '[^\.]',\
+            'Install','\.log$',\
+            'OPMN',   '[^\.]')
+var $cnt = 0
+loop $typ (keys(%dir))
+{next !testDir('dr',$dir{$typ})
+ debug ' Inside BEE module, about to gather ',$typ,' log files'
+ toc '2:',$typ,' Log Files'
+ call get_logs($dir{$typ},$pat{$typ})
+}
+unpretoc
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.10:  Frederic Daurelle.
+
+=item RDA 4.11:  Frederic Daurelle, Andras Kecskes.
+
+=item RDA 4.12:  Frederic Daurelle.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut
+

@@ -1,0 +1,130 @@
+# OIMsetup.def: Assists Oracle Identity Manager Collection Setup
+# $Id: OIMsetup.def,v 1.6 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OIMsetup.def,v 1.6 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+OIMsetup - Assists Oracle Identity Manager Collection Setup
+
+=head1 DESCRIPTION
+
+This module provided associated logic for the setup of the Oracle Identity
+Manager collections.
+
+=cut
+
+#------------------------------------------------------------------------------
+# Section init: Module initialization
+#------------------------------------------------------------------------------
+section init
+
+#------------------------------------------------------------------------------
+# Section check_db: Check if able to connect to database
+#------------------------------------------------------------------------------
+section check_db
+if ${OIM_RDBMS}
+{var $DB_USER   = ${OIM_DB_USER}
+ var $TNS_ALIAS = ${OIM_TNS_ALIAS}
+
+ if hasSqlPassword($DB_USER,$TNS_ALIAS)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$DB_USER,'@',$TNS_ALIAS,\
+                                ' user password:'))
+
+ # Switch the database context
+ var $log = setSqlLogin($DB_USER,$pwd,$TNS_ALIAS)
+ var $try = setSqlFailure(0)
+
+ # Get the available resources
+ set $sql
+ {SELECT 'rsr=' || svd.svd_svr_type || '-' || svr.svr_name
+ " FROM svr,
+ "      svd
+ " WHERE svr.svd_key = svd.svd_key
+ "   AND svd.svd_svr_type != 'Remote Manager';
+ }
+ var ($cnt,@tbl) = (0)
+ loop $lin (grepSql($sql,'^rsr='))
+  call push(@tbl,incr($cnt),value($lin))
+ if @tbl
+ {call setTempSetting('OIM_ITEMS',join('|',@tbl))
+  var ${AUX.dft} = 1
+ }
+
+ # Restore the previous database context
+ call setSqlLogin($log)
+ call setSqlFailure($try)
+}
+
+#------------------------------------------------------------------------------
+# Section chk_servers: Check which servers are present
+#------------------------------------------------------------------------------
+section chk_servers
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Detect the servers
+var $top = getSetting(concat($pre,'_DOM_REQ_DOMAIN'))
+loop $srv (grepDir(catDir($top,'servers'),'^[^\.]+$','n'))
+{if testDir('d',catDir($top,'servers',$srv,'logs'))
+  call push(@srv,$srv)
+}
+
+# Customize the setup
+if @srv
+{var ${AUX.dft} = 1
+ var ($cnt,$flg,@all,@dft,@itm,@rsp,%sel) = (0,true)
+
+ # Analyze the previous requests
+ var $val = getSetting(concat($pre,'_DOM_WLS_SERVERS'))
+ if compare('eq',$val,'*')
+  var $flg = false
+ else
+ {loop $srv (split('\|',$val))
+   var $sel{$srv} = 1
+ }
+
+ # Generate temporary setting
+ loop $srv (@srv)
+ {call push(@all,$srv)
+  call push(@itm,incr($cnt),$srv)
+  if and($flg,exists($sel{$srv}))
+   call push(@dft,$srv)
+ }
+ call setTempSetting('TMP_ALL_SERVERS',join('|',@all))
+ call setTempSetting('TMP_DFT_SERVERS',cond($flg,join('|',@dft),'*'))
+ call setTempSetting('TMP_ITM_SERVERS',join('|',@itm))
+}
+
+#------------------------------------------------------------------------------
+# Section get_wls_user: Get the Oracle WebLogic user
+#------------------------------------------------------------------------------
+section get_wls_user
+
+# Determine the associate setup prefix
+var $pre = ${AUX.PREFIX}
+
+# Extract the domain user
+var ($top,$usr) = (getSetting(concat($pre,'_DOM_REQ_DOMAIN')))
+if loadFile(catFile($top,'init-info','tokenValue.properties'))
+{var ($lin) = grepLastFile('^[^\043]*\bDOMAIN_USER=\s*\S','f')
+ var ($usr) = match($lin,'^[^\043]*\bDOMAIN_USER=\s*(\S)')
+}
+if length($usr)
+ var ${AUX.dft} = $usr
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

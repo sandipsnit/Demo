@@ -1,0 +1,290 @@
+# S208OMM.def: Collects Oracle Multimedia or Oracle interMedia Information
+# $Id: S208OMM.def,v 2.6 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S208OMM.def,v 2.6 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S208OMM - Collects Oracle Multimedia or Oracle interMedia Information
+
+=head1 DESCRIPTION
+
+This module collects the Oracle Multimedia (formerly called Oracle interMedia)
+information. This module applies to Oracle Database 9i Release 2 and later.
+
+The following report can be generated and is found under C<Oracle Multimedia>
+or C<Oracle interMedia>:
+
+=cut
+
+echo tput('bold'),'Processing OMM module ...',tput('off')
+
+# Initialization
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '^1:RDBMS'
+
+# Load the common macros
+run DBinfo()
+
+# Determine the version
+var $ver = get_db_version(true)
+pretoc '1+:Oracle ',check($ver,'^11','Multimedia','interMedia')
+
+=head2 oim - Oracle interMedia Information
+
+Collects information about Oracle interMedia (Oracle Database 9i Release 2 and
+Oracle Database 10g).
+
+=head2 omm - Oracle Multimedia Information
+
+Collects information about Oracle Multimedia (Oracle Database 11g and later).
+
+=cut
+
+if match($ver,'^(92|10|11)')
+{debug ' Inside OMM module, gathering database information'
+ if match($ver,'^92')
+ {report oim
+  var $TTL = '---+!! Oracle interMedia Information'
+  var @TTL = ('',\
+              '---+ Oracle interMedia Version and Status',\
+              '---+ Number of Installed Oracle interMedia Objects',\
+              '---+ List of Invalid Oracle interMedia Objects',\
+              '---+ Oracle interMedia Objects Owned by ORDSYS and SYS',\
+              '---+ XML Schemas Owned by ORDSYS',\
+              '---+ Invalid Objects')
+  var @HDR = ('',\
+             '|*Version* |*Status* |',\
+             '|*Owner*| *Count*|',\
+             '|*Name*|*Type*|',\
+             '|*Name*|*Type*|',\
+             '|*Schema URL*|',\
+             '|*Owner*|*Object Name*|*Object Type*|*Status*|')
+ }
+ elsif match($ver,'^10')
+ {report oim
+  var $TTL = '---+!! Oracle interMedia Information'
+  var @TTL = ('',\
+              '---+ Oracle interMedia Version and Status',\
+              '---+ Number of Installed Oracle interMedia Objects',\
+              '---+ List of Invalid Oracle interMedia Objects',\
+              '---+ Oracle interMedia Objects Owned by ORDSYS and SYS',\
+              '---+ Nonsystem Tables with ORD* Type Columns',\
+              '---+ XML Schemas Owned by ORDSYS',\
+              '---+ Invalid Objects')
+  var @HDR = ('',\
+             '|*Version* |*Status* |',\
+             '|*Owner*| *Count*|',\
+             '|*Name*|*Type*|',\
+             '|*Name*|*Type*|',\
+             '|*Owner*|*Table*|*Column*|*Data Type*|',\
+             '|*Schema URL*|',\
+             '|*Owner*|*Object Name*|*Object Type*|*Status*|')
+ }
+ else
+ {report omm
+  var $TTL = '---+!! Oracle Multimedia Information'
+  var @TTL = ('',\
+              '---+ Oracle Multimedia Version and Status',\
+              '---+ Number of Installed Oracle Multimedia Objects',\
+              '---+ List of Invalid Oracle Multimedia Objects',\
+              '---+ Oracle Multimedia Objects Owned by ORDSYS and SYS',\
+              '---+ Nonsystem Tables with ORD* Type Columns',\
+              '---+ Documents in the DICOM Repository',\
+              '---+ XML Schemas Owned by ORDSYS',\
+              '---+ XML Schemas for User-Defined Mapping Documents',\
+              '---+ Invalid Objects')
+  var @HDR = ('',\
+             '|*Version* |*Status* |',\
+             '|*Owner*| *Count*|',\
+             '|*Name*|*Type*|',\
+             '|*Name*|*Type*|',\
+             '|*Owner*|*Table*|*Column*|*Data Type*|',\
+             '|*Name*|*Type*| *Oracle Install*|',\
+             '|*Schema URL*|',\
+             '|*Doc Name*|*Schema Owner*|*Schema URL*|',\
+             '|*Owner*|*Object Name*|*Object Type*|*Status*|')
+ }
+
+ set $sql
+ {SELECT '|' ||
+ "        version || ' |' ||
+ "        status  || ' |' 
+ " FROM dba_registry
+ " WHERE comp_id = 'ORDIM';
+ "PROMPT ___Macro_separator(2)___
+ "SELECT '|' ||
+ "       owner || ' | ' ||
+ "       COUNT(*) || '|'
+ " FROM dba_objects
+ " WHERE owner IN ('ORDSYS','ORDPLUGINS','SI_INFORMTN_SCHEMA','ORDDATA')
+ " GROUP BY owner;
+ "PROMPT ___Macro_separator(3)___
+ "SELECT '|' ||
+ "       object_name || ' |' ||
+ "       object_type || ' |'
+ " FROM dba_objects
+ " WHERE owner IN ('ORDSYS','ORDPLUGINS','SI_INFORMTN_SCHEMA','ORDDATA')
+ "   AND status != 'VALID';
+ "PROMPT ___Macro_separator(4)___
+ "SELECT '|' ||
+ "       a.object_name || ' |' ||
+ "       a.object_type || ' |'
+ " FROM dba_objects a,dba_objects b
+ " WHERE a.object_name = b.object_name
+ "   AND a.object_type = b.object_type
+ "   AND a.owner = 'SYS'
+ "   AND b.owner = 'ORDSYS';
+ }
+ if match($ver,'^92')
+ {append $sql
+  {PROMPT ___Macro_separator(5)___
+  "SELECT '|' ||
+  "       schema_url || ' |'
+  " FROM all_xml_schemas
+  " WHERE OWNER = 'ORDSYS';
+  "PROMPT ___Macro_separator(6)___
+  "SELECT '|' ||
+  "       owner || ' |' ||
+  "       object_name || ' |' ||
+  "       object_type || ' |' ||
+  "       status || ' |'
+  " FROM dba_objects
+  " WHERE owner in ('ORDSYS','ORDPLUGINS','SI_INFORMTN_SCHEMA')
+  "   AND status !=  'VALID'; 
+  }
+ }
+ elsif match($ver,'^10')
+ {append $sql
+  {PROMPT ___Macro_separator(5)___
+  "SELECT '|' ||
+  "       owner || ' |' ||
+  "       table_name || ' |' ||
+  "       column_name || ' |' ||
+  "       data_type || ' |'
+  " FROM dba_tab_columns
+  " WHERE table_name NOT IN (SELECT object_name 
+  "                           FROM dba_recyclebin)
+  "   AND data_type IN ('ORDIMAGE','ORDIMAGESIGNATURE','ORDAUDIO','ORDVIDEO',
+  "                     'ORDDOC','ORDSOURCE','ORDDICOM','ORDDATASOURCE',
+  "                     'SI_STILLIMAGE','SI_COLOR','SI_AVERAGECOLOR',
+  "                     'SI_POSITIONALCOLOR','SI_TEXTURE','SI_COLORHISTOGRAM',
+  "                     'SI_FEATURELIST')
+  "   AND (data_type_owner = 'ORDSYS' OR
+  "        data_type_owner = 'PUBLIC');
+  "PROMPT ___Macro_separator(6)___
+  "SELECT '|' ||
+  "       schema_url || ' |'
+  " FROM all_xml_schemas
+  " WHERE OWNER = 'ORDSYS';
+  "PROMPT ___Macro_separator(7)___
+  "SELECT '|' ||
+  "       owner || ' |' ||
+  "       object_name || ' |' ||
+  "       object_type || ' |' ||
+  "       status || ' |'
+  " FROM dba_objects
+  " WHERE owner in ('ORDSYS','ORDPLUGINS','SI_INFORMTN_SCHEMA')
+  "   AND status !=  'VALID'; 
+  }
+ }
+ else
+ {append $sql
+  {PROMPT ___Macro_separator(5)___
+  "SELECT '|' ||
+  "       owner || ' |' ||
+  "       table_name || ' |' ||
+  "       column_name || ' |' ||
+  "       data_type || ' |'
+  " FROM dba_tab_columns
+  " WHERE table_name NOT IN (SELECT object_name 
+  "                           FROM dba_recyclebin)
+  "   AND data_type IN ('ORDIMAGE','ORDIMAGESIGNATURE','ORDAUDIO','ORDVIDEO',
+  "                     'ORDDOC','ORDSOURCE','ORDDICOM','ORDDATASOURCE',
+  "                     'SI_STILLIMAGE','SI_COLOR','SI_AVERAGECOLOR',
+  "                     'SI_POSITIONALCOLOR','SI_TEXTURE','SI_COLORHISTOGRAM',
+  "                     'SI_FEATURELIST')
+  "   AND (data_type_owner = 'ORDSYS' OR
+  "        data_type_owner = 'PUBLIC');
+  "PROMPT ___Macro_separator(6)___
+  "SELECT '|' ||
+  "       d.doc_name || ' |' ||
+  "       t.doc_type || ' | ' || 
+  "       d.oracle_install || '|'
+  " FROM ordsys.orddcm_docs d,ordsys.orddcm_doc_types t
+  " WHERE d.doc_type_id = t.doc_type_id
+  " ORDER BY d.doc_id ASC;
+  "PROMPT ___Macro_separator(7)___
+  "SELECT '|' ||
+  "       schema_url || ' |'
+  " FROM all_xml_schemas
+  " WHERE OWNER = 'ORDSYS';
+  "PROMPT ___Macro_separator(8)___
+  "SELECT '|' ||
+  "       x.doc_name || ' |' ||   
+  "       s.owner || ' |' ||
+  "       s.schema_url || ' |'
+  " FROM all_xml_schemas s, 
+  "      (SELECT extractValue(d.doc_content, 
+  "                '//NAMESPACE',
+  "                'xmlns="http://xmlns.o.com/ord/dicom/mapping_1_0"'
+  "                ) schema_url, 
+  "              d.doc_name      
+  "        FROM ordsys.orddcm_docs d ,ordsys.orddcm_doc_types t
+  "        WHERE d.doc_type_id = t.doc_type_id
+  "          AND d.oracle_install = 0
+  "          AND t.doc_type = 'MAPPING') x
+  " WHERE s.schema_url = x.schema_url;
+  "PROMPT ___Macro_separator(9)___
+  "SELECT '|' ||
+  "       owner || ' |' ||
+  "       object_name || ' |' ||
+  "       object_type || ' |' ||
+  "       status || ' |'
+  " FROM dba_objects
+  " WHERE owner in ('ORDSYS','ORDPLUGINS','SI_INFORMTN_SCHEMA')
+  "   AND status !=  'VALID'; 
+  }
+ }
+ call separator(1)
+ call writeSql($sql)
+ call separator(0,check($ver,'^11','Oracle Multimedia Information',\
+                                   'Oracle interMedia Information'))
+}
+unpretoc
+
+# Disable the group title in next index
+if isTocCreated()
+ toc '-:RDBMS'
+ 
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.13: Beate Guldenschuh, Wolfgang Haeckl, Edward J Murphy.
+
+=item RDA 4.14: Wolfgang Haeckl.
+
+=item RDA 4.18: Beate Guldenschuh, Edward J Murphy.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

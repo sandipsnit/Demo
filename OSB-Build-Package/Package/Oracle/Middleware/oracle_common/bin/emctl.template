@@ -1,0 +1,335 @@
+#!/bin/sh -f
+#++
+#  emctl - control script for webapp operations
+#
+#  emctl is used to start and stop the oc4j servlet container
+#  with the SMP Webapplications that provide monitoring and admin-
+#  istration capabilities.
+#--
+#
+# MODIFIED
+#    svrrao     08/19/09 - Adding /bin:/usr/bin to PATH
+#    dgiaimo    07/07/09 - Cleanup
+#    njagathe   06/09/09 - Removing lib32 from lib paths
+#    svrrao     12/29/08 - Unset LD_ASSUME_KERNEL
+#    danili     12/12/08 - Backport danili_bug-7324433 from main
+#    danili     11/25/08 - Backport danili_bug-7324433 from main
+#    sunagarw   10/10/08 - XbranchMerge sunagarw_bug-7451716 from
+#                          st_emagent_10.2.0.1.0
+#    sunagarw   10/07/08 - Adding new version of http_client.jar in classpath
+#    danili     09/07/08 - New branch for st_emagent_10.2as11
+#    njagathe   08/25/08 - Store and exit with result from emctl.pl
+#    danili     08/12/08 - Add JAVA_RTLINK_PATH to LD_LIBRARY
+#    njagathe   08/20/08 - Backport njagathe_bug-7047440 from main
+#    cvaishna   07/29/08 - Include JRE_HOME/lib/ia64/jrockit for ia64
+#    joyoon     06/05/08 - Add emcoreAgent.jar to DEFAULT_CLASSPATH
+#    bkovuri    02/22/08 - To set proper path of OUI Libraries
+#    aptrived   18/03/07 - Give precedence PERL_BIN in PATH
+#    aptrived   06/21/06 - Bug#5066096, unset ORA_NLS* 
+#    vivsharm   09/05/06 - remove http client from oh lib in path
+#    cvaishna   08/03/06 - Setting jre lib path in LD_LIBRARY_PATH for ppc64
+#    ssalunke   06/05/06 - Exporting LIBPATH as LIBPATH_SNMO for bug 5246874 
+#    jaysmith   08/04/06 - Backport kduvvuri_bug-4595924 from main
+#    kduvvuri   08/02/06 - fix 4595924. remove cd to $EMDROOT.
+#    qding      07/27/06 - bug 5173504, save a copy of LD_LIBRARY_PATH into 
+#                          LD_LIBRARY_PATH_SNMO 
+#    qding      07/31/06 - Backport qding_bug-5173504 from main
+#    sunagarw   04/18/06 - Migrating Security code to LDAP vob 
+#    vivsharm   07/18/06 - for 5220430 
+#    cvaishna   04/06/06 - Adding /lib & /network/lib for LIBPATH 
+#    smodh      02/20/06 - XbranchMerge smodh_jdbc_emagent from main 
+#    shianand   08/01/05 - fix bug 4522682 
+#    vnukal     07/13/05 - desupporting /net base deploys 
+#    rzkrishn   06/24/05 - unset ORA_NLS_33 
+#    rzazueta   03/23/05 - Fix 4234740 
+#    qding      03/01/05 - remove unset LANG 
+#    aaitghez   02/21/05 - remove EMDW_EXTDIR 
+#    cchriste   01/27/05 - 
+#    sksaha     01/05/05 - Fix bug-3958424 multi-word argument 
+#    rdabbott   12/15/04 - use EMCTL_DEBUG 
+#    sreddy     11/12/04 - add PERL_BIN to PATH 
+#    afontana   11/02/04 - add libnet to perl5lib 
+#    kduvvuri   09/30/04 - fix 3127659. 
+#    rzazueta   08/30/04 - Add PLE changes 
+#    njagathe   08/18/04 - Adding elements to PERL5LIB 
+#    njagathe   08/16/04 - Fix hardcoded 561 refs 
+#    aime       07/28/04 - temporary fix for resolving libcxa.so.3 
+#    nsharma    06/22/04 - Mac OSX changes
+#    skumar     06/07/04 - LD_LIBRARY_PATH for ISL
+#    rzkrishn   06/03/04 - restore_perl_env
+#    rzkrishn   06/01/04 - PERL5LIB change 
+#    skumar     06/01/04 - PERL5LIB for MAC OS X and ISL
+#    rlal       05/26/04 - Changes for Linux 390 
+#    djoly      05/14/04 - Update core reference 
+#    mbhoopat   05/01/04 - temporary fix for resolving libcprts.so.5 lib 
+#    rzkrishn   03/18/04 - removing use of instant client 
+#    mbhoopat   03/10/04 - linux port 
+#    rzkrishn   03/03/04 - using instant client for OCI 
+#    rlal       03/03/04 - Use server for jvm on ia64linux
+#    nsharma    02/27/04 - ia64 changes 
+#    rlal       02/25/04 - using LIBPATH for Aix 
+#    rlal       02/25/04 - Setting TZ for AIX
+#    skumar     02/05/04 - JRE_LIB_DIR for Tru64 and AIX
+#    rlal       02/04/04 - Fix for bug 3419192 
+#    aaitghez   12/29/03 - bug 3339329. cd to EMDROOT before executing 
+#    rzazueta   12/02/03 - use classes12.jar instead of classes12.zip 
+#    vnukal     11/14/03 - change instantiation delimiter
+#    skumar     11/03/03 - add EMDROOT/bin to PERL5LIB for OSF1 and AIX 
+#    njagathe   10/29/03 - Allowing for REMOTE_EMDROOT override 
+#    njagathe   10/29/03 - Do not allow overriding EMDROOT via env setting 
+#    njagathe   10/14/03 - Expand value list for HOST_SID_OFFSET_ENABLED 
+#    dmshah     09/15/03 - 
+#    dmshah     09/15/03 - Integration testing changes 
+#    dmshah     09/11/03 - Check for stack dump during stop 
+#    dmshah     09/09/03 - 
+#    caroy      08/15/03 - replace phaos.jar with ojpse_2_1_5.jar 
+#    dmshah     07/08/03 - Bug fixes from 401 branch
+#    dmshah     06/19/03 - Obsoleting .emrc
+#    dmshah     06/09/03 - Reworking emctl code
+#    pspearma   06/05/03 - Add EMDROOT/lib32 and OH/network/lib32 to LD_LIBRARY_PATH
+#    dmshah     05/30/03 - Uncomment DISPLAY
+#    gachen     05/29/03 - use T2
+#    dmshah     05/28/03 - check wether the DISPLAY variable is set
+#    vsekuboy   05/21/03 - Changes for Platforms
+#    dmshah     05/16/03 - grabtrans 'dmshah_fix_emagentdeploy_beta1'
+#    dmshah     05/14/03 - CRS_HOME for CFS Installs
+#    jsutton    04/25/03 - Fix up OUILOC
+#    dkapoor    05/06/03 - add network lib
+#    njagathe   05/02/03 - 64 bit shiphome changes
+#    dkapoor    04/25/03 - impl dynamic deploy
+#    gachen     04/25/03 - use server instead of client
+#    jmcdonal   04/14/03 - Bug 2737518: OUI dir changes
+#    dmshah     04/07/03 - Exporting PERL_BIN
+#    lyang      04/10/03 - add OH/network/lib to LD_LIBRARY_PATH for ias infr asso
+#    dmshah     03/13/03 - Bug fix 2849086 and moving PERL BIN
+#    dmshah     03/03/03 - Adding the POSIX library in the PERL5LIB path
+#    aaitghez   03/10/03 - change PERL5LIB path. remove scripts unix and add sysmand/admin/scripts
+#    rlal       01/25/03 - fix for bug 2769541
+#    jsutton    01/21/03 - -native not a supported VM option
+#    itarashc   12/10/02 - fix config
+#    njagathe   01/03/03 - Only set EMDROOT if not set in environment
+#    njagathe   12/19/02 - Add JRE_HOME variable and use in LD_LIBRARY_PATH etc
+#    vnukal     12/05/02 - ensuring encryption when agent down
+#    dmshah     12/06/02 - Cutting over to emctl.pl
+#
+
+EMCTL_ENV_FILE=
+if [ "$EMCTL_DEBUG" != "" ] ; then
+    EMCTL_PID=$$
+    EMCTL_ENV_FILE_DIR=/tmp
+    EMCTL_ENV_FILE=${EMCTL_ENV_FILE_DIR}/emctl.env.$EMCTL_PID
+    export EMCTL_ENV_FILE
+    env | sort > $EMCTL_ENV_FILE
+fi
+
+#No more overriding of EMDROOT through the environment - see bug 3217672
+#Instead, allow overriding through REMOTE_EMDROOT variable for state only
+#installs
+if [ "$REMOTE_EMDROOT" = "" ];
+then
+  ORACLE_HOME=#ORACLE_HOME#
+  EMDROOT=$ORACLE_HOME
+else
+  ORACLE_HOME=$REMOTE_EMDROOT
+  EMDROOT=$ORACLE_HOME
+  export REMOTE_EMDROOT
+fi
+
+#
+# Make sure certain environment variables are set 
+#
+JAVA_HOME=$ORACLE_HOME/jdk
+JRE_HOME=$ORACLE_HOME#JRE_EXTDIR#
+PERL_BIN=$ORACLE_HOME/perl/bin
+PERL_HOME=$ORACLE_HOME/perl
+EM_STANDALONE=#EM_STANDALONE#
+CRS_HOME=#CRS_HOME#
+
+#Values for HOST_SID_OFFSET_ENABLED : "" (unset), "host_sid", "host_only"
+HOST_SID_OFFSET_ENABLED=#HOST_SID_OFFSET_ENABLED#
+
+# Allow environment setting of CONSOLE_CFG to be used if already set
+CONSOLE_CFG=#CONSOLE_CFG#
+
+export JAVA_HOME
+export JRE_HOME
+export ORACLE_HOME
+export EMDROOT
+export CONSOLE_CFG
+export PERL_BIN
+export PERL_HOME
+export EM_STANDALONE
+export CRS_HOME
+export HOST_SID_OFFSET_ENABLED
+
+
+#
+# Set path so that our native executables can be found when run from java
+# Do this before any calls to commands such as uname
+#
+PATH=$EMDROOT/bin:$ORACLE_HOME/jdk/bin:$PERL_BIN:$PATH:/bin:/usr/bin
+export PATH
+
+
+#Source commonenv settings
+if [ -f $ORACLE_HOME/bin/commonenv ]; then
+. $ORACLE_HOME/bin/commonenv
+fi
+
+EM_OC4J_HOME=#EM_OC4J_HOME#
+export EM_OC4J_HOME
+
+OUILOC=$ORACLE_HOME/oui
+OUIPLATFORM=hpunix
+
+
+#Unset ORA_NLS*
+ALL_ORA_NLS_ENV=`env | grep ORA_NLS`
+for oranlsenv in ${ALL_ORA_NLS_ENV}
+do
+ unset `echo $oranlsenv | cut -d= -f1`
+done
+# these variables - PERL5LIB and LD_LIBRARY_PATH - are set so that
+# osfetchlets can run correctly
+
+uname=`uname`
+hardware=`uname -m`
+
+PERL5LIB_NATIVE=$ORACLE_HOME/perl/lib:$ORACLE_HOME/perl/lib/site_perl
+PERL5LIB_TMP=${PERL5LIB_NATIVE}:$ORACLE_HOME/perl/libwww-perl/lib:$ORACLE_HOME/perl/ext/POSIX:$ORACLE_HOME/perl/URI:$ORACLE_HOME/perl/HTML_Parser:$ORACLE_HOME/perl/HTML-Parser/lib:$EMDROOT/sysman/admin/scripts:$EMDROOT/bin:$EMDROOT/sysman/admin/scripts/Net-DNS-0.48/lib/:$EMDROOT/sysman/admin/scripts/libnet-1.19/
+
+if [ "$PERL5LIB" = "" ] ;
+then 
+   PERL5LIB=${PERL5LIB_TMP}
+else
+   PERL5LIB=${PERL5LIB_TMP}:${PERL5LIB}
+fi
+
+if [ "$LD_LIBRARY_PATH" = "" ] ; then
+   LD_LIBRARY_PATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$OUILOC/lib/#PLATFORM#:$OUILOC/lib/$OUIPLATFORM
+else
+   LD_LIBRARY_PATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$OUILOC/lib/#PLATFORM#:$LD_LIBRARY_PATH:$OUILOC/lib/$OUIPLATFORM
+fi
+
+if [ "$LD_LIBRARY_PATH_64" = "" ] ; then
+   LD_LIBRARY_PATH_64=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$OUILOC/lib/#PLATFORM#
+else
+   LD_LIBRARY_PATH_64=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$OUILOC/lib/#PLATFORM#:$LD_LIBRARY_PATH_64
+fi
+
+if [ "$SHLIB_PATH" = "" ] ; then
+   SHLIB_PATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$ORACLE_HOME/lib:$ORACLE_HOME/lib32:$OUILOC/lib/#PLATFORM#:$OUILOC/lib/$OUIPLATFORM
+else
+   SHLIB_PATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$ORACLE_HOME/lib:$ORACLE_HOME/lib32:$OUILOC/lib/#PLATFORM#:$SHLIB_PATH:$OUILOC/lib/$OUIPLATFORM
+fi
+
+if [ "$LIBPATH" = "" ] ; then
+   LIBPATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$ORACLE_HOME/lib32:$OUILOC/lib/#PLATFORM#:$OUILOC/lib/$OUIPLATFORM
+else
+   LIBPATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$ORACLE_HOME/lib32:$OUILOC/lib/#PLATFORM#:$LIBPATH:$OUILOC/lib/$OUIPLATFORM
+fi
+
+if [ "$DYLD_LIBRARY_PATH" = "" ] ; then
+   DYLD_LIBRARY_PATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$OUILOC/lib/#PLATFORM#:$OUILOC/lib/$OUIPLATFORM
+else
+   DYLD_LIBRARY_PATH=$ORACLE_HOME/lib:$ORACLE_HOME/perl/lib:$EMDROOT/lib:$OUILOC/lib/#PLATFORM#:$DYLD_LIBRARY_PATH:$OUILOC/lib/$OUIPLATFORM
+fi
+
+# 7319281: Add JAVA_RTLINK_PATH from s_emagent.mk just in case we miss a platform
+LD_LIBRARY_PATH=$JAVA_RTLINK_PATH:$LD_LIBRARY_PATH
+SHLIB_PATH=$JAVA_RTLINK_PATH:$SHLIB_PATH
+DYLD_LIBRARY_PATH=$JAVA_RTLINK_PATH:$DYLD_LIBRARY_PATH
+LIBPATH=$JAVA_RTLINK_PATH:$LIBPATH
+
+# to workaround Solaris2.8 Java thr_suspend hang, use alternate libthread.
+# Since this directory doesn't exist on other versions, this is a noop there.
+#
+if [ "$uname" = "SunOS" ];
+then
+	LD_LIBRARY_PATH=/usr/lib/lwp:$LD_LIBRARY_PATH
+fi
+
+# export copies of LD_LIBRARY_PATH, LIBPATH, SHLIB_PATH, and PERL5LIB
+# so that nmo and nmosudo can reinstate them (bugs 5173504, 6742459)
+LD_LIBRARY_PATH_SNMO=${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH_SNMO
+
+LIBPATH_SNMO=${LIBPATH}
+export LIBPATH_SNMO
+
+# versions of these paths for export to nmosudo *must* begin with SNMO.
+# sudo's default behavior is to remove *any* environment variable beginning
+# with "LD_", "DYLD_", etc.
+SNMO_LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+export SNMO_LD_LIBRARY_PATH
+
+SNMO_SHLIB_PATH=${SHLIB_PATH}
+export SNMO_SHLIB_PATH
+
+SNMO_DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}
+export SNMO_DYLD_LIBRARY_PATH
+
+SNMO_PERL5LIB=${PERL5LIB}
+export SNMO_PERL5LIB
+
+export PERL5LIB 
+export LD_LIBRARY_PATH
+export SHLIB_PATH
+export LIBPATH
+export DYLD_LIBRARY_PATH
+
+# Add the var for HP
+if [ "$uname" = "HP-UX" ] ; then
+   UNIX95=XPG4;
+   export UNIX95
+   # fix for emctl stop issue on HP.
+   EM_OC4J_OPTS="-XdoCloseWithReadPending $EM_OC4J_OPTS"
+   export EM_OC4J_OPTS
+fi
+
+
+#
+# Set up DEFAULT_CLASSPATH, needed by the Secure perl modules to locate
+# dependent jars for command line calls to java
+#
+DEFAULT_CLASSPATH=$ORACLE_HOME/jdbc/lib/ojdbc14.jar:$ORACLE_HOME/oc4j/jdbc/lib/ojdbc14dms.jar:$ORACLE_HOME/oc4j/lib/dms.jar:$ORACLE_HOME/oc4j/jdbc/lib/orai18n.jar:$ORACLE_HOME/jlib/uix2.jar:$EMDROOT/sysman/jlib/emCORE.jar:$EMDROOT/sysman/jlib/emcoreAgent.jar:$EMDROOT/sysman/jlib/emagentSDK.jar:$ORACLE_HOME/xdk/lib/xmlparserv2.jar:$EMDROOT/sysman/jlib/log4j-core.jar:$ORACLE_HOME/j2ee/OC4J_EM/applications/em/em/WEB-INF/lib/ojpse_2_1_5.jar:$ORACLE_HOME/j2ee/home/lib/http_client.jar:$ORACLE_HOME/oc4j/j2ee/home/lib/http_client.jar:$ORACLE_HOME/modules/oracle.http_client_11.1.1.jar:$ORACLE_HOME/sysman/webapps/emd/WEB-INF/lib/ojpse_2_1_5.jar
+export DEFAULT_CLASSPATH
+
+# use ulimit to make sure we have enough descriptors
+
+if [ "$EM_DESCRIPTORS" = "" ]
+then
+   EM_DESCRIPTORS=1024
+fi
+
+CURRENT_LIMIT=`ulimit -n`
+
+if [ "$CURRENT_LIMIT" != "unlimited" ]
+then
+   if [ $CURRENT_LIMIT -lt $EM_DESCRIPTORS ]
+   then
+      ulimit -n $EM_DESCRIPTORS
+   fi
+fi
+
+if [ "$EMCTL_DEBUG" != "" ] ; then
+    echo emctl: launching $PERL_BIN/perl $EMDROOT/bin/emctl.pl "$@"
+fi
+
+if [ "$EMCTL_DEBUG" != "" ] ; then
+   env | sort > ${EMCTL_ENV_FILE}.2
+   diff ${EMCTL_ENV_FILE} ${EMCTL_ENV_FILE}.2 > ${EMCTL_ENV_FILE}.diff
+   echo Env changes in emctl recorded in ${EMCTL_ENV_FILE}.diff
+   rm ${EMCTL_ENV_FILE}.2
+fi
+
+# Execute the emctl.pl
+$PERL_BIN/perl $EMDROOT/bin/emctl.pl "$@"
+
+cmdexitcode=$?
+
+if [ "$EMCTL_DEBUG" != "" ] ; then
+    rm $EMCTL_ENV_FILE
+fi
+
+exit $cmdexitcode

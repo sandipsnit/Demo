@@ -1,0 +1,516 @@
+# M121EXLH.def: Performs Oracle Exalogic Multi-run Collections (Host Part)
+# $Id: M121EXLH.def,v 1.7 2012/03/29 06:04:32 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M121EXLH.def,v 1.7 2012/03/29 06:04:32 mschenke Exp $
+#
+# Change History
+# 20120322  KRA  Introduce issue specific collections.
+
+=head1 NAME
+
+M121EXLH - Performs Oracle Exalogic Multi-run Collections (Host Part)
+
+=head1 DESCRIPTION
+
+This module regroups multi-run collections specific to the Oracle Exalogic
+node.
+
+=cut
+
+use Mrc
+
+# Initialization
+var @COMMON_SECTIONS = ('EXLH_cfg_checks','EXLH_cfg_pci','EXLH_cfg_tools',\
+                        'EXLH_cfg_vmstat')
+var @ROOT_SECTIONS = ('EXLH_cfg_cli64','EXLH_cfg_ib_chkst',\
+                      'EXLH_cfg_ib_prtconf','EXLH_cfg_ipmi',\
+                      'EXLH_cfg_prdserial','EXLH_cfg_temp')
+keep @COMMON_SECTIONS,@ROOT_SECTIONS
+
+var $TAIL = ${EXL_TAIL:1000}
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+keep $TAIL,$TOC,$TOP
+
+# Load the common variables
+section begin
+
+var $TYPE = ${EXL_TYPE:'_All_'}
+
+=head1 EXALOGIC MULTI-RUN COLLECTIONS
+
+=head2 config_checks - Configuration Checks
+
+Performs Oracle Exalogic configuration checks.
+
+=cut
+
+section EXLH_cfg_checks
+
+if match($TYPE,'^_All_')
+{debug ' Inside EXL module, performing configuration checks'
+ report config_checks
+ write '---+!! Oracle Exalogic Configuration Checks'
+ write $TOC
+
+ # limits.conf check
+ if loadFile($fil = "/etc/security/limits.conf")
+ {write '---+ ',encode('limits.conf')
+  write '---## Information Taken from ',encode($fil)
+  write '|*Check*|*Result*|'
+  loop $rec (['hard nofile 65536',\
+              '^\*\s*hard\s+nofile\s+65536'],\
+             ['soft nofile 65536',\
+              '^\*\s*soft\s+nofile\s+65536'],\
+             ['hard memlock unlimited',\
+              '^\*\s*hard\s+memlock\s+unlimited'],\
+             ['soft memlock unlimited',\
+              '^\*\s*soft\s+memlock\s+unlimited'],\
+             ['hard core unlimited',\
+              '^\*\s*hard\s+core\s+unlimited'],\
+             ['soft core unlimited',\
+              '^\*\s*soft\s+core\s+unlimited'])
+  {var ($chk,$pat) = @{$rec}
+   if grepLastFile($pat,'f')
+    write '|``',$chk,'``|%BLUE%PASSED%ENDCOLOR%|'
+   else
+    write '|``',$chk,'``|%RED%FAILED%ENDCOLOR%|'
+  }
+  write $TOP
+ }
+
+ # openib.conf check
+ if loadFile($fil = "/etc/infiniband/openib.conf")
+ {write '---+ ',encode('openib.conf')
+  write '---## Information Taken from ',encode($fil)
+  write '|*Check*|*Result*|'
+  loop $rec (['IPOIB_LOAD=yes',\
+              '^IPOIB_LOAD\s*=\s*yes'],\
+             ['MLX4_EN_LOAD=no',\
+              '^MLX4_EN_LOAD\s*=\s*no'],\
+             ['SDP_LOAD=yes',\
+              '^SDP_LOAD\s*=\s*yes'])
+  {var ($chk,$pat) = @{$rec}
+   if grepLastFile($pat,'f')
+    write '|``',$chk,'``|%BLUE%PASSED%ENDCOLOR%|'
+   else
+    write '|``',$chk,'``|%RED%FAILED%ENDCOLOR%|'
+  }
+  write $TOP
+ }
+
+ # recv_poll check
+ if loadFile($fil = "/sys/module/ib_sdp/parameters/recv_poll")
+ {write '---+ ',encode('recv_poll')
+  write '---## Information Taken from ',encode($fil)
+  write '|*Check*|*Result*|'
+  if grepLastFile('^0','f')
+   write '|``0``|%BLUE%PASSED%ENDCOLOR%|'
+  else
+   write '|``0``|%RED%FAILED%ENDCOLOR%|'
+  write $TOP
+ }
+
+ # S05openibd check
+ write '---+ S05openibd'
+ write '|*Check*|*Result*|'
+ if grepDir('/etc/rc3.d','^S05openibd$')
+  write '|``/etc/rc3.d/S05openibd``|%BLUE%PASSED%ENDCOLOR%|'
+ else
+  write '|``/etc/rc3.d/S05openibd``|%RED%FAILED%ENDCOLOR%|'
+ write $TOP
+
+ # modprobe.conf check
+ if loadFile($fil = "/etc/modprobe.conf")
+ {write '---+ ',encode('modprobe.conf')
+  write '---## Information Taken from ',encode($fil)
+  write '|*Check*|*Result*|'
+  if grepLastFile('^ib_sdp\s+\/bin\/true','f')
+   write '|``ib_sdp /bin/true``|%RED%FAILED%ENDCOLOR%|'
+  else
+   write '|``ib_sdp /bin/true``|%BLUE%PASSED%ENDCOLOR%|'
+  loop $rec (['alias net-pf-27 ib_sdp',\
+              '^alias\s+net-pf-27\s+ib_sdp'],\
+             ['options ib_ipoib lro=Y',\
+              '^options\s+ib_ipoib\s+lro=Y'],\
+             ['options ib_sdp sdp_zcopy_thresh=0 recv_poll=0',\
+              '^options\s+ib_sdp\s+sdp_zcopy_thresh=0\s+recv_poll=0'],\
+             ['options mlx4_vnic tx_rings_num=8 rx_rings_num=8',\
+              '^options mlx4_vnic\s+tx_rings_num=8\s+rx_rings_num=8'])
+  {var ($chk,$pat) = @{$rec}
+   if grepLastFile($pat,'f')
+    write '|``',$chk,'``|%BLUE%PASSED%ENDCOLOR%|'
+   else
+    write '|``',$chk,'``|%RED%FAILED%ENDCOLOR%|'
+  }
+  write $TOP
+ }
+
+ # libsdp.conf check
+ if loadFile($fil = "/etc/libsdp.conf")
+ {write '---+ ',encode('libsdp.conf')
+  write '---## Information Taken from ',encode($fil)
+  write '|*Check*|*Result*|'
+  loop $rec (['use tcp server * :',\
+              '^use\s+tcp\s+server\s+\*\s+:'],\
+             ['use tcp client * :',\
+              '^use\s+tcp\s+client\s+\*\s+:'])
+  {var ($chk,$pat) = @{$rec}
+   if grepLastFile($pat,'f')
+    write '|``',$chk,'``|%BLUE%PASSED%ENDCOLOR%|'
+   else
+    write '|``',$chk,'``|%RED%FAILED%ENDCOLOR%|'
+  }
+  write $TOP
+ }
+
+ # sysctl.conf check
+ if loadFile($fil = "/etc/sysctl.conf")
+ {write '---+ ',encode('sysctl.conf')
+  write '---## Information Taken from ',encode($fil)
+  write '|*Check*|*Result*|'
+  loop $rec (['net.ipv4.tcp_rmem = 16777216 16777216 16777216',\
+              '^net\.ipv4\.tcp_rmem\s*=\s*16777216\s+16777216\s+16777216'],\
+             ['net.ipv4.tcp_wmem = 16777216 16777216 16777216',\
+              '^net\.ipv4\.tcp_wmem\s*=\s*16777216\s+16777216\s+16777216'],\
+             ['net.ipv4.tcp_mem = 16777216 16777216 16777216',\
+              '^net\.ipv4\.tcp_mem\s*=\s*16777216\s+16777216\s+16777216'],\
+             ['net.core.optmem_max = 16777216',\
+              '^net\.core\.optmem_max\s*=\s*16777216'],\
+             ['net.core.rmem_max=16777216',\
+              '^net\.core\.rmem_max\s*=\s*16777216'],\
+             ['net.core.wmem_max=16777216',\
+              '^net\.core\.wmem_max\s*=\s*16777216'],\
+             ['net.core.rmem_default=16777216',\
+              '^net\.core\.rmem_default\s*=\s*16777216'],\
+             ['net.core.wmem_default=16777216',\
+              '^net\.core\.wmem_default\s*=\s*16777216'],\
+             ['net.ipv4.ip_local_port_range = 9000 65500',\
+              '^net\.ipv4\.ip_local_port_range\s*=\s*9000\s+65500'],\
+             ['vm.nr_hugepages = 10000',\
+              '^vm\.nr_hugepages\s*=\s*10000'],\
+             ['fs.file-max=262144',\
+              '^fs\.file-max\s*=\s*262144'])
+  {var ($chk,$pat) = @{$rec}
+   if grepLastFile($pat,'f')
+    write '|``',$chk,'``|%BLUE%PASSED%ENDCOLOR%|'
+   else
+    write '|``',$chk,'``|%RED%FAILED%ENDCOLOR%|'
+  }
+  write $TOP
+ }
+ call validate(true)
+ toc '3:[[',getFile(),'][rda_report][Configuration Checks]]'
+}
+else
+ call validate(true)
+
+=head2 MegaCli64 Information
+
+Collects the output of the following variants of the
+F</opt/MegaRAID/MegaCli/MegaCli64> command (applicable for C<Raid> collection):
+
+=head3 adpallinfo - Internal RAID Card Check
+
+Gets the C<-AdpAllInfo -aALL> information.
+
+=head3 adpbbucmd - MegaRAID Battery Check
+
+Gets the C<-AdpBbuCmd -GetBbuStatus -a0> information.
+
+=head3 adpeventlog - MegaRAID Events
+
+Gets the C<-AdpEventLog -GetEvents -f E<lt>filE<gt> -aALL> information.
+
+=head3 ldpdinfo - SSD Disk Information
+
+Gets the C<-LdPdInfo -a0> information.
+
+=cut
+
+section EXLH_cfg_cli64
+
+if match($TYPE,'^_(All|Raid)_')
+{debug ' Inside EXL module, running megacli64 commands'
+ var %tbl = (\
+   adpallinfo  => [' -AdpAllInfo -aALL','Internal RAID Card Check'],\
+   adpbbucmd   => [' -AdpBbuCmd -GetBbuStatus -a0','MegaRAID Battery Check'],\
+   adpeventlog => [' -AdpEventLog -GetEvents -f :1 -aALL','MegaRAID Events'],\
+   ldpdinfo    => [' -LdPdInfo -a0','SSD Disk Information'])
+ var $flg = true
+ loop $key (keys(%tbl))
+ {var $rec = $tbl{$key}
+  var $cmd = concat('/opt/MegaRAID/MegaCli/MegaCli64',$rec->[0])
+  report $key
+  prefix
+  {write '---+ ',$rec->[-1]
+   write '---## Using: ',encode($cmd)
+  }
+  if compare('eq',$key,'adpeventlog')
+  {var $tmp = getTemp('out','.txt')
+   var $cmd = bind($cmd,quote($tmp,'x'))
+   call command($cmd)
+   call writeTail($tmp,$TAIL)
+   call unlinkTemp('out')
+  }
+  else
+   call writeCommand($cmd)
+  if hasOutput(true)
+  {if $flg
+   {call validate(true)
+    toc '3:MegaCli64 Information'
+    var $flg = false
+   }
+   write $TOP
+   toc '4:[[',getFile(),'][rda_report][',$rec->[1],']]'
+  }
+ }
+}
+else
+ call validate(true)
+
+=head2 ibcheckstate - InfiniBand State Check
+
+Collects the port physical state information using the
+F</usr/sbin/ibcheckstate> command.
+
+=cut
+
+section EXLH_cfg_ib_chkst
+
+if match($TYPE,'^_All_')
+{debug ' Inside EXL module, gathering port physical state information'
+ report ibcheckstate
+ var $cmd = '/usr/sbin/ibcheckstate'
+ prefix
+ {write '---+ InfiniBand State Check'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][InfiniBand State Check]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 prtconf - Port Configuration
+
+Collects the port error counters and configuration information using the
+C<ibqueryerrors.pl -rR -s LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait>
+command (applicable for C<IbFabric> collection).
+
+=cut
+
+section EXLH_cfg_ib_prtconf
+
+if match($TYPE,'^_(All|IbFabric)_')
+{debug ' Inside EXL module, gathering port configuration'
+ report prtconf
+ var $cmd = '/usr/sbin/ibqueryerrors.pl -rR -s \
+             LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait'
+ prefix
+ {write '---+ Port Error Counters and Configuration Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Port Configuration]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 ipmitool - IPMI Information
+
+Collects the Intelligent Platform Management Interface (IPMI) information using
+the C<ipmitool sel elist> command (applicable for C<DriveFailure> collection).
+
+=cut
+
+section EXLH_cfg_ipmi
+
+if match($TYPE,'^_(All|DriveFailure)_')
+{debug ' Inside EXL module, running ipmitool command'
+ report ipmitool
+ var $cmd = concat(cond(${OS.linux},  '/usr/bin/ipmitool',\
+                        ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                                      'ipmitool'),' sel elist')
+ prefix
+ {write '---+ Intelligent Platform Management Interface (IPMI) Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][IPMI Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 lspci_conf - PCI Devices Configuration
+
+Collects the Peripheral Component Interconnect (PCI) devices configuration
+using the F</sbin/lspci> command (applicable for C<DriveFailure> collection).
+
+=cut
+
+section EXLH_cfg_pci
+
+if match($TYPE,'^_(All|DriveFailure)_')
+{debug ' Inside EXL module, running lspci command'
+ report lspci_conf
+ var $cmd = '/sbin/lspci'
+ prefix
+ {write '---+ PCI Devices Configuration Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][PCI Devices Configuration]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 prdserial - Product Serial Number
+
+Collects the product serial number using the
+C<ipmitool sunoem cli 'show /SYS product_serial_number'> command (applicable
+for C<DriveFailure> collection).
+
+=cut
+
+section EXLH_cfg_prdserial
+
+if match($TYPE,'^_(All|DriveFailure)_')
+{debug ' Inside EXL module, gathering product serial number'
+ report prdserial
+ var $cmd = concat(cond(${OS.linux},  '/usr/bin/ipmitool',\
+                        ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                                      'ipmitool'),\
+                   " sunoem cli 'show /SYS product_serial_number'")
+ prefix
+ {write '---+ Product Serial Number'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Product Serial Number]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 temp - Temperature Information
+
+Collects the Inlet Ambient Temperature information (applicable for C<Temp>
+collection).
+
+=cut
+
+section EXLH_cfg_temp
+
+if match($TYPE,'^_(All|Temp)_')
+{debug ' Inside EXL module, gathering temperature information'
+ report temp
+ var $cmd = concat(cond(${OS.linux},  '/usr/bin/ipmitool',\
+                        ${OS.solaris},'/opt/ipmitool/bin/ipmitool',\
+                                      'ipmitool'),' sensor')
+ prefix
+ {write '---+ Inlet Ambient Temperature Information'
+  write '---## Using: ',encode($cmd)
+  write '<verbatim>'
+ }
+ if grepCommand($cmd,'AMB')
+ {loop $lin (last)
+   write $lin
+ }
+ if hasOutput(true)
+ {call validate(true)
+  write '</verbatim>'
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Temperature Information]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 tools_version - Tools Version
+
+Collects the output of the C<rpm -qi exalogic.tools> command.
+
+=cut
+
+section EXLH_cfg_tools
+
+if match($TYPE,'^_All_')
+{debug ' Inside EXL module, gathering tools version'
+ report tools_version
+ var $cmd = '/bin/rpm -qi exalogic.tools'
+ prefix
+ {write '---+ Tools Version Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Tools Version]]'
+ }
+}
+else
+ call validate(true)
+
+=head2 vmstat - Virtual Memory Statistics
+
+Collects the output of the C<vmstat 10 3> command.
+
+=cut
+
+section EXLH_cfg_vmstat
+
+if match($TYPE,'^_All_')
+{debug ' Inside EXL module, gathering virtual memory statistics'
+ report vmstat
+ var $cmd = '/usr/bin/vmstat 10 3'
+ prefix
+ {write '---+ Virtual Memory Statistics'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {call validate(true)
+  write $TOP
+  toc '3:[[',getFile(),'][rda_report][Virtual Memory Statistics]]'
+ }
+}
+else
+ call validate(true)
+
+=head1 SEE ALSO
+
+L<M120EXLR|modules::M120EXLR>,
+L<S315EXL|modules::S315EXL>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

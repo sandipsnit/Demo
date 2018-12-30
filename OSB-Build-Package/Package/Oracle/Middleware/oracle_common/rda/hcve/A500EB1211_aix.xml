@@ -1,0 +1,540 @@
+<sdp_diaglet platform="aix" product="EB1211" set="A500EB1211_aix" title="Oracle E-Business Suite Release 12 (12.1.1) Preinstall (AIX)" type="A">
+<sdp_meta id="$Id: A500EB1211_aix.xml,v 1.9 2012/02/28 15:14:18 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve /etc/hosts Format check" date="20120223" type="history"/>
+<sdp_content set="A500EB1211_aix" title="Oracle E-Business Suite Release 12 (12.1.1) Preinstall (AIX)" type="check">
+<sdp_group>
+
+<sdp_rule id="A00100" mode="RECORD" name="OS Type">
+<sdp_command type="RDA"><![CDATA[import $OS_BIT,$OS_NAM,$OS_VER
+var ($OS_LVS) = command('oslevel -s')
+call setHcveVariable('$OS_LVS')
+call setHcveResult(check(uc($OS_NAM),\
+   'AIX',concat(uc($OS_NAM),' ',$OS_LVS,' ',$OS_BIT,'-bit'),\
+         'Non-AIX system'))
+var $BOOK = 'Oracle Applications Installation Guide Using Rapid Install \
+  Release 12.1 (12.1.1)'
+var $NOTE = 'Knowledge Article 761569.1'
+call setHcveVariable('$BOOK','$NOTE')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system (OS) name, version, technology level, service pack, and bit of your system when you work on AIX system.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00200" mode="VERIFY" name="OS Certified?">
+<sdp_command type="RDA"><![CDATA[import $OS_BIT,$OS_LVS,$OS_NAM
+if compare('ne',uc($OS_NAM),'AIX')
+ return setHcveResult('Uncertified OS')
+var (undef,$tl,$sp) = split('-',$OS_LVS)
+call setHcveResult(check($OS_BIT,\
+  32,'NotCertified32Bit',\
+     check($OS_LVS,\
+       '^5300-',cond(or(expr('>',$tl,7),\
+                        and(expr('>=',$tl,7),expr('>=',$sp,3))),\
+                     'Certified','NotCertified'),\
+       '^6100-',cond(or(expr('>',$tl,0),\
+                        and(expr('>=',$tl,0),expr('>=',$sp,4))),\
+                    'Certified','NotCertified'),\
+       '^7100-','Certified',\
+                'NonCertifiedAIXVersion')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the correct version of AIX for installing the application tier of an Oracle E-Business Suite Release 12 (12.1.1), possibly combined with a database tier install. Correct versions for the installation of the application tier and the database tier are AIX 5L (5.3) 64-bit (technology level 7, Service Pack 3 or higher), AIX 6 (6.1) 64-bit (technology level 0, Service Pack 4 or higher), and AIX 7 (7.1) 64-bit.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Certified" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[!!SHOWSTOPPER!!
+You do not have AIX, not a 64-bit version of AIX, or a correct version of AIX installed on your server. For the certified versions of AIX, see the ${NOTE}.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00220" mode="VERIFY" name="Got OS Packages? ">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified AIX system"><![CDATA[This rule applies for certified AIX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+macro check_package
+{var (\@tbl) = @arg
+ import $OS_LVL
+ var $OS4 = field('\-',0,$OS_LVL)
+ call loadCommand('/usr/bin/lslpp -l')
+ loop $pkg ('bos.adt.base','bos.adt.lib','bos.adt.libm','bos.perf.libperfstat',\
+            'bos.perf.perfstat','bos.perf.proctools','rsct.basic.rte',\
+            'rsct.compat.clients.rte','X11.motif.lib',\
+            check($OS4,'^6100$','xlC.aix61.rte','xlC.aix50.rte'),'xlC.rte')
+ {var (undef,$lvl,$sta,undef) = \
+     split('\s+',trim(grepLastFile(quote($pkg),'f')),4)
+  if $sta
+  {if and(compare('ne',$sta,'COMMITTED'),compare('ne',$sta,'APPLIED'))
+    call push(@tbl,concat('[',$pkg,'] not applied'))
+   elsif compare('eq',$OS4,'6100')
+   {if and(compare('eq',$pkg,'xlC.aix61.rte'),\
+           not(compare('valid',$lvl,'9.0.0.1')))
+     call push(@tbl,concat('[',$pkg,'] found'))
+    elsif and(compare('eq',$pkg,'xlC.rte'),\
+              not(compare('valid',$lvl,'9.0.0.1')))
+     call push(@tbl,concat('[',$pkg,'] found'))
+   }
+   elsif compare('eq',$OS4,'5300')
+   {if and(compare('eq',$pkg,'xlC.aix50.rte'),\
+           not(compare('valid',$lvl,'9.0.0.10')))
+     call push(@tbl,concat('[',$pkg,'] found'))
+    elsif and(compare('eq',$pkg,'xlC.rte'),\
+              not(compare('valid',$lvl,'9.0.0.10')))
+     call push(@tbl,concat('[',$pkg,'] found'))
+   }
+  }
+  else
+   call push(@tbl,concat('[',$pkg,'] missing'))
+ }
+}
+call cond(testFile('x','/usr/bin/lslpp'),check_package(\@tbl),\
+                                         push(@tbl,'NoAccess'))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),\
+                                     'All required OS packages are installed'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that all required OS packages (called filesets on IBM) are installed.%BR%For AIX 5L (5.3) the following filesets must be installed:%BR% ``bos.adt.base``, ``bos.adt.lib``, ``bos.adt.libm``, ``bos.perf.libperfstat``, ``bos.perf.perfstat``, ``bos.perf.proctools``, ``rsct.basic.rte``, ``rsct.compat.client``, ``X11.motif.lib``, ``xlC.aix50.rte`` (9.0.0.10 or later), and ``xlC.rte`` (9.0.0.10 or later).%BR%For AIX 6 (6.1) the following filesets must be installed:%BR% ``bos.adt.base``, ``bos.adt.lib``, ``bos.adt.libm``, ``bos.perf.libperfstat``, ``bos.perf.perfstat``, ``bos.perf.proctools``, ``rsct.basic.rte``, ``rsct.compat.client``, ``xlC.aix61.rte`` (9.0.0.1 or later), and ``xlC.rte``(9.0.0.1 or later).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="All required OS packages (filesets) are installed" result="PASSED"><![CDATA[All required OS packages (filesets) are installed. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required OS packages (filesets) were not met or found. Review the recommended OS packages (filesets) from the ${NOTE} before installing the software.
+|*Return Value*|*Action*|
+|... missing|The package (fileset) was not installed.|
+|... not applied|The package (fileset) was neither applied nor committed.|
+|... found|An incorrect version of the package (fileset) was found.|
+|NoAccess|OS packages could not be verified because the user has no execute permissions to the ``/bin/lslpp`` command. Provide the user with execute permissions.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00230" mode="VERIFY" name="AIX Patches?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified AIX system"><![CDATA[This rule applies for certified AIX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_LVL
+macro get_patches
+{var (\@tbl) = @arg
+ macro check_patches
+ {var (\@tbl,$val,@pch) = @arg
+  loop $pch (@pch)
+  {if grepCommand(concat('/usr/sbin/instfix -ik ',$pch),'no','if')
+    call push(@tbl,concat('[',$pch,'] missing'))
+  }
+ }
+ var $lvl = field('\-',0,$OS_LVL)
+ if compare('eq',$lvl,'6100')
+ {var $lvl = field('\-',1,$OS_LVL)
+  if compare('eq',$lvl,'00')
+   call check_patches(\@tbl,'IZ10223')
+  elsif compare('ge',$lvl,'04')
+   call check_patches(\@tbl,'IZ67400')
+ }
+ elsif compare('eq',$lvl,'5300')
+  call check_patches(\@tbl,'IY58143','IY59386','IY60930','IY66513','IY70159',\
+                    'IY68989','IY76140','IY89080','IY92037','IY94343',\
+                    'IZ01060','IZ03260')
+}
+call cond(not(testFile('x','/usr/sbin/instfix')),push(@tbl,'NoAccess'),\
+                                                 get_patches(\@tbl))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'PatchesFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the OS patches required for the Oracle Database 11g installation.%BR%For AIX 5L (5.3) the patches IY58143, IY59386, IY60930, IY66513, IY70159, IY68989, IY76140, IY89080, IY92037, IY94343, IZ01060, and IZ03260 must be installed.%BR%For AIX 6 (6.1) TL0, the patch IZ10223 must be installed. For AIX 6 (6.1) TL4 and later, the patch IZ67400 must be installed.
+]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="PatchesFound" result="PASSED"><![CDATA[All required OS patches are found. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required OS patches were not found. Review the ${NOTE} before installing the software.
+|*Return Value*|*Action*|
+|... missing|Install the required OS patch.|
+|NoAccess|OS patches could not be verified because the user has no execute permissions to ``/usr/sbin/instfix``. Provide the user with execute permissions.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00370" mode="VERIFY" name="Got Software Tools?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+macro find_exe
+{var (\@tbl,$exe,$ref) = @arg
+ if findCommand($exe)
+ {var $cmd = readLink(last,last)
+  if !compare('eq',$cmd,$ref)
+   call push(@tbl,concat(ucfirst($exe),'Elsewhere'))
+ }
+ else
+  call push(@tbl,concat(ucfirst($exe),'Notfound'))
+}
+call find_exe(\@tbl,'ar','/usr/ccs/bin/ar')
+call find_exe(\@tbl,'ld','/usr/ccs/bin/ld')
+call find_exe(\@tbl,'make','/usr/ccs/bin/make')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'tools_found'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required assembly tools for the installation of application tier of the Oracle E-Business suite Release 12 (12.1.1) exist.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="tools_found" result="PASSED"><![CDATA[All required assembly tools for the installation of the application tier of the Oracle E-Business Suite Release 12 (12.1.1) were found. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You do not have some of the required assembly tools for the installation of the Oracle E-Business Suite Release 12 (12.1.1) installed. Check ${NOTE} and install the tools before starting the installation.
+|*Return Value*|*Action*|
+|ArNotFound|``ar`` is not found in ``PATH``.|
+|LdNotFound|``ld`` is not found in ``PATH``.|
+|MakeNotFound|``make`` is not found in ``PATH``|
+|ArElsewhere|``ar`` is not in ``/usr/ccs/bin`` as required.|
+|LdElsewhere|``ld`` is not in ``/usr/ccs/bin`` as required.|
+|MakeElsewhere|``make`` is not in ``/usr/ccs/bin`` as required.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00380" mode="VERIFY" name="Got linkxlC?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified AIX system"><![CDATA[This rule applies for certified AIX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_LVL
+var @tbl = ()
+var $OS4 = field('\-',0,$OS_LVL)
+if !testFile('x','/usr/bin/lslpp')
+ return setHcveResult('NoAccess')
+call loadCommand('/usr/bin/lslpp -l')
+var (undef,$lvl,$sta,undef) = \
+     split('\s+',trim(grepLastFile('xlcpp.util','if')),4)
+if and($sta,or(compare('eq',$sta,'COMMITTED'),compare('eq',$sta,'APPLIED')))
+{if or(and(compare('eq',$OS4,'6100'),compare('valid',$lvl,'9.0')),\
+       and(compare('eq',$OS4,'5300'),compare('valid',$lvl,'9.0')))
+  return setHcveResult('XlcppOk')
+ call push(@tbl,concat('[xlcpp.util] found'))
+}
+var (undef,$lvl,$sta,undef) = \
+     split('\s+',trim(grepLastFile('vacpp.cmp.rte','if')),4)
+if and($sta,or(compare('eq',$sta,'COMMITTED'),compare('eq',$sta,'APPLIED')))
+{if compare('valid',$lvl,'8.0.0')
+  return setHcveResult('VacppOk')
+ call push(@tbl,concat('[vacpp.cmp.rte] found'))
+}
+if @tbl
+ call setHcveResult(join("\012",@tbl))
+else
+ call setHcveResult('linkxlcNotFound')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the right versions of the linkxlC utilities are installed. This can be done by installing the XL C/C++ utilities package (xlcpp.util.8.0.0 or later) or by installing the full XL C/C++ Enterprise Edition V8.0 (vacpp.cmp.rte.8.0.0 or later).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="XlcppOk|VacppOk" result="PASSED"><![CDATA[The linkxlC utilities are installed. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Either the ``linkxlC`` is not installed or the version of linkxlC is not correct. Check ${NOTE} for the right version of the linkxlC utilty.
+|*Return Value*|*Action*|
+|... found|An incorrect version of the package (fileset) was found. Install the correct version.|
+|linkxlcNotFound|The linkxlC utilities are not installed. Check ${NOTE} for the right linkxlC utility.|
+|NoAccess|The status and version of the linkxlC utility cannot be verified because the user has no execute permissions to the ``/bin/lslpp`` command. Provide the user with execute permissions.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00400" mode="RECORD" name="IP Address">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var @lst = grepCommand(concat('/usr/sbin/ping -c 1 ',$hst),'.')
+call setHcveResult(replace(field('\s+',3,grep(@lst,'\d+:','f')),':'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host IP address.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00410" mode="RECORD" name="Domain Name">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var ($nam,$dom) = split('\.',$hst,2)
+if testFile('x','/bin/domainname')
+ var ($nis) = command('/bin/domainname')
+if testFile('r','/etc/resolv.conf')
+ var $dns = field('\s+',1,grepFile('/etc/resolv.conf','domain'))
+if testFile('x','/usr/bin/nslookup')
+{if $nam
+ {var $nsl = field(concat(quote($nam),'\.'),1,\
+                  grepCommand(concat('/usr/bin/nslookup ',$hst),'Name','f'))
+ }
+ else
+ {var $nsl = field(concat(quote($hst),'\.'),1,\
+                  grepCommand(concat('/usr/bin/nslookup ',$hst),'Name','f'))
+ }
+}
+call setHcveResult(cond($dom,$dom,\
+                        $nis,$nis,\
+                        $dns,$dns,\
+                        $nsl,$nsl,\
+                            'Not Configured'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host domain name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00420" mode="VERIFY" name="DNS Lookup">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00400" minimum="PASSED|RECORD" result="FAILED" value="IP address required"><![CDATA[This rule requires to know the IP address of the server.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var $ip  = "%A00400%"
+var $hst = field('\.',0,command('hostname'))
+call setHcveResult(cond(\
+  not(length($ip)),\
+    'Cannot determine IP address',\
+  not(testFile('x','/usr/bin/nslookup')),\
+    'Cannot access /usr/bin/nslookup',\
+  and(grepCommand(concat('/usr/bin/nslookup ',$hst),quote($ip),'f'),\
+      grepCommand(concat('/usr/bin/nslookup ',$ip),quote($hst),'f')),\
+    'Host correctly registered in DNS',\
+    'Host not correctly registered in DNS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the host is registered correctly in the DNS.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Host correctly registered in DNS" result="PASSED"><![CDATA[The host is registered correctly in the DNS.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Host not correctly registered in DNS|Register the host.domain in the DNS.|
+|Cannot determine IP address|Fix any problem with the host IP address.|
+|Cannot access /usr/bin/nslookup|Grant execute permissions on ``/usr/bin/nslookup`` to the current user.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00430" mode="VERIFY" name="/etc/hosts Format">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00410" minimum="PASSED|RECORD" result="FAILED" value="Domain Name Required"><![CDATA[This rule requires to know the domain name of the server.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if !testFile('r','/etc/hosts')
+ return setHcveResult('Cannot access /etc/hosts')
+if !@tbl = grepFile('/etc/hosts',\
+  concat('^([^\s\#]+\s+)+',quote(${RDA.HOST}),\
+         '\s+([^\s\#]+\s+)*',quote(${RDA.NODE}),'(\s|\z|\#)'))
+ return setHcveResult('no entry found')
+
+# Test that line begins with IPv4 IP address
+if grep(@tbl,'^(\d{1,3}\.){3}\d{1,3}\s','f')
+ return setHcveResult('Adequate IPv4 entry')
+
+# Tests that line begins with IPv6 IP address, first that all eight groups are populated, then situations where groups that are all zero are omitted (two colons together).
+if grep(@tbl,'^([A-F\d]{1,4}(:[A-F\d]{1,4}){7}\s|\
+                :(:[A-F\d]{1,4}){1,6}\s|\
+                ([A-F\d]{1,4}:){1,5}(:[A-F\d]{1,4}){1,5}\s|\
+                ([A-F\d]{1,4}:){1,6}:\s)','f')
+ return setHcveResult('Adequate IPv6 entry')
+return setHcveResult('no correct entry found')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``/etc/hosts`` file contains a line with ``ip_address fully_qualified_domainname short_hostname``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^Adequate" result="PASSED"><![CDATA[The ``/etc/hosts`` entry for the fully qualified domain name and host name is adequate.]]></sdp_action>
+<sdp_action condition="==" minimum="Cannot access /etc/hosts" result="FAILED"><![CDATA[Grant read permissions on ``/etc/hosts`` to the current user.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The fully qualified host name and host name are not configured correctly. Ensure that there is an IP address entry for the fully qualified domain name with the host name as one of the aliases.
+|*Return Value*|*Action"|
+|no entry found|No entry with the fully qualified domain name followed by the host name was found.|
+|no correct entry found|No entry beginning with an IP address with the fully qualified domain name followed by the host name was found.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00440" mode="VERIFY" name="Net Service Access?">
+<sdp_command type="RDA"><![CDATA[var $NET='/tmp/.oracle'
+call setHcveResult(cond(not(testDir('e',$NET)),'NonExist',\
+                        not(testDir('d',$NET)),'NoDir',\
+                        testDir('rwx',$NET),'PermOk','PermNotOk'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user who is logged in can create the ``/tmp/.oracle`` directory or can create files in it. The directory is used by the Net Service Listeners.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="NonExist|PermOk" result="PASSED"><![CDATA[The user who is logged in can create the ``/tmp/.oracle`` directory or he can create files in the directory.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoDir|The ``/tmp/.oracle`` is not a directory. Remove the ``.oracle`` entry in ``/tmp``.|
+|PermNotOk|The user who is logged in cannot create files in the ``/tmp/.oracle`` directory. Grant read, write, and execute permissions on this directory to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00450" mode="VERIFY" name="Port 6000">
+<sdp_command type="RDA"><![CDATA[
+if grepCommand('netstat -an','[\.:]6000\s','f')
+ return setHcveResult('Occupied')
+return setHcveResult('Free')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that port 6000 is free. The 6000 port is often used by the graphics console login process on an Unix server and can conflict with the OPMN (Oracle Process Manager and Notification) listen port from EBS, which is set to 6000 by default by RapidWiz.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="Free" result="PASSED"><![CDATA[Port 6000 is free. No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Port 6000 is taken. Either check which process is using the port and stop the process or enter a port different from 6000 as the OPMN listen port in RapidWiz.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00500" mode="VERIFY" name="AIX Params OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified AIX system"><![CDATA[This rule applies for certified AIX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+if loadCommand('/usr/sbin/lsattr -El sys0 -a maxuproc')
+{var $prc = field('\s+',1,grepLastFile('^maxuproc'))
+ if !$prc
+  push(@tbl,'MaxuprocNotDefined')
+ elsif expr('<',$prc,2048)
+  push(@tbl,'MaxuprocTooSmall')
+} 
+else
+ push(@tbl,'NoLsattrAccess')
+if loadCommand('/usr/bin/getconf ARG_MAX')
+{if expr('<',grepLastFile('\d+'),524288)
+  push(@tbl,'ArgMaxTooSmall')
+} 
+else
+ push(@tbl,'NoGetconfAccess')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'KernelOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the kernel settings are set appropriately.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="KernelOK" result="PASSED" syntax="wiki"><![CDATA[The kernel parameters are set according to the ${NOTE}. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The kernel parameters are not set according to the ${NOTE}. For the recommended values, see the ${NOTE}. 
+|*Return Value*|*Action*|
+|MaxuprocTooSmall|Increase the kernel setting ``maxuproc`` to 2048.|
+|MaxuprocNotDefined|Set the kernel setting ``maxuproc`` to 2048.|
+|ArgMaxTooSmall|Increase the kernel setting ``ARG_MAX`` to 524288.|
+|NoGetconfAccess|You do not have access to the ``/usr/bin/getconf`` command.|
+|NoLsattrAccess|You do not have access to the ``/usr/sbin/lsattr`` command.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00510" mode="VERIFY" name="Async AIO Enabled?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified AIX system"><![CDATA[This rule applies for certified AIX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(grepCommand('ps -aekl','aioserver','fi'),'Enabled','NotEnabled'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that asynchronous I/O is enabled.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Enabled" result="PASSED" syntax="wiki"><![CDATA[Asynchronous I/O is enabled on your system. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[You do not have asynchronous I/O enabled on your system. Check ${NOTE} for instructions to enable it on your system.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00520" mode="VERIFY" name="ulimits OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on certified AIX system"><![CDATA[This rule applies for certified AIX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var @tbl =()
+macro get_ulimit_unl
+{var (\@tbl,$nam) = @arg
+ var $lmt = field('\s+',1,grepLastFile(concat('^',$nam,'\('),'if'))
+ if !defined($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif compare('ne',$lmt,'unlimited')
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+macro get_ulimit_val
+{var (\@tbl,$nam,$ref) = @arg
+ var $lmt = field('\s+',1,grepLastFile(concat('^',$nam,'\('),'if'))
+ if !length($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif and(compare('ne',$lmt,'unlimited'),expr('<',$lmt,$ref))
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+call loadCommand('/usr/bin/ulimit -a')
+call get_ulimit_unl(\@tbl,'Coredump')
+call get_ulimit_unl(\@tbl,'Data')
+call get_ulimit_unl(\@tbl,'File')
+call get_ulimit_val(\@tbl,'NoFiles',65536)
+call get_ulimit_unl(\@tbl,'Memory')
+call get_ulimit_unl(\@tbl,'Stack')
+call get_ulimit_unl(\@tbl,'Time')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'ulimitOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the ``ulimit`` settings are adequate for installing the application tier of the Oracle E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ulimitOK" result="PASSED"><![CDATA[The ``ulimit`` settings are adequate for installing the application tier of the Oracle E-Business Suitee Release 12 (12.1.1). No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Review the ``ulimit`` settings and check the recommended values from the ${NOTE} before installing the software.
+|*Return Value*|*Action*|
+|CoredumpNotDefined|ulimit(COREDUMP) is not defined.|
+|CoredumpTooSmall|Increase the ulimit(COREDUMP) to unlimited.|
+|DataNotDefined|ulimit(DATA) is not defined.|
+|DataTooSmall|Increase the ulimit(DATA) to unlimited.|
+|FileNotDefined|ulimit(FILE) is not defined.|
+|FileTooSmall|Increase the ulimit(FILE) to unlimited.|
+|NoFilesNotDefined|ulimit(NOFILEX) is not defined.|
+|NoFilesTooSmall|Increase the ulimit(NOFILES) to 65536.|
+|MemoryNotDefined|ulimit(MEMORY) is not defined.|
+|MemoryTooSmall|Increase the ulimit(MEMORY) to unlimited.|
+|StackNotDefined|ulimit(STACK) is not defined.|
+|StackTooSmall|Increase the ulimit(STACK) to unlimited.|
+|TimeNotDefined|ulimit(TIME) is not defined.|
+|TimeTooSmall|Increase the ulimit(TIME) to unlimited.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00540" mode="VERIFY" name="AIXTHREAD_SCOPE=S?">
+<sdp_command type="RDA"><![CDATA[var $env = getEnv('AIXTHREAD_SCOPE')
+call setHcveResult(cond(not(defined($env)),    'AIXThreadScopeNotSet',\
+                        compare('eq',$env,'S'),'AIXThreadScopeOK',\
+                                               'AIXThreadScopeBad'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the AIXTHREAD_SCOPE environment variable is set to S.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="AIXThreadScopeOK" result="PASSED"><![CDATA[The AIXTHREAD_SCOPE environment variable setting is correct. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The AIXTHREAD_SCOPE environment variable is not set correctly.
+|*Return Value*|*Action*|
+|AIXThreadScopeNotSet|The AIXTHREAD_SCOPE environment variable should be set to S.|
+|AIXThreadScopeBad|The AIXTHREAD_SCOPE environment variable is set but not set to ``S``. Reset the value to ``S``.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00600" mode="RECORD" name="ApplTierDirectory">
+<sdp_command type="PROMPT" default="" variable="$APP_TIER_DIR"><![CDATA[Planned application tier installation directory]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the planned directory of the application tier of the Oracle E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00610" mode="VERIFY" name="A_T Valid?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00600" minimum="RECORD" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify the planned directory for the application tier.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+call setHcveResult(cond(\
+  not($APP_TIER_DIR),             'ATNotSpecified',\
+  not(testDir('d',$APP_TIER_DIR)),'ATnotvalid',\
+  not(testDir('l',$APP_TIER_DIR)),'ATexists',\
+                                  'ATsymlink'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the directory for the installation of the application tier (A_T) of the Oracle E-Business suite R12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ATexists" result="PASSED"><![CDATA[The application tier installation directory exists. No action required]]></sdp_action>
+<sdp_action condition="==" minimum="ATNotSpecified" result="SKIPPED"><![CDATA[The application tier installation directory was not specified. No action required]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[ALERT:
+You did not specify a valid application tier installation directory. Ensure that you provided the correct location or that this directory is created and then run this script again.
+|*Return Value*|*Action*|
+|ATnotvalid|Ensure that the application tier directory is a valid directory.|
+|ATsymlink|Ensure that the specified application tier directory is not a symbolic link.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00620" mode="VERIFY" name="A_T Permissions OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00610" minimum="PASSED" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a valid application tier directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+call setHcveResult(cond(\
+  not(testDir('r',$APP_TIER_DIR)),'NoReadPerm',\
+  not(testDir('w',$APP_TIER_DIR)),'NoWritePerm',\
+  not(testDir('x',$APP_TIER_DIR)),'NoExecutePerm',\
+                                  'CorrectPerms'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user has the correct privileges to install the application tier (A_T) of the Oracle E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="CorrectPerms" result="PASSED"><![CDATA[The permissions for the application tier directory are correct. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoReadPerm|The install user has no read permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|
+|NoWritePerm|The install user has no write permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|
+|NoExecutePerm|The install user has no execute permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00630" mode="VERIFY" name="Disk Space">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00610" minimum="PASSED" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a valid application tier directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+var $dsk = get_df($APP_TIER_DIR)
+call setHcveResult(cond(and(isNumber($dsk),expr('>=',$dsk,36700160)),\
+                   'Available','NotAvailable'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if there is sufficient disk space to install the application tier of the Oracle E-Business Suite Release 12 (12.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[There is sufficient disk space to install the application tier of the Oracle E-Business Suite Release 12 (12.1.1) in the directory. No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is insufficient disk space to install the application tier of the Oracle E-Business Suite Release 12 (12.1.1). You need at least 35 GB for the application tier.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00640" mode="VERIFY" name="Space in tmp">
+<sdp_command type="RDA"><![CDATA[var $tmp = nvl(getEnv('TMP'),getEnv('TMPDIR'),'/tmp')
+call setHcveResult(cond(\
+  not(testDir('d',$tmp)),          'Cannot access tmp directory',\
+  expr('>=',get_df($tmp),1048576), 'Available',\
+                                   'Need at least 1GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough temporary space. Initially Oracle Rapid Install (RI) checks the ``TMP`` and ``TMPDIR`` environment variables to locate the temporary directory. If these environment variables do not exist, then RI uses ``/tmp``. The minimum requirement is 1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough temporary space.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the available temporary space to 1 GB or more. You can define ``TMP`` or ``TMPDIR`` to point to a directory with 1 GB available space.|
+|Cannot access tmp directory|Grant read, write, and execute permissions on ``/tmp`` or directories in ``TMP`` or ``TMPDIR`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

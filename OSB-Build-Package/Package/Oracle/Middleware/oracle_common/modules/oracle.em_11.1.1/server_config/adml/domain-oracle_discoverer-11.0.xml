@@ -1,0 +1,338 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+
+<!--
+This is the configuration file for the MAS Metric Service metrics for Discoverer
+
+   MODIFIED    (MMM DD YYYY)
+   rapalani     Dec 28 2006  - Creation
+-->
+
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="oracle_disco">
+
+  <Table Name="disco_server_agg">
+    <ColumnDef Name="pid.value" Type="Integer" Key="true" />
+    <ColumnDef Name="cpuTime.value" Type="Double" />
+    <ColumnDef Name="upTime.value" Type="Double" />
+    <ColumnDef Name="cpuUsage.value" Type="Double" />
+    <ColumnDef Name="memoryUsage.value" Type="Double" />
+    <ColumnDef Name="privateMemory.value" Type="Double" />
+    <ColumnDef Name="port.value" Type="String" />
+    <ColumnDef Name="sessionId.value" Type="String" />
+    <ColumnDef Name="ssoUser.value" Type="String" />
+    <ColumnDef Name="connectionInfo.value" Type="String" />
+    <ColumnDef Name="component.value" Type="String" Key="true" />
+    <ColumnDef Name="opmn_ias_component" Type="String" Key="true" />
+
+    <Select Name="from_uid_session">
+      <TableFrom Name="opmn_process" />
+      <TableFrom Name="opmn_host_statistics" />
+      <Column Name="pid.value" Type="Integer" Key="true">
+        <ColumnFrom Name="pid.value" Table="opmn_process" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuTime.value" Type="Double">
+        <ColumnFrom Name="cpuTime.value" Table="opmn_process" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="memoryUsage.value" Type="Double">
+        <Expression Operator="Div">
+          <ColumnFrom Name="memoryUsed.value" Table="opmn_process" />
+          <Value>1048576</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Name="privateMemory.value" Type="Double">
+        <Expression Operator="Div">
+          <ColumnFrom Name="privateMemory.value" Table="opmn_process" />
+          <Value>1048576</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Name="timestamp.value" Type="Double">
+        <ColumnFrom Name="timestamp.value" Table="opmn_host_statistics" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="upTime.value" Type="Double">
+        <ColumnFrom Name="upTime.value" Table="opmn_process" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="port.value" Type="String" Table="opmn_process" />
+      <Column Name="sessionId.value" Type="String" >
+        <ColumnFrom Name="opmn_disco_sess_proc@specialized/SessionId.value" Table="opmn_process" />
+      </Column>
+      <Column Name="ssoUser.value" Type="String" >
+        <ColumnFrom Name="opmn_disco_sess_proc@specialized/SSOUser.value" Table="opmn_process" />
+      </Column>
+      <Column Name="connectionInfo.value" Type="String"> 
+        <ColumnFrom Name="opmn_disco_sess_proc@specialized/Connection.value" Table="opmn_process" />
+      </Column>
+      <Column Name="component.value" Type="String" >
+        <ColumnFrom Name="opmn_disco_sess_proc@specialized/Component.value" Table="opmn_process" />
+      </Column>
+      <Column Name="opmn_ias_component" Type="String" Table="opmn_process" />
+      <Column Name="opmn_process_type" Type="String" Table="opmn_process" />
+      <Column Name="cpuUsage.value" Type="Double" >
+        <Expression Operator="Div">
+          <Expression Operator="Mult">
+            <Rate Interval="30000">
+              <ColumnFrom Name="cpuTime.value" Table="opmn_process" />
+              <ColumnFrom Name="upTime.value" Table="opmn_process" />
+              <Default>0</Default>
+            </Rate>
+            <Value>100</Value>
+          </Expression>
+          <ColumnFrom Name="numProcessors.value" Table="opmn_host_statistics" />
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Where>
+        <And>
+          <Condition Type="String" Operator="EQ">
+            <ColumnFrom Name="opmn_process_type" />
+            <Value>SessionServer</Value>
+          </Condition>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="opmn_ias_component" /> 
+              <Value Name="opmn_ias_component.parameter" />
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="opmn_ias_component.parameter" xsi:nil="true"/>
+              <Null />
+            </Condition>
+          </Or>
+	      <Or>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="component.value" /> 
+              <Value Name="component.value.parameter" />
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="component.value.parameter" xsi:nil="true"/>
+              <Null />
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="disco_component_rollup_agg">
+    <ColumnDef Name="component.value" Type="String" Key="true" />
+    <ColumnDef Name="sessions.count" Type="Integer" />
+    <ColumnDef Name="cpuTime.sum" Type="Double" />
+    <ColumnDef Name="cpuUsage.sum" Type="Double" />
+    <ColumnDef Name="memoryUsage.sum" Type="Double" />
+    <ColumnDef Name="memoryUsage.tempsum" Type="Double" />
+    <ColumnDef Name="privateMemory.sum" Type="Double" />
+    <ColumnDef Name="opmn_ias_component" Type="String" Key="true" />
+    
+    <Select Name="disco_component_rollup_agg_result">
+      <TableFrom Name="oracle_disco:disco_server_agg" />
+      <Column Name="component.value" Type="String" Table="oracle_disco:disco_server_agg" />
+      <Column Name="sessions.count" Type="Integer">
+        <Aggregation Operator="Count" Name="component.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuTime.sum" Type="Double">
+        <Aggregation Operator="Sum" Name="cpuTime.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuUsage.sum" Type="Double">
+        <Aggregation Operator="Sum" Name="cpuUsage.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="privateMemory.sum" Type="Double">
+        <Aggregation Operator="Sum" Name="privateMemory.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="memoryUsage.tempsum" Type="Double">
+        <Aggregation Operator="Sum" Name="memoryUsage.value" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="memoryUsage.sum" Type="Double">
+        <Expression Operator="Mult">
+          <Value>0.9</Value>
+          <ColumnFrom Name="memoryUsage.tempsum" />
+        </Expression>
+        <Default>0.0</Default>
+      </Column>
+      <Column Name="opmn_ias_component" Type="String" Table="oracle_disco:disco_server_agg" />
+      <GroupBy Name="component.value" />
+      <GroupBy Name="opmn_ias_component" />
+      <Where>
+        <And>
+          <Or>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="opmn_ias_component" /> 
+              <Value Name="opmn_ias_component.parameter" />
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="opmn_ias_component.parameter" xsi:nil="true"/>
+              <Null />
+            </Condition>
+          </Or>
+	      <Or>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="component.value" /> 
+              <Value Name="component.value.parameter" />
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <Value Name="component.value.parameter" xsi:nil="true"/>
+              <Null />
+            </Condition>
+          </Or>
+        </And>
+      </Where>
+    </Select>
+
+    <Select Name="disco_component_rollup_agg_result2">
+      <TableFrom Name="disco_component_rollup_agg_result" />
+        <Where>
+          <Condition Type="String" Operator="NE">
+            <ColumnFrom Name="component.value" />
+            <Null />
+          </Condition>
+        </Where>
+    </Select>
+
+  </Table>
+
+  <Table Name="disco_server_host_values">
+    <ColumnDef Name="Host" Type="String" />
+    <ColumnDef Name="cpuIdle.value" Type="Double" />
+    <ColumnDef Name="freePhysicalMemory.value" Type="Double" />
+    <ColumnDef Name="totalPhysicalMemory.value" Type="Double" />
+    <ColumnDef Name="opmn_ias_component" Type="String" Key="true"/>
+
+	<Select Name="host_and_instance_values">
+      <TableFrom Name="opmn_host_statistics" />
+      <TableFrom Name="opmn_ias_component" />
+      <Column Name="Host" Type="String" Table="opmn_host_statistics" />
+      <Column Name="timestamp.value" Type="Double" Table="opmn_host_statistics" />
+      <Column Name="numProcessors.value" Type="Integer" Table="opmn_host_statistics" />
+      <Column Name="freePhysicalMemory.value" Type="Double" >
+        <Expression Operator="Div">
+          <ColumnFrom Name="freePhysicalMem.value" Table="opmn_host_statistics" />
+          <Value>1024</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Name="totalPhysicalMemory.value" Type="Double" >
+        <Expression Operator="Div">
+          <ColumnFrom Name="totalPhysicalMem.value" Table="opmn_host_statistics" />
+          <Value>1024</Value>
+        </Expression>
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuIdle.value" Type="Double">
+        <Expression Operator="Div">
+          <Expression Operator="Mult">
+            <Rate Interval="30000">
+              <ColumnFrom Name="cpuIdle.value" Table="opmn_host_statistics" />
+              <ColumnFrom Name="timestamp.value" Table="opmn_host_statistics" />
+              <Default>0</Default>
+            </Rate>
+            <Value>100</Value>
+          </Expression>
+          <ColumnFrom Name="numProcessors.value" Table="opmn_host_statistics" />
+        </Expression>        
+        <Default>0.99</Default>
+      </Column>
+      <Column Name="opmn_ias_component" Type="String" >
+        <ColumnFrom Name="Name" Table="opmn_ias_component" />
+      </Column>
+      <Where>
+	    <And>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="Name" Table="opmn_ias_component"/> 
+              <Value Name="opmn_ias_component.parameter" />
+            </Condition>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="ServerName" Table="opmn_ias_component"/> 
+              <ColumnFrom Name="ServerName" Table="opmn_host_statistics"/> 
+            </Condition>
+        </And>
+      </Where>
+    </Select>
+  </Table>
+
+  <Table Name="disco_server_cpu_mem_rollup_agg">
+    <ColumnDef Name="sessions.count" Type="Integer" />
+    <ColumnDef Name="cpuTime.sum" Type="Double" />
+    <ColumnDef Name="cpuUsage.sum" Type="Double" />
+    <ColumnDef Name="privateMemory.sum" Type="Double" />
+    <ColumnDef Name="memoryUsage.sum" Type="Double" />
+    <ColumnDef Name="opmn_ias_component" Type="String" Key="true"/>
+
+    <Select Name="cpu_mem_rollup_agg">
+      <TableFrom Name="oracle_disco:disco_component_rollup_agg"/>
+      <Column Name="sessions.count" Type="Integer">
+        <Aggregation Operator="Sum" Name="sessions.count" Table="oracle_disco:disco_component_rollup_agg" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuTime.sum" Type="Double">
+        <Aggregation Operator="Sum" Name="cpuTime.sum" Table="oracle_disco:disco_component_rollup_agg" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="cpuUsage.sum" Type="Double">
+        <Aggregation Operator="Sum" Name="cpuUsage.sum" Table="oracle_disco:disco_component_rollup_agg" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="privateMemory.sum" Type="Double">
+        <Aggregation Operator="Sum" Name="privateMemory.sum" Table="oracle_disco:disco_component_rollup_agg" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="memoryUsage.sum" Type="Double">
+        <Aggregation Operator="Sum" Name="memoryUsage.sum" Table="oracle_disco:disco_component_rollup_agg" />
+        <Default>0</Default>
+      </Column>
+      <Column Name="opmn_ias_component" Type="String" Table="oracle_disco:disco_component_rollup_agg" />
+      <GroupBy Name="opmn_ias_component" />
+      <Where>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="opmn_ias_component" Table="oracle_disco:disco_component_rollup_agg"/> 
+              <Value Name="opmn_ias_component.parameter" />
+            </Condition>
+      </Where>
+    </Select>    
+  </Table>
+   
+
+  <Table Name="disco_server_rollup_agg">
+    <ColumnDef Name="Host" Type="String" />
+    <ColumnDef Name="sessions.count" Type="Integer" />
+    <ColumnDef Name="cpuTime.sum" Type="Double" />
+    <ColumnDef Name="cpuUsage.sum" Type="Double" />
+    <ColumnDef Name="cpuIdle.value" Type="Double" />
+    <ColumnDef Name="memoryUsage.sum" Type="Double" />
+    <ColumnDef Name="privateMemory.sum" Type="Double" />
+    <ColumnDef Name="freePhysicalMemory.value" Type="Double" />
+    <ColumnDef Name="totalPhysicalMemory.value" Type="Double" />
+    <ColumnDef Name="opmn_ias_component" Type="String" Key="true"/>
+      
+    <Select Name="disco_server_rollup_result">
+      <TableFrom Name="oracle_disco:disco_server_host_values"/>
+      <TableFrom Name="oracle_disco:disco_server_cpu_mem_rollup_agg" />
+      <Column Name="Host" Type="String" Table="oracle_disco:disco_server_host_values" />
+      <Column Name="sessions.count" Type="Integer" Table="oracle_disco:disco_server_cpu_mem_rollup_agg"/>
+      <Column Name="cpuTime.sum" Type="Double" Table="oracle_disco:disco_server_cpu_mem_rollup_agg"/>
+      <Column Name="cpuUsage.sum" Type="Double" Table="oracle_disco:disco_server_cpu_mem_rollup_agg"/>
+      <Column Name="privateMemory.sum" Type="Double" Table="oracle_disco:disco_server_cpu_mem_rollup_agg"/>
+      <Column Name="memoryUsage.sum" Type="Double" Table="oracle_disco:disco_server_cpu_mem_rollup_agg"/>
+      <Column Name="cpuIdle.value" Type="Double" Table="oracle_disco:disco_server_host_values" />
+      <Column Name="freePhysicalMemory.value" Type="Double" Table="oracle_disco:disco_server_host_values" />
+      <Column Name="totalPhysicalMemory.value" Type="Double" Table="oracle_disco:disco_server_host_values" />
+      <Column Name="opmn_ias_component" Type="String" Table="oracle_disco:disco_server_cpu_mem_rollup_agg" />
+      <Where>
+            <Condition Type="String" Operator="EQ">
+              <ColumnFrom Name="opmn_ias_component" Table="oracle_disco:disco_server_host_values"/> 
+              <ColumnFrom Name="opmn_ias_component" Table="oracle_disco:disco_server_cpu_mem_rollup_agg"/> 
+            </Condition>
+      </Where>
+    </Select>
+  </Table>
+
+  
+</Adml>

@@ -1,0 +1,97 @@
+# TSTalert.def: Analyzes Alert Log
+# $Id: TSTalert.def,v 2.7 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TSTalert.def,v 2.7 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+TSTalert - Analyzes Alert Log
+
+=head1 DESCRIPTION
+
+This test module analyzes the alert log and provides a summary of finding in
+the final report. The alert log file can be specified in two ways:
+
+=over 3
+
+=item a)
+
+Runs interactively. It requests the user to enter the absolute path of the
+alert log file.
+
+<rda> -vT alert
+
+=item b)
+
+Runs from the command line. The input can be given in the command line using
+the following syntax:
+
+<rda> -vT alert:absolute_path_of_alert_log
+
+If the file does not have a C<.xml> extension, then RDA assumes that the alert 
+log is in a pre-11g format.
+
+Times are always truncated at second level.
+
+=back
+
+=cut
+
+echo tput('bold'),'Analyzing alert log ... (can take time)',tput('off')
+
+# Initialisation
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+# Load the common macros
+run DBalert()
+
+# Obtain the input alert log file
+if getSetting('TST_ARGS')
+ var $fil = last
+else
+{call requestSetting('TSTalert')
+ var $fil = getSetting('ALERT_LOG')
+}
+
+# Treat the file
+if testFile('r',$fil)
+{call setAbbr('TST')
+ report alert_summary
+ call analyze_alert($fil,check($fil,'\.xml$',true,false))
+ if isCreated()
+ {call renderFile()
+  echo 'Result file: ',last
+ }
+ else
+  echo 'The input file does not contain a valid alert log'
+}
+else
+ echo 'The input file does not exist or is not readable'
+
+=head1 SEE ALSO
+
+L<DBalert.def|modules::DBalert>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.8:  Jeff Gregory, Anatoli Karol.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

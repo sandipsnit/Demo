@@ -1,0 +1,1391 @@
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="1.0" TYPE="oracle_bi_ps" CATEGORY_PROPERTIES="VersionCategory;JMXEnabled">
+   <Display>
+      <Label NLSID="bi_psNLSID">Oracle BI Presentation Server</Label>
+      <ShortName NLSID="bi_psShortName">Oracle BI Presentation Server</ShortName>
+      <Description NLSID="bi_psDescription">Oracle BI Presentation Server</Description>
+   </Display>
+   
+   <Metric NAME="Response" TYPE="TABLE">
+    <Display>
+      <Label NLSID="network_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="network_response_status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+	<Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+	<Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property> 
+  	<Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property> 
+        <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/getStatus.pl</Property>
+
+        <Property NAME="args" SCOPE="GLOBAL">%BIHome%/web/bin/sawserver</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  <Metric NAME="Resources" TYPE="TABLE">
+    <Display>
+      <Label NLSID="Resources_response">Resources</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="CPU" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="Resources_CPU">CPU (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Memory" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="Resources_Memory">Memory (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="OSLineToken">
+        <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+	<Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+        <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+	<Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+	<Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property> 
+  	<Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property> 
+        <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/procResUsage.pl</Property>
+        <Property NAME="args" SCOPE="GLOBAL">"%BIHome%" "/web/bin/sawserver"</Property>
+    </QueryDescriptor>
+   </Metric>
+   
+  
+   <Metric NAME="RequestProcessor" TYPE="TABLE">
+      <ValidIf>
+         <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+      </ValidIf>
+      <Display>
+         <Label NLSID="RequestProcessor">RequestProcessor</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Completed Requests/sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CompletedRequestsPersec">Completed Requests/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Current Requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentRequests">Current Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Failed Requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="FailedRequests">Failed Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Bad Requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="BadRequests">Bad Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Completed Requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CompletedRequests">Completed Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Long Requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="LongRequests">Long Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Presentation Server,Oracle BI=Performance,name=Oracle BI PS Request Processor</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Completed Requests~/sec;Current Requests;Failed Requests;Bad Requests;Completed Requests;Long Requests</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="ChartEngine" TYPE="TABLE">
+      <ValidIf>
+         <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+      </ValidIf>
+      <Display>
+         <Label NLSID="ChartEngine">ChartEngine</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Current Charts Queued" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentChartsQueued">Charts Queued</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Current Running Charts" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentRunningCharts">Charts Runnning </Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Presentation Server,Oracle BI=Performance,name=Oracle BI PS Chart Engine</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Current Charts Queued;Current Running Charts</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Sessions" TYPE="TABLE">
+      <ValidIf>
+         <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+      </ValidIf>
+      <Display>
+         <Label NLSID="Sessions">Sessions</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Active Sessions" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="ActiveSessions">Active Sessions</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Current Sessions" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentSessions">Current Sessions</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Presentation Server,Oracle BI=Performance,name=Oracle BI PS Sessions</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Active Sessions;Current Sessions</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="QueryThreadPool" TYPE="TABLE">
+      <ValidIf>
+         <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+      </ValidIf>
+      <Display>
+         <Label NLSID="QueryThreadPool">QueryThreadPool</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="CurrentJobsQueued" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentJobsQueued">Jobs Queued</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="CurrentJobsRunning" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentJobsRunning">Jobs Running</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Presentation Server,Oracle BI=Performance,name=Query,type=Oracle BI PS Thread Pools</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Current Jobs Queued;Current Jobs Running</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="ChartThreadPool" TYPE="TABLE">
+      <ValidIf>
+         <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+      </ValidIf>
+      <Display>
+         <Label NLSID="ChartThreadPool">ChartThreadPool</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="CurrentJobsQueued" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentJobsQueued">Jobs Queued</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="CurrentJobsRunning" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CurrentJobsRunning">Jobs Running</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Presentation Server,Oracle BI=Performance,name=ChartThreadPool,type=Oracle BI PS Thread Pools</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Current Jobs Queued;Current Jobs Running</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="BIPresentationServer_Config" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_PS_CONFIG">
+            <ColumnDescriptor NAME="PRODUCT_VERSION" COLUMN_NAME="PRODUCT_VERSION" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_CONFIG_DIR" COLUMN_NAME="PS_CONFIG_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_CONN_EXPIRE" COLUMN_NAME="PS_CONN_EXPIRE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_CONN_MAXCON" COLUMN_NAME="PS_CONN_MAXCON"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_CORDA_LIBDIR" COLUMN_NAME="PS_CORDA_LIBDIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_CSV_CHARSET" COLUMN_NAME="PS_CSV_CHARSET"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_DATA_DIR" COLUMN_NAME="PS_DATA_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_DEBUG_STARTUP" COLUMN_NAME="PS_DEBUG_STARTUP"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_DEFAULT_MSG_DIR"
+                        COLUMN_NAME="PS_DEFAULT_MSG_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_DISCONNECTED" COLUMN_NAME="PS_DISCONNECTED"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_DISCONNECTED_DIR"
+                        COLUMN_NAME="PS_DISCONNECTED_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_DRILLABILITY" COLUMN_NAME="PS_DRILLABILITY"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_DSN" COLUMN_NAME="PS_DSN" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_ENABLE_508" COLUMN_NAME="PS_ENABLE_508"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_ENTROPY_SOURCE_HQ"
+                        COLUMN_NAME="PS_ENTROPY_SOURCE_HQ" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_ENTROPY_SOURCE_SQ"
+                        COLUMN_NAME="PS_ENTROPY_SOURCE_SQ" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_FORCE_REFRESH" COLUMN_NAME="PS_FORCE_REFRESH"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_HARDEN_XSS" COLUMN_NAME="PS_HARDEN_XSS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_JAVA_HOME" COLUMN_NAME="PS_JAVA_HOME"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JAVA_HOST_DIR" COLUMN_NAME="JAVA_HOST_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JAVA_HOST_LIB_DIR" COLUMN_NAME="JAVA_HOST_LIB_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JAVA_MAX_HEAP_PDF" COLUMN_NAME="JAVA_MAX_HEAP_PDF"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JAVA_MIN_HEAP_PDF" COLUMN_NAME="JAVA_MIN_HEAP_PDF"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="LICENSE_FILE" COLUMN_NAME="LICENSE_FILE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="LOG_CONFIG_FILE" COLUMN_NAME="LOG_CONFIG_FILE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="LOG_CONFIG_NODE" COLUMN_NAME="LOG_CONFIG_NODE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAINTENANCE_MODE" COLUMN_NAME="MAINTENANCE_MODE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_CONT_DISP_FNAMELEN"
+                        COLUMN_NAME="MAX_CONT_DISP_FNAMELEN" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_FOLLOW_LINKS" COLUMN_NAME="MAX_FOLLOW_LINKS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_TKT_LIFE_TIME_MINS"
+                        COLUMN_NAME="MAX_TKT_LIFE_TIME_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MIN_PDF_SIZE" COLUMN_NAME="MIN_PDF_SIZE"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MSG_CRC_CHECKING" COLUMN_NAME="MSG_CRC_CHECKING"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ONDEMAND_ANSWERS" COLUMN_NAME="ONDEMAND_ANSWERS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PDF_LIB_DIR" COLUMN_NAME="PDF_LIB_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PDF_SERVER_SERVICE_STR"
+                        COLUMN_NAME="PDF_SERVER_SERVICE_STR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PDF_THREADS" COLUMN_NAME="PDF_THREADS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PERSIST_STRG_DIR" COLUMN_NAME="PERSIST_STRG_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PERSIST_PAGE_STATE"
+                        COLUMN_NAME="PERSIST_PAGE_STATE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_REPOSITORY" COLUMN_NAME="PS_REPOSITORY"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RES_DIR" COLUMN_NAME="RES_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SA_ROOTDIR" COLUMN_NAME="SA_ROOTDIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SAW_ROOTDIR" COLUMN_NAME="SAW_ROOTDIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SEARCHID_EXPIRE_MINS"
+                        COLUMN_NAME="SEARCHID_EXPIRE_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SYSTEM_SUBJ_AREA" COLUMN_NAME="SYSTEM_SUBJ_AREA"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TEMP_DIR" COLUMN_NAME="TEMP_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="UIDEFAULT_TIMEOUT_MINS"
+                        COLUMN_NAME="UIDEFAULT_TIMEOUT_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="UNACCESS_RNG_TIMEOUT_MINS"
+                        COLUMN_NAME="UNACCESS_RNG_TIMEOUT_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="USE_PDF_SERVER" COLUMN_NAME="USE_PDF_SERVER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="USE_REPLICATION" COLUMN_NAME="USE_REPLICATION"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WEB_DLL" COLUMN_NAME="WEB_DLL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="XML_EXTERNALS_DIR" COLUMN_NAME="XML_EXTERNALS_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JAVA_HOME" COLUMN_NAME="JAVA_HOME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SAW_DONT_PRELOAD_ODBCDRIVER"
+                        COLUMN_NAME="SAW_DONT_PRELOAD_ODBCDRIVER" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_ALLOWED_LANGUAGES"
+                        COLUMN_NAME="PS_ALLOWED_LANGUAGES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PS_ALLOWED_LOCALE" COLUMN_NAME="PS_ALLOWED_LOCALE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "V#ServerInstance@ConfigDir|ConnectionExpireMinutes|ConnectionMaxConcurrentEstablish|CordaLibDir|CSVCharset|DataDir|DebugStartup|DefaultMessageDir|Disconnected|DisconnectedDir|Drillability|DSN|Enable508|EntropySourceHQ|EntropySourceSQ|ForceRefresh|HardenXSS|JavaHome|JavaHostDir|JavaHostLibDir|JavaMaxHeapPDF|JavaMinHeapPDF|LicenseFile|LogConfigFile|LogConfigNode|MaintenanceMode|MaxContentDispositionFilenameLength|MaxFollowLinks|MaxTicketLifetimeMinutes|MinPDFSize|MsgCRCChecking|OnDemandAnswers|PdfLibDir|PDFServerServiceString|PDFThreads|PersistentStorageDirectory|PersistPageState|Repository|ResDir|SARootDir|SAWRootDir|SearchIDExpireMinutes|SystemSubjectArea|TempDir|UIDefaultTimeoutMinutes|UnaccessedRunningTimeoutMinutes|UsePDFServer|UseReplication|WebDLL|XmlExternalsDir|JAVA_HOME|SAWDontPreloadOdbcDriver|AllowedLanguages|AllowedLocales" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>   
+ <!--Metric for PS DISPLAY -->
+  <Metric NAME="BIPresentationServer_Display_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_DISPLAY_CONFIG">
+      <!--ServerInstance-->
+      <ColumnDescriptor NAME="ALLOW_REMEMBER_PSWD"
+                        COLUMN_NAME="ALLOW_REMEMBER_PSWD" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="COLLAPSIBLE_SECTIONS_DEF"
+                        COLUMN_NAME="COLLAPSIBLE_SECTIONS_DEF" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CUBE_MAX_POPULATED_CELLS"
+                        COLUMN_NAME="CUBE_MAX_POPULATED_CELLS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CUBE_MAX_RECORDS" COLUMN_NAME="CUBE_MAX_RECORDS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DEFAULT_SKIN" COLUMN_NAME="DEFAULT_SKIN"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DEFAULT_STYLE" COLUMN_NAME="DEFAULT_STYLE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DASHBOARD_INLINE_LOAD"
+                        COLUMN_NAME="DASHBOARD_INLINE_LOAD" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DASHBOARD_MAX_BEFOREMENU"
+                        COLUMN_NAME="DASHBOARD_MAX_BEFOREMENU" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DASHBOARD_SHOW_INLINE"
+                        COLUMN_NAME="DASHBOARD_SHOW_INLINE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISABLE_PIV_TBL_AUTOPVIEW"
+                        COLUMN_NAME="DISABLE_PIV_TBL_AUTOPVIEW" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="NEW_CURSOR_WAITSECONDS"
+                        COLUMN_NAME="NEW_CURSOR_WAITSECONDS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="OLD_CURSOR_WAITSECONDS"
+                        COLUMN_NAME="OLD_CURSOR_WAITSECONDS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SHOWPAGE_TABS_ALWAYS"
+                        COLUMN_NAME="SHOWPAGE_TABS_ALWAYS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SHOWSECTION_HEADINGS_DEF"
+                        COLUMN_NAME="SHOWSECTION_HEADINGS_DEF" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PORTAL_BANNER_HEIGHT"
+                        COLUMN_NAME="PORTAL_BANNER_HEIGHT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PROMPT_DROP_DN_MAX_VALUES"
+                        COLUMN_NAME="PROMPT_DROP_DN_MAX_VALUES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RESULT_ROW_LIMIT" COLUMN_NAME="RESULT_ROW_LIMIT"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <!--ServerInstance/Views/Table-->
+      <ColumnDescriptor NAME="TABLE_DEF_ROWSDISPLAYED"
+                        COLUMN_NAME="TABLE_DEF_ROWSDISPLAYED" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TABLE_DEF_ROWSDISP_INDLY"
+                        COLUMN_NAME="TABLE_DEF_ROWSDISP_INDLY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TABLE_DEF_ROWSDISP_INDNLD"
+                        COLUMN_NAME="TABLE_DEF_ROWSDISP_INDNLD" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/PermissionsDialog-->
+      <ColumnDescriptor NAME="PER_MAXACCOUNTS_PERPAGE"
+                        COLUMN_NAME="PER_MAXACCOUNTS_PERPAGE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/PivotView-->
+      <ColumnDescriptor NAME="PER_MAXVISIBLE_COLUMNS"
+                        COLUMN_NAME="PER_MAXVISIBLE_COLUMNS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PER_MAXVISIBLE_PAGES"
+                        COLUMN_NAME="PER_MAXVISIBLE_PAGES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PER_MAXVISIBLE_ROWS"
+                        COLUMN_NAME="PER_MAXVISIBLE_ROWS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PER_MAXVISIBLE_SECTIONS"
+                        COLUMN_NAME="PER_MAXVISIBLE_SECTIONS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/Prompts-->
+      <ColumnDescriptor NAME="PROMPTS_MAXDEF_VALUES"
+                        COLUMN_NAME="PROMPTS_MAXDEF_VALUES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PROMPTS_MAX_DDN_VALUES"
+                        COLUMN_NAME="PROMPTS_MAX_DDN_VALUES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PROMPTS_RELOAD_INLINE"
+                        COLUMN_NAME="PROMPTS_RELOAD_INLINE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ManageCatalog-->
+      <ColumnDescriptor NAME="CATALOG_MAXITEMS_PERPAGE"
+                        COLUMN_NAME="CATALOG_MAXITEMS_PERPAGE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance@AllowRememberPassword|CollapsibleSectionsDefault|CubeMaxPopulatedCells|CubeMaxRecords|DefaultSkin|DefaultStyle|DashboardInlineLoad|DashboardMaxBeforeMenu|DashboardShowInline|DisablePivotTableAutoPreview|NewCursorWaitSeconds|OldCursorWaitSeconds|ShowPageTabsAlways|ShowSectionHeadingsDefault|PortalBannerHeight|PromptDropDownMaxValues|ResultRowLimit#ServerInstance/Views/Table@DefaultRowsDisplayed|DefaultRowsDisplayedInDelivery|DefaultRowsDisplayedInDownload#ServerInstance/PermissionsDialog@MaxAccountsPerPage#ServerInstance/PivotView@MaxVisibleColumns|MaxVisiblePages|MaxVisibleRows|MaxVisibleSections#ServerInstance/Prompts@MaxDefaultValues|MaxDropDownValues|ReloadInline#ServerInstance/ManageCatalog@MaxItemsPerPage" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>    
+   
+  </Metric>
+  <Metric NAME="BIPresentationServer_Client_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_CLIENT_CONFIG">
+      <!--ServerInstance-->
+      <ColumnDescriptor NAME="AUTO_FLUSH_ENABLED"
+                        COLUMN_NAME="AUTO_FLUSH_ENABLED" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AUTO_FLUSH_THRESHHOLD"
+                        COLUMN_NAME="AUTO_FLUSH_THRESHHOLD" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CLIENT_SESSION_EXP_MINS"
+                        COLUMN_NAME="CLIENT_SESSION_EXP_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="COOKIE_DOMAIN" COLUMN_NAME="COOKIE_DOMAIN"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="COOKIE_EXPIRE" COLUMN_NAME="COOKIE_EXPIRE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="COOKIE_PATH" COLUMN_NAME="COOKIE_PATH"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="COOKIE_SECURE" COLUMN_NAME="COOKIE_SECURE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DEFAULT_TIMEOUT_MINS"
+                        COLUMN_NAME="DEFAULT_TIMEOUT_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="LOGON_EXPIRE_MINUTES"
+                        COLUMN_NAME="LOGON_EXPIRE_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="USERNAME_COOKIENAME"
+                        COLUMN_NAME="USERNAME_COOKIENAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PASSWORD_COOKIENAME"
+                        COLUMN_NAME="PASSWORD_COOKIENAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PERSIST_COOKIES" COLUMN_NAME="PERSIST_COOKIES"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SESSIONID_COOKIENAME"
+                        COLUMN_NAME="SESSIONID_COOKIENAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SESSIONID_ENPY_SRC_QLTY"
+                        COLUMN_NAME="SESSIONID_ENPY_SRC_QLTY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/Auth-->
+      <ColumnDescriptor NAME="AUTH_IMPERSONATOR" COLUMN_NAME="AUTH_IMPERSONATOR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AUTH_SSO_CLIENTHEADER"
+                        COLUMN_NAME="AUTH_SSO_CLIENTHEADER" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AUTH_SSO_ENABLED" COLUMN_NAME="AUTH_SSO_ENABLED"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AUTH_SSO_SERVERVARIABLE"
+                        COLUMN_NAME="AUTH_SSO_SERVERVARIABLE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AUTH_SSO_STRIP_WIN_DOMAIN"
+                        COLUMN_NAME="AUTH_SSO_STRIP_WIN_DOMAIN" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/URL-->
+      <ColumnDescriptor NAME="URL_ABS_CMD_URLPREFIX"
+                        COLUMN_NAME="URL_ABS_CMD_URLPREFIX" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_COMMAND_NAME" COLUMN_NAME="URL_COMMAND_NAME"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_CUST_RES_PHY_PATH"
+                        COLUMN_NAME="URL_CUST_RES_PHY_PATH" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_CUST_RES_VIRTUAL_PATH"
+                        COLUMN_NAME="URL_CUST_RES_VIRTUAL_PATH" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_FORCE_ABS_COMMANDURL"
+                        COLUMN_NAME="URL_FORCE_ABS_COMMANDURL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_FORCE_ABS_RESOURCEURL"
+                        COLUMN_NAME="URL_FORCE_ABS_RESOURCEURL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_RES_PHY_PATH" COLUMN_NAME="URL_RES_PHY_PATH"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_RES_SERVER_PREFIX"
+                        COLUMN_NAME="URL_RES_SERVER_PREFIX" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="URL_RES_VIRTUAL_PATH"
+                        COLUMN_NAME="URL_RES_VIRTUAL_PATH" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance@AutoFlushEnabled|AutoFlushThreshhold|ClientSessionExpireMinutes|CookieDomain|CookieExpire|CookiePath|CookieSecure|DefaultTimeoutMinutes|LogonExpireMinutes|UsernameCookieName|PasswordCookieName|PersistCookies|SessionIDCookieName|SessionIDEntropySourceQuality#ServerInstance/Auth@Impersonator|SSOClientHeader|SSOEnabled|SSOServerVariable|SSOStripWindowsDomain#ServerInstance/URL@AbsoluteCommandURLPrefix|CommandName|CustomerResourcePhysicalPath|CustomerResourceVirtualPath|ForceAbsoluteCommandURL|ForceAbsoluteResourceURL|ResourcePhysicalPath|ResourceServerPrefix|ResourceVirtualPath" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>   </Metric>
+  <!--Metric for PS CACHE -->
+  <Metric NAME="BIPresentationServer_Cache_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_CACHE_CONFIG">
+      <!--ServerInstance-->
+      <ColumnDescriptor NAME="CACHE_BANNER_DASHBD_LIST"
+                        COLUMN_NAME="CACHE_BANNER_DASHBD_LIST" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_LOWMEM_THRESHOLDMB"
+                        COLUMN_NAME="CACHE_LOWMEM_THRESHOLDMB" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_MAX_ENTRIES" COLUMN_NAME="CACHE_MAX_ENTRIES"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_MAX_EXPMINUTES"
+                        COLUMN_NAME="CACHE_MAX_EXPMINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_MIN_EXPMINUTES"
+                        COLUMN_NAME="CACHE_MIN_EXPMINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_MIN_MEM_THRESHOLDMB"
+                        COLUMN_NAME="CACHE_MIN_MEM_THRESHOLDMB" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_MIN_USER_EXPMINUTES"
+                        COLUMN_NAME="CACHE_MIN_USER_EXPMINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_REFRESH_OPTIMIZE"
+                        COLUMN_NAME="CACHE_REFRESH_OPTIMIZE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ColumnInfoCache-->
+      <ColumnDescriptor NAME="MAX_LIFETIME_MINUTES"
+                        COLUMN_NAME="MAX_LIFETIME_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="UNUSED_EXP_MINUTES"
+                        COLUMN_NAME="UNUSED_EXP_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance@CacheBannerDashboardList|CacheLowMemoryThresholdMB|CacheMaxEntries|CacheMaxExpireMinutes|CacheMinExpireMinutes|CacheMinimumMemoryThresholdMB|CacheMinUserExpireMinutes|CacheRefreshOptimize#ServerInstance/ColumnInfoCache@MaxLifetimeMinutes|UnusedExpireMinutes" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+    </Metric>
+  <!--Metric for PS MARKETING -->
+  <Metric NAME="BIPresentationServer_Marketing_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_MARKETING_CONFIG">
+      <!--ServerInstance-->
+      <ColumnDescriptor NAME="MKTG_FILE_SYSTEM" COLUMN_NAME="MKTG_FILE_SYSTEM"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_FNSHIP_FIXED_RANDOM"
+                        COLUMN_NAME="MKTG_FNSHIP_FIXED_RANDOM" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_FNSHIP_PCT_RANDOM"
+                        COLUMN_NAME="MKTG_FNSHIP_PCT_RANDOM" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_JOBS_LOGDETAIL_LEVEL"
+                        COLUMN_NAME="MKTG_JOBS_LOGDETAIL_LEVEL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_JOBS_LOGSIZE" COLUMN_NAME="MKTG_JOBS_LOGSIZE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_JOBS_WAITSECONDS"
+                        COLUMN_NAME="MKTG_JOBS_WAITSECONDS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_PREVIEW_PATH" COLUMN_NAME="MKTG_PREVIEW_PATH"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_PREVIEW_SIZE" COLUMN_NAME="MKTG_PREVIEW_SIZE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_QUALIFY_NUMERICDATA"
+                        COLUMN_NAME="MKTG_QUALIFY_NUMERICDATA" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_USE_BOM" COLUMN_NAME="MKTG_USE_BOM"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_WRAP_COLUMN_HEADERS"
+                        COLUMN_NAME="MKTG_WRAP_COLUMN_HEADERS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_CACHE_TEMP_CREATESQL"
+                        COLUMN_NAME="MKTG_CACHE_TEMP_CREATESQL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_CACHE_TEMP_DROPSQL"
+                        COLUMN_NAME="MKTG_CACHE_TEMP_DROPSQL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_CACHE_TEMP_INSERTSQL"
+                        COLUMN_NAME="MKTG_CACHE_TEMP_INSERTSQL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_CACHE_TEMP_TABPREFIX"
+                        COLUMN_NAME="MKTG_CACHE_TEMP_TABPREFIX" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MKTG_CACHE_USETEMP_TABLE"
+                        COLUMN_NAME="MKTG_CACHE_USETEMP_TABLE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance@MarketingFileSystem|MarketingFunctionShipFixedRandom|MarketingFunctionShipPctRandom|MarketingJobsLogDetailLevel|MarketingJobsLogSize|MarketingJobsWaitSeconds|MarketingPreviewPath|MarketingPreviewSize|MarketingQualifyNumericData|MarketingUseBOM|MarketingWrapColumnHeaders|MktgCacheTempCreateSQL|MktgCacheTempDropSQL|MktgCacheTempInsertSQL|MktgCacheTempTableNamePrefix|MktgCacheUseTempTable" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric>
+  <!--Metric for PS ALERTS -->
+  <Metric NAME="BIPresentationServer_Alerts_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_ALERTS_CONFIG">
+      <!--ServerInstance/Alerts-->
+      <ColumnDescriptor NAME="ALERTS_CONTENT_DVYMODE"
+                        COLUMN_NAME="ALERTS_CONTENT_DVYMODE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_DEBUG_DVYEMAIL"
+                        COLUMN_NAME="ALERTS_DEBUG_DVYEMAIL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_DEF_DVY_DISP"
+                        COLUMN_NAME="ALERTS_DEF_DVY_DISP" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_DEF_DVY_FORMAT"
+                        COLUMN_NAME="ALERTS_DEF_DVY_FORMAT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_EMBEDRES_INLINE"
+                        COLUMN_NAME="ALERTS_EMBEDRES_INLINE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_ENABLED" COLUMN_NAME="ALERTS_ENABLED"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_FORCE_7BIT_ASCII"
+                        COLUMN_NAME="ALERTS_FORCE_7BIT_ASCII" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_IBOT_CONNECT_STR"
+                        COLUMN_NAME="ALERTS_IBOT_CONNECT_STR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_IGNORE_WEBCAT_PROF"
+                        COLUMN_NAME="ALERTS_IGNORE_WEBCAT_PROF" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_MHTML_MIMETYPE"
+                        COLUMN_NAME="ALERTS_MHTML_MIMETYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_SCHEDULE_SERVER"
+                        COLUMN_NAME="ALERTS_SCHEDULE_SERVER" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_SENDIBOT_CONN_STR"
+                        COLUMN_NAME="ALERTS_SENDIBOT_CONN_STR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_SESSION_CLNUP_FREQ"
+                        COLUMN_NAME="ALERTS_SESSION_CLNUP_FREQ" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_SESSION_TIMEOUT"
+                        COLUMN_NAME="ALERTS_SESSION_TIMEOUT" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_UPCASE_RECPT_NAMES"
+                        COLUMN_NAME="ALERTS_UPCASE_RECPT_NAMES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ALERTS_USE_FWDONLY_CUR_SA"
+                        COLUMN_NAME="ALERTS_USE_FWDONLY_CUR_SA" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance/Alerts@ContentDeliveryMode|DebugDeliveryEmail|DefaultDeliveryDisposition|DefaultDeliveryFormat|EmbedResourcesInline|Enabled|Force7bitASCIIAttachmentNames|IBotConnectString|IgnoreWebcatDeliveryProfiles|MHTMLMimeType|ScheduleServer|SendIBotConnectString|SessionCleanupFrequencySeconds|SessionTimeoutSeconds|UpperCaseRecipientNames|UseForwardOnlyCursorForSystemSA" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric>
+  <!--Metric for PS CHARTS -->
+  <Metric NAME="BIPresentationServer_Charts_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_CHARTS_CONFIG">
+      <!--ServerInstance/Charts-->
+      <ColumnDescriptor NAME="AXIS_LIMITS_FUDGE_FACTOR"
+                        COLUMN_NAME="AXIS_LIMITS_FUDGE_FACTOR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AXIS_LIMITS_OVR_SCN_LIMIT"
+                        COLUMN_NAME="AXIS_LIMITS_OVR_SCN_LIMIT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CACHE_DIRECTORY" COLUMN_NAME="CACHE_DIRECTORY"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DEFAULT_IMAGE_TYPE"
+                        COLUMN_NAME="DEFAULT_IMAGE_TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DEFAULT_INTERACTION"
+                        COLUMN_NAME="DEFAULT_INTERACTION" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DEFAULT_NAVIGATION_PATH"
+                        COLUMN_NAME="DEFAULT_NAVIGATION_PATH" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DELIVERED_IMAGE_TYPE"
+                        COLUMN_NAME="DELIVERED_IMAGE_TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FLASH_CLSID" COLUMN_NAME="FLASH_CLSID"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FLASH_CODEBASE" COLUMN_NAME="FLASH_CODEBASE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FLASH_PLUGINS_PAGE"
+                        COLUMN_NAME="FLASH_PLUGINS_PAGE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FONT_MAP_FILE" COLUMN_NAME="FONT_MAP_FILE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JAVAHOST_SERV_STRING"
+                        COLUMN_NAME="JAVAHOST_SERV_STRING" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_COMP_TIME_INSEC"
+                        COLUMN_NAME="MAX_COMP_TIME_INSEC" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_INMEMORY_CHART"
+                        COLUMN_NAME="MAX_INMEMORY_CHART" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_PROCESSING_THREADS"
+                        COLUMN_NAME="MAX_PROCESSING_THREADS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_QUEUED_CHARTS" COLUMN_NAME="MAX_QUEUED_CHARTS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SVG_PLUGINS_PAGE" COLUMN_NAME="SVG_PLUGINS_PAGE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <!--ServerInstance/Charts/Funnel-->
+      <ColumnDescriptor NAME="FUNNEL_DEFAULT_IMG_TYPE"
+                        COLUMN_NAME="FUNNEL_DEFAULT_IMG_TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FUNNEL_DELVRD_IMG_TYPE"
+                        COLUMN_NAME="FUNNEL_DELVRD_IMG_TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FUNNEL_MAX_CONCURRENT"
+                        COLUMN_NAME="FUNNEL_MAX_CONCURRENT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FUNNEL_SERVICE_STRING"
+                        COLUMN_NAME="FUNNEL_SERVICE_STRING" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/Charts/Gauge-->
+      <ColumnDescriptor NAME="GAUGE_MAX_CANVAS_HEIGHT"
+                        COLUMN_NAME="GAUGE_MAX_CANVAS_HEIGHT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="GAUGE_MAX_CANVAS_WIDTH"
+                        COLUMN_NAME="GAUGE_MAX_CANVAS_WIDTH" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="GAUGE_MAX_GAUGES_CANVAS"
+                        COLUMN_NAME="GAUGE_MAX_GAUGES_CANVAS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/Charts/POP-->
+      <ColumnDescriptor NAME="POP_DEFAULT_IMG_TYPE"
+                        COLUMN_NAME="POP_DEFAULT_IMG_TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POP_DELVRD_IMG_TYPE"
+                        COLUMN_NAME="POP_DELVRD_IMG_TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POP_FLASH_CLSID" COLUMN_NAME="POP_FLASH_CLSID"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POP_FLASH_CODEBASE"
+                        COLUMN_NAME="POP_FLASH_CODEBASE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POP_FLASH_PLUGINS_PAGE"
+                        COLUMN_NAME="POP_FLASH_PLUGINS_PAGE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POP_SERVICE_STRING"
+                        COLUMN_NAME="POP_SERVICE_STRING" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POP_SVG_PLUGINS_PAGE"
+                        COLUMN_NAME="POP_SVG_PLUGINS_PAGE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/Charts/POPGauge-->
+      <ColumnDescriptor NAME="POPGAUGE_SERVICE_STR"
+                        COLUMN_NAME="POPGAUGE_SERVICE_STR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance/Charts@AxisLimitsFudgeFactor|AxisLimitsOverscanLimit|CacheDirectory|DefaultImageType|DefaultInteraction|DefaultNavigationPath|DeliveredImageType|FlashCLSID|FlashCodeBase|FlashPluginsPage|FontMapFile|JavaHostServiceString|MaxCompletionTimeInSec|MaxInMemoryChart|MaxProcessingThreads|MaxQueuedCharts|SVGPluginsPage#ServerInstance/Charts/Funnel@DefaultImageType|DeliveredImageType|MaxConcurrent|ServiceString#ServerInstance/Charts/Gauge@MaxCanvasHeight|MaxCanvasWidth|MaxGaugesPerCanvas#ServerInstance/Charts/POP@DefaultImageType|DeliveredImageType|FlashCLSID|FlashCodeBase|FlashPluginsPage|ServiceString|SVGPluginsPage#ServerInstance/Charts/POPGauge@ServiceString" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric>
+  <Metric NAME="BIPresentationServer_Rep_Cache_config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_REP_CACHE_CONFIG">
+      <!--ServerInstance/ReportCache-->
+      <ColumnDescriptor NAME="CACHE_DIRECTORY" COLUMN_NAME="CACHE_DIRECTORY"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CROSSUSER_VISIBILITY"
+                        COLUMN_NAME="CROSSUSER_VISIBILITY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CHECK_USG_INTMINS"
+                        COLUMN_NAME="DISK_CHECK_USG_INTMINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CHECK_USG_INTSECS"
+                        COLUMN_NAME="DISK_CHECK_USG_INTSECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CLEANUP_INTMINS"
+                        COLUMN_NAME="DISK_CLEANUP_INTMINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_EXPIRE_MINUTES"
+                        COLUMN_NAME="DISK_EXPIRE_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_EXP_REDUC_RATIO"
+                        COLUMN_NAME="DISK_EXP_REDUC_RATIO" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_MAX_USAGEKB" COLUMN_NAME="DISK_MAX_USAGEKB"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_MIN_FREEKB" COLUMN_NAME="DISK_MIN_FREEKB"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_RESAVE_MINS" COLUMN_NAME="DISK_RESAVE_MINS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_SUBDIRS" COLUMN_NAME="DISK_SUBDIRS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FILE_EXTENSION" COLUMN_NAME="FILE_EXTENSION"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_BUCKETS" COLUMN_NAME="MEMORY_BUCKETS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_CLEANUP_INTMINS"
+                        COLUMN_NAME="MEMORY_CLEANUP_INTMINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_EXPIRE_MINUTES"
+                        COLUMN_NAME="MEMORY_EXPIRE_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_MAX_ENTRIES"
+                        COLUMN_NAME="MEMORY_MAX_ENTRIES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_MIN_BUCKETSIZE"
+                        COLUMN_NAME="MEMORY_MIN_BUCKETSIZE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="VERIFY_RELOAD_ENTRYKEY"
+                        COLUMN_NAME="VERIFY_RELOAD_ENTRYKEY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance/ReportCache@CacheDirectory|CrossUserVisibility|DiskCheckUsageIntervalMinutes|DiskCheckUsageIntervalSeconds|DiskCleanupIntervalMinutes|DiskExpireMinutes|DiskExpireReductionRatio|DiskMaximumUsageKB|DiskMinimumFreeKB|DiskResaveMinutes|DiskSubDirectories|FileExtension|MemoryBuckets|MemoryCleanupIntervalMinutes|MemoryExpireMinutes|MemoryMaximumEntries|MemoryMinimumBucketSize|VerifyReloadedEntryKey" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric>
+<Metric NAME="BIPresentationServer_State_Pool_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_STATE_POOL_CONFIG">
+      <!--ServerInstance/StatePool-->
+      <ColumnDescriptor NAME="CACHE_DIR" COLUMN_NAME="CACHE_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CROSSUSER_VISIBILITY"
+                        COLUMN_NAME="CROSSUSER_VISIBILITY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CHECK_USG_INTL_MINS"
+                        COLUMN_NAME="DISK_CHECK_USG_INTL_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CHECK_USG_INTL_SECS"
+                        COLUMN_NAME="DISK_CHECK_USG_INTL_SECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CLEANUP_INTL_MINS"
+                        COLUMN_NAME="DISK_CLEANUP_INTL_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_EXPIRE_MINUTES"
+                        COLUMN_NAME="DISK_EXPIRE_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_EXP_REDUC_RATIO"
+                        COLUMN_NAME="DISK_EXP_REDUC_RATIO" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_MAX_USAGEKB" COLUMN_NAME="DISK_MAX_USAGEKB"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_MIN_FREEKB" COLUMN_NAME="DISK_MIN_FREEKB"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_RESAVE_MINS" COLUMN_NAME="DISK_RESAVE_MINS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_SUBDIRS" COLUMN_NAME="DISK_SUBDIRS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FILE_EXTENSION" COLUMN_NAME="FILE_EXTENSION"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_BUCKETS" COLUMN_NAME="MEMORY_BUCKETS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_CLEANUP_INTL_MINS"
+                        COLUMN_NAME="MEMORY_CLEANUP_INTL_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_EXPIRE_MINUTES"
+                        COLUMN_NAME="MEMORY_EXPIRE_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_MAX_ENTRIES"
+                        COLUMN_NAME="MEMORY_MAX_ENTRIES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_MIN_BUCKETSIZE"
+                        COLUMN_NAME="MEMORY_MIN_BUCKETSIZE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="VERFY_RELOAD_ENTRYKEY"
+                        COLUMN_NAME="VERFY_RELOAD_ENTRYKEY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance/StatePool@CacheDirectory|CrossUserVisibility|DiskCheckUsageIntervalMinutes|DiskCheckUsageIntervalSeconds|DiskCleanupIntervalMinutes|DiskExpireMinutes|DiskExpireReductionRatio|DiskMaximumUsageKB|DiskMinimumFreeKB|DiskResaveMinutes|DiskSubDirectories|FileExtension|MemoryBuckets|MemoryCleanupIntervalMinutes|MemoryExpireMinutes|MemoryMaximumEntries|MemoryMinimumBucketSize|VerifyReloadedEntryKey" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric>
+  <!--Metric for XML cache Defaults -->
+  <Metric NAME="BIPresentationServer_XML_CacheDef_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_XML_CACHEDEF_CONFIG">
+      <!--ServerInstance/XmlCacheDefaults-->
+      <ColumnDescriptor NAME="CACHE_DIR" COLUMN_NAME="CACHE_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CROSSUSER_VISBILITY"
+                        COLUMN_NAME="CROSSUSER_VISBILITY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CHECK_USG_INTLMINS"
+                        COLUMN_NAME="DISK_CHECK_USG_INTLMINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CHECK_USG_INTLSECS"
+                        COLUMN_NAME="DISK_CHECK_USG_INTLSECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_CLEANUP_INTLMINS"
+                        COLUMN_NAME="DISK_CLEANUP_INTLMINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_EXP_MINUTES" COLUMN_NAME="DISK_EXP_MINUTES"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_EXP_REDUC_RATIO"
+                        COLUMN_NAME="DISK_EXP_REDUC_RATIO" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_MAX_USAGEKB" COLUMN_NAME="DISK_MAX_USAGEKB"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_MIN_FREEKB" COLUMN_NAME="DISK_MIN_FREEKB"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_RESAVE_MINUTES"
+                        COLUMN_NAME="DISK_RESAVE_MINUTES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISK_SUB_DIRS" COLUMN_NAME="DISK_SUB_DIRS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="FILE_EXTENSION" COLUMN_NAME="FILE_EXTENSION"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_BUCKETS" COLUMN_NAME="MEMORY_BUCKETS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_CLEANUP_INTLMINS"
+                        COLUMN_NAME="MEMORY_CLEANUP_INTLMINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_EXP_MINS" COLUMN_NAME="MEMORY_EXP_MINS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_MAX_ENTRIES"
+                        COLUMN_NAME="MEMORY_MAX_ENTRIES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MEMORY_MIN_BUCKETSIZE"
+                        COLUMN_NAME="MEMORY_MIN_BUCKETSIZE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="VERIFY_REL_ENTRYKEY"
+                        COLUMN_NAME="VERIFY_REL_ENTRYKEY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance/XmlCacheDefaults@CacheDirectory|CrossUserVisibility|DiskCheckUsageIntervalMinutes|DiskCheckUsageIntervalSeconds|DiskCleanupIntervalMinutes|DiskExpireMinutes|DiskExpireReductionRatio|DiskMaximumUsageKB|DiskMinimumFreeKB|DiskResaveMinutes|DiskSubDirectories|FileExtension|MemoryBuckets|MemoryCleanupIntervalMinutes|MemoryExpireMinutes|MemoryMaximumEntries|MemoryMinimumBucketSize|VerifyReloadedEntryKey" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric>
+  <!--Metric for PS Thread  Pool Defaults -->
+  <Metric NAME="BIPresentationServer_ThreadPools_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_THREADPOOL_CONFIG">
+      <!--ServerInstance/ThreadPoolDefaults-->
+      <ColumnDescriptor NAME="IDL_THRD_TIMEOUT_SECS"
+                        COLUMN_NAME="IDL_THRD_TIMEOUT_SECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_QUEUE_SIZE" COLUMN_NAME="MAX_QUEUE_SIZE"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_THREADS" COLUMN_NAME="MAX_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MIN_THREADS" COLUMN_NAME="MIN_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      ..
+
+      <!--ServerInstance/ThreadPoolDefaults/AsyncLogon-->
+      <ColumnDescriptor NAME="ASYNC_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="ASYNC_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ASYNC_MAX_QUEUE_SIZE"
+                        COLUMN_NAME="ASYNC_MAX_QUEUE_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ASYNC_MAX_THREADS" COLUMN_NAME="ASYNC_MAX_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ASYNC_MIN_THREADS" COLUMN_NAME="ASYNC_MIN_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ASYNC_WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="ASYNC_WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ThreadPoolDefaults/Cancel-->
+      <ColumnDescriptor NAME="CANCEL_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="CANCEL_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CANCEL_MAX_QUEUE_SIZE"
+                        COLUMN_NAME="CANCEL_MAX_QUEUE_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CANCEL_MAX_THREADS"
+                        COLUMN_NAME="CANCEL_MAX_THREADS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CANCEL_MIN_THREADS"
+                        COLUMN_NAME="CANCEL_MIN_THREADS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CANCEL_WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="CANCEL_WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ThreadPoolDefaults/ChartThreadPool-->
+      <ColumnDescriptor NAME="CHART_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="CHART_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CHART_MAX_QUEUE_SIZE"
+                        COLUMN_NAME="CHART_MAX_QUEUE_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CHART_MAX_THREADS" COLUMN_NAME="CHART_MAX_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CHART_MIN_THREADS" COLUMN_NAME="CHART_MIN_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CHART_WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="CHART_WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ThreadPoolDefaults/DisconnectedRequests-->
+      <ColumnDescriptor NAME="DISCON_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="DISCON_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISCON_MAX_QUEUE_SIZE"
+                        COLUMN_NAME="DISCON_MAX_QUEUE_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISCON_MAX_THREADS"
+                        COLUMN_NAME="DISCON_MAX_THREADS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISCON_MIN_THREADS"
+                        COLUMN_NAME="DISCON_MIN_THREADS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISCON_WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="DISCON_WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ThreadPoolDefaults/HostLookup-->
+      <ColumnDescriptor NAME="HOST_LP_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="HOST_LP_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="HOST_LP_MAX_QUEUE_SIZE"
+                        COLUMN_NAME="HOST_LP_MAX_QUEUE_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="HOST_LP_MAX_THREADS"
+                        COLUMN_NAME="HOST_LP_MAX_THREADS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="HOST_LP_MIN_THREADS"
+                        COLUMN_NAME="HOST_LP_MIN_THREADS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="HOST_LP_WORKR_THRD_SIZEKB"
+                        COLUMN_NAME="HOST_LP_WORKR_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ThreadPoolDefaults/Query-->
+      <ColumnDescriptor NAME="QRY_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="QRY_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="QRY_MAX_QUEUE_SIZE"
+                        COLUMN_NAME="QRY_MAX_QUEUE_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="QRY_MAX_THREADS" COLUMN_NAME="QRY_MAX_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="QRY_MIN_THREADS" COLUMN_NAME="QRY_MIN_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="QRY_WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="QRY_WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ThreadPoolDefaults/RunJob-->
+      <ColumnDescriptor NAME="RJ_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="RJ_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RJ_MAX_QUEUE_SIZE" COLUMN_NAME="RJ_MAX_QUEUE_SIZE"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RJ_MAX_THREADS" COLUMN_NAME="RJ_MAX_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RJ_MIN_THREADS" COLUMN_NAME="RJ_MIN_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RJ_WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="RJ_WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ThreadPoolDefaults/WebCleanupEngineJob-->
+      <ColumnDescriptor NAME="WCEJ_IDL_THRD_TIMEOUT"
+                        COLUMN_NAME="WCEJ_IDL_THRD_TIMEOUT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WCEJ_MAX_QUEUE_SIZE"
+                        COLUMN_NAME="WCEJ_MAX_QUEUE_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WCEJ_MAX_THREADS" COLUMN_NAME="WCEJ_MAX_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WCEJ_MIN_THREADS" COLUMN_NAME="WCEJ_MIN_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WCEJ_WORKER_THRD_SIZEKB"
+                        COLUMN_NAME="WCEJ_WORKER_THRD_SIZEKB" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance/ThreadPoolDefaults@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/AsyncLogon@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/Cancel@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/ChartThreadPool@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/DisconnectedRequests@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/HostLookup@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/Query@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/RunJob@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb#ServerInstance/ThreadPoolDefaults/WebCleanupEngineJob@IdleThreadTimeoutSecs|MaxQueueSize|MaxThreads|MinThreads|WorkerThreadSizeKb" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric>
+  <!--Metric for PS Other Configs -->
+  <Metric NAME="BIPresentationServer_Others_Config" TYPE="RAW" CONFIG="TRUE">
+    <TableDescriptor TABLE_NAME="MGMT_BI_PS_OTHERS_CONFIG">
+      <!--ServerInstance/AdvancedReporting-->
+      <ColumnDescriptor NAME="AR_ADMIN_URL" COLUMN_NAME="AR_ADMIN_URL"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AR_AUTHID_EXPIRY" COLUMN_NAME="AR_AUTHID_EXPIRY"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AR_CONNECT_STR_PARAM"
+                        COLUMN_NAME="AR_CONNECT_STR_PARAM" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AR_JHOST_SERVICE_STR"
+                        COLUMN_NAME="AR_JHOST_SERVICE_STR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AR_SERVER_ANALY_ODBCDSN"
+                        COLUMN_NAME="AR_SERVER_ANALY_ODBCDSN" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AR_SERVER_URL" COLUMN_NAME="AR_SERVER_URL"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AR_VOLUME" COLUMN_NAME="AR_VOLUME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="AR_WEB_URL" COLUMN_NAME="AR_WEB_URL" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/BriefingBook-->
+      <ColumnDescriptor NAME="BB_MAX_FOLLOW_LINKS"
+                        COLUMN_NAME="BB_MAX_FOLLOW_LINKS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/Catalog-->
+      <ColumnDescriptor NAME="CTLG_CACHE_CLEANUP_SECS"
+                        COLUMN_NAME="CTLG_CACHE_CLEANUP_SECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CTLG_CACHE_TIMEOUT_SECS"
+                        COLUMN_NAME="CTLG_CACHE_TIMEOUT_SECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CTLG_HASH_USER_HOME_DIR"
+                        COLUMN_NAME="CTLG_HASH_USER_HOME_DIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance-->
+      <ColumnDescriptor NAME="CATALOG_AUTOSAVE_MINS"
+                        COLUMN_NAME="CATALOG_AUTOSAVE_MINS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CATALOG_AUTOSAVE_TSPNDAYS"
+                        COLUMN_NAME="CATALOG_AUTOSAVE_TSPNDAYS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CATALOG_MAX_AUTOSAVES"
+                        COLUMN_NAME="CATALOG_MAX_AUTOSAVES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CATALOG_PATH" COLUMN_NAME="CATALOG_PATH"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <!--ServerInstance/Disconnected-->
+      <ColumnDescriptor NAME="DISCONNECTED_DIR" COLUMN_NAME="DISCONNECTED_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DISCONNECTED_IBOTS"
+                        COLUMN_NAME="DISCONNECTED_IBOTS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/ISAPI-->
+      <ColumnDescriptor NAME="ISAPI_CONN_POINT_BUFSIZE"
+                        COLUMN_NAME="ISAPI_CONN_POINT_BUFSIZE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_DISABLE_SENDDELAY"
+                        COLUMN_NAME="ISAPI_DISABLE_SENDDELAY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_IDLE_CLN_FREQ_SECS"
+                        COLUMN_NAME="ISAPI_IDLE_CLN_FREQ_SECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_IDLE_TIMEOUTSECS"
+                        COLUMN_NAME="ISAPI_IDLE_TIMEOUTSECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_KEEPALIVE_FREQSECS"
+                        COLUMN_NAME="ISAPI_KEEPALIVE_FREQSECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_KEEPALIVE_MAXFAILS"
+                        COLUMN_NAME="ISAPI_KEEPALIVE_MAXFAILS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_MAX_AGESECS" COLUMN_NAME="ISAPI_MAX_AGESECS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_MAX_CONNECTIONS"
+                        COLUMN_NAME="ISAPI_MAX_CONNECTIONS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_MAX_RETRYATTEMPTS"
+                        COLUMN_NAME="ISAPI_MAX_RETRYATTEMPTS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ISAPI_SERVER_CONN_STRING"
+                        COLUMN_NAME="ISAPI_SERVER_CONN_STRING" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/JavaHost-->
+      <ColumnDescriptor NAME="JHOST_CLASSMAIN" COLUMN_NAME="JHOST_CLASSMAIN"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JHOST_JNI_LIBRARY" COLUMN_NAME="JHOST_JNI_LIBRARY"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JHOST_JVM_OPTIONS" COLUMN_NAME="JHOST_JVM_OPTIONS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="JHOST_LOGCONFIGFILE"
+                        COLUMN_NAME="JHOST_LOGCONFIGFILE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/MiniDump-->
+      <ColumnDescriptor NAME="MDUMP_ADMINDUMP_TYPE"
+                        COLUMN_NAME="MDUMP_ADMINDUMP_TYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MDUMP_COMPLETELY_DISABLE"
+                        COLUMN_NAME="MDUMP_COMPLETELY_DISABLE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MDUMP_DEFAULT_DUMPTYPE"
+                        COLUMN_NAME="MDUMP_DEFAULT_DUMPTYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MDUMP_DUMP_DIRECTORY"
+                        COLUMN_NAME="MDUMP_DUMP_DIRECTORY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MDUMP_MAXDUMPS" COLUMN_NAME="MDUMP_MAXDUMPS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MDUMP_PRELOAD_DBGHELP"
+                        COLUMN_NAME="MDUMP_PRELOAD_DBGHELP" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MDUMP_SETRANSTR_DUMPTYPE"
+                        COLUMN_NAME="MDUMP_SETRANSTR_DUMPTYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MDUMP_UNHAND_EXP_DUMPTYPE"
+                        COLUMN_NAME="MDUMP_UNHAND_EXP_DUMPTYPE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/RPC-->
+      <ColumnDescriptor NAME="RPC_CONNPOINT_BUFFERSIZE"
+                        COLUMN_NAME="RPC_CONNPOINT_BUFFERSIZE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RPC_DISABLE_SENDDELAY"
+                        COLUMN_NAME="RPC_DISABLE_SENDDELAY" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RPC_Idle_CleanupFreq"
+                        COLUMN_NAME="RPC_IDLE_CLEANUPFREQ" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RPC_IDLE_TIMEOUTSECS"
+                        COLUMN_NAME="RPC_IDLE_TIMEOUTSECS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RPC_LISTENER" COLUMN_NAME="RPC_LISTENER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RPC_MAX_AGESECS" COLUMN_NAME="RPC_MAX_AGESECS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RPC_MAX_CONNECTIONS"
+                        COLUMN_NAME="RPC_MAX_CONNECTIONS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="RPC_MAX_LISTENBACKLOG"
+                        COLUMN_NAME="RPC_MAX_LISTENBACKLOG" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+    </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml.pl" "%ConfigFile%" "Presentation Server Configuration" "%AttributeDefFile%" "ServerInstance/AdvancedReporting@AdminURL|AuthIdExpiry|ConnectStringParameter|JavaHostServiceString|ServerAnalyticsODBCDSN|ServerURL|Volume|WebURL#ServerInstance/BriefingBook@MaxFollowLinks#ServerInstance/Catalog@CacheCleanupSecs|CacheTimeoutSecs|HashUserHomeDirectories#ServerInstance@CatalogAutoSaveMinutes|CatalogAutoSaveTimeSpanDays|CatalogMaxAutosaves|CatalogPath#ServerInstance/Disconnected@DisconnectedDir|ArchiveIbots#ServerInstance/ISAPI@ConnectionPointBufferSize|DisableSendDelay|IdleCleanupFrequencySecs|IdleTimeoutSecs|KeepAliveFrequencySecs|KeepAliveMaxFailures|MaxAgeSecs|MaxConnections|MaxRetryAttempts|ServerConnectString#ServerInstance/JavaHost@ClassMain|JniLibrary|JVMOptions|LogConfigFile#ServerInstance/MiniDump@AdminDumpType|CompletelyDisable|DefaultDumpType|DumpDirectory|MaxDumps|PreloadDbghelp|SETranslatorDumpType|UnhandledExceptionDumpType#ServerInstance/RPC@ConnectionPointBufferSize|DisableSendDelay|IdleCleanupFrequencySecs|IdleTimeoutSecs|Listener|MaxAgeSecs|MaxConnections|MaxListenBacklog" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor> 
+  </Metric> 
+   <InstanceProperties>
+   	<InstanceProperty NAME="BIHome">
+         <Display>
+            <Label NLSID="BI_HOME_LABEL">BI Home</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="Host">
+         <Display>
+            <Label NLSID="MACHINENAME_LABEL">Host</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXPort" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="jmx_Port_LABEL ">Admin Port number</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXUserName" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="jmx_UserName_Label">JMX User Name</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXPassword" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="jmx_Password_Label">JMX Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXProtocol" OPTIONAL="TRUE"><Display><Label NLSID="jmx_Protocol_Label">Communication Protocol</Label></Display>rmi</InstanceProperty>
+      <InstanceProperty NAME="JMXService" OPTIONAL="TRUE"><Display><Label NLSID="jmx_Service_Label">Service Name</Label></Display>jmxrmi</InstanceProperty>
+      <InstanceProperty NAME="SSLTrustStore" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="jmx_SSLTrustStore">SSLTrust Store</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="SSLTrustStorePassword" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="jmx_SSLTrustStorePassword">SSLTrust Store JMXPassword</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="lookupClass" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="jmx_lookupClass">Custom lookup provider Class</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="ConfigFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_configFile">Config File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="AttributeDefFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_AttributeDefFile">Attribute Definition File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="SADATADIR" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_SADATADIR">Oracle BI Data Directory</Label>
+         </Display>
+      </InstanceProperty>      
+      <DynamicProperties NAME="ComputeJMX" FORMAT="ROW" 
+                       PROP_LIST="JMXEnabled">
+         <QueryDescriptor FETCHLET_ID="OSLineToken">
+            <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+            <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="JMXPort" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+            <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+            <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+            <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/isEmpty.pl %JMXPort%</Property>
+         </QueryDescriptor>      
+      </DynamicProperties>
+   </InstanceProperties>
+</TargetMetadata>

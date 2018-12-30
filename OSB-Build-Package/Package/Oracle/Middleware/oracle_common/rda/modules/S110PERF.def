@@ -1,0 +1,652 @@
+# S110PERF.def: Collects Performance Information
+# $Id: S110PERF.def,v 2.7 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S110PERF.def,v 2.7 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S110PERF - Collects Performance Information
+
+=head1 DESCRIPTION
+
+This module performs the operating system and database performance data
+gathering for the RDA process.
+
+The following reports can be generated and are regrouped under C<Performance>:
+
+=cut
+
+echo tput('bold'),'Processing PERF module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME')
+var $DB          = getSetting('DATABASE_INSTALLED')
+var $PERF_FACTOR = getSetting('PERF_FACTOR',1)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Performance'
+
+=head2 overview - Overview
+
+Gets a performance overview (platform-specific code).
+
+=cut
+
+section os
+run &{check(getOsName(),'aix',            'OSaix',\
+                        'darwin',         'OSdarwin',\
+                        'dec_osf',        'OSosf',\
+                        'dynixptx',       'OSptx',\
+                        'hpux',           'OShpux',\
+                        'linux',          'OSlinux',\
+                        'solaris',        'OSsunos',\
+                        cond(isCygwin(),  'OSwin32',\
+                             isUnix(),    'OSunix',\
+                             isVms(),     'OSvms',\
+                             isWindows(), 'OSwin32'))}('PERF')
+
+# Check database access and version
+section db
+if !and($DB,isSqlEnabled())
+ return
+run DBinfo()
+var $ver = get_db_version()
+
+=head2 top_sql - Top SQL
+
+Gets session/status/latch/wait-event information.
+
+Gets the top 10 SQL statements in the SQL area.
+
+=cut
+
+report top_sql
+debug ' Inside PERF module, about to execute high disk read queries'
+write '---+!! Top Resource SQL Statements'
+write $TOC
+
+write '---+ SQL in Shared Pool with High Disk Reads to Executions Ratio'
+write 'Where (disk_reads/executions) / 50 > 100%BR%'
+write 'Order by executions descending%BR%'
+write '|*SQL Text*| *Executions*| *Expected Response Time (in Seconds)*|'
+set $sql
+{SELECT '[[[' || CHR(10) || '|' ||
+"       REPLACE(REPLACE(REPLACE(LTRIM(sql_text),
+"         '|', '&#124;'),
+"         '<', '&lt;'),
+"         '>', '&gt;') || '| ' ||
+"       executions || '| ' ||
+"       ROUND(disk_reads / DECODE(executions,0,1,executions) / 50,1) || '|' ||
+"       CHR(10) || ']]]'
+" FROM V$SQLAREA
+" WHERE ROUND(disk_reads / DECODE(executions,0,1,executions) / 50,1) > 100
+" ORDER BY executions DESC;
+}
+call writeSql($sql,$PERF_FACTOR)
+if getSqlMessage()
+ write last,'%BR%'
+write $TOP
+
+debug ' Inside PERF module, about to execute high buffer read queries'
+write '---+ SQL in Shared Pool with High Buffer Gets to Executions Ratio'
+write 'Where (buffer_gets/executions) / 500 > 100%BR%'
+write 'Order by executions descending%BR%'
+write '|*SQL Text*| *Executions*| *Expected Response Time (in Seconds)*|'
+set $sql
+{SELECT '[[[' || CHR(10) || '|' ||
+"       REPLACE(REPLACE(REPLACE(LTRIM(sql_text),
+"         '|', '&#124;'),
+"         '<', '&lt;'),
+"         '>', '&gt;') || '| ' ||
+"       executions || '| ' ||
+"       ROUND(buffer_gets / DECODE(executions,0,1,executions) / 500,
+"             1) || '|' ||
+"       CHR(10) || ']]]'
+" FROM V$SQLAREA
+" WHERE ROUND(buffer_gets / DECODE(executions,0,1,executions) / 500,1) > 100
+" ORDER BY executions DESC;
+}
+call writeSql($sql,$PERF_FACTOR)
+if getSqlMessage()
+ write last,'%BR%'
+write $TOP
+
+debug ' Inside PERF module, about to execute high loads query'
+write '---+ SQL in Shared Pool with High Loads'
+write 'Where in Shared Pool with more than 15 loads%BR%'
+write 'Order by loads descending%BR%'
+write '|*SQL Text*| *Executions*|'
+set $sql
+{SELECT '[[[' || CHR(10) || '|' ||
+"       REPLACE(REPLACE(REPLACE(LTRIM(sql_text),
+"         '|', '&#124;'),
+"         '<', '&lt;'),
+"         '>', '&gt;') || '| ' ||
+"       loads || '|' ||
+"       CHR(10) || ']]]'
+" FROM V$SQLAREA
+" WHERE loads > 15
+" ORDER BY loads DESC;
+}
+call writeSql($sql,$PERF_FACTOR)
+if getSqlMessage()
+ write last,'%BR%'
+write $TOP
+toc '2:[[',getFile(),'][rda_report][Top SQL]]'
+
+=head2 lock_data - Locking Information
+
+Gathers locking information.
+
+=cut
+
+debug ' Inside PERF module, gathering the lock information'
+report lock_data
+var $toc = 'Locking Information'
+var $TTL = '---+!! Locking Information'
+var $TTL[1] = '---+ Holders and Waiters for Locks'
+var $HDR[1] = '|*Holder\Waiter Session ID*| *Lock identifier 1*| \
+                *Lock identifier 2*| *Lock Mode*| *Request*|*Type*|'
+set $sql
+{SELECT '|' ||
+"       DECODE(request,0,'Holder: ','Waiter: ') || sid || ' | ' ||
+"       id1 || '| ' ||
+"       id2 || '| ' ||
+"       lmode || '| '||
+"       request || '|' ||
+"       type || ' |'
+" FROM v$lock
+" WHERE (id1,id2,type) IN (SELECT id1,id2,type
+"                           FROM V$LOCK
+"                           WHERE request > 0)
+" ORDER BY id1, request;
+}
+if match($ver,'^(9|10|11)')
+{var $TTL[2] = '---+ Information from V$Enqueue_Stat'
+ var $HDR[2] = '| *Instance Number*|*Enqueue Type*| \
+                  *Total Number of Enqueue Requests/Conversions*| \
+                  *Total Number of Wait for Enqueue Request/Conversion*| \
+                  *Number of Times Enqueue Request/Conversion Granted*| \
+                  *Number of Times Enqueue Request/Conversion Failed*| \
+                  *Time(milliseconds) Waiting for Enqueue Request/Conversion*|'
+ append $sql
+ {PROMPT ___Macro_separator(2)___
+ "SELECT '| ' ||
+ "       inst_id || '|' ||
+ "       eq_type || ' | '  ||
+ "       total_req# || '| ' ||
+ "       total_wait# || '| ' ||
+ "       succ_req# || '| ' ||
+ "       failed_req# || '| ' ||
+ "       cum_wait_time || '|'
+ " FROM v$enqueue_stat
+ " ORDER BY cum_wait_time DESC;
+ }
+}
+call separator(1)
+call writeSql($sql)
+call separator(0,'Locking Information')
+
+=head2 latch_data - Latch Information
+
+Gathers latch information including latch holder.
+
+=cut
+
+debug ' Inside PERF module, gathering the latch information'
+report latch_data
+prefix
+{write '---+ Latch Information'
+ write '| *Latch Number*|*Name*| *Address*| *Gets*| *Misses*| *Sleeps*| \
+          *Immediate Gets*| *Immediate Misses*| *PID*|'
+}
+set $sql
+{SELECT '| ' ||
+"       a.latch# || '|' ||
+"       c.name || ' | ' ||
+"       a.addr || '| ' ||
+"       a.gets || '| ' ||
+"       a.misses || '| ' ||
+"       a.sleeps || '| ' ||
+"       NVL(a.immediate_gets,0) || '| ' ||
+"       NVL(a.immediate_misses,0) || '| ' ||
+"       NVL(b.pid,0) || '|'
+" FROM v$latch a,v$latchholder b,v$latchname c
+" WHERE a.addr = b.laddr(+)
+"   AND a.latch# = c.latch#
+" ORDER BY a.sleeps DESC;
+}
+call writeSql($sql)
+write $TOP
+toc '2:[[',getFile(),'][rda_report][Latch Information]]'
+
+=head2 autostats - Automatic Gathering Statistics
+
+Checks if Automatic Gathering Statistics is enabled.
+
+=cut
+
+if match($ver,'^(10|11)')
+{debug ' Inside PERF module, checking Automatic Gathering Statistics'
+ report autostats
+ prefix
+ {write '---+ Automatic Gathering Statistics'
+  write '|*Job Name*|*Job Type*|*Program Name*|*Schedule Name*|\
+          *Job Class*|*State*|*Last Start Date*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       job_name || ' |' ||
+ "       job_type || ' |' ||
+ "       program_name || ' |' ||
+ "       schedule_name || ' |' ||
+ "       job_class || ' |' ||
+ "       state || ' |' ||
+ "       TO_CHAR(last_start_date,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+ " FROM dba_scheduler_jobs
+ " WHERE job_name = 'GATHER_STATS_JOB';
+ }
+ call writeSql($sql)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Automatic Gathering Statistics]]'
+}
+
+=head2 cbo_trace - Cost Based Optimizer
+
+Gets the cost based optimizer statistics for a dummy SQL.
+
+=cut
+
+if getSetting('DATABASE_LOCAL')
+{debug ' Inside PERF module, getting the CBO statistics '
+ report cbo_trace
+ set $sql
+ {ALTER SESSION SET MAX_DUMP_FILE_SIZE = unlimited;
+ "ALTER SESSION SET EVENTS '10053 trace name context forever, level 12';
+ "oradebug setmypid
+ "oradebug unlimit
+ "EXPLAIN PLAN FOR SELECT 'RDA' FROM DUAL;
+ "oradebug tracefile_name
+ }
+ var ($fil) = grepSql($sql,'\.trc\b','f')
+ prefix
+  write '---+!! Cost Based Optimizer statistics'
+ call writeFile($fil)
+ if isCreated()
+ {toc '2:[[',getFile(),'][rda_report][Cost Based Optimizer]]'
+  write $TOP
+ }
+}
+
+# Validate the time settings
+var $START_TIME = trim(getSetting('PERF_START_TIME',''),'-')
+var $END_TIME = trim(getSetting('PERF_END_TIME',''),'-')
+var $pat = '^[0-3]\d\-[A-Za-z]{3}\-[12]\d{3}_[0-2]\d:[0-5]\d$'
+if length($START_TIME)
+{if !match($START_TIME,$pat)
+ {echo 'Start time format should be DD-Mon-YYYY_HH24:MI. ADDM, AWR, and ASH \
+        reports will not be generated.'
+  return
+ }
+}
+if length($END_TIME)
+{if !$START_TIME
+ {echo 'Start time should be specified if you want to use an end time. ADDM, \
+        AWR, and ASH reports will not be generated.'
+  return
+ }
+ if !match($END_TIME,$pat)
+ {echo 'End time format should be DD-Mon-YYYY_HH24:MI. ADDM, AWR, and ASH \
+        reports will not be generated.'
+  return
+ }
+}
+
+# Use Statspack when required
+var $fil = catFile($ORACLE_HOME,'rdbms','admin','spreport.sql')
+var $usr = trim(getSetting('PERF_STATSPACK_USER',''),'-')
+if and(testFile('r',$fil),length($usr))
+{debug ' Inside PERF module, validating the Statspack user'
+ var $usr = uc($usr)
+ if !match($usr,'^[A-Z0-9][\w\$\#]{0,127}$')
+ {echo "The Oracle username should begin with an alphanumeric character and \
+        can have only alphanumeric characters, '_', '$', or '#' thereafter. \
+        It can be only 128 characters long."
+  return
+ }
+ var $log = setSqlLogin($usr)
+ var $try = setSqlFailure(0)
+ if testSql()
+  echo "Can't use Statspack:\012",last
+ else
+ {# Retrieve the Statspack snapshots
+  debug ' Inside PERF module, retrieving snapshots for Statspack reports'
+  set $sql
+  {SELECT NVL(MIN(s.snap_id),0) || '|' ||
+  "       NVL(MAX(s.snap_id),0)
+  " FROM stats$snapshot s,
+  "      stats$database_instance di
+  " WHERE di.dbid            = s.dbid
+  "   AND di.instance_number = s.instance_number
+  "   AND di.startup_time    = s.startup_time
+  "   AND s.snap_time BETWEEN :1 AND :2;
+  }
+  if $START_TIME
+  {var $beg = concat("TO_DATE('",$START_TIME,"','DD-Mon-YYYY_HH24:MI')")
+   var $txt = concat('   * Entered start time is ``',$START_TIME,'``')
+   if $END_TIME
+   {var $end = concat("TO_DATE('",$END_TIME,"','DD-Mon-YYYY_HH24:MI')")
+    var $txt = concat($txt,"\012   * Entered end time is ``",$END_TIME,'``')
+   }
+   else
+   {var $end = 'SYSDATE'
+    var $txt = concat($txt,"\012   * Current time taken as end time")
+   }
+  }
+  else
+  {set $beg
+   {(SELECT MAX(s.snap_time)
+    " FROM stats$snapshot s,
+    "      stats$database_instance di
+    " WHERE di.dbid            = s.dbid
+    "   AND di.instance_number = s.instance_number
+    "   AND di.startup_time    = s.startup_time
+    "   AND s.snap_time < 
+    "       (SELECT MAX(s.snap_time)
+    "         FROM stats$snapshot s,
+    "              stats$database_instance di
+    "         WHERE di.dbid            = s.dbid
+    "           AND di.instance_number = s.instance_number
+    "           AND di.startup_time    = s.startup_time))
+   }
+   var $txt = concat($txt,"\012   * Taking the time of last but one snapshot \
+                                    as start time")
+   var $end = 'SYSDATE'
+   var $txt = concat($txt,"\012   * Current time taken as end time")
+  }
+  var ($lin) = grepSql(bindSql($sql,$beg,$end),'\d+\|\d+','f')
+  var ($beg,$end) = split('\|',$lin,2)
+
+=head2 spack_report - Statspack Report
+
+Generates the Statspack report.
+
+=cut
+
+  debug ' Inside PERF module, generating the Statspack report'
+  report spack_report
+  if and(expr('>',$beg,0),expr('>',$end,$beg))
+  {set $sql
+   {SET define on
+   "DEFINE REPORT_NAME = :1
+   "DEFINE BEGIN_SNAP  = :2;
+   "DEFINE END_SNAP    = :3;
+   "@@:4
+   }
+   var $tmp = getTemp('spack')
+   call loadSql(bindSql($sql,$tmp,$beg,$end,$fil),false,4)
+   if testFile('r',$tmp)
+    call writeFile($tmp)
+   elsif getSqlMessage()
+    write last
+   else
+   {write 'Requested time interval for the Statspack report:'
+    write $txt
+    write '%BR%Check for entered date or snapshots do not exist in database.'
+    write '<verbatim>'
+    call writeLastSql(-12)
+    write '</verbatim>'
+   }
+   call unlinkTemp('spack')
+  }
+  else
+  {write 'Requested time interval for the Statspack report:'
+   write $txt
+   write '%BR%Two snapshots are not available for that period of time.'
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Statspack Report]]'
+ }
+
+ # Restore the previous database context
+ call setSqlLogin($log)
+ call setSqlFailure($try)
+}
+
+# Check if the AWR, ADDM and ASH reports can be collected
+if !getSetting('PERF_AWR_USE')
+ return
+
+# Retrieve the ADDM and AWR snapshots
+debug ' Inside PERF module, retrieving snapshots for ADDM and AWR reports'
+set $sql
+{SET DEFINE ON
+"DEFINE ADDM_Time_Interval=0
+"COL ADDM_Time_Interval NEW_VALUE ADDM_Time_Interval
+"
+"SELECT snapint_num / (60 * 60) ADDM_Time_Interval
+" FROM sys.wrm$_wr_control
+" WHERE ROWNUM < 2;
+"
+"SELECT NVL(MIN(s.snap_id), 0) || '|' ||
+"       NVL(MAX(s.snap_id), 0)
+" FROM dba_hist_snapshot s,
+"      dba_hist_database_instance di
+" WHERE di.dbid            = s.dbid
+"   AND di.instance_number = s.instance_number
+"   AND di.startup_time    = s.startup_time
+"   AND s.end_interval_time BETWEEN
+"        :1 - (&&ADDM_Time_Interval / 24) AND
+"        :2 + (&&ADDM_Time_Interval / 24);
+}
+if $START_TIME
+{var $beg = concat("TO_DATE('",$START_TIME,"','DD-Mon-YYYY_HH24:MI')")
+ var $txt = concat('   * Entered start time is ``',$START_TIME,'``')
+ if $END_TIME
+ {var $end = concat("TO_DATE('",$END_TIME,"','DD-Mon-YYYY_HH24:MI')")
+  var $txt = concat($txt,"\012   * Entered end time is ``",$END_TIME,'``')
+ }
+ else
+ {var $end = 'SYSDATE - (&&ADDM_Time_Interval / 24)'
+  var $txt = concat($txt,"\012   * Current time taken as end time")
+ }
+}
+else
+{var $beg = 'SYSDATE - (&&ADDM_Time_Interval / 24)'
+ var $end = $beg
+ var $txt = '   * Current time taken for generating the report'
+}
+var ($lin) = grepSql(bindSql($sql,$beg,$end),'\d+\|\d+','f')
+
+# Check if two snapshots are available
+var ($beg,$end) = split('\|',$lin,2)
+var $flg = and(expr('>',$beg,0),expr('>',$end,$beg))
+
+=head2 addm_report - ADDM Report
+
+Generates the ADDM report.
+
+=cut
+
+debug ' Inside PERF module, generating the ADDM report'
+report addm_report
+var $fil = catFile($ORACLE_HOME,'rdbms','admin','addmrpt.sql')
+if testFile('r',$fil)
+{if $flg
+ {set $sql
+  {SET define on
+  "DEFINE REPORT_NAME = :1
+  "DEFINE BEGIN_SNAP  = :2;
+  "DEFINE END_SNAP    = :3;
+  "@@:4
+  }
+  var $tmp = getTemp('addm')
+  call loadSql(bindSql($sql,$tmp,$beg,$end,$fil),false,4)
+  if testFile('r',$tmp)
+   call writeFile($tmp)
+  elsif getSqlMessage()
+   write last
+  else
+  {write 'Requested time interval for the ADDM report:'
+   write $txt
+   write '%BR%Check for entered date or snapshots do not exist in database.'
+   write '<verbatim>'
+   call writeLastSql(-12)
+   write '</verbatim>'
+  }
+  call unlinkTemp('addm')
+ }
+ else
+ {write 'Requested time interval for the ADDM report:'
+  write $txt
+  write '%BR%Two snapshots are not available for that period of time.'
+ }
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][ADDM Report]]'
+
+=head2 awr_report - AWR Report
+
+Generates the AWR report.
+
+=cut
+
+debug ' Inside PERF module, generating the AWR report'
+report awr_report
+var $fil = catFile($ORACLE_HOME,'rdbms','admin','awrrpt.sql')
+if testFile('r',$fil)
+{if $flg
+ {set $sql
+  {SET define on
+  "DEFINE REPORT_NAME = :1;
+  "DEFINE BEGIN_SNAP  = :2;
+  "DEFINE END_SNAP    = :3;
+  "DEFINE NUM_DAYS    = 3;
+  "DEFINE REPORT_TYPE = 'text';
+  "
+  "@@:4
+  }
+  var $tmp = getTemp('awr')
+  call loadSql(bindSql($sql,$tmp,$beg,$end,$fil),false,4)
+  if testFile('r',$tmp)
+   call writeFile($tmp)
+  elsif getSqlMessage()
+   write last
+  else
+  {write 'Requested time interval for the AWR report:'
+   write $txt
+   write 'Check for entered date or snapshot does not exist in database.%BR%'
+   write '<verbatim>'
+   call writeLastSql(-12)
+   write '</verbatim>'
+  }
+  call unlinkTemp('awr')
+ }
+ else
+ {write 'Requested time interval for the AWR report:'
+  write $txt
+  write '%BR%Two snapshots are not available for that period of time.'
+ }
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][AWR Report]]'
+
+=head2 ash_report - ASH Report
+
+Generates the Active Session History report.
+
+=cut
+
+debug ' Inside PERF module, generating the ASH report'
+report ash_report
+var $fil = catFile($ORACLE_HOME,'rdbms','admin','ashrpt.sql')
+if testFile('r',$fil)
+{set $sql
+ {SET define on
+ "DEFINE ASH_Begin_Time=''
+ "COL ASH_Begin_Time NEW_VALUE ASH_Begin_Time
+ "DEFINE ASH_Duration=0
+ "COL ASH_Duration NEW_VALUE ASH_Duration
+ "
+ "SELECT TO_CHAR(:1,'MM/DD/YY HH24:MI:SS') ASH_Begin_Time
+ " FROM sys.dual;
+ "
+ "SELECT :2 ASH_Duration
+ " FROM sys.dual;
+ "
+ "DEFINE REPORT_NAME = :3;
+ "DEFINE BEGIN_TIME  = '&&ASH_Begin_Time';
+ "DEFINE DURATION    = &&ASH_Duration;
+ "DEFINE REPORT_TYPE = 'text';
+ "
+ "@@:4
+ }
+ if $START_TIME
+ {var $beg = concat("TO_DATE('",$START_TIME,"','DD-Mon-YYYY_HH24:MI')")
+  if $END_TIME
+   var $dur = concat("GREATEST(1,\
+     (TO_DATE('",$END_TIME,"','DD-Mon-YYYY_HH24:MI') - \
+      TO_DATE('",$START_TIME,"','DD-Mon-YYYY_HH24:MI')) * 1440)")
+  else
+   var $dur = concat("GREATEST(1,\
+     (SYSDATE - TO_DATE('",$START_TIME,"','DD-Mon-YYYY_HH24:MI')) * 1440)")
+ }
+ else
+ {var $beg = 'SYSDATE - 15/1440'
+  var $dur = 15
+ }
+ var $tmp = getTemp('ash')
+ call loadSql(bindSql($sql,$beg,$dur,$tmp,$fil),false,4)
+ if testFile('r',$tmp)
+  call writeFile($tmp)
+ elsif getSqlMessage()
+  write last
+ else
+ {write 'Requested time interval for the ASH report:'
+  write $txt
+  write '<verbatim>'
+  call writeLastSql(-12)
+  write '</verbatim>'
+ }
+ call unlinkTemp('ash')
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][ASH Report]]'
+
+=head1 SEE ALSO
+
+L<OSaix|modules::OSaix>, L<OSdarwin|modules::OSdarwin>,
+L<OShpux|modules::OShpux>, L<OSlinux|modules::OSlinux>,
+L<OSosf|modules::OSosf>, L<OSptx|modules::OSptx>,
+L<OSsunos|modules::OSsunos>, L<OSunix|modules::OSunix>,
+L<OSwin32|modules::OSvms>, L<OSwin32|modules::OSwin32>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.0:  Sachin Garg.
+
+=item RDA 4.1:  John Peeken.
+
+=item RDA 4.8:  Jeff Gregory, Anatoli Karol.
+
+=item RDA 4.17:  Jaime Alcoreza.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,1127 @@
+# S330SSO.def: Collects Single Sign-On Information
+# $Id: S330SSO.def,v 2.21 2012/08/03 09:35:31 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S330SSO.def,v 2.21 2012/08/03 09:35:31 mschenke Exp $
+#
+# Change History
+# 20120803  KRA  Update MOS URLs.
+
+=head1 NAME
+
+S330SSO - Collects Single Sign-On Information
+
+=head1 DESCRIPTION
+
+This module collects Single Sign-On-related information.
+
+The following reports can be generated and are regrouped under C<Single
+Sign-On>:
+
+=cut
+
+echo tput('bold'),'Processing SSO module ...',tput('off')
+
+# Initialization
+var $APACHE_TOP  = getSetting('APACHE_TOP','')
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $SSO_LOCAL   = getSetting('SSO_LOCAL')
+var $SSO_HOME    = getSetting('SSO_ORACLE_HOME')
+var $TAIL        = getSetting('RDA_TAIL',1000)
+
+var @HOME = ($ORACLE_HOME)
+var $LOC  = false
+var $MOD  = cond(isWindows(),'f',\
+                 isCygwin(), 'f',\
+                             'fx')
+var $mnu  = nvl(getSetting('SSO_MENU'),\
+                cond(testDir('d',catDir($ORACLE_HOME,'sso')),'INI','REM'))
+if compare('eq',$mnu,'INI')
+ var $SSO_HOME = $ORACLE_HOME
+elsif compare('eq',$mnu,'LOC')
+{var $LOC = true
+ call unshift(@HOME,$SSO_HOME)
+}
+
+var $OH  = quote($ORACLE_HOME)
+var $OH1 = concat('^',$OH,'[\\\/]')
+var $OH2 = concat('^',$OH,'\b')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Single Sign-On'
+
+# Load the common macros
+run library()
+run DBinfo()
+run INSTinfo()
+
+# Change the database context
+if $SSO_LOCAL
+{var $sid = getSetting('ORACLE_SID')
+ var $usr = getSetting('SQL_LOGIN')
+ var $dba = getSetting('SQL_SYSDBA')
+}
+elsif getSetting('SSO_SID')
+{var $sid = last
+ var $usr = uc(getSetting('SSO_LOGIN','SYSTEM'))
+ var $dba = getSetting('SSO_SYSDBA')
+
+ # Determine the user password
+ if compare('eq',$usr,'/')
+  var ($usr,$pwd) = ('','')
+ elsif hasSqlPassword($usr,$sid)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+
+ # Change the current user
+ var $old = setSqlLogin($usr,$pwd,$sid,$dba)
+
+ # If requested, change the database context
+ if getSetting('SSO_SWITCH')
+  var $env = setSqlSid($sid)
+ else
+  var $env = undef
+ var $try = setSqlFailure(0)
+
+}
+else
+{var $sid = undef
+
+ # Disable the database access
+ var $env = undef
+ var $old = setSqlLogin('','')
+ var $try = setSqlFailure(-1)
+}
+
+# Test the database connection
+if testSql()
+{echo ''
+ echo tput('bold'),'The schema containing the SSO repository is not \
+                    accessible.',tput('off')
+ echo tput('bold'),'Therefore RDA cannot collect repository information.',\
+                    tput('off')
+ if getSqlMessage()
+  echo last
+ echo ''
+}
+
+=head2 product_info - Product Information
+
+Gathers the product information if Oracle Single Sign-On is installed in a \
+separate Oracle home.
+
+=cut
+
+if $LOC
+{debug ' Inside SSO module, processing Product Information (can take time)'
+ report product_info
+ write '---+!! Single Sign-On Oracle Home Product Information'
+ write $TOC
+
+ write '---+ Files in Single Sign-On Oracle Home'
+ call statDir('an',$SSO_HOME)
+ write $TOP
+
+ call inventory_details(catDir($SSO_HOME,'inventory'),getSetting('SSO_INTERIM'))
+ toc '2:[[',getFile(),'][rda_report][Product Information]]'
+}
+
+=head2 overview - SSO Repository Information
+
+Gets Single Sign-On repository information from the database.
+
+=cut
+
+debug ' Inside SSO module, gathering the SSO Repository Information'
+report overview
+var $TTL = '---+!! Single Sign-On Repository Information'
+var @DBG = ('',\
+            '  - Getting infrastructure database version',\
+            '  - Getting Application Registry',\
+            '  - Getting SSO version',\
+            '  - Getting OWA PL/SQL toolkit version',\
+            '  - Getting duplicate OWA packages',\
+            '  - Getting OS user environment',\
+            '  - Getting database characterset support',\
+            '  - Getting important parameters',\
+            '  - Getting SGA information',\
+            '  - Getting total java objects',\
+            '  - Getting total java objects owned by user',\
+            '  - Getting total list of database objects by object type',\
+            '  - Getting total number of invalid objects',\
+            '  - Getting list of invalid objects',\
+            '  - Getting ORASSO user tablespace information',\
+            '  - Getting free space in SSO related tablespaces',\
+            '  - Getting extents of SSO related tablespaces',\
+            '  - Getting users tablespace quota',\
+            '  - Getting proxy settings',\
+            '  - Getting java.net.socketpermission granted?',\
+            '  - Getting java system permissions granted?',\
+            '  - Getting java.util.propertypermission granted?',\
+            '  - Getting SSO hash object status',\
+            '  - Getting SSO schema',\
+            '  - Getting login server configuration table',\
+            '  - Getting SSO enabler information',\
+            '  - Getting custom login configuration table',\
+            '  - Getting cookie information',\
+            '  - Getting successful/failed login attempts',\
+            '  - Getting number of failed login attempts',\
+            '  - Getting session timeout information')
+var @TTL = ('',\
+            '---+ Infrastructure Database Version',\
+            '---+ Application Registry',\
+            '---+ SSO Version',\
+            '---+ OWA PL/SQL Toolkit Version',\
+            '---+ Duplicate OWA Packages',\
+            '---+ OS User Environment',\
+            '---+ Database Characterset Support',\
+            '---+ INIT.ORA Parameters',\
+            '---+ SGA Information',\
+            '---+ Total Java Objects',\
+            '---+ Total Java Objects Owned by User ',\
+            '---+ Total List of Database Objects by Object Type',\
+            '---+ Total Number of Invalid Objects',\
+            '---+ List of Invalid Objects',\
+            '---+ ORASSO User Tablespace Information',\
+            '---+ Free Space in SSO Related Tablespaces',\
+            '---+ Extents of SSO Related Tablespaces',\
+            '---+ Users Tablespace Quota',\
+            '---+ Proxy Settings',\
+            '---+ Is java.net.SocketPermission Permissions Granted?',\
+            '---+ Is Java System Permissions Granted?',\
+            '---+ Is java.util.PropertyPermission Permissions Granted?',\
+            '---+ SSO Hash Object Status',\
+            '---+ SSO Schema',\
+            '---+ Login Server Configuration Table',\
+            '---+ SSO Enabler Information',\
+            '---+ Custom Login Configuration Table',\
+            '---+ SSO Cookies',\
+            '---+ Total Number of Successful/Failed Login Attempts for ORASSO',\
+            '---+ Number of Failed Login Attempts for ORASSO Top 10 Users',\
+            '---+ Session Timeout Information')
+var @TXT = ('',\
+            "Check version / edition - Standard or Production. Check the \
+             [[https://support&#46;oracle&#46;com/epmos/faces/ui/certify/\
+             CertifyHome.jspx?id=h1e3fn9d][_blank][Certification Matrix]] \
+             for details.",\
+            '',\
+            "This does not reflect any one-off patches that are installed.",\
+            "Check the toolkit version. If less than 9.0.2.0.1 then check the \
+             [[http://www&#46;oracle&#46;com/technetwork/middleware/portal/\
+             overview/index.html][_blank][upgrade]] information.",\
+            "Make sure you do not have duplicate copies of OWA packages. You \
+             should see the output as below:%BR%\
+             ``SYS.......PACKAGE``%BR%\
+             ``SYS.......PACKAGE BODY``%BR%\
+             ``PUBLIC....SYNONYM``",\
+            "If this script is run from the middle-tier, you should see the \
+             Terminal Name and the Language it is set to. Compare these \
+             settings with the \
+             **Language, Database Characterset Support** and the \
+             **init.ora** settings below",\
+            '',\
+            '',\
+            '',\
+            '',\
+            '',\
+            '',\
+            "There should be no INVALID objects in the database pertaining to \
+             the owners within Portal and SYS owner. If there are any, \
+             recompile. Use the ``utlrp.sql`` script under the database home \
+             to recompile.",\
+            '',\
+            '',\
+            "Make sure you have enough free space in the tablespace that \
+             Portal uses. If it is low, increase the tablespace. Low space \
+             would affect the functioning of Portal.",\
+            "Check for the extents, extent Management and Segment Space \
+             Management for tablespace. If Segment Space Management is set to \
+             manual means the tablespace is not auto extentable.",\
+            "In a default settings, you should not get any output for this \
+             query. If the quota has been set for the user, then you will see \
+             some rows returned. Check the quota that is used and make sure \
+             that the user has not used all the quota allocated. Otherwise, \
+             you may encounter problems like WWC-41400.",\
+            "Check the Proxy and the client to see if they are correctly set. \
+             If they are not set correctly, you may have problems connecting \
+             to Portal.",\
+            '',\
+            '',\
+            '',\
+            "These objects are important as they are used when logging in to \
+             Portal. If these objects does not exists than you may get errors \
+             like WWC-41439. They must be manually loaded. If they exists, \
+             check if they are VALID. See Knowledge Article 134729.1 for \
+             details.",\
+            '',\
+            "``WWSSO_PAPP_CONFIGURATION_INFO$`` table stores information \
+             regarding Partner Applications.",\
+            "Check your ``httpd.conf`` file. Make sure that the servername, \
+             port used in the file is reflected exactly in the \
+             ``WWSEC_ENABLER_CONFIG_INFO$`` table. Make sure you are using the \
+             servername with the domain. Also, check for the slashes in the \
+             URL. If the settings are improper you may get error \
+             ``WWC-41439``. This table also stores settings for the Partner \
+             Application.",\
+            "``WWSSO_LS_CONFIGURATION_INFO$`` stores custom Login information. \
+             If you are not using Custom Login you will see ``UNUSED UNUSED \
+             UNUSED``. You may see WWC-41963 error for improper settings.",\
+            '',\
+            "Check if the ratio of Failed Logins/Successful Logins is \
+             unusually high. High values of this ratio could be signs that \
+             someone is trying to breach security.",\
+            "Check for suspicious login activity by noting high values in \
+             the ``Percentage of All Failed Login Attempts`` column.",\
+            '')
+
+var @HDR = ('',\
+            '|*Database Version*|',\
+            '|*Component Id*|*Version*|*Status*|',\
+            '|*Version* |',\
+            '|*Tookit Version*|',\
+            '|*Owner*|*Object Type*|',\
+            '|*Terminal*|*Language*|',\
+            '|*Parameter*|*Value*|',\
+            '|*Parameter*|*Value*|',\
+            '|*Pool*|*Name*| *Bytes*|',\
+            '| *Count*|',\
+            '|*Owner* | *Count*|',\
+            '|*Owner* |*Object Type* | *Count*|',\
+            '| *Count*|',\
+            '|*Owner*|*Object Name*|*Object Type*|*Status*|',\
+            '|*Username*|*Created*|*Default Tablespace*|*Temp Tablespace*|',\
+            '|*Default Tablespace*|*Free Tablespace (MiB)*|',\
+            '|*Tablespace Name*|*Initial Extent*|*Next Extent*|*Pct Increase*|\
+              *Allocation Type*|*Segment Space Management*|\
+              *Extent Management*|',\
+            '|*Username* |*Tablespace Name* | *Quota*| *Used*|',\
+            '|*Proxy* |*Client* |',\
+            '|*Kind* |*Grantee* |*Type Schema* |*Type Name* |*Name* |\
+              *Action* |*Enabled* | *Seq*|',\
+            '|*Grantee* |*Granted Role* |*Admin Option* |*Default Role* |',\
+            '|*Kind*|*Grantee*|*Type Schema*|*Type Name*|*Name*|\
+              *Action* |*Enabled*| *Seq*|',\
+            '|*Object Name* |*Owner* |*Status* |',\
+            '|*User Name* |*DB User* |*SSO User Type* |*Portal User* |\
+              *Password Activation* |*Last Passwd Change Time* |\
+              *Last Passwd Reset* |*Last Login* | *Failed Attempts*|',\
+            '|*Site Token*|*Site ID*|*Site Name*|*Success URL*|\
+              *Failure URL*|*Home URL*|*Logout URL*|*URL Cookie Param*|\
+              *URL Cookie Version*|*Encryption Key*|*Encryption Mask (Pre)*|\
+              *Encryption Mask (Post)*|*Start Date*|*End Date*|\
+              *Administrator ID*|*Administrator Info*|',\
+            '|*Lsnr Token*|*Site Token*|*Site ID*|*LS Login URL*|\
+              *URL Cookie Version*|*Encryption Key*|*Encryption Mask (Pre)*|\
+              *Encryption Mask (Post)*|*URL Cookie IP Check*|',\
+            '|*Login Url*|*Listener Host Name*|*Port*|',\
+            '|*Cookie Name*|',\
+            '| *Number of Attempts*|*Action Attempted* |*Message* |',\
+            '|*User Name*| *Number of Failed Login Attempts*| \
+              *Percentage of All Failed Login Attempts*|',\
+            '| *Cookie Life(hours)*|')
+set $sql
+{SELECT '|' ||
+"       banner || '| '
+" FROM v$version;
+"PROMPT ___Macro_separator(2)___
+"SELECT '|' ||
+"       comp_id || ' |' ||
+"       version || ' |' ||
+"       status || ' |'
+" FROM app_registry;
+"PROMPT ___Macro_separator(3)___
+"SELECT '|' ||
+"       version || ' |'
+" FROM orasso.wwc_version$;
+"PROMPT ___Macro_separator(4)___
+"SELECT '|' ||
+"       owa_util.get_version || ' |'
+" FROM sys.dual;
+"PROMPT ___Macro_separator(5)___
+"SELECT '|' ||
+"       owner || '|' ||
+"       object_type || '|'
+" FROM dba_objects
+" WHERE object_name = 'OWA';
+"PROMPT ___Macro_separator(6)___
+"SELECT '|' ||
+"       NVL(USERENV('terminal'),'UNKNOWN') || ' |' ||
+"       USERENV('language') || ' |'
+" FROM sys.dual;
+"PROMPT ___Macro_separator(7)___
+"SELECT '|' ||
+"       parameter || ' |' ||
+"       value || ' |'
+" FROM nls_database_parameters;
+"PROMPT ___Macro_separator(8)___
+"SELECT '|' ||
+"       name || '|' ||
+"       value || ' |'
+" FROM v$parameter
+" WHERE LOWER(name) IN ('java_pool_size','large_pool_size','shared_pool_size',
+"                       '_system_trig_enabled','db_name','db_domain',
+"                       'db_block_size','db_cache_size','instance_name',
+"                       'service_names','open_cursors','cursor_sharing',
+"                       'max_enabled_roles','mts_dispatchers','sessions',
+"                       'processes','compatible','o7_dictionary_accessibility',
+"                       'nls_language','event','optimizer_mode',
+"                       'job_queue_processes')
+" ORDER BY name;
+"PROMPT ___Macro_separator(9)___
+"SELECT '|' ||
+"       pool || ' |' ||
+"       name || ' | ' ||
+"       bytes || '|'
+" FROM v$sgastat
+" WHERE LOWER(name) IN ('db_block_buffers','fixed_sga','free memory',
+"                       'memory in use','processes','sessions');
+"PROMPT ___Macro_separator(10)___
+"SELECT '| ' ||
+"       COUNT(1) || '|'
+" FROM all_objects
+" WHERE object_type LIKE 'JAVA%';
+"PROMPT ___Macro_separator(11)___
+"SELECT '|' ||
+"       owner || ' | ' ||
+"       COUNT(1) || '|'
+" FROM dba_objects
+" WHERE object_type LIKE 'JAVA%'
+"GROUP BY owner;
+"PROMPT ___Macro_separator(12)___
+"SELECT '|' ||
+"       owner || ' |' ||
+"       object_type || ' | ' ||
+"       COUNT(object_type) || '|'
+" FROM dba_objects
+" GROUP BY owner,object_type
+" ORDER BY owner,object_type;
+"PROMPT ___Macro_separator(13)___
+"SELECT '| ' ||
+"       COUNT(1) || '|'
+" FROM all_objects
+" WHERE status ='INVALID';
+"PROMPT ___Macro_separator(14)___
+"SELECT '|' ||
+"       owner || '|' ||
+"       object_name || '|' ||
+"       object_type || '|' ||
+"       status || ' |'
+" FROM all_objects
+" WHERE status LIKE '%INVALID%';
+"PROMPT ___Macro_separator(15)___
+"SELECT '|' ||
+"       username || '|' ||
+"       TO_CHAR(created,'DD-Mon-YYYY HH24:MI:SS') || '|' ||
+"       default_tablespace || '|' ||
+"       temporary_tablespace || '|'
+" FROM dba_users
+" WHERE username IN ('ORASSO','ORASSO_DS','ORASSO_PA','ORASSO_PS',
+"                    'ORASSO_PUBLIC','LBACSYS')
+" ORDER BY username;
+"PROMPT ___Macro_separator(16)___
+"SELECT '|' ||
+"       tablespace_name || '| ' ||
+"       SUM(bytes) / 1048576 || '|'
+" FROM dba_free_space
+" WHERE tablespace_name IN (
+"        SELECT default_tablespace
+"         FROM dba_users
+"         WHERE username = 'ORASSO')
+" GROUP BY tablespace_name
+" ORDER BY tablespace_name;
+"PROMPT ___Macro_separator(17)___
+"SELECT '|' ||
+"       tablespace_name || '| ' ||
+"       initial_extent || '| ' ||
+"       next_extent || '| ' ||
+"       pct_increase || '|' ||
+"       allocation_type || ' |' ||
+"       segment_space_management || ' |' ||
+"       extent_management || ' |'
+" FROM dba_tablespaces
+" WHERE tablespace_name IN (
+"        SELECT default_tablespace
+"         FROM dba_users
+"         WHERE username = 'ORASSO')
+" ORDER BY tablespace_name;
+"PROMPT ___Macro_separator(18)___
+"SELECT '|' ||
+"       username || ' |' ||
+"       tablespace_name || ' | ' ||
+"       DECODE(GREATEST(max_bytes, -1),-1,'Unrestricted',
+"              TO_CHAR(max_bytes/1000,'999,999,990')) || '| ' ||
+"       bytes/1000 || '|'
+" FROM dba_ts_quotas;
+"PROMPT ___Macro_separator(19)___
+"SELECT '|' ||
+"       proxy || ' |' ||
+"       client || ' |'
+" FROM proxy_users;
+"PROMPT ___Macro_separator(20)___
+"SELECT '|' ||
+"       kind || ' |' ||
+"       grantee || ' |' ||
+"       type_schema || ' |' ||
+"       type_name || ' |' ||
+"       name || ' |' ||
+"       action || ' |' ||
+"       enabled || ' | ' ||
+"       seq || '|'
+" FROM dba_java_policy
+" WHERE type_name = 'java.net.SocketPermission'
+"   AND enabled = 'ENABLED';
+"PROMPT ___Macro_separator(21)___
+"SELECT '|' ||
+"       grantee || ' |' ||
+"       granted_role || ' |' ||
+"       admin_option || ' |' ||
+"       default_role || ' |'
+" FROM dba_role_privs
+" WHERE granted_role = 'JAVASYSPRIV';
+"PROMPT ___Macro_separator(22)___
+"SELECT '|' ||
+"       kind || ' |' ||
+"       grantee || ' |' ||
+"       type_schema || ' |' ||
+"       type_name || ' |' ||
+"       name || ' |' ||
+"       action || ' |' ||
+"       enabled || ' | ' ||
+"       seq || '|'
+" FROM dba_java_policy
+" WHERE grantee = 'SYS'
+"   AND type_name = 'java.util.PropertyPermission'
+"   AND enabled = 'ENABLED';
+"PROMPT ___Macro_separator(23)___
+"SELECT '|' ||
+"       object_name || ' |' ||
+"       owner || ' |' ||
+"       status || ' |'
+" FROM all_objects
+" WHERE object_name IN ('oracle/security/sso/SSOHash','SSOExtDB',
+"                       'WWSSO_AUTH_EXTERNAL')
+" ORDER BY object_name;
+"PROMPT ___Macro_separator(24)___
+"SELECT '|' ||
+"       user_name || ' |' ||
+"       db_user || ' |' ||
+"       sso_user_type || ' |' ||
+"       portal_user || ' |' ||
+"       TO_CHAR(password_activation,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       TO_CHAR(last_passwd_change_time,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       TO_CHAR(last_passwd_reset,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       TO_CHAR(last_login,'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       failed_attempts || '|'
+" FROM orasso.wwsec_person$;
+"PROMPT ___Macro_separator(25)___
+"SELECT '|' ||
+"       site_token || ' |' ||
+"       site_id || ' |' ||
+"       site_name || ' |' ||
+"       success_url || ' |' ||
+"       failure_url || ' |' ||
+"       home_url || ' |' ||
+"       logout_url || ' |' ||
+"       urlcookie_param || ' |' ||
+"       urlcookie_version || ' |' ||
+"       encryption_key || ' |' ||
+"       encryption_mask_pre || ' |' ||
+"       encryption_mask_post || ' |' ||
+"       TO_CHAR(start_date,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       TO_CHAR(end_date,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       administrator_id || ' |' ||
+"       administrator_info || ' |'
+" FROM orasso.wwsso_papp_configuration_info$;
+"PROMPT ___Macro_separator(26)___
+"SELECT '| ' ||
+"       lsnr_token  || '| ' ||
+"       site_token || '| ' ||
+"       site_id || '|' ||
+"       ls_login_url || '|' ||
+"       urlcookie_version || ' |' ||
+"       encryption_key || ' |' ||
+"       encryption_mask_pre || ' |' ||
+"       encryption_mask_post || ' |' ||
+"       url_cookie_ip_check || '|'
+" FROM orasso.wwsec_enabler_config_info$;
+"PROMPT ___Macro_separator(27)___
+"SELECT '|' ||
+"       login_url || ' |' ||
+"       listener_host_name || ' | ' ||
+"       port || '|'
+" FROM orasso.wwsso_ls_configuration_info$;
+"PROMPT ___Macro_separator(28)___
+"SELECT '|' ||
+"       cookie_name || ' |'
+" FROM orasso.wwctx_cookie_info$;
+"PROMPT ___Macro_separator(29)___
+"SELECT '| ' ||
+"       COUNT(1) || '|' ||
+"       action || ' |' ||
+"       message || ' |'
+" FROM orasso.wwsso_audit_log_view
+" GROUP BY action,message;
+"PROMPT ___Macro_separator(30)___
+"SELECT '|' ||
+"       user_name || ' | ' ||
+"       try || '| ' ||
+"       DECODE(cnt,0,'NA',SUBSTR(TO_CHAR((try/cnt)*100),1,6)) || '%|'
+" FROM (SELECT user_name,
+"              COUNT(1) as try
+"        FROM orasso.wwsso_audit_log_view
+"        WHERE LOWER(message) = 'login failed'
+"        GROUP BY user_name
+"        ORDER BY 2 DESC),
+"      (SELECT COUNT(1) as cnt
+"        FROM orasso.wwsso_audit_log_view
+"        WHERE LOWER(message) = 'login failed')
+" WHERE rownum <= 10;
+"PROMPT ___Macro_separator(31)___
+"SELECT '| ' ||
+"       sso_cookie_life_hrs || '|'
+" FROM orasso.wwsso_ls_configuration_info_t;
+}
+call separator(1)
+call writeSql($sql)
+call separator(0,'SSO Repository Information')
+
+if $sid
+{write '---+ Analysis Parameters'
+ write '|*Database SID*|',$sid,' |'
+ if $dba
+  write '|*Login*|',$usr,' as sysdba|'
+ else
+  write '|*Login*|',$usr,' |'
+ write $TOP
+}
+
+=head2 sso_bin - $OH/sso/bin
+
+Lists the files in the F<$OH/sso/bin> subdirectory.
+
+=cut
+
+# Local collections
+if ?$SSO_HOME
+{debug ' Inside SSO module, listing the files in sso/bin directory'
+ report sso_bin
+ var $dir = catDir($SSO_HOME,'sso','bin')
+ prefix
+  write '---+ List of Files in ',encode($dir)
+ call statDir('an',$dir)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][',encode(replace($dir,$OH2,'$OH')),']]'
+
+=head2 Configuration and Log Files
+
+Finds configuration and all *.err/*.log files.
+
+=cut
+
+ debug ' Inside SSO module, listing configuration and log directories'
+ pretoc '2:Config and Log files'
+ call sort_files(3,$TAIL,grepDir(catDir($SSO_HOME,'sso','conf'),\
+                                 '\.(conf|ini|properties|xml)$','ir'),\
+                         grepDir(catDir($SSO_HOME,'sso'),'\.(log|err)','ir'))
+ unpretoc
+
+=head2 OSSO Configuration Files
+
+Decrypts and collects the OSSO configuration content.
+
+=cut
+
+ if length($APACHE_TOP)
+ {debug ' Inside SSO module, getting the osso.conf file'
+  pretoc '2:OSSO Configuration Files'
+  var %dup = (catFile($APACHE_TOP,'conf','osso','osso.conf'),true)
+  loop $fil (catFile($APACHE_TOP,'conf','mod_osso.conf'),\
+             catFile($APACHE_TOP,'conf','httpd.conf'),\
+             catFile($APACHE_TOP,'conf','ssl.conf'))
+  {var ($lin) = trim(grepFile($fil,'OssoConfigFile','fi'))
+   var (undef,$fil) = split('\s+',$lin,2)
+   if $fil
+    var $dup{$fil} = true
+  }
+  loop $fil (keys(%dup))
+  {report concat('osso_',$fil)
+   if !testFile('e',$fil)
+    write 'The file ',encode($fil),' does not exist.'
+   elsif !testFile('fr',$fil)
+    write 'The file ',encode($fil),' is not a plain file or is not readable.'
+   else
+   {write '---## Information Taken from ',encode($fil)
+    var $tmp = getTemp('osso_conf','.txt')
+    var $cmd = join(' ',catCommand($APACHE_TOP,'bin','ssomigrate'),\
+                    quote($fil,'x'),\
+                    quote($fil,'x'),\
+                    'clrtxt',\
+                    quote($tmp,'x'))
+    call command($cmd)
+    if !writeFile($tmp,['C','ssomigrate clrtxt'])
+     write 'Decrypting osso.conf file failed.'
+    call unlinkTemp('osso_conf')
+   }
+   toc '3:[[',getFile(),'][rda_report][',encode(replace($fil,$OH2,'$OH')),']]'
+  }
+  unpretoc
+ }
+}
+
+=head2 ldap_bind - LDAP Bind Information
+
+Gets LDAP server information from the database and then runs C<ldapbind> to
+check the connection.
+
+=cut
+
+debug ' Inside SSO module, getting the LDAP bind information'
+
+# Get the LDAP configuration parameters
+report ldap_bind
+title '---+!! LDAP Configuration Parameters and Bind Status'
+title $TOC
+set $sql
+{SET serveroutput on
+"EXECUTE orasso.wwsso_oid_integration.show_ldap_config;
+}
+if loadSql($sql)
+{prefix
+ {write '---+ LDAP Database Configuration Parameters'
+  write '<verbatim>'
+  loop $lin (grepLastSql('SSO SERVER PASSWORD:','v'))
+   write $lin
+  write '</verbatim>'
+ }
+}
+
+# Extract the lines of interest into the individual variables
+var $hst = field('OID HOST:\s*',1,grepLastSql('OID HOST:','f'))
+var $prt = field('OID PORT:\s*',1,grepLastSql('OID PORT:','f'))
+var $ssd = field('SSO SERVER DN:\s*',1,grepLastSql('SSO SERVER DN:','f'))
+var $pwd = field('SSO SERVER PASSWORD:\s*',1,\
+                 grepLastSql('SSO SERVER PASSWORD:','f'))
+var $ssl = field('OID USE SSL:\s*',1,grepLastSql('OID USE SSL:','f'))
+
+# Execute the command if all parameters exist
+if and($hst,$prt,$ssd,$pwd,$ssl)
+{var ($flg,$fil,$pgm) = (false,${AS.EXE:'ldapbind'})
+ loop $hom (@HOME)
+ {next !testFile($MOD,catFile($hom,'bin',$fil))
+  if grepCommand(concat($cmd = lastCommand(),' -H 2>&1'),'\s-q\s','f')
+  {var ($flg,$pgm) = (true,$cmd)
+   break
+  }
+  elsif !?$pgm
+   var $pgm = $cmd
+ }
+ if $flg
+ {var $out = getTemp('ldapbind','.txt')
+  var $cmd = join(' ',$pgm,'-h',$hst,'-p',$prt,'-D',$ssd,'-q',\
+                  check($ssl,'Y','-U 1 Y',$ssl))
+  suspend report
+  output | concat($cmd,' 1>',quote($out,'x'))
+  write $pwd
+  close
+  resume report
+  write '---+ LDAP Server Information and Bind Status'
+  write '---## Using: ',join(' ',encode($pgm),'-h',$hst,'-p',$prt,'-D',$ssd,\
+                             '-q',check($ssl,'Y','-U 1 Y',$ssl))
+  call writeFile($out,['C','ldapbind'])
+  call unlinkTemp('ldapbind')
+ }
+ elsif $pgm
+ {write '---+ LDAP Server Information and Bind Status'
+  write '---## Using: ',join(' ',encode($pgm),'-h',$hst,'-p',$prt,'-D',$ssd,\
+                             '-w','%R:PASSWORD%',check($ssl,'Y','-U 1 Y',$ssl))
+  call writeCommand(join(' ',$pgm,'-h',$hst,'-p',$prt,'-D',$ssd,'-w',$pwd,\
+                         check($ssl,'Y','-U 1 Y',$ssl)))
+ }
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][LDAP Bind Information]]'
+
+=head2 oidconf - OID Configuation
+
+Performs LDAP queries to get OID configuration information.
+
+=cut
+
+debug ' Inside SSO module, getting the OID configuration information'
+var ($flg,$fil,$pgm) = (false,${AS.EXE:'ldapsearch'})
+loop $hom (@HOME)
+{next !testFile($MOD,catCommand($hom,'bin',$fil))
+ if grepCommand(concat($cmd = lastCommand(),' -H 2>&1'),'\s-q\s','f')
+ {var ($flg,$pgm) = (true,$cmd)
+  break
+ }
+ elsif !?$pgm
+  var $pgm = $cmd
+}
+if and($pgm,$hst,$prt)
+{var $pwd = askPassword('Enter the password for the OID cn=orcladmin user:')
+
+ # Macro to get the output of ldapsearch command
+ macro exec_ldapsearch
+ {var ($cmd,$ttl,$flg,$pwd) = @arg
+  if $flg
+  {suspend report
+   var $out = getTemp('ldapsearch','.txt')
+   var $cmd = concat($cmd,' >',quote($out,'x'),' 2>&1')
+   output | $cmd
+   write $pwd
+   close
+   resume report
+   write '---+ ',$ttl
+   call writeFile($out,['C','ldapsearch'])
+   call unlinkTemp('ldapsearch')
+  }
+  else
+  {write '---+ ',$ttl
+   call writeCommand(concat($cmd,' 2>&1'))
+  }
+ }
+  
+ report oidconf
+ prefix
+ {write '---+!! OID Configuration Information using LDAP Queries'
+  write $TOC
+ }
+ var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D cn=orcladmin ',\
+                   cond($flg,'-q',concat('-w ',$pwd)),' ',\
+                   check($ssl,'Y','-U 1',$ssl),' ',\
+                   ' -b "" -s base objectclass=* orcldirectoryversion')
+ call exec_ldapsearch($cmd,'OID Directory Version',$flg,$pwd)
+  
+ var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D cn=orcladmin ',\
+                   cond($flg,'-q',concat('-w ',$pwd)),' ',\
+                   check($ssl,'Y','-U 1',$ssl),' ',\
+                   ' -b "cn=Common,cn=Products,cn=OracleContext" -s base ',\
+                   'objectclass=* orcldefaultsubscriber')
+ if $flg
+ {suspend report
+  var $out = getTemp('ldapsearch','.txt')
+  var $cmd = concat($cmd,' >',quote($out,'x'),' 2>&1')
+  output | $cmd
+  write $pwd
+  close
+  call loadFile($out)
+  loop $lin (getLines(-1))
+   var (undef,$rlm) = split('=',$lin,2)
+  call unlinkTemp('ldapsearch')
+  resume report
+ }
+ else
+ {call loadCommand(concat($cmd,' 2>&1'))
+  loop $lin (getLines(-1))
+   var (undef,$rlm) = split('=',$lin,2)
+ }
+ var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D cn=orcladmin ',\
+                   cond($flg,'-q',concat('-w ',$pwd)),' ',\
+                   check($ssl,'Y','-U 1',$ssl),' ',\
+                   ' -b "cn=Common,cn=Products,cn=OracleContext,',$rlm,\
+                   '" -s base objectclass=*')
+ call exec_ldapsearch($cmd,'OID Attribute Configuration',$flg,$pwd)
+
+ var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D cn=orcladmin ',\
+                   cond($flg,'-q',concat('-w ',$pwd)),' ',\
+                   check($ssl,'Y','-U 1',$ssl),' ',\
+                   ' -b "cn=plugin,cn=subconfigsubentry" -s sub objectclass=*')
+ call exec_ldapsearch($cmd,'OID Plugin Configuration',$flg,$pwd)
+
+ var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D cn=orcladmin ',\
+                   cond($flg,'-q',concat('-w ',$pwd)),' ',\
+                   check($ssl,'Y','-U 1',$ssl),' ',\
+                   ' -b "cn=OperationURLs,cn=DAS,cn=Products,',\
+                   'cn=OracleContext" -s base objectclass=* orcldasurlbase')
+ call exec_ldapsearch($cmd,'OID DAS URL Base Setting',$flg,$pwd)
+
+ if ?$SSO_HOME
+ {if grepFile(catFile($SSO_HOME,'config','ias.properties'),\
+                      '^InfrastructureDBCommonName=','f')
+  {var $tns = value(last)
+   var ($tns,undef) = split('\.',$tns,2)
+   if $tns
+   {var $cmd = concat($pgm,' -h ',$hst,' -p ',$prt,' -D cn=orcladmin ',\
+                      cond($flg,'-q',concat('-w ',$pwd)),' ',\
+                      check($ssl,'Y','-U 1',$ssl),' ',' -b "cn=',$tns,\
+                      ',cn=OracleContext" -s base objectclass=* \
+                       orclnetdescstring')
+    call exec_ldapsearch($cmd,'OID Metadata Repository Connect String',$flg,\
+                         $pwd)
+   }
+  }
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][OID Configuration]]'
+}
+
+=head2 dadstat - DAD Status
+
+Gets the DAD status.
+
+=cut
+
+if ?$SSO_HOME
+{debug ' Inside SSO module, getting the DAD status'
+ macro get_info
+ {var ($obj,$nam,$val) = @arg
+  if xmlFind($obj,$nam)
+   var $val = xmlValue(last,'VALUE')
+  return $val
+ }
+ var ($hst,$prt) = undef
+ var $xml = xmlLoadFile(catFile($SSO_HOME,'sysman','emd','targets.xml'))
+ var ($oss) = xmlFind($xml,'.../Target TYPE="oracle_sso_server"')
+ var $pro = get_info($oss,'Property NAME="HTTPProtocol"')
+ var $hst = get_info($oss,'Property NAME="HTTPMachine"')
+ var $prt = get_info($oss,'Property NAME="HTTPPort"')
+ if and($hst,$prt,$pro)
+ {var $url=concat($pro,'://',$hst,':',$prt,'/pls/orasso/htp.p?cbuf=test')
+  var $req = createRequest('GET',$url)
+  var $rsp = submitRequest($req)
+  report dadstat
+  prefix
+  {write '---+ Dad Status'
+   write '---## Using :Ping ',$url
+  }
+  var $msg = getRspMessage($rsp)
+  write $msg
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][DAD Status]]'
+ }
+}
+
+=head2 ssogito - Timeout Information
+
+Gets the timeout information.
+
+=cut
+
+debug ' Inside SSO module, getting the timeout information'
+report ssogito
+prefix
+ write '---+!! SSO Server Timeout Information '
+set $sql
+{SET serveroutput on
+"DECLARE
+" l_cookie_name    VARCHAR2(1000);
+" l_cookie_domain  VARCHAR2(1000);
+" l_encryption_key VARCHAR2(1000);
+" l_duration       NUMBER;
+" l_enabled        NUMBER;
+"BEGIN
+" orasso.wwsso_ls_private.get_timeout_params(
+"  p_cookie_name => l_cookie_name,
+"  p_domain      => l_cookie_domain,
+"  p_duration    => l_duration,
+"  p_enable      => l_enabled,
+"  p_enc_key     => l_encryption_key);
+" IF l_enabled > 0
+" THEN
+"  dbms_output.put_line('|*Timeout*|ENABLED|');
+" ELSE
+"  dbms_output.put_line('|*Timeout*|DISABLED|');
+" END IF;
+" dbms_output.put_line('|*Cookie Name*      |' || l_cookie_name || ' |');
+" dbms_output.put_line('|*Cookie Domain*    |' || l_cookie_domain || ' |');
+" dbms_output.put_line('|*Inactivity Period*|' || l_duration || ' minutes|');
+" dbms_output.put_line('|*Encryption Key*   |' || l_encryption_key || ' |');
+" IF l_cookie_domain IS NULL
+" THEN
+"  dbms_output.put_line('---## Note');
+"  dbms_output.put_line(
+"   'Timeout cookie domain will be defaulted to the SSO server hostname.');
+" END IF;
+"END;
+"/
+}
+call writeSql($sql)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Timeout Information]]'
+
+=head2 krb5_conf - Kerberos Configuration
+
+Collects the Kerberos configuration.
+
+=cut
+
+if ?$SSO_HOME
+{debug ' Inside SSO module, getting the Kerberos configuration'
+ report krb5_conf
+ var $TTL = '---+!! Kerberos Configuration File Contents'
+
+ if or(isWindows(),isCygwin())
+ {if getEnv('SYSTEMROOT')
+   var $dir = last
+  else
+   var ($dir) = command('echo %SystemRoot%')
+  var @fil = (catFile($dir,'krb5.conf'),catFile($dir,'krb5.ini'))
+ }
+ elsif !isVms()
+  var @fil = ('/etc/krb5.conf','/etc/krb5/krb5.conf')
+ elsif ?$SSO_HOME
+  var @fil = (catFile($SSO_HOME,'network','admin','krb5.conf'))
+
+ loop $fil (@fil)
+ {prefix
+  {if $TTL
+   {write $TTL
+    var $TTL = undef
+   }
+   write '---## Information Taken from ',encode($fil)
+  }
+  call writeFile($fil)
+  if hasOutput(true)
+   write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Kerberos Configuration]]'
+
+=head2 krb5_test - Test Kerberos Commands
+
+For UNIX, collects Kerberos commands outputs. It uses an own cache file for
+performing those tests.
+
+=cut
+
+ if and(or(isUnix(),isCygwin()),$del = findCommand('kdestroy',true))
+ {report krb5_test
+  title '---+!! SSO/WNA Kerberos Commands Output Collection'
+  title $TOC
+  if grepFile(catFile($SSO_HOME,'sso','conf','policy.properties'),\
+              '^[^#]*SSOKerbeAuth','f')
+  {var ($dir,$ktb,$rlm,$spn) = (dirname($del))
+
+   # Define a macro to extract values in the jazn-data.xml file
+   macro get_jazn_info
+   {var ($xml,$nam) = @arg
+
+    if xmlFind($xml,$nam)
+     return $val = xmlData(xmlFind(first(last),'value'))
+    return undef
+   }
+
+   # Get the login information
+   var $xml = xmlLoadFile(\
+     catFile($SSO_HOME,'j2ee','OC4J_SECURITY','config','jazn-data.xml'),\
+     xmlDisable(xmlParser(),'BCDEPR'))
+   var ($itm) = xmlFind($xml,\
+     'jazn-data/jazn-loginconfig/application/login-modules/login-module|\
+      class *="^com.sun.security.auth.module.Krb5LoginModule$"')
+   var $spn = get_jazn_info($itm,'options/option|name *="^principal$"')
+   var $ktb = get_jazn_info($itm,'options/option|name *="^keyTab$"')
+   var $rlm = value(grepFile('/etc/krb5.conf','^[^#]*default_realm'))
+
+   # Generate the report
+   if and(defined($rlm),defined($ktb),defined($spn))
+   {# Create a temporary file to be used as credentials cache file
+    var $tmp = getTemp('KRB')
+
+    # Obtain principals password
+    var $log = concat($spn,'@',$rlm)
+    var $pwd = askPassword(concat('Enter ',$log,' password:'))
+ 
+    # Capture output of kinit command
+    debug ' Inside SSO module, testing kinit'
+    var $ini = catCommand($dir,'kinit')
+    var $out = getTemp('OUT')
+    suspend report
+    output | concat($ini,' -c ',quote($tmp,'x'),' ',quote($log,'x'),\
+                    ' > ',quote($out),' 2>&1')
+    write $pwd
+    close
+    resume report
+    prefix
+    {write '---+ Command output collection'
+     write '---## Using: ',encode($ini),' ',encode($log)
+    }
+    call writeFile($out,['C',$ini])
+    call unlinkTemp('OUT')
+    if hasOutput(true)
+     write $TOP
+
+    # Capture output of kdestroy command
+    $del = catCommand($del)
+    debug ' Inside SSO module, testing kdestroy'
+    prefix
+    {write '---+ Command output collection'
+     write '---## Using: ',$del
+    }
+    call writeCommand(concat($del,' -c ',quote($tmp,'x'),' 2>&1'))
+    if hasOutput(true)
+     write $TOP
+
+    # Capture output of kinit -k -t keytab command
+    debug ' Inside SSO module, testing kinit with a keytab file'
+    prefix
+    {write '---+ Command output collection'
+     write '---## Using: ',encode($ini),' -k -t ',encode($ktb),' ',encode($log)
+    }
+    call writeCommand(concat($ini,' -c ',quote($tmp,'x'),' -k -t ',\
+      quote($ktb,'x'),' ',quote($log,'x'),' 2>&1'))
+    if hasOutput(true)
+     write $TOP
+
+    # Unlink the private credential cache
+    call unlinkTemp('KRB')
+   }
+   else
+   {if !?$rlm
+     write '   * Active Directory realm not found in ``krb5.conf`` file'
+    if !?$ktb
+     write '   * Key tab file not found in ``jazn-data.xml`` file'
+    if !?$spn
+     write '   * Service Principal Name not found in ``jazn-data.xml``'
+    write '   * Skipping Kerberos Commands Output Collection'
+   }
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Test Kerberos Commands]]'
+ }
+}
+
+# Restore the previous context
+if !$SSO_LOCAL
+{if defined($env)
+  call setSqlSid($env)
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+}
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>, L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.4:  Mike Campbell.
+
+=item RDA 4.5:  Ersan Eser.
+
+=item RDA 4.6:  Ko Kitagawa.
+
+=item RDA 4.10: Stanislav Hejny.
+
+=item RDA 4.16: Hector Viveros.
+
+=item RDA 4.20: Meraj Mohammed.
+
+=item RDA 4.23: Sheena Holland.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,967 @@
+<?xml version="1.0"?>
+
+<!--  $Header: emas/sysman/admin/adml/domain-weblogic_owsm_policy-11.0.xml /st_emasgc_11.1as/2 2010/09/14 09:59:10 jazhou Exp $ -->
+
+<!-- 
+ Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     domain-weblogic_owsm_policy-11.0.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   jazhou      08/11/10 - add osb support
+   jazhou      06/04/10 - Creation
+
+-->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" TableSpace="weblogic_domain"> 
+
+    <Table Name="owsm_policy_stats">
+        <ColumnDef Name="rscType" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="ServerName" Type="String" Key="true"/>
+        <ColumnDef Name="appCompName" Type="String" Key="true"/>
+        <ColumnDef Name="authentication_violations" Type="Integer"/>
+        <ColumnDef Name="authentication_successes" Type="Integer"/>
+        <ColumnDef Name="authorization_violations" Type="Integer"/>
+        <ColumnDef Name="authorization_successes" Type="Integer"/>
+        <ColumnDef Name="confidentiality_violations" Type="Integer"/>
+        <ColumnDef Name="confidentiality_successes" Type="Integer"/>
+        <ColumnDef Name="integrity_violations" Type="Integer"/>
+        <ColumnDef Name="integrity_successes" Type="Integer"/>
+        <ColumnDef Name="total_policy_violations" Type="Integer"/>
+
+        <ColumnDef Name="soainfra_Adapters" Type="String"/>
+        <ColumnDef Name="soainfra_Binding" Type="String"/>
+        <ColumnDef Name="soainfra_Ports" Type="String"/>
+        <ColumnDef Name="soainfra_composite_assembly_member" Type="String"/>
+        <ColumnDef Name="soainfra_composite_label" Type="String"/>
+        <ColumnDef Name="soainfra_composite_revision" Type="String"/>
+        <ColumnDef Name="soainfra_domain" Type="String"/>
+
+        <ColumnDef Name="wls_composite_module" Type="String"/>
+        <ColumnDef Name="wls_context" Type="String"/>
+        <ColumnDef Name="wls_webservice" Type="String"/>
+        <ColumnDef Name="wls_webservice_port" Type="String"/>
+
+        <ColumnDef Name="osb_context" Type="String"/>
+        <ColumnDef Name="osb_service_name" Type="String"/>
+        <ColumnDef Name="osb_port_name" Type="String"/>
+
+
+        <Select Name="owsm_policy_stats_result_0">
+            <TableFrom Name="interceptor_policy_version"/>
+
+            <Column Name="policyCategory" Type="String">
+                <ColumnFrom Name="interceptor"/>
+            </Column>
+            <Column Name="policyName" Type="String">
+                <ColumnFrom Name="interceptor_policy"/>
+            </Column>
+            <Column Name="ServerName" Type="String">
+                <ColumnFrom Name="ServerName" Table="interceptor_policy_version"/>
+            </Column>
+            <Column Name="appCompName" Type="String">
+               <If>
+                  <Condition Operator="NE">
+                     <ColumnFrom Name="osb_context"
+                                 Table="interceptor_policy_version"/>
+                     <Null/>
+                  </Condition>
+                  <Then>
+                     <ColumnFrom Name="osb_service_path"
+                                 Table="interceptor_policy_version"/>
+                  </Then>
+                  <ElseIf>
+                     <Condition Operator="NE">
+                        <ColumnFrom Name="wls_webservices"
+                                    Table="interceptor_policy_version"/>
+                        <Null/>
+                     </Condition>
+                     <Then>
+                        <ColumnFrom Name="wls_ear"
+                                    Table="interceptor_policy_version"/>
+                     </Then>
+                  </ElseIf>
+                  <Else>
+                     <Expression Operator="Concat">
+                        <Expression Operator="Concat">
+                            <ColumnFrom Name="soainfra_domain" Table="interceptor_policy_version"/>
+                            <Expression Operator="Concat">
+                                <Value>/</Value>
+                                <ColumnFrom Name="soainfra_composite" Table="interceptor_policy_version"/>
+                            </Expression>
+                        </Expression>
+                        <Expression Operator="Concat">
+                            <Value> [</Value>
+                            <Expression Operator="Concat">
+                                <ColumnFrom Name="soainfra_composite_revision" Table="interceptor_policy_version"/>
+                                <Value>]</Value>
+                            </Expression>
+                        </Expression>
+                     </Expression>
+                  </Else>
+                </If>
+            </Column>
+            <Column Name="rscType" Type="String">
+               <If>
+                  <Condition Operator="NE">
+                     <ColumnFrom Name="osb_context"
+                                 Table="interceptor_policy_version"/>
+                     <Null/>
+                  </Condition>
+                  <Then>
+                     <ColumnFrom Name="osb_service_type"
+                                 Table="interceptor_policy_version"/>
+                  </Then>
+                  <ElseIf>
+                     <Condition Operator="NE">
+                         <ColumnFrom Name="wls_webservices"
+                                     Table="interceptor_policy_version"/>
+                         <Null/>
+                     </Condition>
+                  <Then>
+                         <ColumnFrom Name="wls_webservices"
+                                 Table="interceptor_policy_version"/>
+                  </Then>
+                  </ElseIf>
+                  <Else>
+                     <ColumnFrom Name="soainfra_composite_assembly_member_type"
+                                 Table="interceptor_policy_version"/>
+                  </Else>
+               </If>
+            </Column>
+            <Column Name="authentication_violations" Type="Integer">
+                <ColumnFrom Name="AuthenticationFailures.count"/>
+                <Default>0</Default>    
+            </Column>
+            <Column Name="authorization_violations" Type="Integer">
+                <ColumnFrom Name="AuthorizationFailures.count"/>
+                <Default>0</Default>            
+            </Column>
+            <Column Name="confidentiality_violations" Type="Integer">
+                <ColumnFrom Name="ConfidentialityFailures.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="integrity_violations" Type="Integer">
+                <ColumnFrom Name="IntegrityFailures.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="authentication_successes" Type="Integer">
+                <ColumnFrom Name="AuthenticationSuccesses.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="authorization_successes" Type="Integer">
+                <ColumnFrom Name="AuthorizationSuccesses.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="confidentiality_successes" Type="Integer">
+                <ColumnFrom Name="ConfidentialitySuccesses.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="integrity_successes" Type="Integer">
+                <ColumnFrom Name="IntegritySuccesses.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_violations" Type="Integer">
+                <ColumnFrom Name="TotalViolations.count"/> 
+                <Default>0</Default>   
+            </Column>
+            <!-- Expect this to be added by OWSM and other teams.
+            <Column Name="total_policy_successes" Type="Integer">
+                <ColumnFrom Name="TotalSuccesses.count"/> 
+                <Default>0</Default>   
+            </Column>
+            -->
+
+           <Column Name="soainfra_Adapters" Type="String">
+                <ColumnFrom Name="soainfra_Adapters"/>
+            </Column>
+            <Column Name="soainfra_Binding" Type="String">
+                <ColumnFrom Name="soainfra_Binding"/>
+            </Column>
+            <Column Name="soainfra_Ports" Type="String">
+                <ColumnFrom Name="soainfra_Ports"/>
+            </Column>
+            <Column Name="soainfra_composite_assembly_member" Type="String">
+                <ColumnFrom Name="soainfra_composite_assembly_member"/>
+            </Column>
+            <Column Name="soainfra_composite_label" Type="String">
+                <ColumnFrom Name="soainfra_composite_label"/>
+            </Column>
+            <Column Name="soainfra_composite_revision" Type="String">
+                <ColumnFrom Name="soainfra_composite_revision"/>
+            </Column>
+            <Column Name="soainfra_domain" Type="String">
+                <ColumnFrom Name="soainfra_domain"/>
+            </Column>
+
+            <Column Name="wls_composite_module" Type="String">
+                <ColumnFrom Name="wls_composite_module"/>
+            </Column>
+            <Column Name="wls_context" Type="String">
+                <ColumnFrom Name="wls_context"/>
+            </Column>
+            <Column Name="wls_webservice" Type="String">
+                <ColumnFrom Name="wls_webservice"/>
+            </Column>
+            <Column Name="wls_webservice_port" Type="String">
+                <ColumnFrom Name="wls_webservice_port"/>
+            </Column>
+            <Column Name="osb_context" Type="String">
+                <ColumnFrom Name="osb_context"/>
+            </Column>
+            <Column Name="osb_service_name" Type="String">
+                <ColumnFrom Name="osb_service_name"/>
+            </Column>
+            <Column Name="osb_port_name" Type="String">
+                <ColumnFrom Name="osb_port_name"/>
+            </Column>
+ 
+        </Select>
+    </Table>
+
+    <Table Name="owsm_policy_stats_domain_rollup">
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+
+        <ColumnDef Name="authentication_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_violations.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_violations.rollup" Type="Integer" /> 
+        <ColumnDef Name="integrity_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authentication_successes.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_successes.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_successes.rollup" Type="Integer" />
+        <ColumnDef Name="integrity_successes.rollup" Type="Integer" />
+        <ColumnDef Name="security_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="security_policy_successes.rollup" Type="Integer"/>        
+        <ColumnDef Name="total_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="total_policy_successes.rollup" Type="Integer"/>
+
+        <Select Name="owsm_policy_stats_domain_rollup_result_0">
+            <TableFrom Name="weblogic_domain:owsm_policy_stats"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_violations"/>
+            </Column>
+            <Column Name="authorization_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_violations"/>
+            </Column> 
+            <Column Name="confidentiality_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_violations"/>
+            </Column> 
+            <Column Name="integrity_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_violations"/>
+            </Column> 
+            <Column Name="authentication_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_successes"/>
+            </Column> 
+            <Column Name="authorization_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_successes"/>
+            </Column> 
+            <Column Name="confidentiality_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_successes"/>
+            </Column> 
+            <Column Name="integrity_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_successes"/>
+            </Column> 
+            <Column Name="total_policy_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_violations"/>
+            </Column> 
+            <!--
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_successes"/>
+            </Column> 
+            -->
+
+            <GroupBy Name="policyName"/>
+            <GroupBy Name="policyCategory"/>
+        </Select>
+
+        <Select Name="owsm_policy_stats_domain_rollup_result_1">
+            <TableFrom Name="owsm_policy_stats_domain_rollup_result_0"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer" />
+            <Column Name="authorization_violations.rollup" Type="Integer" />
+            <Column Name="confidentiality_violations.rollup" Type="Integer" /> 
+            <Column Name="integrity_violations.rollup" Type="Integer" />
+            <Column Name="authentication_successes.rollup" Type="Integer" />
+            <Column Name="authorization_successes.rollup" Type="Integer" />
+            <Column Name="confidentiality_successes.rollup" Type="Integer" />
+            <Column Name="integrity_successes.rollup" Type="Integer" />
+            <Column Name="security_policy_violations.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_violations.rollup" />
+                          <ColumnFrom Name="authorization_violations.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_violations.rollup" />
+                          <ColumnFrom Name="integrity_violations.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="security_policy_successes.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_successes.rollup" />
+                          <ColumnFrom Name="authorization_successes.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_successes.rollup" />
+                          <ColumnFrom Name="integrity_successes.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_violations.rollup" Type="Integer"/>
+            <!-- for now: make it the same as security_policy_successes.rollup 
+            <Column Name="total_policy_successes.rollup" Type="Integer"/>
+            -->
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <ColumnFrom Name="security_policy_successes.rollup" />
+            </Column>
+
+            <Where>
+               <Condition Operator="NE" Type="String">
+                  <ColumnFrom Name="policyName"/>
+                  <Null/>
+               </Condition>
+            </Where>        
+        </Select>
+    </Table>
+
+    <Table Name="owsm_policy_stats_server_rollup">
+        <ColumnDef Name="ServerName" Type="String" Key="true" />
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+
+        <ColumnDef Name="authentication_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_violations.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_violations.rollup" Type="Integer" /> 
+        <ColumnDef Name="integrity_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authentication_successes.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_successes.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_successes.rollup" Type="Integer" />
+        <ColumnDef Name="integrity_successes.rollup" Type="Integer" />
+        <ColumnDef Name="security_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="security_policy_successes.rollup" Type="Integer"/>        
+        <ColumnDef Name="total_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="total_policy_successes.rollup" Type="Integer"/>
+
+        <Select Name="owsm_policy_stats_server_rollup_result_0">
+            <TableFrom Name="weblogic_domain:owsm_policy_stats"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_violations"/>
+            </Column>
+            <Column Name="authorization_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_violations"/>
+            </Column> 
+            <Column Name="confidentiality_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_violations"/>
+            </Column> 
+            <Column Name="integrity_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_violations"/>
+            </Column> 
+            <Column Name="authentication_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_successes"/>
+            </Column> 
+            <Column Name="authorization_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_successes"/>
+            </Column> 
+            <Column Name="confidentiality_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_successes"/>
+            </Column> 
+            <Column Name="integrity_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_successes"/>
+            </Column> 
+            <Column Name="total_policy_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_violations"/>
+            </Column> 
+            <!--
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_successes"/>
+            </Column> 
+            -->
+
+            <GroupBy Name="policyName"/>
+            <GroupBy Name="policyCategory"/>
+            <GroupBy Name="ServerName"/>
+        </Select>
+
+        <Select Name="owsm_policy_stats_server_rollup_result_1">
+            <TableFrom Name="owsm_policy_stats_server_rollup_result_0"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer" />
+            <Column Name="authorization_violations.rollup" Type="Integer" />
+            <Column Name="confidentiality_violations.rollup" Type="Integer" /> 
+            <Column Name="integrity_violations.rollup" Type="Integer" />
+            <Column Name="authentication_successes.rollup" Type="Integer" />
+            <Column Name="authorization_successes.rollup" Type="Integer" />
+            <Column Name="confidentiality_successes.rollup" Type="Integer" />
+            <Column Name="integrity_successes.rollup" Type="Integer" />
+            <Column Name="security_policy_violations.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_violations.rollup" />
+                          <ColumnFrom Name="authorization_violations.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_violations.rollup" />
+                          <ColumnFrom Name="integrity_violations.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="security_policy_successes.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_successes.rollup" />
+                          <ColumnFrom Name="authorization_successes.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_successes.rollup" />
+                          <ColumnFrom Name="integrity_successes.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_violations.rollup" Type="Integer"/>
+            <!-- for now: make it the same as security_policy_successes.rollup
+            <Column Name="total_policy_successes.rollup" Type="Integer"/>
+            -->
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <ColumnFrom Name="security_policy_successes.rollup" />
+            </Column>
+
+            <Where>
+               <Condition Operator="NE" Type="String">
+                  <ColumnFrom Name="policyName"/>
+                  <Null/>
+               </Condition>
+            </Where>        
+        </Select>
+    </Table>
+
+    <Table Name="owsm_policy_stats_appcomp_rollup">
+        <ColumnDef Name="ServerName" Type="String" Key="true" />
+        <ColumnDef Name="appCompName" Type="String" Key="true" />
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+
+        <ColumnDef Name="authentication_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_violations.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_violations.rollup" Type="Integer" /> 
+        <ColumnDef Name="integrity_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authentication_successes.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_successes.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_successes.rollup" Type="Integer" />
+        <ColumnDef Name="integrity_successes.rollup" Type="Integer" />
+        <ColumnDef Name="security_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="security_policy_successes.rollup" Type="Integer"/>        
+        <ColumnDef Name="total_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="total_policy_successes.rollup" Type="Integer"/>
+
+        <Select Name="owsm_policy_stats_appcomp_rollup_result_0">
+            <TableFrom Name="weblogic_domain:owsm_policy_stats"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="appCompName" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_violations"/>
+            </Column>
+            <Column Name="authorization_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_violations"/>
+            </Column> 
+            <Column Name="confidentiality_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_violations"/>
+            </Column> 
+            <Column Name="integrity_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_violations"/>
+            </Column> 
+            <Column Name="authentication_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_successes"/>
+            </Column> 
+            <Column Name="authorization_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_successes"/>
+            </Column> 
+            <Column Name="confidentiality_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_successes"/>
+            </Column> 
+            <Column Name="integrity_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_successes"/>
+            </Column> 
+            <Column Name="total_policy_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_violations"/>
+            </Column> 
+            <!--
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_successes"/>
+            </Column> 
+            -->
+
+            <GroupBy Name="policyName"/>
+            <GroupBy Name="policyCategory"/>
+            <GroupBy Name="appCompName"/>
+            <GroupBy Name="ServerName"/>
+        </Select>
+
+        <Select Name="owsm_policy_stats_appcomp_rollup_result_1">
+            <TableFrom Name="owsm_policy_stats_appcomp_rollup_result_0"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="appCompName" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer" />
+            <Column Name="authorization_violations.rollup" Type="Integer" />
+            <Column Name="confidentiality_violations.rollup" Type="Integer" /> 
+            <Column Name="integrity_violations.rollup" Type="Integer" />
+            <Column Name="authentication_successes.rollup" Type="Integer" />
+            <Column Name="authorization_successes.rollup" Type="Integer" />
+            <Column Name="confidentiality_successes.rollup" Type="Integer" />
+            <Column Name="integrity_successes.rollup" Type="Integer" />
+            <Column Name="security_policy_violations.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_violations.rollup" />
+                          <ColumnFrom Name="authorization_violations.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_violations.rollup" />
+                          <ColumnFrom Name="integrity_violations.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="security_policy_successes.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_successes.rollup" />
+                          <ColumnFrom Name="authorization_successes.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_successes.rollup" />
+                          <ColumnFrom Name="integrity_successes.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_violations.rollup" Type="Integer"/>
+            <!-- for now: make it the same as security_policy_successes.rollup 
+            <Column Name="total_policy_successes.rollup" Type="Integer"/>
+            -->
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <ColumnFrom Name="security_policy_successes.rollup" />
+            </Column>
+
+            <Where>
+               <Condition Operator="NE" Type="String">
+                  <ColumnFrom Name="policyName"/>
+                  <Null/>
+               </Condition>
+            </Where>        
+        </Select>
+    </Table>
+
+    <Table Name="owsm_policy_stats_domain_rsctype_rollup">
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+        <ColumnDef Name="rscType" Type="String" Key="true"/>
+
+        <ColumnDef Name="authentication_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_violations.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_violations.rollup" Type="Integer" /> 
+        <ColumnDef Name="integrity_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authentication_successes.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_successes.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_successes.rollup" Type="Integer" />
+        <ColumnDef Name="integrity_successes.rollup" Type="Integer" />
+        <ColumnDef Name="security_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="security_policy_successes.rollup" Type="Integer"/>        
+        <ColumnDef Name="total_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="total_policy_successes.rollup" Type="Integer"/>
+
+        <Select Name="owsm_policy_stats_domain_rsctype_rollup_result_0">
+            <TableFrom Name="weblogic_domain:owsm_policy_stats"/>
+
+            <Column Name="rscType" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_violations"/>
+            </Column>
+            <Column Name="authorization_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_violations"/>
+            </Column> 
+            <Column Name="confidentiality_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_violations"/>
+            </Column> 
+            <Column Name="integrity_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_violations"/>
+            </Column> 
+            <Column Name="authentication_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_successes"/>
+            </Column> 
+            <Column Name="authorization_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_successes"/>
+            </Column> 
+            <Column Name="confidentiality_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_successes"/>
+            </Column> 
+            <Column Name="integrity_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_successes"/>
+            </Column> 
+            <Column Name="total_policy_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_violations"/>
+            </Column> 
+            <!--
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_successes"/>
+            </Column> 
+            -->
+
+            <GroupBy Name="policyName"/>
+            <GroupBy Name="policyCategory"/>
+            <GroupBy Name="rscType"/>
+        </Select>
+
+        <Select Name="owsm_policy_stats_domain_rsctype_rollup_result_1">
+            <TableFrom Name="owsm_policy_stats_domain_rsctype_rollup_result_0"/>
+
+            <Column Name="rscType" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer" />
+            <Column Name="authorization_violations.rollup" Type="Integer" />
+            <Column Name="confidentiality_violations.rollup" Type="Integer" /> 
+            <Column Name="integrity_violations.rollup" Type="Integer" />
+            <Column Name="authentication_successes.rollup" Type="Integer" />
+            <Column Name="authorization_successes.rollup" Type="Integer" />
+            <Column Name="confidentiality_successes.rollup" Type="Integer" />
+            <Column Name="integrity_successes.rollup" Type="Integer" />
+            <Column Name="security_policy_violations.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_violations.rollup" />
+                          <ColumnFrom Name="authorization_violations.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_violations.rollup" />
+                          <ColumnFrom Name="integrity_violations.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="security_policy_successes.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_successes.rollup" />
+                          <ColumnFrom Name="authorization_successes.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_successes.rollup" />
+                          <ColumnFrom Name="integrity_successes.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_violations.rollup" Type="Integer"/>
+            <!-- for now: make it the same as security_policy_successes.rollup 
+            <Column Name="total_policy_successes.rollup" Type="Integer"/>
+            -->
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <ColumnFrom Name="security_policy_successes.rollup" />
+            </Column>
+
+            <Where>
+               <Condition Operator="NE" Type="String">
+                  <ColumnFrom Name="policyName"/>
+                  <Null/>
+               </Condition>
+            </Where>        
+        </Select>
+    </Table>
+
+    <Table Name="owsm_policy_stats_server_rsctype_rollup">
+        <ColumnDef Name="ServerName" Type="String" Key="true" />
+        <ColumnDef Name="rscType" Type="String" Key="true" />
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+
+        <ColumnDef Name="authentication_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_violations.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_violations.rollup" Type="Integer" /> 
+        <ColumnDef Name="integrity_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authentication_successes.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_successes.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_successes.rollup" Type="Integer" />
+        <ColumnDef Name="integrity_successes.rollup" Type="Integer" />
+        <ColumnDef Name="security_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="security_policy_successes.rollup" Type="Integer"/>        
+        <ColumnDef Name="total_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="total_policy_successes.rollup" Type="Integer"/>
+
+        <Select Name="owsm_policy_stats_server_rsctype_rollup_result_0">
+            <TableFrom Name="weblogic_domain:owsm_policy_stats"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="rscType" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_violations"/>
+            </Column>
+            <Column Name="authorization_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_violations"/>
+            </Column> 
+            <Column Name="confidentiality_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_violations"/>
+            </Column> 
+            <Column Name="integrity_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_violations"/>
+            </Column> 
+            <Column Name="authentication_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_successes"/>
+            </Column> 
+            <Column Name="authorization_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_successes"/>
+            </Column> 
+            <Column Name="confidentiality_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_successes"/>
+            </Column> 
+            <Column Name="integrity_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_successes"/>
+            </Column> 
+            <Column Name="total_policy_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_violations"/>
+            </Column> 
+            <!--
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_successes"/>
+            </Column> 
+            -->
+
+            <GroupBy Name="policyName"/>
+            <GroupBy Name="policyCategory"/>
+            <GroupBy Name="rscType"/>
+            <GroupBy Name="ServerName"/>
+        </Select>
+
+        <Select Name="owsm_policy_stats_server_rsctype_rollup_result_1">
+            <TableFrom Name="owsm_policy_stats_server_rsctype_rollup_result_0"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="rscType" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer" />
+            <Column Name="authorization_violations.rollup" Type="Integer" />
+            <Column Name="confidentiality_violations.rollup" Type="Integer" /> 
+            <Column Name="integrity_violations.rollup" Type="Integer" />
+            <Column Name="authentication_successes.rollup" Type="Integer" />
+            <Column Name="authorization_successes.rollup" Type="Integer" />
+            <Column Name="confidentiality_successes.rollup" Type="Integer" />
+            <Column Name="integrity_successes.rollup" Type="Integer" />
+            <Column Name="security_policy_violations.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_violations.rollup" />
+                          <ColumnFrom Name="authorization_violations.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_violations.rollup" />
+                          <ColumnFrom Name="integrity_violations.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="security_policy_successes.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_successes.rollup" />
+                          <ColumnFrom Name="authorization_successes.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_successes.rollup" />
+                          <ColumnFrom Name="integrity_successes.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_violations.rollup" Type="Integer"/>
+            <!-- for now: make it the same as security_policy_successes.rollup 
+            <Column Name="total_policy_successes.rollup" Type="Integer"/>
+            -->
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <ColumnFrom Name="security_policy_successes.rollup" />
+            </Column>
+
+            <Where>
+               <Condition Operator="NE" Type="String">
+                  <ColumnFrom Name="policyName"/>
+                  <Null/>
+               </Condition>
+            </Where>        
+        </Select>
+    </Table>
+
+    <Table Name="owsm_policy_stats_appcomp_rsctype_rollup">
+        <ColumnDef Name="ServerName" Type="String" Key="true" />
+        <ColumnDef Name="appCompName" Type="String" Key="true" />
+        <ColumnDef Name="rscType" Type="String" Key="true" />
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+
+        <ColumnDef Name="authentication_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_violations.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_violations.rollup" Type="Integer" /> 
+        <ColumnDef Name="integrity_violations.rollup" Type="Integer" />
+        <ColumnDef Name="authentication_successes.rollup" Type="Integer" />
+        <ColumnDef Name="authorization_successes.rollup" Type="Integer" />
+        <ColumnDef Name="confidentiality_successes.rollup" Type="Integer" />
+        <ColumnDef Name="integrity_successes.rollup" Type="Integer" />
+        <ColumnDef Name="security_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="security_policy_successes.rollup" Type="Integer"/>        
+        <ColumnDef Name="total_policy_violations.rollup" Type="Integer"/>
+        <ColumnDef Name="total_policy_successes.rollup" Type="Integer"/>
+
+        <Select Name="owsm_policy_stats_appcomp_rsctype_rollup_result_0">
+            <TableFrom Name="weblogic_domain:owsm_policy_stats"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="appCompName" Type="String"/>
+            <Column Name="rscType" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+            <Column Name="authentication_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_violations"/>
+            </Column>
+            <Column Name="authorization_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_violations"/>
+            </Column> 
+            <Column Name="confidentiality_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_violations"/>
+            </Column> 
+            <Column Name="integrity_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_violations"/>
+            </Column> 
+            <Column Name="authentication_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authentication_successes"/>
+            </Column> 
+            <Column Name="authorization_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="authorization_successes"/>
+            </Column> 
+            <Column Name="confidentiality_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="confidentiality_successes"/>
+            </Column> 
+            <Column Name="integrity_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="integrity_successes"/>
+            </Column> 
+            <Column Name="total_policy_violations.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_violations"/>
+            </Column> 
+            <!--
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <Aggregation Operator="Sum" Name="total_policy_successes"/>
+            </Column> 
+            -->
+
+            <GroupBy Name="policyName"/>
+            <GroupBy Name="policyCategory"/>
+            <GroupBy Name="rscType" />
+            <GroupBy Name="appCompName"/>
+            <GroupBy Name="ServerName"/>
+        </Select>
+
+        <Select Name="owsm_policy_stats_appcomp_rsctype_rollup_result_1">
+            <TableFrom Name="owsm_policy_stats_appcomp_rsctype_rollup_result_0"/>
+
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="appCompName" Type="String"/>
+            <Column Name="rscType" Type="String" />
+            <Column Name="policyName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+
+             <Column Name="authentication_violations.rollup" Type="Integer" />
+            <Column Name="authorization_violations.rollup" Type="Integer" />
+            <Column Name="confidentiality_violations.rollup" Type="Integer" /> 
+            <Column Name="integrity_violations.rollup" Type="Integer" />
+            <Column Name="authentication_successes.rollup" Type="Integer" />
+            <Column Name="authorization_successes.rollup" Type="Integer" />
+            <Column Name="confidentiality_successes.rollup" Type="Integer" />
+            <Column Name="integrity_successes.rollup" Type="Integer" />
+            <Column Name="security_policy_violations.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_violations.rollup" />
+                          <ColumnFrom Name="authorization_violations.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_violations.rollup" />
+                          <ColumnFrom Name="integrity_violations.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="security_policy_successes.rollup" Type="Integer">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="authentication_successes.rollup" />
+                          <ColumnFrom Name="authorization_successes.rollup" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="confidentiality_successes.rollup" />
+                          <ColumnFrom Name="integrity_successes.rollup" />
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_violations.rollup" Type="Integer"/>
+            <!-- for now: make it the same as security_policy_successes.rollup 
+            <Column Name="total_policy_successes.rollup" Type="Integer"/>
+            -->
+            <Column Name="total_policy_successes.rollup" Type="Integer">
+                 <ColumnFrom Name="security_policy_successes.rollup" />
+            </Column>
+
+            <Where>
+               <Condition Operator="NE" Type="String">
+                  <ColumnFrom Name="policyName"/>
+                  <Null/>
+               </Condition>
+            </Where>        
+        </Select>
+    </Table>
+
+</Adml>

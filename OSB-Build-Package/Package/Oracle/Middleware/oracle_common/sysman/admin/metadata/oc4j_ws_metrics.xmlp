@@ -1,0 +1,718 @@
+<!-- Copyright (c) 2007, Oracle. All rights reserved.  -->
+
+<!--
+     These are the metrics for a deployed application
+     
+     MODIFIED   (MM/DD/YY)
+        jiarwu   07/25/07 - 
+     
+     jiarwu   07/20/07 - add policy fault metrioc4j_ws_port_policy_fault_deltacs
+     jiarwu   04/30/07 - update 
+     jiarwu   03/13/07 - initial version      
+-->
+
+<Metric NAME="oc4j_ws_port_policy_fault_delta" TYPE="TABLE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+        <Label NLSID="oc4j_ws_port_policy_fault_delta">OC4J SOA Policy Fault Delta Metric</Label>
+    </Display>
+    <TableDescriptor>
+
+        <ColumnDescriptor NAME="app_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_app_name">Application Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="webservice_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="port_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_port_name">Web Service Port Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_name" TYPE="STRING" IS_KEY="TRUE"> 
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_policy_name">SOA Policy Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_category" TYPE="STRING" IS_KEY="FALSE"> 
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_policy_category">SOA Policy Category</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_version" TYPE="STRING" IS_KEY="TRUE"> 
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_policy_version">SOA Policy Version</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="authentication_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_authentication_faults">Authentication Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="authentication_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_authentication_faults_delta">Authentication Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="authorization_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_authorization_faults">Authorization Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="authorization_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_authorization_faults_delta">Authorization Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="confidentiality_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_confidentiality_faults">Confidentiality Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="confidentiality_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_confidentiality_faults_delta">Confidentiality Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="integrity_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_integrity_faults">Integrity Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_integrity_faults_delta">Integrity Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+ 
+        <ColumnDescriptor NAME="policy_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_policy_faults">SOA Policy Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_port_policy_fault_delta_policy_faults_delta">SOA Policy Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">oc4j:oc4j_ws_policy_fault_delta</Property>
+        <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">app_name;webservice_name;port_name;policy_name;policy_category;policy_version;authentication_faults;authentication_faults.delta;authorization_faults;authorization_faults.delta;confidentiality_faults;confidentiality_faults.delta;integrity_faults;integrity_faults.delta;policy_faults;policy_faults.delta</Property>
+        <Property NAME="app_name.parameter" SCOPE="USER" OPTIONAL="TRUE">app_name.parameter</Property>
+        <Property NAME="webservice_name.parameter" SCOPE="USER" OPTIONAL="TRUE">webservice_name.parameter</Property>
+        <Property NAME="port_name.parameter" SCOPE="USER" OPTIONAL="TRUE">port_name.parameter</Property>
+        <Property NAME="policy_name.parameter" SCOPE="USER" OPTIONAL="TRUE">policy_name.parameter</Property>
+        <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>app_name.parameter</key>
+                        <value type="java.lang.String">%app_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webservice_name.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>port_name.parameter</key>
+                        <value type="java.lang.String">%port_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>policy_name.parameter</key>
+                        <value type="java.lang.String">%policy_name.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric> 
+
+
+<Metric NAME="oc4j_ws_service_policy_fault_delta" TYPE="TABLE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+        <Label NLSID="oc4j_ws_service_policy_fault_delta">OC4J SOA Policy Fault Delta Metric</Label>
+    </Display>
+    <TableDescriptor>
+      
+        <ColumnDescriptor NAME="app_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_app_name">Application Name</Label>
+            </Display>
+        </ColumnDescriptor>
+   
+        <ColumnDescriptor NAME="webservice_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_name" TYPE="STRING" IS_KEY="TRUE"> 
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_policy_name">SOA Policy Name</Label>
+            </Display>
+        </ColumnDescriptor>
+    
+        <ColumnDescriptor NAME="policy_category" TYPE="STRING" IS_KEY="FALSE"> 
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_policy_category">SOA Policy Category</Label>
+            </Display>
+        </ColumnDescriptor>
+    
+        <ColumnDescriptor NAME="authentication_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_authentication_faults">Authentication Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+    
+        <ColumnDescriptor NAME="authentication_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_deltaauthentication_faults_delta">Authentication Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+    
+        <ColumnDescriptor NAME="authorization_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_authorization_faults">Authorization Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+    
+        <ColumnDescriptor NAME="authorization_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_authorization_faults_delta">Authorization Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+    
+        <ColumnDescriptor NAME="confidentiality_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_confidentiality_faults">Confidentiality Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="confidentiality_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_confidentiality_faults_delta">Confidentiality Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="integrity_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_integrity_faults">Integrity Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_integrity_faults_delta">Integrity Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+
+        <ColumnDescriptor NAME="policy_faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_policy_faults">SOA Policy Faults</Label>
+                </Display>
+        </ColumnDescriptor>
+
+        <ColumnDescriptor NAME="policy_faults.delta" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_policy_fault_delta_policy_faults_delta">SOA Policy Faults Delta</Label>
+                </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">oc4j:oc4j_ws_policy_fault_service_rollup_delta</Property>
+        <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">app_name;webservice_name;policy_name;policy_category;authentication_faults;authentication_faults.delta;authorization_faults;authorization_faults.delta;confidentiality_faults;confidentiality_faults.delta;integrity_faults;integrity_faults.delta;policy_faults;policy_faults.delta</Property>
+        <Property NAME="app_name.parameter" SCOPE="USER" OPTIONAL="TRUE">app_name.parameter</Property>
+        <Property NAME="webservice_name.parameter" SCOPE="USER" OPTIONAL="TRUE">webservice_name.parameter</Property>
+        <Property NAME="policy_name.parameter" SCOPE="USER" OPTIONAL="TRUE">policy_name.parameter</Property>
+        <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>app_name.parameter</key>
+                        <value type="java.lang.String">%app_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webservice_name.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>policy_name.parameter</key>
+                        <value type="java.lang.String">%policy_name.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric> <!-- oc4j_ws_service_policy_fault_delta-->
+
+
+
+<Metric NAME="oc4j_ws_operation_delta_rollup" TYPE="TABLE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+        <Label NLSID="oc4j_ws_operation_delta_rollup">OC4J Web Services Operation Delta Metric</Label>
+    </Display>
+    <TableDescriptor>
+        <!--C1-->
+        <ColumnDescriptor NAME="app_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_app_name">Application Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C2-->
+        <ColumnDescriptor NAME="webservice_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C3-->
+        <ColumnDescriptor NAME="port_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_port_name">Web Service Port Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C4-->
+        <ColumnDescriptor NAME="operation_name" TYPE="STRING" IS_KEY="TRUE"> 
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_operation_name">Web Service Operation Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C5-->
+        <ColumnDescriptor NAME="Invoke.active" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_invoke_active">Active Invocations</Label>
+                </Display>
+        </ColumnDescriptor>
+        <!--C6-->
+        <ColumnDescriptor NAME="Invoke.avgTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_invoke_avgtime">Average Invocation Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C7-->
+        <ColumnDescriptor NAME="Invoke.completed" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_invoke_completed">Invocations Completed</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C8-->
+        <ColumnDescriptor NAME="Invoke.deltaCompleted" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+            <Label NLSID="oc4j_ws_operation_delta_rollup_invoke_delta_completed">Delta Invocations Completed</Label>
+        </Display>
+        </ColumnDescriptor>
+        <!--C9-->
+        <ColumnDescriptor NAME="Invoke.deltaTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_invoke_delta_time">Delta Invocation Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C10-->
+        <ColumnDescriptor NAME="Invoke.totalTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_Invoke_total_time">Total Invocation Time (sec) </Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C11-->
+        <ColumnDescriptor NAME="RequestSize.deltaValue" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_request_size_delta_value">Delta Request Size</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C12-->
+        <ColumnDescriptor NAME="RequestSize.value" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_request_size_value">Request Size</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C13-->
+        <ColumnDescriptor NAME="Faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_operation_delta_rollup_faults">Faults</Label>
+            </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">oc4j:oc4j_ws_operation_delta_rollup</Property>
+        <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">app_name;webservice_name;port_name;operation_name;Invoke.active;Invoke.avgTime;Invoke.completed;Invoke.deltaCompleted;Invoke.deltaTime;Invoke.totalTime;RequestSize.deltaValue;RequestSize.value;Faults</Property>
+        <Property NAME="app_name.parameter" SCOPE="USER" OPTIONAL="TRUE">app_name.parameter</Property>
+        <Property NAME="webservice_name.parameter" SCOPE="USER" OPTIONAL="TRUE">webservice_name.parameter</Property>
+        <Property NAME="port_name.parameter" SCOPE="USER" OPTIONAL="TRUE">port_name.parameter</Property>
+        <Property NAME="operation_name.parameter" SCOPE="USER" OPTIONAL="TRUE">operation_name.parameter</Property>
+        <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>app_name.parameter</key>
+                        <value type="java.lang.String">%app_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webservice_name.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>port_name.parameter</key>
+                        <value type="java.lang.String">%port_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>operation_name.parameter</key>
+                        <value type="java.lang.String">%operation_name.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric> <!-- oc4j_ws_operation_delta_rollup -->
+
+
+
+<Metric NAME="oc4j_ws_service_delta_rollup" TYPE="TABLE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+        <Label NLSID="oc4j_ws_service_delta_rollup">OC4J Web Services Delta Metric</Label>
+    </Display>
+    <TableDescriptor>
+        <!--C1-->
+        <ColumnDescriptor NAME="app_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_app_name">Application Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C2-->
+        <ColumnDescriptor NAME="webservice_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C3-->
+        <ColumnDescriptor NAME="Faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_faults">Faults</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C4-->
+        <ColumnDescriptor NAME="Requests" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_requests">Requests</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C5-->
+        <ColumnDescriptor NAME="Requests.averageTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_requests_averageTime">Average Request Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C6-->
+        <ColumnDescriptor NAME="Requests.avgMsgProcessingTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_requests_average_msg_time">Requests Average Message Processing Time (ops/sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C7-->
+        <ColumnDescriptor NAME="Requests.deltaCompleted" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_requests_delta_completed">Delta Requests Completed</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C8-->
+        <ColumnDescriptor NAME="Requests.deltaTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_delta_time">Delta Invocation Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C9-->
+        <ColumnDescriptor NAME="Requests.totalMsgProcessingTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_requests_total_msg_proc_time">Total Message Processing Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C10-->
+        <ColumnDescriptor NAME="module_name" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_module_name">Module Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C11-->
+        <ColumnDescriptor NAME="module_type" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_module_type">Module Type</Label>
+            </Display>
+        </ColumnDescriptor>
+        <!--C12-->
+        <ColumnDescriptor NAME="processRequest.active" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_delta_rollup_process_request_active">Active Process Request</Label>
+            </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">oc4j:oc4j_ws_service_delta_rollup</Property>
+        <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">app_name;webservice_name;Faults;Requests;Requests.averageTime;Requests.avgMsgProcessingTime;Requests.deltaCompleted;Requests.deltaTime;Requests.totalMsgProcessingTime;module_name;module_type;processRequest.active</Property>
+        <Property NAME="app_name.parameter" SCOPE="USER" OPTIONAL="TRUE">app_name.parameter</Property>
+        <Property NAME="webservice_name.parameter" SCOPE="USER" OPTIONAL="TRUE">webservice_name.parameter</Property>
+        <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>app_name.parameter</key>
+                        <value type="java.lang.String">%app_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webservice_name.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric> <!-- oc4j_ws_service_delta_rollup -->
+
+
+<Metric NAME="oc4j_webservices_rollup" TYPE="TABLE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+        <Label NLSID="oc4j_webservices_rollup">OC4J Web Services Metrics</Label>
+    </Display>
+
+ <TableDescriptor>
+    <ColumnDescriptor NAME='name' TYPE='STRING' IS_KEY='TRUE'> 
+      <Display><Label NLSID='ws_port_name_col_label'>WebService Port</Label>
+       </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='webservice_name' TYPE='STRING' IS_KEY='TRUE'> 
+      <Display><Label NLSID='ws_name_col_label'>WebService Name</Label>
+       </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='app_name' TYPE='STRING' IS_KEY='TRUE'> 
+      <Display><Label NLSID='ws_app_name_col_label'>Application Name</Label>
+       </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='startTime' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='ws_startTime_value_col_label'>WebService - Start Time (ms since Epoch)</Label>
+       <ShortName NLSID='ws_startTime_value_col_sname'>WebService - Start Time</ShortName>
+       <Unit NLSID='msecs'>msecs</Unit>
+       </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME='Requests' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='ws_requests_col_label'>WebService - Requests Since Startup</Label>
+       <ShortName NLSID='ws_requests_col_sname'>WebService - Total Requests</ShortName>
+       <Description NLSID='ws_requests_count_col_desc'>Total Number of Requests</Description>
+       <Unit NLSID='ops'>ops</Unit>
+       </Display>
+     </ColumnDescriptor>
+
+     <ColumnDescriptor NAME='Requests.averageTime' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='ws_requests_avg_time_col_label'>WebService - Requests Average Time</Label>
+       <ShortName NLSID='ws_requests_avg_time_col_sname'>WebService - Requests Average Time</ShortName>
+       <Description NLSID='ws_requests_avg_time_count_col_desc'>Requests Average Time (sec)</Description>
+       <Unit NLSID='secs'>secs</Unit>
+       </Display>
+     </ColumnDescriptor>
+
+    <ColumnDescriptor NAME='Faults' TYPE='NUMBER' IS_KEY='FALSE'>
+       <Display><Label NLSID='ws_faults_col_label'>WebService - Faults Since Startup</Label>
+       <ShortName NLSID='ws_faults_col_sname'>Total Faults</ShortName>
+       <Description NLSID='ws_faults_count_col_desc'>Total Number of Faults</Description>
+       <Unit NLSID='ops'>ops</Unit>
+       </Display>
+     </ColumnDescriptor>
+    <ColumnDescriptor NAME='processRequest.active' TYPE='NUMBER' IS_KEY='FALSE'>
+        <Display><Label NLSID='ws_active_reqs_col_label'>WebService - Active Requests</Label>
+        <ShortName NLSID='ws_active_reqs_col_sname'>Active Requests</ShortName>
+        <Description NLSID='ws_active_reqs_col_desc'>Active Requests</Description>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME='service.time' TYPE='NUMBER' IS_KEY='FALSE'>
+ <Display>
+  <Label NLSID='ws_serviceTime_col_label'>WebService - Request Processing Time (ms)</Label>
+  <Description NLSID='ws_serviceTime_col_desc'> The average amount of time spent processing requests during the last interval
+  </Description>
+</Display></ColumnDescriptor>
+     <ColumnDescriptor NAME='service.throughput' TYPE='NUMBER' IS_KEY='FALSE'>
+ <Display>
+  <Label NLSID='ws_service_throughput_col_label'>WebService - Requests Per Second</Label>
+  <Description NLSID='ws_service_throughput_col_desc'> The amount of requests processed during the last interval </Description>
+</Display></ColumnDescriptor>
+  </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">oc4j:oc4j_webservices_rollup</Property>
+        <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">name;webservice_name;app_name;startTime;Requests;Requests.averageTime;Faults;processRequest.active;service.time;service.throughput</Property>
+        <Property NAME="app_name.parameter" SCOPE="USER" OPTIONAL="TRUE">app_name.parameter</Property>
+        <Property NAME="webservice_name.parameter" SCOPE="USER" OPTIONAL="TRUE">webservice_name.parameter</Property>
+        <Property NAME="name.parameter" SCOPE="USER" OPTIONAL="TRUE">name.parameter</Property>
+        <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>app_name.parameter</key>
+                        <value type="java.lang.String">%app_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webservice_name.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>name.parameter</key>
+                        <value type="java.lang.String">%name.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric>
+
+
+
+
+<Metric NAME="oc4j_ws_service_rollup" TYPE="TABLE">
+    <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+        <Label NLSID="oc4j_ws_service_rollup">OC4J Web Services Rollup Metric</Label>
+    </Display>
+    <TableDescriptor>
+        <ColumnDescriptor NAME="app_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_app_name">Application Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="webservice_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_webservice_name">Web Service Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="Faults" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_faults">Faults</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="Requests" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_requests">Requests</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="Requests.averageTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup">Requests Average Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="Requests.totalTime" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_total_time">Requests Total Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="module_name" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_module_name">Module Name</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="module_type" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_module_type">Module Type</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="processRequest.active" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup">Active Process Request</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_service_throughput">Service Throughput</Label>
+            </Display>
+        </ColumnDescriptor>
+        <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="oc4j_ws_service_rollup_service_time">Service Time (sec)</Label>
+            </Display>
+        </ColumnDescriptor>
+    </TableDescriptor>  
+    <QueryDescriptor FETCHLET_ID="JMX">
+        <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+        <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+        <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">oc4j:oc4j_ws_service_rollup</Property>
+        <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+        <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+        <Property NAME="columnOrder" SCOPE="GLOBAL">app_name;webservice_name;Faults;Requests;Requests.averageTime;Requests.totalTime;module_name;module_type;processRequest.active;service.throughput;service.time</Property>
+        <Property NAME="app_name.parameter" SCOPE="USER" OPTIONAL="TRUE">app_name.parameter</Property>
+        <Property NAME="webservice_name.parameter" SCOPE="USER" OPTIONAL="TRUE">webservice_name.parameter</Property>
+        <Property NAME="admlMap" SCOPE="GLOBAL">
+            <![CDATA[
+            <argument type="java.util.Map">
+                <value>
+                    <item>
+                        <key>app_name.parameter</key>
+                        <value type="java.lang.String">%app_name.parameter%</value>
+                    </item>
+                    <item>
+                        <key>webservice_name.parameter</key>
+                        <value type="java.lang.String">%webservice_name.parameter%</value>
+                    </item>
+                </value>
+            </argument>]]>
+        </Property>         
+    </QueryDescriptor>
+</Metric> <!-- oc4j_ws_service_rollup -->

@@ -1,0 +1,113 @@
+Proxy testing Standalone Application.
+
+Files:
+------
+1) ProxyStandAlone.class
+This is the application, which tests the proxy. It uses another package called 
+HTTPClient and the corresponding jar file is called http_client.jar
+
+Details about execution are given below.
+
+
+Usage:
+------
+ProxyStandAlone [direct | proxy] [testML]
+            -testurl    <url> (not required if testML specified)
+            -urluser    <urluser> (optional)
+            -urlpasswd  <urlpasswd> (optional)
+            -timeout    <ms> (300000 ms taken by default if not mentioned)
+            -proxyhost  <proxy url>
+            -proxyport  <portNo> (port 80 taken as default if not mentioned)
+            -realm      <realm> (optional)
+            -user       <proxy user> (optional)
+            -passwd     <password> (optional) 
+            -verbose    <on> (optional. It is off by default)  
+
+
+Parameters:
+-----------
+
+The first parameter is mandatory and should be either direct or proxy. This 
+indicates whether we are using a proxy or a direct connection.
+
+The second parameter 'testML' indicates whether we want to validate 
+connectivity to MetaLink and this case the testurl is not needed. This should 
+be a second parameter.
+
+ -testurl: The testurl is the URL which we are trying to reach via proxy or a 
+           direct connection. This field is mandatory if testML is not 
+           specified.
+ -timeout: The timeout is the time after which you want the HTTPConnection to 
+           timeout. It is the time in milliseconds. This field is optional in 
+           both cases and if not given, it defaults to 300000ms (5 minutes).
+ -verbose: This gives a lot of debug information like HTTP logs and also prints
+           the output of the file. 
+
+The next 5 fields make sense only in case of a proxy and are ignored if we use 
+direct connection.
+
+ -proxyhost: This field is the proxy host and is mandatory for proxy.
+ -proxyport: This field indicates the port for the proxy. If not given it 
+             defaults to port 80.
+ -realm, user, passwd: They are used to provide basic authorization to the 
+                       proxy.
+
+Important points about the usage:
+If direct is used then only testurl is mandatory.
+If proxy is used then only proxyhost is mandatory.
+If testML is used then testurl is not needed and testML has to be the 2nd 
+argument.
+
+
+Execution:
+----------
+Go to the directory where ProxyStandAlone.class exists and run the command.
+$ORACLE_HOME needs to be defined.
+
+$> java -classpath .:$ORACLE_HOME/j2ee/home/lib/http_client.jar ProxyStandAlone
+                   <parameters>
+
+Pay special attention to the classpath. It starts with ".:$ORACLE_HOME". You 
+are including the current directory and then the path for the http_client.jar.
+
+
+Output:
+-------
+You first get all the Program Parameters you used.
+The final output consists of a tuple containing 'Status Code' and 'Reason'.
+If everything ran all right and the url was accessible, the output would be
+"Result : Status Code:200,  Reason:OK"
+
+The verbose option gives out a lot of intermediate headers used by the 
+HTTPClient package, which helps in debugging.
+
+If there is some error, then the Status Code and Reason would be different.
+Examples:
+Result : Status Code:407,  Reason:Unauthorized (if you gave bad credentials)
+Result : Status Code:502,  Reason:Bad Gateway (if the URL did not exist)
+
+
+Examples:
+Direct connection to https://www.google.com
+$> java -classpath .:$ORACLE_HOME/j2ee/home/lib/http_client.jar ProxyStandAlone
+                   direct -testurl=https://www.google.com -timeout=10000
+
+Proxy Connection to http://www.google.com using proxy example-proxy.example.com 
+and default port 80.
+$> java -classpath .:$ORACLE_HOME/j2ee/home/lib/http_client.jar ProxyStandAlone
+                   proxy -proxyhost=example-proxy.example.com 
+                   -testurl=http://www.google.com
+
+Proxy Connection to MetaLink using proxy example-proxy.example.com and MetaLink 
+credentials
+$> java -classpath .:$ORACLE_HOME/j2ee/home/lib/http_client.jar ProxyStandAlone
+                   proxy testML -proxyhost=example-proxy.example.com  
+                   -proxyport=80  -urluser=abc_us   -urlpasswd=xxxxx
+
+Proxy Connection to MetaLink using proxy example-proxy.example.com and MetaLink 
+credentials with Basic Authentication.
+$> java -classpath .:$ORACLE_HOME/j2ee/home/lib/http_client.jar ProxyStandAlone
+                   proxy testML -proxyhost=example-proxy.example.com  
+                   -proxyport=80  -urluser=abc_us   -urlpasswd=xxxxx 
+                   -realm="proxy authorization" -user=abc_proxy -passwd=xxxxxx
+

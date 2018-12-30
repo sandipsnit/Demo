@@ -1,0 +1,455 @@
+# FMWecm.def: Collects Oracle Enterprise Content Management Information
+# $Id: FMWecm.def,v 1.13 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/FMWecm.def,v 1.13 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+FMWecm - Collects Oracle Enterprise Content Management Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Enterprise Content Management-related information.
+
+The following reports can be generated and are regrouped under C<Enterprise
+Content Management>:
+
+=head1 REPORTS
+
+=cut
+
+keep $KEEP_BLOCK
+
+return
+
+# -----------------------------------------------------------------------------
+# Section Init: Define the plugin capabilities
+# -----------------------------------------------------------------------------
+
+section Init
+
+# Define WLS-specific code
+set $wls
+{cd('AppDeployments')
+"for app in "content","imaging","irm","Oracle Content Server","Oracle \
+              Universal Content Management - Content Server":
+" try:
+"  cd(app+'/Targets')
+"  for trg in ls('c',returnMap='true'):
+"   print '---# RDA:SET VARIABLE:ECM:'+trg+'="'+app+'"'
+"  cd('../..')
+" except:
+"  pass
+"cd('..')
+"
+}
+
+# Define WSP-specific code
+var $wsp = ''
+
+# Define the plugin capabilities
+var $plg = $arg[0]
+var $ctl = {WLS => {col    => {IPM => 'FMWecm-WLS_IPM_Collect',\
+                               IRM => 'FMWecm-WLS_IRM_Collect',\
+                               UCM => 'FMWecm-WLS_UCM_Collect',\
+                               UOA => 'FMWecm-WLS_UOA_Collect'},\
+                    dom    => {ecm => $wls},\
+                    domlog => {IPM => 'FMWecm-WLS_IPM_Log'},\
+                    ini    => {ipm => 'FMWecm-WLS_IPM_Init'}},\
+            WSP => {col    => {ecm => 'FMWecm-WSP_Collect'},\
+                    dom    => {ecm => $wsp}}}
+loop $key (keys($ctl,'*'))
+ var $plg->{@{$key}} = $ctl->{@{$key}}
+
+# Load the common macros
+run library()
+run WLSlib()
+
+# -----------------------------------------------------------------------------
+# Section WLS_IPM_Collect: Collect IPM information in Oracle WebLogic Server
+# -----------------------------------------------------------------------------
+
+section WLS_IPM_Collect
+
+=head2 Imaging and Process Management
+
+Collects the Imaging and Process Management-related configuration management
+objects information.
+
+=cut
+
+var ($dom,$ins,$hst,$prt,$usr,$pwd) = @arg
+
+debug '   - Inside FMWecm module, gathering IPM MBean-related information'
+pretoc '3:Imaging and Process Management'
+var %ecm = getWasGroup('ECM')
+
+# Collect information related to IPM from AdminServer
+if ?$IPM
+{if match($IPM,quote($ins),true)
+ {var $srv = ''
+  loop $trg (keys(%ecm))
+  {if compare('eq',$ecm{$trg},'imaging')
+   {var $srv = $trg
+    break
+   }
+  }
+  if length($srv)
+  {set $cod
+   {domainRuntime()
+   "print '---# RDA:BEGIN'
+   "displayMetricTables("IPM_API",servers=(srv))
+   "print "---# RDA:END REPORT:4|Imaging API Metrics|'"+ins+"' Imaging API \
+           DMS Metrics ("+bas+')|'+pwd()+'|i_'+ins+'_ipm_api_metrics'
+   "print '---# RDA:BEGIN'
+   "displayMetricTables("IPM_Activity",servers=(srv))
+   "print "---# RDA:END REPORT:4|Imaging Activity Metrics|'"+ins+"' Imaging \
+           Activity DMS Metrics ("+bas+')|'+pwd()+'|i_'+ins+'_ipm_act_metrics'
+   "print '---# RDA:BEGIN'
+   "displayMetricTables("IPM_Input_Agent",servers=(srv))
+   "print "---# RDA:END REPORT:4|Imaging Input Agent Metrics|'"+ins+"' Imaging \
+           Input Agent DMS Metrics ("+bas+')|'+pwd()+'|i_'+ins+\
+           '_ipm_inpagt_metrics'
+   "print '---# RDA:BEGIN'
+   "displayMetricTables("IPM_Repository",servers=(srv))
+   "print "---# RDA:END REPORT:4|Imaging Repository Metrics|'"+ins+"' Imaging \
+           Repository DMS Metrics ("+bas+')|'+pwd()+'|i_'+ins+'_ipm_rep_metrics'
+   "print '---# RDA:BEGIN'
+   "displayMetricTables("IPM_UCMRequest",servers=(srv))
+   "print "---# RDA:END REPORT:4|Imaging UCM Request Metrics|'"+ins+"' Imaging \
+           UCM Request DMS Metrics ("+bas+')|'+pwd()+'|i_'+ins+\
+           '_ipm_ucmreq_metrics'
+   "print '---# RDA:BEGIN'
+   "displayMetricTables("IPM_Search",servers=(srv))
+   "print "---# RDA:END REPORT:4|Imaging Search Metrics|'"+ins+"' Imaging \
+           Search DMS Metrics ("+bas+')|'+pwd()+'|i_'+ins+'_ipm_search_metrics'
+   }
+   call setWasLogin($usr,$pwd,concat($hst,':',$prt))
+   call writeWas($cod,{bas => $dom,\
+                       ins => $ins,\
+                       srv => $srv})
+  }
+ }
+}
+
+# Collect information specific to IPM target
+loop $srv (keys(%ecm))
+{next !match($ins,$srv,true)
+ var $typ = $ecm{$srv}
+ if compare('eq',$typ,'imaging')
+ {set $cod
+  {print '---# RDA:BEGIN'
+  "listIPMConfig()
+  "print "---# RDA:END REPORT:4|Configuration|'"+ins+"' Oracle IPM \
+          Configuration Information ("+bas+')|'+pwd()+'|i_'+ins+'_ipm_config'
+  "print '---# RDA:BEGIN'
+  "getIPMConfig('InputDirectories')
+  "print "---# RDA:END REPORT:4|Input Agent Folder Configuration Path|'"+\
+          ins+"' Oracle IPM Input Agent Folder Configuration Path Information \
+          ("+bas+')|'+pwd()+'|i_'+ins+'_ipm_agent_pth'
+  "print '---# RDA:BEGIN'
+  "getIPMConfig('GDFontPath')
+  "print "---# RDA:END REPORT:4|Viewer Configuration|'"+ins+"' Oracle IPM \
+          Viewer Configuration Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_ipm_view_config'
+  }
+
+  # Set the IPM environment
+  var ($dir,%env) = (catDir(nvl(getHome('.'),''),'common','wlst'))
+  var $env{'WLST_HOME'} = setEnv('WLST_HOME',$dir)
+  var $cls = getEnv($key = 'CLASSPATH',undef,true)
+  call setEnv($key,join(${RDA.SEPARATOR},$cls,\
+                        grepDir(catDir($dir,'lib'),'\.jar$','ip'),\
+                        grepDir(catDir($dir,'resources'),'\.jar$','ip')))
+  var $env{$key} = $cls
+
+  call setWasLogin($usr,$pwd,concat($hst,':',$prt))
+  call writeWas($cod,{bas => $dom,\
+                      ins => $ins})
+
+  # Restore the previous environment
+  loop $key (keys(%env))
+   call setEnv($key,$env{$key})
+ }
+}
+unpretoc
+
+# -----------------------------------------------------------------------------
+# Section WLS_IPM_Init: Get the IPM Admin Server
+# -----------------------------------------------------------------------------
+
+section WLS_IPM_Init
+
+var ($top,$dom) = @arg
+delete $IPM
+
+if testFile('fr',catFile($top,'config','config.xml'))
+{var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'BCDEPR'))
+ if match(xmlData(xmlFind($obj,'domain/name')),quote($dom),true)
+ {var $IPM = xmlData(xmlFind($obj,'domain/admin-server-name'))
+  keep $IPM
+  return
+ }
+}
+
+# -----------------------------------------------------------------------------
+# Section WLS_IRM_Collect: Collect IRM information in Oracle WebLogic Server
+# -----------------------------------------------------------------------------
+
+section WLS_IRM_Collect
+
+=head2 Information Rights Management
+
+Collects the Information Rights Management-related configuration management
+objects information.
+
+=cut
+
+var ($dom,$ins,$hst,$prt,$usr,$pwd) = @arg
+
+debug '   - Inside FMWecm module, gathering IRM MBean-related information'
+var %ecm = getWasGroup('ECM')
+loop $srv (keys(%ecm))
+{next !match($ins,$srv,true)
+ var $typ = $ecm{$srv}
+ if compare('eq',$typ,'irm')
+ {pretoc '3:Information Rights Management'
+  set $cod
+  {custom()
+  "print '---# RDA:BEGIN'
+  "getIRMJournalCleanUp()
+  "print "---# RDA:END REPORT:4|Journal Clean Up|'"+ins+"' Oracle IRM \
+          Journal Clean Up Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_irm_jrnl_clnup'
+  "print '---# RDA:BEGIN'
+  "getIRMLicenseStateCleanUp()
+  "print "---# RDA:END REPORT:4|License State Clean Up|'"+ins+"' Oracle IRM \
+          License State Clean Up Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_irm_lic_sta_clnup'
+  "print '---# RDA:BEGIN'
+  "getIRMRefreshPeriods()
+  "print "---# RDA:END REPORT:4|Refresh Periods|'"+ins+"' Oracle IRM Refresh \
+          Periods Information ("+bas+')|'+pwd()+'|i_'+ins+'_irm_ref_per'
+  "print '---# RDA:BEGIN'
+  "getIRMTranslations()
+  "print "---# RDA:END REPORT:4|Translations|'"+ins+"' Oracle IRM \
+          Translations Information ("+bas+')|'+pwd()+'|i_'+ins+'_irm_trns'
+  }
+
+  # Set the IRM environment
+  var ($dir,%env) = (catDir(nvl(getHome('.'),''),'common','wlst'))
+  var $env{'WLST_HOME'} = setEnv('WLST_HOME',$dir)
+  var $cls = getEnv($key = 'CLASSPATH',undef,true)
+  call setEnv($key,join(${RDA.SEPARATOR},$cls,\
+                        grepDir(catDir($dir,'lib'),'\.jar$','ip'),\
+                        grepDir(catDir($dir,'resources'),'\.jar$','ip')))
+  var $env{$key} = $cls
+
+  call setWasLogin($usr,$pwd,concat($hst,':',$prt))
+  call writeWas($cod,{bas => $dom,\
+                      ins => $ins})
+
+  # Restore the previous environment
+  loop $key (keys(%env))
+   call setEnv($key,$env{$key})
+  unpretoc
+ }
+}
+
+# -----------------------------------------------------------------------------
+# Section WLS_UCM_Collect: Collect UCM information in Oracle WebLogic Server
+# -----------------------------------------------------------------------------
+
+section WLS_UCM_Collect
+
+=head2 Universal Content Management
+
+Collects the Universal Content Management-related configuration management
+objects information.
+
+=cut
+
+var ($dom,$ins,$hst,$prt,$usr,$pwd) = @arg
+
+debug '   - Inside FMWecm module, gathering UCM MBean-related information'
+var %ecm = getWasGroup('ECM')
+loop $srv (keys(%ecm))
+{next !match($ins,$srv,true)
+ var $typ = $ecm{$srv}
+ if or(compare('eq',$typ,'Oracle Content Server'),\
+       compare('eq',$typ,'Oracle Universal Content Management - Content \
+                          Server'))
+ {pretoc '3:Universal Content Management'
+  set $cod
+  {print '---# RDA:BEGIN'
+  "getUCMCSVersion()
+  "print "---# RDA:END REPORT:4|Version|'"+ins+"' Oracle UCM Content Server \
+          Version Information ("+bas+')|'+pwd()+'|i_'+ins+'_ucm_version'
+  "print '---# RDA:BEGIN'
+  "getUCMHttpServerAddress()
+  "print "---# RDA:END REPORT:4|HTTP Server Address|'"+ins+"' Oracle UCM \
+          HTTP Server Address Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_ucm_http_ser_ver'
+  "print '---# RDA:BEGIN'
+  "getUCMIpAddressFilter()
+  "print "---# RDA:END REPORT:4|IP Address Filter|'"+ins+"' Oracle UCM IP \
+          Address Filter Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_ucm_ip_addr_fil'
+  "print '---# RDA:BEGIN'
+  "getUCMMailServer()
+  "print "---# RDA:END REPORT:4|Mail Server|'"+ins+"' Oracle UCM Mail Server \
+          Information ("+bas+')|'+pwd()+'|i_'+ins+'_ucm_mail_ser'
+  "print '---# RDA:BEGIN'
+  "getUCMServerPort()
+  "print "---# RDA:END REPORT:4|Server Port|'"+ins+"' Oracle UCM Server Port \
+          Information ("+bas+')|'+pwd()+'|i_'+ins+'_ucm_ser_prt'
+  "print '---# RDA:BEGIN'
+  "getUCMServerUptime()
+  "print "---# RDA:END REPORT:4|Server Uptime|'"+ins+"' Oracle UCM Server \
+          Uptime Information ("+bas+')|'+pwd()+'|i_'+ins+'_ucm_ser_upt'
+  "print '---# RDA:BEGIN'
+  "getUCMSmtpPort()
+  "print "---# RDA:END REPORT:4|SMTP Port|'"+ins+"' Oracle UCM SMTP Port \
+          Information ("+bas+')|'+pwd()+'|i_'+ins+'_ucm_smtp_prt'
+  "print '---# RDA:BEGIN'
+  "getUCMSysAdminAddress()
+  "print "---# RDA:END REPORT:4|SysAdmin Address|'"+ins+"' Oracle UCM \
+          SysAdmin Address Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_ucm_sysadm_addr'
+  }
+
+  # Set the UCM environment
+  var ($dir,%env) = (catDir(nvl(getHome('.'),''),'common','wlst'))
+  var $env{'WLST_HOME'} = setEnv('WLST_HOME',$dir)
+  var $cls = getEnv($key = 'CLASSPATH',undef,true)
+  call setEnv($key,join(${RDA.SEPARATOR},$cls,\
+                        grepDir(catDir($dir,'lib'),'\.jar$','ip'),\
+                        grepDir(catDir($dir,'resources'),'\.jar$','ip')))
+  var $env{$key} = $cls
+
+  call setWasLogin($usr,$pwd,concat($hst,':',$prt))
+  call writeWas($cod,{bas => $dom,\
+                      ins => $ins})
+
+  # Restore the previous environment
+  loop $key (keys(%env))
+   call setEnv($key,$env{$key})
+  unpretoc
+ }
+}
+
+# -----------------------------------------------------------------------------
+# Section WLS_UOA_Collect: Collect UOA information in Oracle WebLogic Server
+# -----------------------------------------------------------------------------
+
+section WLS_UOA_Collect
+
+=head2 Universal Online Archive
+
+Collects the Universal Online Archive-related configuration management
+objects information.
+
+=cut
+
+var ($dom,$ins,$hst,$prt,$usr,$pwd) = @arg
+
+debug '   - Inside FMWecm module, gathering UOA MBean-related information'
+var %ecm = getWasGroup('ECM')
+loop $srv (keys(%ecm))
+{next !match($ins,$srv,true)
+ var $typ = $ecm{$srv}
+ if compare('eq',$typ,'content')
+ {pretoc '3:Universal Online Archive'
+  set $cod
+  {custom()
+  "print '---# RDA:BEGIN'
+  "getUOADomain()
+  "print "---# RDA:END MACRO MBean:4|Domain Configuration|'"+ins+"' Oracle \
+          UOA Domain Configuration Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_uoa_dom_config|1'
+  "print '---# RDA:BEGIN'
+  "getUOANode()
+  "print "---# RDA:END MACRO MBean:4|Node Configuration|'"+ins+"' Oracle UOA \
+          Node Configuration Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_uoa_node_config|1'
+  "print '---# RDA:BEGIN'
+  "getUOAServer()
+  "print "---# RDA:END MACRO MBean:4|Server Configuration|'"+ins+"' Oracle \
+          UOA Server Configuration Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_uoa_server_config|1'
+  "print '---# RDA:BEGIN'
+  "getUOAService()
+  "print "---# RDA:END MACRO MBean:4|Service Configuration|'"+ins+"' Oracle \
+          UOA Service Configuration Information ("+bas+')|'+pwd()+'|i_'+ins+\
+          '_uoa_service_config|1'
+  "print '---# RDA:BEGIN'
+  "listUOAServers()
+  "print "---# RDA:END MACRO MBean:4|Servers|'"+ins+"' Oracle UOA Servers \
+          Information ("+bas+')|'+pwd()+'|i_'+ins+'_uoa_servers|1'
+  }
+
+  # Set the UOA environment
+  var ($dir,%env) = (catDir(nvl(getHome('.'),''),'common','wlst'))
+  var $env{'WLST_HOME'} = setEnv('WLST_HOME',$dir)
+  var $cls = getEnv($key = 'CLASSPATH',undef,true)
+  call setEnv($key,join(${RDA.SEPARATOR},$cls,\
+                        grepDir(catDir($dir,'lib'),'\.jar$','ip'),\
+                        grepDir(catDir($dir,'resources'),'\.jar$','ip')))
+  var $env{$key} = $cls
+
+  call setWasLogin($usr,$pwd,concat($hst,':',$prt))
+  call writeWas($cod,{bas => $dom,\
+                      ins => $ins})
+
+  # Restore the previous environment
+  loop $key (keys(%env))
+   call setEnv($key,$env{$key})
+  unpretoc
+ }
+}
+
+# -----------------------------------------------------------------------------
+# Section WLS_IPM_Log: Collect IPM log files for Oracle WebLogic Server
+# -----------------------------------------------------------------------------
+
+section WLS_IPM_Log
+
+=head2 IPM Local Log Files
+
+Collects the Oracle Imaging and Process Management-related local log files for
+Oracle WebLogic Server.
+
+=cut
+
+var ($dir,$lim) = @arg
+
+debug '   - Inside FMWecm module, gathering IPM domain log files'
+pretoc '2:IPM Local Log Files'
+call sort_files(3,$lim,\
+ grepDir(catDir($dir,'IPM','InputAgent','Input','Errors'),'^\.+$','pv'))
+unpretoc
+
+# -----------------------------------------------------------------------------
+# Section WSP_Collect: Collect ECM information in IBM WebSphere
+# -----------------------------------------------------------------------------
+
+section WSP_Collect
+
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>,
+L<WLSlib.def|modules::WLSlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

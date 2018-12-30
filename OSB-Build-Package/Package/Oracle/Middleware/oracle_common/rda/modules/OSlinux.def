@@ -1,0 +1,1549 @@
+# OSlinux.def: Linux Specific Code
+# $Id: OSlinux.def,v 2.31 2012/05/16 14:58:16 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OSlinux.def,v 2.31 2012/05/16 14:58:16 mschenke Exp $
+#
+# Change History
+# 20120516  MSC  Rename Entreprise Linux in Oracle Linux.
+
+=head1 NAME
+
+OSlinux - Submodule Specific to the Linux Operating System
+
+=cut
+
+use Buffer
+use Mrc
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('ping_command')
+
+# Get the calling module
+var $MODULE = $arg[0]
+import $TOC,$TOP
+
+=head1 DESCRIPTION
+
+This module determines the Linux flavor and F<ps> command format.
+
+=cut
+
+if !$FLAVOR
+{keep $FLAVOR,$OS,$OSA,$OSL,$OSP
+ var $OS = true
+
+ # Determine the ps command format
+ var $OSP = testCommand('ps -ef','/bin/ps -ef','/usr/bin/ps -ef')
+ var $OSL = replace($OSP,'-ef','-efl')
+ var $OSA = replace($OSP,'-ef','-eo comm,args')
+
+ # Determine the linux flavor
+ var $FLAVOR = 'Unidentified'
+ loop $fil (grepDir('/etc','^oracle-release$','ip'),\
+            grepDir('/etc','release$','p'),\
+            grepDir('/etc','conectiva$','p'),\
+            grepDir('/etc','^debian','p'))
+ {if match($fil,'(enterprise|oracle)',true)
+   var $FLAVOR = 'Oracle'
+  elsif match($fil,'Redhat',true)
+  {if grepFile($fil,'^(Enterprise|Oracle) Linux','fi')
+    var $FLAVOR = 'Oracle'
+   elsif grepFile($fil,'CentOS','fi')
+    var $FLAVOR = 'CentOS'
+   else
+    var $FLAVOR = 'Red Hat'
+  }
+  elsif match($fil,'SuSE',true)
+   var $FLAVOR = 'SuSE'
+  elsif match($fil,'UnitedLinux',true)
+   var $FLAVOR = 'UnitedLinux'
+  elsif match($fil,'Conectiva',true)
+   var $FLAVOR = 'Conectiva'
+  elsif match($fil,'TurboLinux',true)
+   var $FLAVOR = 'TurboLinux'
+  elsif match($fil,'SCO',true)
+   var $FLAVOR = 'SCO'
+  elsif match($fil,'Debian',true)
+   var $FLAVOR = 'Debian'
+  elsif match($fil,'Asianux',true)
+   var $FLAVOR = 'Asianux'
+  else
+   next
+  break
+ }
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE INI MODULE
+
+Nothing required yet.
+
+=cut
+
+if compare('eq',$MODULE,'INI')
+{# Nothing required yet
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE END MODULE
+
+=head2 report - Report Settings
+
+Determines the operating system version and its bit size.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_report')
+{# Determine the operating system version and its bit size.
+ var ($osv) = split('-',uname('r'),2)
+ if grepCommand('/bin/arch','ia64|ppc64','f')
+  var $bit = 64
+ else
+  var $bit = nvl(trim(command('getconf LONG_BIT')),32)
+
+ # Load the system settings
+ write '|Platform|',$bit,'-bit ',$FLAVOR,' Linux|'
+ write '|O/S Version|',$osv,'|'
+
+ # Detect virtualization technology
+ if and(testFile('x','/sbin/lspci'),\
+        grepCommand('/sbin/lspci -vv','vmware','i'))
+  write '|Virtualization technology detected?|VMware|'
+ elsif and(testDir('d','/proc/xen'),\
+           not(testFile('e','/proc/xen/xsd_port')),\
+           testFile('s','/sys/hypervisor/uuid'))
+  write '|Virtualization technology detected?|Xen|'
+}
+
+=head2 system - System Information
+
+Extracts the system information such as CPU, memory, and swap information.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_system')
+{prefix
+  write '|*Item*|*Value*|'
+
+ debug ' Inside END module, getting CPU information (linux)'
+ if loadFile('/proc/cpuinfo')
+ {var ($cnt,$ven) = (0,'?')
+  loop $lin (getLines())
+  {if match($lin,'^processor\s*\d*\:\s*(.*)')
+   {var ($str) = (last)
+    incr $cnt
+    var $mhz[$cnt] = 0
+    var $mod[$cnt] = ''
+    var $typ[$cnt] = nvl($str,'')
+    var $ven[$cnt] = $ven
+   }
+   elsif match($lin,'^cpu MHz\s*\:\s*(.*)$')
+    var ($mhz[$cnt]) = (last)
+   elsif match($lin,'^clock\s*\:\s*(.*)Mhz$')
+    var ($mhz[$cnt]) = (last)
+   elsif match($lin,'^model name\s*\:\s*(.*)$')
+    var ($mod[$cnt]) = (last)
+   elsif match($lin,'^cpu\s*\:\s*(.*)$')
+    var ($mod[$cnt]) = (last)
+   elsif match($lin,'^vendor?\s*\:\s*(.*)$')
+    var ($ven[$cnt]) = (last)
+   elsif match($lin,'^vendor_id\s*\:\s*(.*)$')
+   {var ($str) = (last)
+    if $cnt
+     var $ven[$cnt] = $str
+    else
+     var $ven = $str
+   }
+   elsif match($lin,'^arch\s*\:\s*(.*)$')
+    var $typ[$cnt] = join(' ',$typ[$cnt],last)
+   elsif match($lin,'^cpu family\s*\:\s*(.*)$')
+    var $typ[$cnt] = join(' ',$typ[$cnt],'Family',last)
+   elsif match($lin,'^family\s*\:\s*(.*)$')
+    var $typ[$cnt] = join(' ',$typ[$cnt],'Family',last)
+   elsif match($lin,'^model\s*\:\s*(.*)$')
+    var $typ[$cnt] = join(' ',$typ[$cnt],'Model',last)
+   elsif match($lin,'^stepping\s*\:\s*(.*)$')
+    var $typ[$cnt] = join(' ',$typ[$cnt],'Stepping',last)
+  }
+  if $cnt
+  {var ($off,$str) = (0,concat($cnt,' Processor(s) Installed'))
+   while expr('<',$off,$cnt)
+   {incr $off
+    if $mod[$off]
+     var $str = sprintf('%s%%BR%%[%02d]: %s',$str,$off,$mod[$off])
+    else
+     var $str = sprintf('%s%%BR%%[%02d]:%s %s %d MHz',$str,$off,\
+                       $typ[$off],$ven[$off],$mhz[$off])
+   }
+   write '|Processor(s)|',$str,'|'
+  }
+ }
+
+ debug ' Inside END module, getting memory information (linux)'
+ if loadCommand('free -t')
+ {var ($lin) = grepLastFile('^Mem:','f')
+  if $lin
+  {var @rec = split('\s+',$lin,5)
+   write sprintf('|Total Physical Memory|%d MiB|',    expr('/',$rec[1],1024))
+   write sprintf('|Available Physical Memory|%d MiB|',expr('/',$rec[3],1024))
+  }
+  var ($lin) = grepLastFile('^Swap:','f')
+  if $lin
+  {var @rec = split('\s+',$lin,5)
+   write sprintf('|Swap: Max Size|%d MiB|', expr('/',$rec[1],1024))
+   write sprintf('|Swap: Available|%d MiB|',expr('/',$rec[3],1024))
+   write sprintf('|Swap: In Use|%d MiB|',   expr('/',$rec[2],1024))
+  }
+ }
+
+ if !hasOutput(true)
+  write 'Information not available'
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE OS MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'OS')
+{var $sup = match(id(),'^uid=0\(')
+
+=head2 cpu_info - CPUs
+
+Gets CPU information.
+
+=cut
+
+ debug ' Inside OS module, getting CPU information (linux)'
+ report cpu_info
+ write '---+ CPU Information'
+ write '---## Using: cat /proc/cpuinfo'
+ call writeFile('/proc/cpuinfo')
+ toc '2:[[',getFile(),'][rda_report][CPUs]]'
+
+=head2 memory_info - Memory
+
+Gets information about the physical memory.
+
+=cut
+
+ debug ' Inside OS module, about physical memory (linux)'
+ report memory_info
+ write '---+ Physical Memory Installed'
+ write '---## Using: cat /proc/meminfo | head -2'
+ call writeLines('/proc/meminfo',1,2)
+ toc '2:[[',getFile(),'][rda_report][Memory]]'
+
+=head2 disk_info - Disk Drives
+
+Gets information about the disks.
+
+=cut
+
+ debug ' Inside OS module, about disks (linux)'
+ report disk_info
+ write '---+!! Disk Information'
+ write $TOC
+
+ write '---+ Disk Mounts'
+ call writeCommand('mount')
+ write $TOP
+
+ write '---+ Disk Free'
+ call writeCommand('df -k')
+ write $TOP
+
+ write '---+ Swap'
+ call writeCommand('/sbin/swapon -s')
+ write $TOP
+
+ if $sup
+ {prefix
+   write '---+ Raw Devices'
+  call writeCommand('raw -qa')
+  if hasOutput(true)
+   write $TOP
+ }
+
+ toc '2:[[',getFile(),'][rda_report][Disk Drives]]'
+
+=head2 ipc_info - Kernel Tables and IPC
+
+Gets the kernel tables and IPC information.
+
+=cut
+
+ report kernel_info
+ write '---+!! Kernel Tables and IPC'
+ write $TOC
+
+ write '---+ Kernel Tables'
+ call writeCommand('sar -v 1 1')
+ write $TOP
+
+ write '---+ Semaphores'
+ call writeCommand('ipcs -s')
+ call writeCommand('ipcs -sl')
+ write $TOP
+
+ write '---+ Shared Memory'
+ call writeCommand('ipcs -m')
+ call writeCommand('ipcs -ml')
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Kernel Tables and IPC]]'
+
+=head2 services - Services
+
+Displays information about system services.
+
+=cut
+
+ debug ' Inside OS module, gathering services information'
+ report services
+ write '---+!! System Services'
+ write $TOC
+ prefix
+  write '---+ List /var/lock/subsys Content'
+ call statDir('n','/var/lock/subsys')
+ if hasOutput(true)
+  write $TOP
+ if !getSetting('NO_SERVICE')
+ {write '---+ System Service Status'
+  write '---## Using: service --status-all'
+  call writeCommand('service --status-all </dev/null 2>/dev/null')
+  write $TOP
+ }
+ write '---+ Runlevel Information for System Services'
+ write '---## Using: chkconfig --list'
+ call writeCommand('chkconfig --list')
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Services]]'
+
+=head2 ntp - NTP Status and Configuration
+
+Collects NTP status and the process information when NTP is running and
+accessible. It collects the F</etc/ntp.conf> file when present.
+
+=cut
+
+ debug ' Inside OS module, getting NTP status and configuration'
+ report ntp
+ var $ttl = '---+!! NTP Status, Process, and Configuration Information'
+
+ # Get the NTP status
+ if findCommand('ntpq')
+ {var $cmd = concat(last,' -p')
+  prefix
+  {if !isCreated()
+   {write $ttl
+    write $TOC
+   }
+   write '---+ NTP Status'
+   write '---## Using: ntpq -p'
+  }
+  var $hdr = true
+  loop $lin (grepCommand($cmd,'.'))
+  {if match($lin,'^=')
+    var $hdr = false
+   elsif match($lin,'No association ')
+    write $lin
+   elsif $hdr
+    write '|*',replace(trim($lin),'\s+','*|*',true),'*|'
+   else
+    write '|',replace(trim($lin),'\s+',' |',true),' |'
+  }
+  if hasOutput(true)
+   write $TOP
+ }
+
+ # Check for NTP process
+ prefix
+ {if !isCreated()
+  {write $ttl
+   write $TOC
+  }
+  write '---+ NTP Process'
+  write '<verbatim>'
+ }
+ loop $lin (grepCommand($OSP,'ntp'))
+  write $lin
+ if hasOutput(true)
+ {write '</verbatim>'
+  write $TOP
+ }
+
+ # Get the NTP configuration file
+ prefix
+ {if !isCreated()
+  {write $ttl
+   write $TOC
+  }
+  write '---+ NTP Configuration'
+  write '---## Information Taken from /etc/ntp.conf'
+ }
+ call writeFile('/etc/ntp.conf')
+ if hasOutput(true)
+  write $TOP
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][NTP Status and Configuration]]'
+
+=head2 numactl - Non Uniform Memory Access Policy
+
+Displays the Non Uniform Memory Access (NUMA) policy settings of the current
+process.
+
+=cut
+
+ debug ' Inside OS module, getting NUMA policy settings'
+ if findCommand('numactl')
+ {var $cmd = last
+  report numactl
+  title '---+ Non Uniform Memory Access (NUMA)'
+  title $TOC
+  prefix
+  {write '---+ Policy Settings'
+   write '---## Using: numactl --show'
+  }
+  call writeCommand(concat($cmd,' --show'))
+  if hasOutput(true)
+   write $TOP
+  prefix
+  {write '---+ Available Nodes'
+   write '---## Using: numactl --hardware'
+  }
+  call writeCommand(concat($cmd,' --hardware'))
+  if hasOutput(true)
+   write $TOP
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Non Uniform Memory Access Policy]]'
+ }
+
+=head2 packages - Operating System Packages
+
+Lists all operating system packages.
+
+=cut
+
+ debug ' Inside OS module, getting operating system package information'
+ report packages
+ var $cmd = \
+  'rpm -qa --queryformat "|%{NAME}|%{VERSION}|%{RELEASE}|%{ARCH}|\n" | sort'
+ write '---+ Operating System Package Information'
+ write '---## Using: ',encode($cmd)
+ if loadCommand($cmd)
+ {write '|*Name*|*Version*|*Release*|*Arch*|'
+  if isFiltered()
+  {loop $lin (getLines())
+    write replace($lin,'\.','&#46;',true)
+  }
+  else
+  {loop $lin (getLines())
+    write $lin
+  }
+ }
+ toc '2:[[',getFile(),'][rda_report][Operating System Packages]]'
+
+=head2 sysdef - System/Kernel Settings
+
+Gets the system/kernel settings.
+
+=cut
+
+ debug ' Inside OS module, getting system/kernel settings'
+ report sysdef
+ write '---+!! Display of System/Kernel Settings'
+ write $TOC
+
+ write '---+ Main Kernel Parameters'
+ write '|*Parameter*| *Value*|*Source*|'
+ macro get_kernel
+ {var ($nam,$fil) = @arg
+  write '|',$nam,'| ',grepFile($fil,'.','f'),'|',$fil,'|'
+ }
+ call get_kernel('file-max',           '/proc/sys/fs/file-max')
+ call get_kernel('ip_local_port_range','/proc/sys/net/ipv4/ip_local_port_range')
+ call get_kernel('msgmax',             '/proc/sys/kernel/msgmax')
+ call get_kernel('msgmnb',             '/proc/sys/kernel/msgmnb')
+ call get_kernel('msgmni',             '/proc/sys/kernel/msgmni')
+ call get_kernel('rmem_default',       '/proc/sys/net/core/rmem_default')
+ call get_kernel('rmem_max',           '/proc/sys/net/core/rmem_max')
+ var ($lin) = grepFile('/proc/sys/kernel/sem','.','f')
+ var ($msl,$mns,$opm,$mni,$vmx) = split('\s+',$lin,6)
+ write '|semmni| ',$mni,'|/proc/sys/kernel/sem|'
+ write '|semmns| ',$mns,'|/proc/sys/kernel/sem|'
+ write '|semmsl| ',$msl,'|/proc/sys/kernel/sem|'
+ write '|semopm| ',$opm,'|/proc/sys/kernel/sem|'
+ write '|semvmx| ',$vmx,'|/proc/sys/kernel/sem|'
+ call get_kernel('shmall',      '/proc/sys/kernel/shmall')
+ call get_kernel('shmmax',      '/proc/sys/kernel/shmmax')
+ call get_kernel('shmmin',      '/proc/sys/kernel/shmmin')
+ call get_kernel('shmmni',      '/proc/sys/kernel/shmmni')
+ call get_kernel('shmseg',      '/proc/sys/kernel/shmseg')
+ call get_kernel('shmvmx',      '/proc/sys/kernel/shmvmx')
+ call get_kernel('wmem_default','/proc/sys/net/core/wmem_default')
+ call get_kernel('wmem_max',    '/proc/sys/net/core/wmem_max')
+ write $TOP
+
+ var $cmd = '/sbin/sysctl -a'
+ write '---+ System/Kernel Settings'
+ write '---## Using: ',encode($cmd)
+ call writeCommand(concat($cmd,' 2>/dev/null'))
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][System/Kernel Settings]]'
+
+=head2 system_error_log - System Error Log
+
+Collects system error log data.
+
+=head2 dmsetup - Low Level Logic Volume
+
+Gets low level logic volume information.
+
+=head2 multipath - Multipath Topology
+
+Gets multipath topology from all available information.
+
+=cut
+
+ collect RClinux|OS()
+
+=head2 hangcheck - Hangcheck Information
+
+Collects Kernel Hangcheck information.
+
+=cut
+
+ report hangcheck
+ prefix
+ {write '---+ Hangcheck Information'
+  write '<verbatim>'
+ }
+ loop $lin (grepCommand('dmesg','hangcheck'))
+  write $lin
+ if hasOutput(true)
+ {write '</verbatim>'
+  toc '2:[[',getFile(),'][rda_report][Hangcheck Information]]'
+ }
+
+=head2 hugepage - HugePages/HugeTLB Configuration
+
+Displays the recommended value for HugePages/HugeTLB settings.
+
+=cut
+
+ # Find out the huge page size (in KB)
+ var ($lin) = grepFile('/proc/meminfo','Hugepagesize','f')
+ var $siz = nvl(field('\s+',1,$lin),0)
+
+ # Determine the huge page recommendation
+ if and(expr('>',$siz,0),loadCommand('ipcs -m'))
+ {# Reserve 1 page to guarantee 1 free huge page
+  var $pag = 1
+
+  # Determine the number of pages required for running shared memory segments
+  loop $lin (getLines())
+  {var $seg = field('\s+',4,$lin)
+   if match($seg,'^\d+$')
+   {var $mpg = int(expr('/',$seg,expr('*',$siz,1024)))
+    if expr('>',$mpg,0)
+    {incr $mpg,1
+     incr $pag,$mpg
+    }
+   }
+  }
+
+  # Check for the kernel version
+  var ($osv) = split('-',uname('r'),2)
+
+  # Produce the recommendation
+  report hugepage
+  write '---+ HugePages/HugeTLB Configuration'
+  if match($osv,'^2\.4\.')
+   write 'Recommended setting: vm.hugetlb_pool = ',\
+          expr('/',expr('*',$pag,$siz),1024)
+  elsif match($osv,'^2\.6\.')
+   write 'Recommended setting: vm.nr_hugepages = ',$pag
+  else
+   write 'Unrecognized kernel version ',$osv
+  toc '2:[[',getFile(),'][rda_report][HugePages/HugeTLB Configuration]]'
+ }
+
+=head2 linux_release - Linux Release Information
+
+There is a potential problem of more than one file being collected. Therefore,
+instead of determining the exact platform, it gathers all files.
+
+=cut
+
+ debug ' Inside OS module, getting linux release information'
+ report linux_release
+ prefix
+ {write '---+!! Linux Release Information'
+  write $TOC
+ }
+ loop $fil (grepDir('/etc','release$','pn'))
+ {write '---+ Contents of ',encode($fil)
+  if !writeFile($fil)
+  {write 'Unable to read ',encode($fil),'%BR%\
+          May be file permission problem.%BR%\
+          Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+  write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Linux Release Information]]'
+
+=head2 misc_linux_info - Miscellaneous Linux Information
+
+Gets the data for OAP.
+
+=cut
+
+ debug ' Inside OS module, getting miscellaneous linux information'
+ report misc_linux_info
+ write '---+!! Miscellaneous Linux Information'
+ write $TOC
+
+ macro get_info
+ {var ($fil) = @arg
+  if testFile('e',$fil)
+  {import $TOP
+   write '---+ Contents of ',encode($fil)
+   if !writeFile($fil)
+   {write 'Unable to read ',encode($fil),'%BR%\
+           May be file permission problem.%BR%\
+           Permissions are:%BR%'
+    call statFile('b',$fil)
+    write 'User: ',id(),'%BR%'
+   }
+   write $TOP
+  }
+ }
+
+ call get_info('/proc/sys/vm/freepages')
+ call get_info('/proc/sys/vm/pagecache')
+ call get_info('/proc/slabinfo')
+ call get_info('/proc/cmdline')
+ call get_info('/proc/sys/kernel/tainted')
+
+ if testFile('x','/sbin/lspci')
+ {write '---+ Output of /sbin/lspci'
+  call writeCommand('/sbin/lspci -vv')
+  write $TOP
+ }
+
+ if testFile('x','/sbin/lsmod')
+ {write '---+ Output of /sbin/lsmod'
+  call writeCommand('/sbin/lsmod')
+  write $TOP
+ }
+
+ write '---+ Contents of /proc/modules'
+ if !testFile('e','/proc/modules')
+  write '/proc/modules file not found%BR%'
+ elsif loadFile('/proc/modules')
+ {call writeLastFile()
+  write $TOP
+  write '---+ Kernel Module Information'
+  loop $mod (getLines())
+  {var $tbl{field('\s+',0,$mod)} = 1
+  }
+  loop $mod (keys(%tbl))
+  {write '---++!!',$mod
+   call writeCommand(concat('/sbin/modinfo -l ',$mod,' 2>&1'))
+   call writeCommand(concat('/sbin/modinfo -p ',$mod,' 2>&1'))
+  }
+ }
+ else
+ {write 'Unable to read /proc/modules%BR%\
+         May be file permission problem.%BR%\
+         Permissions are:%BR%'
+  call statFile('b','/proc/modules')
+  write 'User: ',id(),'%BR%'
+ }
+ write $TOP
+
+ toc '2:[[',getFile(),'][rda_report][Miscellaneous Linux Information]]'
+
+=head2 libc - Linux GNU Libc
+
+Finds the Linux libc version. The GNU C Library prints its version when it is
+directly called. Linux distributions have different ideas about the exact file
+name of the C Library, so RDA tests everything starting with C<libc.so>, even
+if that means returning duplicate information.
+
+=cut
+
+ debug ' Inside OS module, determining the Linux libc version'
+ report libc
+ prefix
+  write '---+ Linux C Library Data'
+ loop $lib (grepDir('/lib','^libc\.so','np'))
+ {if testFile('fx',$lib)
+  {write '---+!! Trying to execute ',encode($lib),' to get version information'
+   call writeCommand(concat($lib,' 2>&1'))
+   if statCommand()
+    write '=> failed'
+   else
+    write '=> successful'
+  }
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Linux GNU Libc]]'
+
+=head2 ssh_daemon - SSH Daemon Configuration
+
+Displays SSH daemon configuration information when RDA is executed with super
+user privilege.
+
+=cut
+
+ if $sup
+ {debug ' Inside OS module, gathering SSH Daemon information'
+  report ssh_daemon
+  var $fil = '/etc/ssh/sshd_config'
+  prefix
+  {write '---+!! SSH Daemon Configuration'
+   write $TOC
+   write '---+ SSHD Configuration'
+   write '---## Information Taken from ',encode($fil)
+  }
+  call writeFile($fil)
+  if hasOutput(true)
+  {var $fil = '/etc/pam.d/login'
+   prefix
+   {write $TOP
+    write '---+ PAM Login Configuration'
+    write '---## Information Taken from ',encode($fil)
+   }
+   call writeFile($fil)
+   unprefix
+   write $TOP
+   toc '2:[[',getFile(),'][rda_report][SSH Daemon Configuration]]'
+  }
+ }
+
+=pod
+
+Identifies useful platform-related links.
+
+=cut
+
+ var \@LINKS = $arg[1]
+ if compare('eq',$FLAVOR,'Oracle')
+  var @LINKS = ('http://www&#46;oracle&#46;com/us/technologies/linux/\
+                 OracleLinuxSupport/index.html',\
+                'https://linux&#46;oracle&#46;com/',\
+                'https://linux&#46;oracle&#46;com/documentation/')
+ elsif compare('eq',$FLAVOR,'Red Hat')
+  var @LINKS = ('http://www.redhat.com/apps/support/resources/',\
+                'http://rhn.redhat.com/errata/',\
+                'http://www.redhat.com/support/manuals/')
+ elsif compare('eq',$FLAVOR,'SuSE')
+  var @LINKS = ('http://hardwaredb.suse.de/index.php?LANG=en_UK',\
+                'http://www.suse.com/support/',\
+                'http://www.opensuse.org/en/')
+ elsif compare('eq',$FLAVOR,'UnitedLinux')
+  var @LINKS = ('http://www.unitedlinux.com/en/info/index.html',\
+                'http://www.unitedlinux.com/en/info/index.html',\
+                'http://www.unitedlinux.com/en/info/index.html')
+ elsif compare('eq',$FLAVOR,'Conectiva')
+  var @LINKS = ('http://www.mandriva.com/en/',\
+                'http://distrowatch.com/table.php?distribution=conectiva',\
+                'http://www.mandriva.com/en/')
+ elsif compare('eq',$FLAVOR,'TurboLinux')
+  var @LINKS = ('http://www.turbolinux.com/support',\
+                'http://cc.turbolinux.com/support/download/',\
+                'http://www.turbolinux.com/support')
+ elsif compare('eq',$FLAVOR,'SCO')
+  var @LINKS = ('http://www.sco.com/products/',\
+                'http://www.sco.com/support/download.html',\
+                'http://www.sco.com/support/docs/')
+ elsif compare('eq',$FLAVOR,'Debian')
+  var @LINKS = ('http://www.debian.org/support',\
+                'http://www.debian.org/Bugs/',\
+                'http://www.debian.org/doc/')
+ elsif compare('eq',$FLAVOR,'Asianux')
+  var @LINKS = ('http://www.asianux.com/support',\
+                'http://www.asianux.com/tsn_hq/index.php',\
+                'http://www.asianux.com/documents')
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE PERF MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'PERF')
+{var $sup = match(id(),'^uid=0\(')
+
+ # Produce the performance report
+ report overview
+ write '---+!! Performance Overview'
+ write $TOC
+ toc '2:[[',getFile(),'][rda_report][Overview]]'
+
+=pod
+
+Gets the system uptime.
+
+=cut
+
+ debug ' Inside PERF module, about to execute uptime command'
+ prefix
+  write '---+ Uptime'
+ call writeCommand('uptime')
+ if hasOutput(true)
+  write $TOP
+
+=pod
+
+Gets a process overview in terms of running databases, users logged on, and top
+CPU users.
+
+=cut
+
+ if loadCommand($OSL)
+ {debug ' Inside PERF module, about to gather user and process counts'
+  write '---+ Process Overview'
+  var $cnt = grepLastFile('oracle')
+  write '|*Oracle Processes*| ',    $cnt,'|'
+  var $cnt = grepLastFile('tnslsn','i')
+  write '|*Listeners Processes*| ', $cnt,'|'
+  var $cnt = grepLastFile('DESCRIPTION=')
+  write '|*Background Processes*| ',$cnt,'|'
+  var $cnt = grepLastFile('root')
+  write '|*Root Processes*| ',      $cnt,'|'
+  var $cnt = getLastLength()
+  write '|*Total Processes*| ',     $cnt,'|'
+  var $cnt = command('who')
+  write '|*Number Users*| ',        $cnt,'|'
+  write $TOP
+
+  var ($hdr) = getLines(0,0)
+  call sortLastFile('ps_time')
+
+  debug ' Inside PERF module, about to determine running databases'
+  prefix
+  {write '---+ Running Databases'
+   write 'Note: the CPU usage in minutes'
+   write '<verbatim>'
+   write $hdr
+  }
+  loop $lin (grepLastFile('pmon'))
+   write $lin
+  if hasOutput(true)
+  {write '</verbatim>'
+   write $TOP
+  }
+
+  debug ' Inside PERF module, about to determine users logged on'
+  write '---+ Who is Logged On?'
+  call writeCommand('who | sort')
+  write $TOP
+
+  debug ' Inside PERF module, about to determine CPU hogs'
+  var $cnt = getSetting('PERF_TOP_PS',15)
+  write '---+ Current CPU Hogs / Top ',$cnt,' by CPU Time'
+  call writeLastFile(0,$cnt)
+  write $TOP
+
+  debug ' Inside PERF module, about to determine root CPU hogs'
+  var $cnt = getSetting('PERF_TOP_ROOT',5)
+  write '---+ Root CPU Hogs / Top ',$cnt,' by CPU Time'
+  write '<verbatim>'
+  write $hdr
+  loop $lin (grepLastFile('root'))
+  {next match($lin,'ckunix')
+   write $lin
+   decr $cnt
+   break !$cnt
+  }
+  write '</verbatim>'
+  write $TOP
+
+  if getSetting('PERF_PSTREE')
+  {debug ' Inside PERF module, about to show process tree'
+   write '---+ Process Tree'
+   write '---## Using: pstree -lp'
+   call writeCommand('pstree -lp')
+   write $TOP
+  }
+ }
+
+=pod
+
+Gets a disk overview in terms of free space, disk I/O, virtual memory, paging,
+and swapping.
+
+=cut
+
+ debug ' Inside PERF module, about to gather File System Free Space'
+ write '---+ File System Free Space in KiB'
+ call writeCommand('df')
+ write $TOP
+
+ debug ' Inside PERF module, about to gather multipath device status'
+ prefix
+ {write '---+ Multipath Device Status'
+  write '---## Using: cat /proc/mdstat'
+ }
+ call writeFile('/proc/mdstat')
+ if hasOutput(true)
+  write $TOP
+
+ debug ' Inside PERF module, about to gather disk throughput in KiB \
+        (takes 30 sec)'
+ write '---+ Disks Throughput'
+ write '100 I/O per sec implies seek time 10 ms since most access is seek \
+        time%BR%Disks on PC capable of sustained 8-16 Mbit/sec and UNIX 32-40 \
+        Mbit/sec'
+ write '---## Using: iostat -xd 10 3'
+ call writeCommand('iostat -xd 10 3')
+ write $TOP
+
+ debug ' Inside PERF module, about to gather virtual memory statistics \
+        (takes 30 sec)'
+ write '---+ Virtual Memory Statistics'
+ write '---## Using: vmstat 10 3'
+ call writeCommand('vmstat 10 3')
+ write $TOP
+ 	
+ debug ' Inside PERF module, about to gather paging statistics'
+ write '---+ Paging Activities'
+ write '---## Using: cat /proc/stat'
+ call writeFile('/proc/stat')
+ write $TOP
+
+ debug ' Inside PERF module, about to gather swapping activity (linux)'
+ write '---+ Swap Activities'
+ write '---## Using: cat /proc/swaps'
+ call writeFile('/proc/swaps')
+ write '---## Using: free -t'
+ call writeCommand('free -t')
+ write $TOP
+
+=pod
+
+Gets a system overview in terms of processor usage, top processes, and memory.
+
+=cut
+
+ debug ' Inside PERF module, about to gather CPU per-processor stats'
+ write '---+ CPU per-Processor Statistics'
+ write '---## Using: mpstat 1 3'
+ call writeCommand('mpstat 1 3 2>&1')
+ write $TOP
+
+ debug ' Inside PERF module, about to gather CPU statistics'
+ if loadCommand('/usr/bin/top -d 1 -n 4 b | grep -i cpu')
+ {write '---+ CPU Statistics'
+  prefix
+  {write '---## Using: /usr/bin/top -d 1 -n 4 b | grep "CPU.*states"'
+   write '<verbatim>'
+  }
+  loop $lin (grepLastFile('CPU.*states'))
+   write $lin
+  if hasOutput(true)
+   write '</verbatim>'
+  prefix
+  {write '---## Using: /usr/bin/top -d 1 -n 4 b | grep "^Cpu(s):"'
+   write '<verbatim>'
+  }
+  loop $lin (grepLastFile('^Cpu\(s\):'))
+   write $lin
+  if hasOutput(true)
+   write '</verbatim>'
+  write $TOP
+ }
+
+ debug ' Inside PERF module, about to echo top command output'
+ write '---+ Top Report Usage'
+ write '---## Using: /usr/bin/top -d 1 -n 2 b'
+ call writeCommand('/usr/bin/top -d 1 -n 2 b')
+ write $TOP
+
+ debug ' Inside PERF module, about to gather memory statistics'
+ write '---+ Memory Statistics'
+ write '---## Using: cat /proc/meminfo'
+ call writeFile('/proc/meminfo')
+ write $TOP
+
+ var $opt = getSetting('PERF_SYSRQ',false)
+ if and($sup,$opt)
+ {# Get kernel information
+  if createBuffer('LOG','R','/var/log/messages')
+  {debug ' Inside PERF module, about to gather SysRq information (takes time)'
+   prefix
+   {write '---+ SysRq Information'
+    write '|*Results*|'
+   }
+   suspend report
+   report sysrq
+   
+   
+   # Execute system requests
+   call command("echo '?' >/proc/sysrq-trigger")
+   sleep 2
+   if match($opt,'T',true)
+   {call command("echo 't' >/proc/sysrq-trigger")
+    var $slp = getSetting('PERF_SYSRQ_SLEEP',30)
+    sleep $slp
+   }
+   if match($opt,'M',true)
+   {call command("echo 'm' >/proc/sysrq-trigger")
+    sleep 2
+   }
+   if match($opt,'W',true)
+   {call command("echo 'w' >/proc/sysrq-trigger")
+    sleep 2
+   }
+   call command("echo '?' >/proc/sysrq-trigger")
+   sleep 2
+
+   # Extract the output from the system log
+   var ($min,$max) = grepBuffer('LOG',' kernel: SysRq : HELP : ','o',-2)
+   if and($min,$max)
+   {# Define a macro to switch to another report
+    macro switch_report
+    {var ($rpt) = @arg
+     if isCreated(true)
+     {write '</verbatim>'
+      var $url = getFile()
+      resume report
+      write '|[[',$url,'][_blank][',$cur,']]|'
+      suspend report
+     } 
+     if $rpt
+     {report $rpt
+      prefix
+      {write "---+!! '",$rpt,"' Results"
+       write '<verbatim>'
+      }
+     }
+     var $cur = $rpt
+     keep $cur,$rpt
+    }
+
+    # Filter the lines
+    call switch_report('sysrq_t')
+    call setPos('LOG',field(':',0,$min))
+    while getLine('LOG')
+    {var $lin = chomp(last)
+
+     # Detect a new report
+     if match($lin,' kernel: SysRq : Show Memory')
+      call switch_report('sysrq_m')
+     elsif match($lin,' kernel: SysRq : Show CPUs')
+      call switch_report('sysrq_w')
+     elsif match($lin,' kernel: SysRq : HELP : ')
+      break
+ 
+     # Filter the lines
+     if match($lin,' kernel: ')
+      write replace($lin,'^.* kernel: ')
+    }
+    call switch_report()
+   }
+   resume report
+   if hasOutput(true)
+    write $TOP
+
+   # Close the buffer
+   call deleteBuffer('LOG')
+  }
+ }
+
+=pod
+
+Lists open files.
+
+=cut
+
+ if getSetting('PERF_LSOF')
+ {debug ' Inside PERF module, about to list of open files'
+  write '---+ List of Open Files'
+  write '---## Using: lsof -S 2'
+  if and(isFiltered(),$pat = getSetting('FILTER_DFT_HOST_PATTERNS'))
+  {call loadCommand('lsof -S 2')
+   var $buf = getLastBuffer()
+   var $pat = replace($pat,'\#','|',true)
+   call $buf->filter('s%R:HOST%DBG_','r',concat('\bs(',$pat,')DBG_'))
+   call writeFile($buf,['C','lsof -S 2'])
+  }
+  else
+   call writeCommand('lsof -S 2')
+  write $TOP
+  debug ' Inside PERF module, about to list of network files'
+  prefix
+  {write '---+ List of Network Files'
+   write '---## Using: lsof -S 2 -i'
+  }
+  call writeCommand('lsof -S 2 -i')
+  if hasOutput(true)
+   write $TOP
+ }
+
+=pod
+
+When requested, collects latest F<sar> files.
+
+=cut
+
+ if !isFiltered()
+ {var $max = getSetting('PERF_SAR_DATA',0)
+  if expr('>',$max,0)
+  {debug ' Inside PERF module, about to gather sar data'
+   report sar
+   prefix
+   {write "---+ Latest 'sar' Files"
+    write '|*File*|'
+   }
+   var (undef,@fil) = grepDir('/var/log/sa','^sa\d+$','pt')
+   loop $fil (@fil)
+   {suspend report
+    var $bas = basename($fil)
+    data $bas
+    call writeData($fil)
+    if isCreated()
+    {var $url = getFile('.')
+     resume report
+     write '|[[',$url,'][_blank][',$bas,']]|'
+    }
+    else
+     resume report
+    decr $max
+    break !expr('>',$max,0)
+   }
+   if isCreated(true)
+    toc '2:[[',getFile(),'][rda_report][Latest SAR Files]]'
+  }
+ }
+}
+
+#------------------------------------------------------------------------------
+
+elsif compare('eq',$MODULE,'NET')
+{run library()
+
+=head1 CONTRIBUTION TO THE NET MODULE
+
+Determines the F<ping> and F<ps> command format.
+
+=cut
+
+ # usage: ping [-dfLnqRrv] [-c count] [-I ifaddr] [-i wait] [-l preload]
+ #             [-p pattern] [-S ifaddr] [-s packetsize] [-t ttl] [-w maxwait]
+ #             host
+ #        -R records the route.
+ var (undef,\$PING,\$NETSTAT) = @arg
+ var $PING = 'ping -R -c 10 -s %d %s'
+ var $NETSTAT = 'netstat'
+
+=head2 ifconfig - Interface Configuration
+
+Gets the network interface configuration.
+
+=head2 net_summary - Network Device Summary
+
+Gets the network device summary information.
+
+=cut
+
+ collect RClinux|NET()
+
+=head2 tcpip_settings - TCP/IP Settings
+
+Gets the TCP/IP settings. The data is located in the F</proc/sys/net/ipv4/tcp*>
+files. Gets the list of files, and prints the contents of the files.
+
+=cut
+
+ debug ' Inside NET module, getting TCP/IP settings (linux)'
+ report tcpip_settings
+ write '---+ TCP/IP Settings'
+ write '---## Gathered from File Contents of \
+        /proc/sys/net/ipv4/tcp*'
+ write '<verbatim>'
+ loop $nam (grepDir('/proc/sys/net/ipv4','^tcp'))
+ {if loadFile(catFile('/proc/sys/net/ipv4',$nam))
+   write $nam,' = ',getLines()
+ }
+ write '</verbatim>'
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][TCP/IP Settings]]'
+
+=head2 udp_settings - UDP Settings
+
+Gets the UDP settings. The data is located in the F</proc/sys/net/core/*mem*>
+files. Gets the list of files, and prints the contents of the files.
+
+=cut
+
+ debug ' Inside NET module, getting UDP settings (linux)'
+ report udp_settings
+ write '---+ UDP Settings'
+ write '---## Gathered from File Contents of \
+        /proc/sys/net/core/*mem*'
+ write '<verbatim>'
+ loop $nam (grepDir('/proc/sys/net/core','mem'))
+ {if loadFile(catFile('/proc/sys/net/core',$nam))
+   write $nam,' = ',getLines()
+ }
+ write '</verbatim>'
+ if isCreated()
+  toc '2:[[',getFile(),'][rda_report][UDP Settings]]'
+
+=head2 net_statistics - Network Device Statistics
+
+Gets the network device statistics information.
+
+=cut
+
+ debug ' Inside NET module, getting network device statistics information'
+ report net_statistics
+ var $cmd = '/usr/bin/sar -n DEV'
+ prefix
+ {write '---+ Network Device Statistics Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {write $TOP
+  toc '2:[[',getFile(),'][rda_report][Network Device Statistics]]'
+ }
+
+=head2 Bonding Configuration
+
+Gets information about the bonding configuration, with options and state of
+each slave.
+
+=cut
+
+ pretoc '2:Bonding Configuration'
+ call sort_files(3,0,grepDir('/proc/net/bonding','^bond','np'))
+ unpretoc
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE DEV MODULE
+
+Sets up the shared library path for Oracle Forms and Reports.
+
+=cut
+
+elsif compare('eq',$MODULE,'DEV')
+{# Setup the shared library path for Forms and Reports
+ var (undef,\%ENV,\$PS_EF) = @arg
+ var $ora = getSetting('ORACLE_HOME')
+ var $key = ${CUR.SHLIB}
+ if and($ora,$key)
+ {var $lib = getEnv($key,undef,true)
+  call setEnv($key,\
+   join(':',concat($ora,'/jdk/jre11/lib/i386/classic'),\
+            concat($ora,'/network/jre11/lib/i386/native_threads'),\
+            concat($ora,'/jdk/jre/lib/i386'),\
+            concat($ora,'/network/jre11/lib/i686/native_threads'),\
+            $lib))
+  var $ENV{$key} = $lib
+ }
+ var $PS_EF = $OSP
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE RAC MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'RAC')
+{import $ORA_CRS_HOME
+
+ var $CLUSTER_DETECTED = false
+ var $CRS_DETECTED     = defined($ORA_CRS_HOME)
+
+=head2 cluster_status_file - Cluster Status
+
+Detects the status of the cluster and verifies that it is up and ready for RAC.
+Because Oracle Database 10g works with CRS, CRS may be used instead of vendor
+cluster software.
+
+=cut
+
+ debug ' Inside RAC module, processing Cluster status (linux)'
+ report cluster_status_file
+ write '---+ Status of the Cluster'
+
+ if and($ORA_CRS_HOME,testFile('f',catFile($ORA_CRS_HOME,'bin','olsnodes')))
+ {write '---++ Verify cluster exists'
+  write 'Cluster Ready Services installed.'
+ }
+
+ write '---++ Real Application Cluster Option Verification'
+ if $CLUSTER_DETECTED
+  write 'A cluster has been detected.'
+ elsif $CRS_DETECTED
+  write 'An Oracle clusterware has been detected.'
+ else
+  write 'A cluster was not detected.'
+
+ toc '2:[[',getFile(),'][rda_report][Cluster Status]]'
+
+=head2 cluster_net - Network
+
+Looks for network and interconnect settings at the operating system level.
+
+=cut
+
+ debug ' Inside RAC module, looking for network and interconnect settings'
+ report cluster_net
+ write '---+ Network Settings'
+ loop $fil ('/proc/sys/net/core/rmem_default',\
+            '/proc/sys/net/core/rmem_max',\
+            '/proc/sys/net/core/wmem_default',\
+            '/proc/sys/net/core/wmem_max')
+ {if testFile('f',$fil)
+  {write '---++ ',encode($fil)
+   call writeFile($fil)
+  }
+  else
+   write '---## ',encode($netfile),' not present on this server'
+ }
+ toc '2:[[',getFile(),'][rda_report][Network]]'
+
+ # Set the list of operating specific configuration and log files
+ var (undef,\@ini,\@cfg,\@log) = @arg
+ var $ora = getSetting('ORACLE_HOME')
+ var @fil = grepDir('/etc/oracle','^(mo|ag).*\.lgl$','drv')
+ var @ini = ('/etc/inittab',\
+             '/etc/init.d/init.crs',\
+             '/etc/init.d/init.crsd',\
+             '/etc/init.d/init.cssd',\
+             '/etc/init.d/init.evmd',\
+             '/etc/init.d/init.ohasd',\
+             grep(@fil,'^/etc/oracle/oprocd/','v'))
+ var @log = (catFile($ora,'oracm','log','cm.log'),\
+             catFile($ora,'oracm','admin','cmcfg.ora'),\
+             catFile($ora,'oracm','admin','ormargs.ora'))
+}
+
+#------------------------------------------------------------------------------
+
+elsif compare('eq',$MODULE,'PS')
+{# Pass the command format of the ps variants
+ import $PS_ARG,$PS_EF,$PS_ELF
+ var $PS_ARG = $OSA
+ var $PS_EF  = $OSP
+ var $PS_ELF = $OSL
+}
+
+#------------------------------------------------------------------------------
+
+# Return a ping command
+macro ping_command
+ return concat('ping -R -c 10 -s ',nvl($arg[1],56),' ',$arg[0])
+
+=head1 OPERATING SYSTEM COMMANDS USED
+
+The main operating system commands used in the data collection include the
+following:
+
+=over 16
+
+=item o F<biosbootorder>
+
+=item o F<blkid>
+
+=item o F<cellcli>
+
+=item o F<check_ibports>
+
+=item o F<checkboot>
+
+=item o F<CheckHWnFWProfile>
+
+=item o F<CheckSWProfile>
+
+=item o F<chkconfig>
+
+=item o F<cksum>
+
+=item o F<dcsport>
+
+=item o F<df>
+
+=item o F<dmesg>
+
+=item o F<echo>
+
+=item o F<env_test>
+
+=item o F<ethtool>
+
+=item o F<fdisk>
+
+=item o F<flash_dom>
+
+=item o F<free>
+
+=item o F<getconf>
+
+=item o F<grep>
+
+=item o F<ibcheckerrors>
+
+=item o F<ibchecknet>
+
+=item o F<ibcheckstate>
+
+=item o F<ibdiagnet>
+
+=item o F<ibhosts>
+
+=item o F<iblinkinfo>
+
+=item o F<ibnetdiscover>
+
+=item o F<ibstat>
+
+=item o F<ibstatus>
+
+=item o F<ibswitches>
+
+=item o F<ibv_devinfo>
+
+=item o F<ifconfig>
+
+=item o F<imagehistory>
+
+=item o F<imageinfo>
+
+=item o F<infinicheck>
+
+=item o F<infinicheck-node>
+
+=item o F<iostat>
+
+=item o F<ip>
+
+=item o F<ipcs>
+
+=item o F<ipmitool>
+
+=item o F<listlinkup>
+
+=item o F<lsmod>
+
+=item o F<lsof>
+
+=item o F<lspci>
+
+=item o F<lsscsi>
+
+=item o F<MegaCli64>
+
+=item o F<modinfo>
+
+=item o F<mount>
+
+=item o F<mpstat>
+
+=item o F<netstat>
+
+=item o F<nm>
+
+=item o F<nm2info>
+
+=item o F<nslookup>
+
+=item o F<ntpq>
+
+=item o F<numactl>
+
+=item o F<ping>
+
+=item o F<ps>
+
+=item o F<pstree>
+
+=item o F<rpm>
+
+=item o F<sar>
+
+=item o F<service>
+
+=item o F<sminfo>
+
+=item o F<sort>
+
+=item o F<sysctl>
+
+=item o F<swapon>
+
+=item o F<tail>
+
+=item o F<top>
+
+=item o F<traceroute>
+
+=item o F<uptime>
+
+=item o F<verify-topology>
+
+=item o F<vmstat>
+
+=item o F<who>
+
+=back
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>, L<CRSinit.def|modules::CRSinit>,
+L<RClinux|modules::RClinux>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.1:  John Peeken.
+
+=item RDA 4.2:  Roger Snowden.
+
+=item RDA 4.6:  Eliane Le Noc, Guido Tijskens.
+
+=item RDA 4.7:  John Peeken.
+
+=item RDA 4.9:  Tom Holden.
+
+=item RDA 4.11: Shawn Gillespie, Guido Tijskens, Ozgur Yuksel.
+
+=item RDA 4.16: Jaime Alcoreza, Hagen Herbst, Scott Jesse, Rick Pulliam,
+Sanjay Singh.
+
+=item RDA 4.18: Jaime Alcoreza.
+
+=item RDA 4.23: Jaime Alcoreza.
+
+=item RDA 4.25: Jaime Alcoreza.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

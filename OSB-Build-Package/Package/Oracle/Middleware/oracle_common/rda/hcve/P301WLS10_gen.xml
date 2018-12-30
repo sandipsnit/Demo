@@ -1,0 +1,2909 @@
+<sdp_diaglet product="WLS" set="P301WLS10_gen" title="Oracle WebLogic Server 10 Post Installation (generic)" type="P">
+<sdp_meta id="$Id: P301WLS10_gen.xml,v 1.6 2012/08/17 13:05:03 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve JVM heapsize check" date="20120815" type="history"/>
+<sdp_content set="P301WLS10_gen" id="WLS_RULE" title="Oracle WebLogic Server 10 Post Installation (generic)" type="check">
+
+<sdp_messages>
+<sdp_message id="SKIP00"><![CDATA[Your Oracle WebLogic Server Version ${DOMAIN_VERSION} is not actionable for this issue.]]></sdp_message>
+<sdp_message id="PATCH0"><![CDATA[Oracle recommends upgrading your Oracle WebLogic Server version ${DOMAIN_VERSION}.%BR%Whenever possible, you should bring your environment(s) to a level where the issue has been addressed.%BR%However, if you feel that is not feasible, then contact Support for patch ID ${PATCH_ID}. Reference: Article ID 1302053.1 - ''How to Locate and Download Patches for WebLogic Server Using My Oracle Support'']]></sdp_message>
+</sdp_messages>
+
+<sdp_facts>
+<sdp_fact id="F00001">
+<sdp_description><![CDATA[This fact collection gets configuration parameters from the domain config.xml file.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.CONFIG"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[use Xml
+import $DOMAIN_HOME
+var $cfg = xmlLoadFile(catFile($DOMAIN_HOME,'config','config.xml'))
+
+# Get server information
+var $srv = {}
+loop $xml (xmlFind($cfg,'domain/server|name'))
+{var $srv->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('native-io-enabled')->get_data)
+  var $rec->{'NATIVE_IO_ENABLED'} = $val
+ if length($val = $xml->find('max-open-sock-count')->get_data)
+  var $rec->{'MAX_OPEN_SOCK_COUNT'} = $val
+ if length($val = $xml->find('web-server/max-post-size')->get_data)
+  var $rec->{'MAX_POST_SIZE'} = $val
+ if length($val = $xml->find('ssl/hostname-verification-ignored')->get_data)
+  var $rec->{'SSL_HOSTNAME_VERIFICATION_IGNORED'} = $val
+}
+
+# Get cluster information
+var $cls = {}
+loop $xml (xmlFind($cfg,'domain/cluster|name'))
+{var $cls->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('frontend-host')->get_data)
+  var $rec->{'FRONTEND_HOST'} = $val
+}
+
+# Get virtual host information
+var $vir = {}
+loop $xml (xmlFind($cfg,'domain/virtual-host|name'))
+{var $vir->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('max-post-size')->get_data)
+  var $rec->{'MAX_POST_SIZE'} = $val
+}
+
+# Get domain information
+loop $xml (xmlFind($cfg,'domain/admin-server-name'))
+ break $adm = xmlData($xml)
+loop $xml (xmlFind($cfg,'domain/domain-version'))
+ break $ver = xmlData($xml)
+var $mod = 'false'
+loop $xml (xmlFind($cfg,'domain/production-mode-enabled'))
+{var $mod = xmlData($xml)
+ break
+}
+
+# Get JMS information
+var $jms = {}
+loop $xml (xmlFind($cfg,'domain/jms-server|name'))
+{var $jms->{$xml->find('name')->get_data} = $rec = {}
+ if length($val = $xml->find('bytes-maximum')->get_data)
+  var $rec->{'BYTES_MAXIMUM'} = $val
+ if length($val = $xml->find('messages-maximum')->get_data)
+  var $rec->{'MESSAGES_MAXIMUM'} = $val
+}
+
+# Define the parameters
+call setHcveParameter('XML.CONFIG',$cfg)
+call setHcveParameter('DOMAIN.CONFIG',\
+  {'ADMIN_SERVER'            => {NAME => $adm},\
+   'CLUSTERS'                => $cls,\
+   'DOMAIN_VERSION'          => $ver,\
+   'JMS'                     => $jms,\
+   'PRODUCTION_MODE_ENABLED' => $mod,\
+   'SERVERS'                 => $srv,\
+   'VIRTUAL_HOSTS'           => $vir})
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00002">
+<sdp_description><![CDATA[This fact finds the patches installed on WebLogic Server using ``java weblogic.version -verbose``.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.PATCH"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+call source(catFile($DOMAIN_HOME,'bin',${AS.CMD:'setDomainEnv'}),true)
+var $cmd = 'java weblogic.version -verbose'
+var $tbl = {}
+loop $itm (grepCommand($cmd,'^WebLogic.*Temporary Patch for (.+)','1'))
+{loop $val (split(',',uc($itm)))
+ {var $val = replace(field('\s+',0,$val),'^BUG','')
+  var $tbl->{$val} = true
+ }
+}
+call setHcveParameter('DOMAIN.PATCH',$tbl)
+if statCommand()
+ setHcveParameter('DOMAIN.PATCH.FAILED','true')
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00010">
+<sdp_description><![CDATA[This fact finds parameter settings within the domain/config/jdbc .xml files.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.JDBC"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[use Xml
+import $DOMAIN_HOME
+var $tbl = {}
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jdbc'),'.xml$','i'))
+{var $cfg = xmlLoadFile(catFile($DOMAIN_HOME,'config','jdbc',$fil))
+ var $tbl->{$fil} = $rec = {}
+ var $val = $cfg->find(\
+   'jdbc-data-source/jdbc-connection-pool-params/pinned-to-thread')->get_data
+ if match($val,'true')
+  var $rec->{'PINNED_TO_THREAD'} = true
+ if $cfg->find(\
+   'jdbc-data-source/jdbc-connection-pool-params/statement-cache-type')
+  var $rec->{'STATEMENT_CACHE_TYPE'} = last->get_data
+ if $cfg->find(\
+   'jdbc-data-source/jdbc-connection-pool-params/statement-cache-size')
+  var $rec->{'STATEMENT_CACHE_SIZE'} = last->get_data
+}
+call setHcveParameter('DOMAIN.JDBC.FILES',$tbl)
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00011">
+<sdp_description><![CDATA[This fact finds parameter settings within the domain/config/jms .xml files.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.JMS"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[use Xml
+import $DOMAIN_HOME
+var $tbl = {}
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jms'),'\.xml$','i'))
+{var $cfg = xmlLoadFile(catFile($DOMAIN_HOME,'config','jms',$fil))
+ var $tbl->{$fil} = $rec = {}
+ if $cfg->find('weblogic-jms/bytes-maximum')
+  var $rec->{'BYTES_MAXIMUM'} = last->get_data
+ if $cfg->find('weblogic-jms/messages-maximum')
+  var $rec->{'MESSAGES_MAXIMUM'} = last->get_data
+}
+call setHcveParameter('DOMAIN.JMS.FILES',$tbl)
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00030">
+<sdp_description><![CDATA[This fact finds information using WLST on running servers.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="DOMAIN.WLST"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[
+use Output
+import $DOMAIN_HOME,$DOMAIN_URL,$DOMAIN_USR
+call setCurrent($tgt = addTarget('DOM_Req$$',{DOMAIN_HOME=>$DOMAIN_HOME}))
+call setWasType('WLS',\
+  catCommand($tgt->get_wlst(true),'common','bin',${AS.CMD:'wlst'}))
+
+# Get heap size for servers
+set $cod
+{domainConfig()
+"serverNames = cmo.getServers()
+"domainRuntime()
+"for name in serverNames:
+" try:
+"  cd("/ServerRuntimes/" + name.getName() + "/JVMRuntime/" +name.getName())
+"  heapSizeCur = cmo.getHeapSizeCurrent()
+"  heapSizeMax = cmo.getHeapSizeMax()
+"  print "HEAP SIZE = ", name.getName(), heapSizeCur, heapSizeMax
+" except WLSTException,e:
+"  # Ignore an inactive server
+"  pass
+"cd("/")
+"for name in serverNames:
+" serverName = name.getName()
+" print "JDBC Server = ", serverName
+" try:
+"  cd("/ServerRuntimes/" + name.getName() + "/JDBCServiceRuntime/" + \
+      name.getName() + "/JDBCDataSourceRuntimeMBeans/")
+"  dataSourceList = ls(returnMap='true')
+"  for dataSource in dataSourceList:
+"   try:
+"    cd("/ServerRuntimes/" + name.getName() + "/JDBCServiceRuntime/" + \
+        name.getName() + "/JDBCDataSourceRuntimeMBeans/" + dataSource)
+"    print 'JDBC Source = ', dataSource
+"    dataSourceContent = ls(returnMap='true')
+"    cd("..")
+"   except WLSTException,e:
+"    pass
+" except WLSTException,e:
+"  # Ignore an inactive server
+"  pass
+"cd("/")
+}
+var $fil = getTemp('WLS')
+call sharePassword('wls',basename($DOMAIN_HOME),'wls',$DOMAIN_URL)
+call setWasLogin($DOMAIN_USR,undef,$DOMAIN_URL)
+call requestWas($cod,undef,quote($fil,'x'))
+var ($jdb,$src,$srv,@siz) = ({},{})
+loop $lin (grepFile($fil,'\w'))
+{if match($lin,'^HEAP ')
+  call push(@siz,[split('\s+',value($lin))])
+ elsif match($lin,'^JDBC Server =')
+  var ($src,$srv) = ('?',value($lin))
+ elsif ?$srv
+ {if match($lin,'^-r--')
+  {var @val = split('\s+',$lin,3)
+   var $jdb{$srv,$src,$val[1]} = $val[2]
+  }
+  elsif match($lin,'^JDBC Source =')
+   var $src = value($lin)
+ }
+}
+call unlinkTemp('WLS')
+
+# Create facts
+call setHcveParameter('DOMAIN.WLST',\
+  {HEAPSIZE    => [@siz],\
+   JDBCCONNECT => $jdb})
+]]></sdp_command>
+</sdp_fact>
+
+</sdp_facts>
+
+<sdp_group>
+
+<sdp_rule id="A10010" mode="RECORD" name="Domain directory">
+<sdp_command default="$DOMAIN_HOME" type="PROMPT" variable="$DOMAIN_HOME"><![CDATA[Domain directory]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the domain directory.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10011" mode="VERIFY" name="Domain valid?">
+<sdp_dependencies>
+<sdp_dependency id="A10010" condition="IS" minimum="RECORD" result="SKIPPED"><![CDATA[Requires a domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+var $fil = catFile($DOMAIN_HOME,'config','config.xml')
+call setHcveResult(cond(testFile('e',$fil),\
+  'isValid',\
+  concat($DOMAIN_HOME,' invalid')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the domain directory contains a ``config.xml`` file in its ``config`` subdirectory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="invalid" result="FAILED"><![CDATA[The directory location given for the domain is not a valid domain home.]]></sdp_action>
+<sdp_action result="PASSED"><![CDATA[The directory location given for the domain is a valid domain home.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10015" mode="RECORD" name="Domain URL">
+<sdp_command type="PROMPT" default="localhost:7001" variable="$DOMAIN_URL"><![CDATA[Domain URL:port]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the domain URL and port.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10016" mode="RECORD" name="Domain User Name and Password">
+<sdp_command type="PROMPT" default="${RDA.USER}" variable="$DOMAIN_USR">
+<![CDATA[What is the user name for accessing the domain?]]></sdp_command>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_URL,$DOMAIN_USR
+call setHcveVariable('$DOMAIN_PWD')
+if !hasPassword('wls',$DOMAIN_URL,$DOMAIN_USR)
+ call setPassword('wls',$DOMAIN_URL,$DOMAIN_USR,\
+  askPassword('What is the password for accessing the domain?'))
+call setHcveResult(concat($DOMAIN_USR,'/***'))]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the user name and the password to use to access the domain.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10020" mode="RECORD" name="WLS Version">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED" value="Version unknown"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('$DOMAIN_VERSION')
+var @ver = split('\.',getHcveFact('DOMAIN.CONFIG.DOMAIN_VERSION'))
+call setHcveResult($DOMAIN_VERSION = \
+  sprintf('%d.%d.%d',nvl($ver[0],0),nvl($ver[1],0),nvl($ver[2],0)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule determines the three element version of the domain.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10021" mode="VERIFY" name="Version 10?">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED" value="noDomain"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\." result="FAILED" value="notVersion10"><![CDATA[The domain is not version 10. No further checks will be performed.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_VERSION
+call setHcveParameter('RUN.FIRST',true)
+if match($DOMAIN_VERSION,'^10\.')
+{call setHcveParameter('RUN.REL10',true)
+ if match($DOMAIN_VERSION,'^10\.0\.')
+  call setHcveParameter('RUN.REL10_0',true)
+ elsif match($DOMAIN_VERSION,'^10\.3\.')
+  call setHcveParameter('RUN.REL10_3',true)
+}
+call setHcveResult('VersionIsGood')
+]]></sdp_command>
+<sdp_command type="GROUP" exec="RUN.FIRST">FIRST</sdp_command>
+<sdp_command type="GROUP" exec="RUN.REL10">REL10</sdp_command>
+<sdp_command type="GROUP" exec="RUN.REL10_0">REL10_0</sdp_command>
+<sdp_command type="GROUP" exec="RUN.REL10_3">REL10_3</sdp_command>
+<sdp_description><![CDATA[This rule determines if the domain is version 10.]]></sdp_description>
+<sdp_actions>
+<sdp_action result="PASSED"><![CDATA[The domain is version 10.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="FIRST" name="Always do before minors">
+
+<sdp_rule id="A10100" mode="VERIFY" name="Admin server name?">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $nam = getHcveFact('DOMAIN.CONFIG.ADMIN_SERVER.NAME')
+call setHcveResult(cond(defined($nam),$nam,'notDiscovered'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the admin server name.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDiscovered" result="FAILED"><![CDATA[The admin server name was not found in the domain directory's ``config.xml`` file. This implies a bad domain installation.]]></sdp_action>
+<sdp_action result="PASSED"><![CDATA[The admin server name was found.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10110" mode="VERIFY" name="Server names?">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $srv = getHcveFact('DOMAIN.CONFIG.SERVERS',{})
+var @srv = keys($srv)
+call setHcveResult(cond(scalar(@srv),join("\012",@srv),'notDiscovered'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the names of the servers in the domain.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDiscovered" result="FAILED"><![CDATA[The names of the servers in the domain were not found in the domain directory's ``config.xml`` file. This implies a bad domain installation.]]></sdp_action>
+<sdp_action result="PASSED"><![CDATA[The names of the servers in the domain were found.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10120" mode="RECORD" name="Installed Patch List">
+<sdp_command type="RDA"><![CDATA[
+call setHcveVariable('$PATCH_ID')
+if getHcveFact('DOMAIN.PATCH.FAILED')
+ return setHcveResult('PatchesNotDiscovered')
+var @tbl = keys(getHcveFact('DOMAIN.PATCH',{}))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'no patches installed'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays the patches found.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10130" mode="RECORD" opt_out="1" name="config.xml Data">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+var $cfg = getHcveParameter('XML.CONFIG')
+var @tbl = ()
+
+# Post General Server Information
+call push(@tbl,\
+  'General Server Configurations, value in config.xml under <server>')
+loop $det (xmlFind($cfg,'domain/server'))
+{call push(@tbl,concat('Server Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'listen-port')
+  call push(@tbl,concat('- Listen Port = ',xmlData(last)))
+ if xmlFind($det,'native-io-enabled')
+  call push(@tbl,concat('- Native IO Enbabled = ',xmlData(last)))
+ if xmlFind($det,'max-open-sock-count')
+  call push(@tbl,concat('- Maximum Open Sockets = ',xmlData(last)))
+ if xmlFind($det,'stuck-thread-max-time')
+  call push(@tbl,concat('- Stuck Thread Maximum Time = ',xmlData(last)))
+ if xmlFind($det,'stuck-thread-timer-interval')
+  call push(@tbl,concat('- Stuck Thread Timer Interval = ',xmlData(last)))
+ if xmlFind($det,'accept-backlog')
+  call push(@tbl,concat('- Accept Backlog = ',xmlData(last)))
+ if xmlFind($det,'login-timeout-millis')
+  call push(@tbl,concat('- Login Timeout = ',xmlData(last)))
+ if xmlFind($det,'managed-server-independence-enabled')
+  call push(@tbl,concat('- Managed Server Independence Enabled = ',\
+                        xmlData(last)))
+ if xmlFind($det,'low-memory-gc-threshold')
+  call push(@tbl,concat('- Low Memory GC Threshold = ',xmlData(last)))
+ if xmlFind($det,'low-memory-granularity-level')
+  call push(@tbl,concat('- Low Memory Granularity Level = ',xmlData(last)))
+ if xmlFind($det,'low-memory-sample-size')
+  call push(@tbl,concat('- Low Memory Sample Size = ',xmlData(last)))
+ if xmlFind($det,'low-memory-time-interval')
+  call push(@tbl,concat('- Low Memory Time Interval = ',xmlData(last)))
+ if xmlFind($det,'ssl/listen-port')
+  call push(@tbl,concat('- SSL Listen Port = ',xmlData(last)))
+ if xmlFind($det,'ssl/login-timeout')
+  call push(@tbl,concat('- SSL Login Timeout = ',xmlData(last)))
+}
+
+# Post Cluster Information
+call push(@tbl,'','Cluster Configurations, value in config.xml under <cluster>')
+loop $det (xmlFind($cfg,'domain/cluster'))
+{call push(@tbl,concat('Cluster Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'weight')
+  call push(@tbl,concat('- Cluster Weight = ',xmlData(last)))
+}
+
+# Post Machine Information
+call push(@tbl,'','Machine Configurations, value in config.xml under <machine>')
+loop $det (xmlFind($cfg,'domain/machine'))
+ call push(@tbl,concat('Machine Name = ',xmlData(xmlFind($det,'name'))))
+
+# Post Virtual Host Information
+call push(@tbl,'',\
+  'Virtual Host Configuration, value in config.xml under <virtual-host>')
+loop $det (xmlFind($cfg,'domain/virtual-host'))
+{call push(@tbl,concat('Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'virtual-host-name')
+  call push(@tbl,concat('- Virtual Host Name = ',xmlData(last)))
+ if xmlFind($det,'network-access-point')
+  call push(@tbl,concat('- Network Access Point = ',xmlData(last)))
+ if xmlFind($det,'/web-server-log/file-name')
+  call push(@tbl,concat('- Log File Name = ',xmlData(last)))
+ if xmlFind($det,'web-server-log/logging-enabled')
+  call push(@tbl,concat('- Logging Enabled = ',xmlData(last)))
+ if xmlFind($det,'max-post-size')
+  call push(@tbl,concat('- Maximum Post Size = ',xmlData(last)))
+}
+
+# Post Work Manager Information
+call push(@tbl,'','Work Manager Configuration, value in config.xml under \
+  <self-tuning><work-manager>')
+loop $lin (xmlFind('domain/self-tuning/work-manager'))
+{call push(@tbl,concat('Name = ',xmlData(xmlFind($det,'name'))))
+ if xmlFind($det,'ignore-stuck-threads')
+  call push(@tbl,concat('- Ignore Stuck Threads = ',xmlData(last)))
+ if xmlFind($det,'min-threads-constraint')
+  call push(@tbl,concat('- Minimum Threads = ',xmlData(last)))
+ if xmlFind($det,'max-threads-constraint')
+  call push(@tbl,concat('- Maximum Threads = ',xmlData(last)))
+}
+
+# Assemble the results
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays values found in the ``config.xml`` file.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10140" mode="RECORD" opt_out="1" name="JDBC Configuration">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+call setHcveVariable('@JDBC_NAMES')
+var (@sep,@tbl,@JDBC_NAMES) = ()
+
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jdbc'),'.xml$','in'))
+{var $xml = xmlLoadFile(catDir($DOMAIN_HOME,'config','jdbc',$fil))
+ call push(@tbl,@sep,concat('Data from ',$fil))
+ loop $det (xmlFind($xml,'jdbc-data-source'))
+ {var $nam = xmlData(xmlFind($det,'name'))
+  call push(@tbl,concat('Name = ',$nam))
+  call push(@JDBC_NAMES,$nam)
+
+  loop $itm (xmlFind($det,'jdbc-driver-params'))
+  {if xmlFind($itm,'url')
+    call push(@tbl,concat('- URL = ',xmlData(last)))
+   if xmlFind($itm,'driver-name')
+    call push(@tbl,concat('- Driver Name = ',xmlData(last)))
+  }
+
+  loop $itm (xmlFind($det,'jdbc-connection-pool-params'))
+  {if xmlFind($itm,'capacity-increment')
+    call push(@tbl,concat('- Capacity Increment = ',xmlData(last)))
+   if xmlFind($itm,'initial-capacity')
+    call push(@tbl,concat('- Initial Capacity = ',xmlData(last)))
+   if xmlFind($itm,'max-capacity')
+    call push(@tbl,concat('- Maximum Capacity = ',xmlData(last)))
+   if xmlFind($itm,'connection-reserve-timeout-seconds')
+    call push(@tbl,concat('- Connection Reserve Timeout = ',xmlData(last)))
+  }
+
+  loop $itm (xmlFind($det,'jdbc-data-source-params'))
+  {if xmlFind($itm,'algorithm-type')
+    call push(@tbl,concat('- Algorithm Type = ',xmlData(last)))
+   if xmlFind($itm,'data-source-list')
+    call push(@tbl,concat('- Datasource List = ',xmlData(last)))
+  }
+ }
+ var @sep = ('____________________')
+}
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays values found in the JDBC configuration files.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10150" mode="RECORD" opt_out="1" name="JMS Configuration">
+<sdp_dependencies>
+<sdp_dependency id="A10011" condition="IS" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid domain directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_HOME
+call setHcveVariable('@JMS_CONNNECTIONFACTORY','@JMS_QUEUE','@JMS_TOPIC')
+var (@sep,@tbl,@JMS_CONNECTIONFACTORY,@JMS_QUEUE,@JMS_TOPIC) = ()
+
+loop $fil (grepDir(catDir($DOMAIN_HOME,'config','jms'),'.xml$','in'))
+{var $xml = xmlLoadFile(catDir($DOMAIN_HOME,'config','jms',$fil))
+ call push(@tbl,@sep,concat('Data from ',$fil))
+
+ call push(@tbl,'JMS Connection Factory Configuration')
+ loop $det (xmlFind($xml,'weblogic-jms/connection-factory'))
+ {var $nam = xmlValue($det,'name')
+  call push(@JMS_CONNECTIONFACTORY,$nam)
+  call push(@tbl,concat('Connection Factory Name = ',$nam))
+  if xmlFind($det,'sub-deployment-name')
+   call push(@tbl,concat('- Sub-deployment Name = ',xmlData(last)))
+  if xmlFind($det,'jndi-name')
+   call push(@tbl,concat('- JNDI Name = ',xmlData(last)))
+ }
+ call push(@tbl,'','JMS Topic Configuration')
+ loop $det (xmlFind($xml,'weblogic-jms/topic'))
+ {var $nam = xmlData($det,'name')
+  call push(@JMS_TOPIC,$nam)
+  call push(@tbl,concat('Name = ',$nam))
+  if xmlFind($det,'sub-deployment-name')
+   call push(@tbl,concat('- Sub-deployment Name = ',xmlData(last)))
+  if xmlFind($det,'jndi-name')
+   call push(@tbl,concat('- JNDI Name = ',xmlData(last)))
+ }
+ call push(@tbl,'','JMS Queue Configuration')
+ loop $det (xmlFind($xml,'weblogic-jms/queue'))
+ {var $nam = xmlValue($det,'name')
+  call push(@JMS_QUEUE,$nam)
+  call push(@tbl,concat('Name = ',$nam))
+  if xmlFind($det,'sub-deployment-name')
+   call push(@tbl,concat('- Sub-deployment Name = ',xmlData(last)))
+  if xmlFind($det,'jndi-name')
+   call push(@tbl,concat('- JNDI Name = ',xmlData(last)))
+ }
+ var @sep = ('____________________')
+}
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule displays values found in the JDBC configuration files.]]></sdp_description>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="REL10" opt_out="1" name="Checks for 10.0 and 10.3">
+
+<sdp_rule id="A05000" mode="VERIFY" name="JMS bytes-maximum">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.JMS',{}))
+loop $nam (keys($tbl))
+{if missing($tbl->{$nam,'BYTES_MAXIMUM'})
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have bytes-maximum set:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the bytes-maximum setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``help avoid the out-of-memory errors that can occur when Oracle WebLogic JMS Quotas are not defined.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a JMS Quota not being defined thus large message backlogs could cause out-of-memory errors.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05001" mode="Verify" name="JMS messages-maximum">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.JMS',{}))
+loop $nam (keys($tbl))
+{if missing($tbl->{$nam,'MESSAGES_MAXIMUM'})
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have message-maximum set:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the JMS messages-maximum setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``help avoid the out-of-memory errors that can occur when Oracle WebLogic JMS Quotas are not defined.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a JMS Quota not being defined thus large message backlogs could cause out-of-memory errors.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05002" mode="Verify" name="JDBC pinned-to-thread">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.JDBC.FILES',{}))
+loop $fil (keys($tbl))
+{if missing($tbl->{$fil,'PINNED_TO_THREAD'})
+  call push(@tbl,$fil)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have pinned-to-thread set to TRUE:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks to see if the pinned-to-thread setting is set to true.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``database contention``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``minimizing the time it takes for an application to reserve a database connection from a data source and to eliminate contention between threads for a database connection, you can add the Pinned-To-Thread property in the connection Properties list for the data source, and set its value to true.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05003" mode="Verify" name="JDBC statement-cache-type">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.JDBC.FILES',{}))
+loop $fil (keys($tbl))
+{if missing($tbl->{$fil,'STATEMENT_CACHE_TYPE'})
+  call push(@tbl,$fil)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have statement-cache-type:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the statement-cache-type setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``database contention``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``database connection and Oracle recommends setting the JDBC options Statement Cache Type for each Data Source thus in our documentation at: %BR%http://download.oracle.com/docs/cd/E14571_01/web.1111/e13814/topten.htm#i1145700 %BR%To configure the JDBC Connection Pool using the WebLogic Administrator Console: %BR%http://download.oracle.com/docs/cd/E14571_01/apirefs.1111/e13952/taskhelp/jdbc/jdbc_datasources/ConfigureTheStatementCacheForADataSource.html``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05004" mode="Verify" name="JDBC statement-cache-size">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.JDBC.FILES',{}))
+loop $fil (keys($tbl))
+{if missing($tbl->{$fil,'STATEMENT_CACHE_SIZE'})
+  call push(@tbl,$fil)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have statement-cache-size:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the statement-cache-size setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``database contention``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``database connection and Oracle recommends setting the JDBC options Statement Cache Size for each Data Source thus in our documentation at: %BR%http://download.oracle.com/docs/cd/E14571_01/web.1111/e13814/topten.htm#i1145700 %BR%To configure the JDBC Connection Pool using the WebLogic Administrator Console: %BR%http://download.oracle.com/docs/cd/E14571_01/apirefs.1111/e13952/taskhelp/jdbc/jdbc_datasources/ConfigureTheStatementCacheForADataSource.html``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05005" mode="Verify" name="Server native-io-enabled">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.SERVERS',{}))
+loop $nam (keys($tbl))
+{var $val = $tbl->{$nam,'NATIVE_IO_ENABLED'}
+ if match($val,'false',true)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following have native-io-enabled set to FALSE:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the native-io-enabled setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``performance issues``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``Performance issues if native IO is not set.  Edit the config.xml file and set the NativeIOEnabled attribute of the Server element to "true" (NativeIOEnabled=true).``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05006" mode="Verify" name="Cluster frontend-host">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.CLUSTERS',{}))
+loop $nam (keys($tbl))
+{if missing($tbl->{$nam,'FRONTEND_HOST'})
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have cluster frontend-host set to:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the cluster names and their settings for frontend-host.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``performance issues``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``Cluster has no FrontEndHost server specified``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05007" mode="Verify" name="Virtual-host max-post-size">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.VIRTUAL_HOSTS',{}))
+loop $nam (keys($tbl))
+{if !expr('>',$tbl->{$nam,'MAX_POST_SIZE'},0)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have virtual host names for max-post-size \
+               set to greater than zero:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the virtual host max-post-size setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``denial-of-service attacks which is a malicious attempt to overload the server``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a Denial-of-Service attack as a malicious attempt to overload a server with phony requests. One common type of attack is to send huge amounts of data in an HTTP POST method. To help prevent this type of attack set the Maximum Post Size greater than zero in the Oracle WebLogic Server. This attribute is set in the Console, under Servers or Virtual Hosts. If this attribute is defined for a virtual host, the values set for the virtual host override those set under Servers.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05008" mode="Verify" name="Server max-post-size">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.SERVERS',{}))
+loop $nam (keys($tbl))
+{if !expr('>',$tbl->{$nam,'MAX_POST_SIZE'},0)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have max-post-size set to greater than \
+               zero:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule collects the max-post-size setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``denial-of-service attacks which is a malicious attempt to overload the server``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``a Denial-of-Service attack as a malicious attempt to overload a server with phony requests. One common type of attack is to send huge amounts of data in an HTTP POST method. To help prevent this type of attack set the Maximum Post Size greater than zero in the Oracle WebLogic Server. This attribute is set in the Console, under Servers or Virtual Hosts. If this attribute is defined for a virtual host, the values set for the virtual host override those set under Servers.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05009" mode="Verify" name="Server max-open-sock-count">
+<sdp_command type="RDA"><![CDATA[
+var ($tbl,@tbl) = (getHcveFact('DOMAIN.CONFIG.SERVERS',{}))
+loop $nam (keys($tbl))
+{if !expr('>',$tbl->{$nam,'MAX_OPEN_SOCK_COUNT'},0)
+  call push(@tbl,$nam)
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have max-open-sock-count set:',@tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the max-open-sock-count setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``Too Many Open Files Error.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The domain is subject to ``Too Many Files Error when max-open-sock-count attribute is not set``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05010" mode="Verify" name="Config server ssl host-name-verification-ignored">
+<sdp_command type="RDA"><![CDATA[
+var @tbl =()
+var $mod = getHcveFact('DOMAIN.CONFIG.PRODUCTION_MODE_ENABLED')
+if match($mod,'true')
+{var $tbl = getHcveFact('DOMAIN.CONFIG.SERVERS',{})
+ loop $nam (keys($tbl))
+ {if match($tbl->{$nam,'SSL_HOSTNAME_VERIFICATION_IGNORED'},'true')
+   call push(@tbl,$nam)
+ }
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following have host-name-verification-ignored set to true:',\
+              @tbl),\
+  'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the ssl host-name-verification-ignored setting.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``A Man in the Middle Attack.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[``This domain is running in production mode, but the HostnameVerification property has been disabled. When the HostnameVerification attribute has been disabled, Oracle WebLogic Server no longer ensures that the certificate received from a remote site matches the DNS name when making a remote SSL connection. This leaves the connection vulnerable to a man in the middle attack. ``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05011" mode="Verify" name="JVM heapsize">
+<sdp_command type="RDA"><![CDATA[
+var @tbl =()
+loop $rec (@{getHcveFact('DOMAIN.WLST.HEAPSIZE',[])})
+{if !expr('==',$rec->[1],$rec->[2])
+  call push(@tbl,$rec->[0])
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following do not have ``JVM parameters -Xms and -Xmx`` set \
+              equally:',@tbl),'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule collects JVM Parameters and verifies they are set equal to each other.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``a Performance issue.``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[``This domain Assess the heap capacity necessary for the application and specify equal and fixed start and maximum heap size. Use the JVM parameters "-Xms" and "-Xmx" to specify these values. This best practice may improve the performance of the system under heavy load. Refer to MOS note 874792.1 (https://support.us.oracle.com/oip/faces/secure/km/DocumentDisplay.jspx?id=874792.1) and the JVM tuning documentation (http://docs.oracle.com/cd/E24329_01/web.1211/e24390/jvm_tuning.htm#PERFM150 and http://docs.oracle.com/cd/E13150_01/jrockit_jvm/jrockit/geninfo/diagnos/bestpractices.html) for details.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A05012" mode="Verify" name="JDBC WaitingForConnectionHighCount">
+<sdp_command type="RDA"><![CDATA[
+var @tbl =()
+var $tbl = getHcveFact('DOMAIN.WLST.JDBCCONNECT',{})
+loop $srv (keys($tbl))
+{loop $src (keys($tbl->{$srv}))
+ {if expr('>',$tbl->{$srv,$src,'WaitingForConnectionHighCount'},0)
+   call push(@tbl,concat($srv,'/',$src))
+ }
+}
+call setHcveResult(cond(scalar(@tbl),\
+  join("\012",'The following have ``WaitingForConnectionHighCount`` recording \
+              a value greater than zero:',@tbl),'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule Performance may be impacted by requests waiting for a connection.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject ``to a performance impacted by requests waiting for a connection``]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[``This domain is subject to a performance impact of waiting threads, the number of connections available in these connection pools should be increased.``]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="REL10_0" opt_out="1" name="Checks for 10.0">
+
+<sdp_rule id="A02554" mode="VERIFY" name="Issue 2554?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8116768"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR318723'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix Resource Injection Exception in Interceptor``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix Resource Injection Exception in Interceptor`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A02830" mode="VERIFY" name="Issue 2830?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8165618"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR330339'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``appc failing on EJB30 jar file when the size of the EJBclass file is more(>40kb) on windows platform``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix appc failing on EJB30 jar file when the size of the EJBclass file is more(>40kb) on windows platform`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03129" mode="VERIFY" name="Issue 3129?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8121133"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR323724'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix problems with using jsp-file and servlets defined with annotations in web.xml``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix problems with using jsp-file and servlets defined with annotations in web.xml`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03204" mode="VERIFY" name="Issue 3204?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8166242"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.327335'),'protected',\
+                                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``nodemanager fails to create second managed server with WLST``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``nodemanager fails to create second managed server with WLST`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03393" mode="VERIFY" name="Issue 3393?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8112023"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR320444'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``support DI for JSF managed bean``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``support DI for JSF managed bean`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03413" mode="VERIFY" name="Issue 3413?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8128732"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR305908'),\
+      getHcveFact('DOMAIN.PATCH.CR349392')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``close the socket and bail out when the SSL layer closes the connection``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``close the socket and bail out when the SSL layer closes the connection`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03450" mode="VERIFY" name="Issue 3450?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8122750"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR316761'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix the issue that servlet container appends charset='ISO-8859-1' to Http Header contentType at response for non-JSP pages``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix the issue that servlet container appends charset='ISO-8859-1' to Http Header contentType at response for non-JSP pages`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03553" mode="VERIFY" name="Issue 3553?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8158866"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR350528'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``add more detailed debug info: why check stale fails``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``add more detailed debug info: why check stale fails`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03580" mode="VERIFY" name="Issue 3580?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8087247"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR279624'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``will not send "Transfer-Encoding: Chunked" header for response code 304``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``will not send "Transfer-Encoding: Chunked" header for response code 304`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03631" mode="VERIFY" name="Issue 3631?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8182890"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR286944'),\
+      getHcveFact('DOMAIN.PATCH.CR368044')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``HEAD request will be served if servlet calls RequestDispatcher.forward()``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``HEAD request will be served if servlet calls RequestDispatcher.forward()`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03639" mode="VERIFY" name="Issue 3639?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8161389"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR332263'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``Multithreaded client fails randomly on EntityManager.persist with out transaction context``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``Multithreaded client fails randomly on EntityManager.persist with out transaction context`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03694" mode="VERIFY" name="Issue 3694?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8118037"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR317522'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``close connection between proxy and backend if write error to client``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``close connection between proxy and backend if write error to client`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03722" mode="VERIFY" name="Issue 3722?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8110232"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR273310'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixes a AS-MS reconnection issue if the AS is moved from one machine to another machine``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixes a AS-MS reconnection issue if the AS is moved from one machine to another machine`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03726" mode="VERIFY" name="Issue 3726?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8136767"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR344429'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix a java.net.ProtocolException resulting when AdminServer is set to a listenAddress & managed servers us http URL to boot from the admin server``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix a java.net.ProtocolException resulting when AdminServer is set to a listenAddress & managed servers us http URL to boot from the admin server`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03768" mode="VERIFY" name="Issue 3768?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8143371"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR345092'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``Advisory-Patch to prevent multiple cross-site scripting (XSS) vulnerabilities``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``Advisory-Patch to prevent multiple cross-site scripting (XSS) vulnerabilities`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03848" mode="VERIFY" name="Issue 3848?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8167473"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR336261'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``java.util.MissingResourceException happened if changing a severity level of log message for standard out in console``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``java.util.MissingResourceException happened if changing a severity level of log message for standard out in console`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A03862" mode="VERIFY" name="Issue 3862?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8150844"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR356418'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct deadlock and DispatcherExceptions on close of JMS objects``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct deadlock and DispatcherExceptions on close of JMS objects`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04036" mode="VERIFY" name="Issue 4036?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8191156"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR361470'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``foregin jndi properties including credentials``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``foregin jndi properties including credentials`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04091" mode="VERIFY" name="Issue 4091?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8189587"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR364594'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix NPE when deploying JAXWS WebService which has @HandlerChain``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixed NPE when deploying JAXWS WebService which has @HandlerChain`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04108" mode="VERIFY" name="Issue 4108?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8165732"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR327275'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``SR 201 varargs in methods of EJB 3``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``support for JSR 201 varargs in methods of EJB 3`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04111" mode="VERIFY" name="Issue 4111?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8150743"
+call setHcveResult(cond(and(getHcveFact('DOMAIN.PATCH.CR348211'),\
+                            getHcveFact('DOMAIN.PATCH.CR351918')),\
+                              'protected',\
+                              'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``reducing synchronization in the server startup using the countdown latch to improve performance``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``reducing synchronization in the server startup using the countdown latch to improve performance`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04112" mode="VERIFY" name="Issue 4112?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8190136"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR359942'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix NPE in HandlerPipe in glassfish JAX-WS RI 2.0.1``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix NPE in HandlerPipe in glassfish JAX-WS RI 2.0.1`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04133" mode="VERIFY" name="Issue 4133?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8191908"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR360531'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``for Investigate JBOSS v/s WLS Deployment Time difference - EJB recompile issue``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``for Investigate JBOSS v/s WLS Deployment Time difference - EJB recompile issue`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04153" mode="VERIFY" name="Issue 4153?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8160606"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR368133'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``HEAD request for web service WSDL failed with HTTP 404``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``HEAD request for web service WSDL failed with HTTP 404`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04162" mode="VERIFY" name="Issue 4162?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8192605"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR359698'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``glassfish impl did not take care of wsdl definitions with empty prefix``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``glassfish impl did not take care of wsdl definitions with empty prefix`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04225" mode="VERIFY" name="Issue 4225?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8135972"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR296079'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``disable client reconnect attempts for pre-9.x servers``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``disable client reconnect attempts for pre-9.x servers`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04322" mode="VERIFY" name="Issue 4322?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8196614"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR367059'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``resolved 2 memory leaks - WlCache and DirectoryNotifierItem``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``resolved 2 memory leaks - WlCache and DirectoryNotifierItem`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04324" mode="VERIFY" name="Issue 4324?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8083879"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR285250'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``when precompile-continue,precompile are set to true in <jsp-descriptor> ensure that JSP compilation continues even after there is a compilation error``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``when precompile-continue,precompile are set to true in <jsp-descriptor> ensure that JSP compilation continues even after there is a compilation error`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04330" mode="VERIFY" name="Issue 4330?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8173564"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR372291'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``set shrink freqency to zero should stop any shrinking``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``set shrink freqency to zero should stop any shrinking`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04335" mode="VERIFY" name="Issue 4335?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9523270"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9506869'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``PSE FOR MLR FOR BUGS 8188896 and 8174835``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``PSE FOR MLR FOR BUGS 8188896 and 8174835`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04336" mode="VERIFY" name="Issue 4336?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8174835"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR370000'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``pool counted the no-op skip-tests in it's timing stats, so long normal tests might cause the pool to self-disable briefly and unnecessarily``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``pool counted the no-op skip-tests in it's timing stats, so long normal tests might cause the pool to self-disable briefly and unnecessarily`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04342" mode="VERIFY" name="Issue 4342?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8077247"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR266759'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix ensures that API returns IPv6 address too``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix ensures that API returns IPv6 address too`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04374" mode="VERIFY" name="Issue 4374?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8083963"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR346535'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to `` fix issue in ExclusiveEntityManager``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix issue in ExclusiveEntityManager`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04388" mode="VERIFY" name="Issue 4388?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8192393"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR360168'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``implemented SSL Socket with connection timeout``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``implemented SSL Socket with connection timeout`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04389" mode="VERIFY" name="Issue 4389?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8187246"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR374428'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to `` issue with override isConnected() method in Certicom's implementation of SSLLayeredSocket.java``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``issue with override isConnected() method in Certicom's implementation of SSLLayeredSocket.java`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04392" mode="VERIFY" name="Issue 4392?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8145565"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.317840'),'protected',\
+                                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``an issue when the useJavaSerialization flag is turned on, use jdk impls not WLS impls``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``an issue when the useJavaSerialization flag is turned on, use jdk impls not WLS impls`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04361" mode="VERIFY" name="Issue 4361?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9523270"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR366662'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix ensures that API returns IPv6 address to``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix ensures that API returns IPv6 address to`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04391" mode="VERIFY" name="Issue 4391?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8109003"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR307029'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``issue with WLST offline where cd() command to /JMSSystemResource/JmsResource/Queue/DeliveryParamsOverrides would fail``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``issue with WLST offline where cd() command to /JMSSystemResource/JmsResource/Queue/DeliveryParamsOverrides would fail`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04394" mode="VERIFY" name="Issue 4394?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8184775"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR375768'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``issue with size of generated _jspService() method in java file from js``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``issue with size of generated _jspService() method in java file from js`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04420" mode="VERIFY" name="Issue 4420?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8171601"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR373899'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``annotated java source files also for WLCompile task case to determine the module type``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix to check for annotated java source files also for WLCompile task case to determine the module type`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04422" mode="VERIFY" name="Issue 4422?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8128500"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR277064'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct negative pending message values``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct negative pending message values`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04505" mode="VERIFY" name="Issue 4505?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8141074"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR344144'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix to prevent ClassCastException involving custom JNDI object during cluster synchronization``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix to prevent ClassCastException involving custom JNDI object during cluster synchronization`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04506" mode="VERIFY" name="Issue 4506?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8184630"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR243895'),\
+      getHcveFact('DOMAIN.PATCH.CR376220')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``syncronized HashMap to avoid stuck threads``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``syncronized HashMap to avoid stuck threads`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04519" mode="VERIFY" name="Issue 4519?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8125971"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR326548'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``JMS Wrappers are not involved when JMS 1.1 API is used``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``JMS Wrappers are not involved when JMS 1.1 API is used`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04520" mode="VERIFY" name="Issue 4520?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8154160"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR352261'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``resolving issues with WS-Policy Tab in console``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``resolving issues with WS-Policy Tab in console`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04522" mode="VERIFY" name="Issue 4522?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8155831"
+call setHcveResult(cond( getHcveFact('DOMAIN.PATCH.CR353518'),'protected',\
+                                                              'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct DispatcherExceptionse``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct DispatcherExceptionse`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04530" mode="VERIFY" name="Issue 4530?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8183018"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR362550'),\
+      getHcveFact('DOMAIN.PATCH.CR273359'),\
+      getHcveFact('DOMAIN.PATCH.CR374413')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix ensures we retrieve correct fileDescriptor associated with the SSLLayeredSocket when using JRockit VM. It also contains fix from CR362550``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix ensures we retrieve correct fileDescriptor associated with the SSLLayeredSocket when using JRockit VM. It also contains fix from CR362550,`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04533" mode="VERIFY" name="Issue 4533?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8173936"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR340715'),\
+      getHcveFact('DOMAIN.PATCH.CR371925')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct MDB access to foreign JMS servers``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct MDB access to foreign JMS servers`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04540" mode="VERIFY" name="Issue 4540?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8175239"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR330427'),\
+      getHcveFact('DOMAIN.PATCH.CR380225')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``make rjvm connection manager bootstrap use channel connection timeout defaults``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``make rjvm connection manager bootstrap use channel connection timeout defaults`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04528" mode="VERIFY" name="Issue 4528?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8176150"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR377283'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``issue with JSP compiler with application having JavaBean having setter method with generics``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix issues with JSP compiler with application having JavaBean having setter method with generics`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04539" mode="VERIFY" name="Issue 4539?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8120098"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.332218'),'protected',\
+                                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixed an issue if ejbTimeout() is implemented in superclass of Stateless session bean``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixed an issue if ejbTimeout() is implemented in superclass of Stateless session bean`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04576" mode="VERIFY" name="Issue 4576?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8195854"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR366527'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``dataSource's test-frequency-seconds wasn't working after a pool shutdown and restart``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``DataSource's test-frequency-seconds wasn't working after a pool shutdown and restart`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04586" mode="VERIFY" name="Issue 4586?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8183459"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR379825'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixes java.util.NoSuchElementException for webservices under heavy load``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixes java.util.NoSuchElementException for webservices under heavy load`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04591" mode="VERIFY" name="Issue 4591?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8187790"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR374869'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``always write ldap updates to master``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``always write ldap updates to master`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04610" mode="VERIFY" name="Issue 4610?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8106219"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR313932'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``null check is added with the Javelin ParamTypes``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``null check is added with the Javelin ParamTypes`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04625" mode="VERIFY" name="Issue 4625?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8129336"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR381749'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``NullPointerException occurs at BaseWSServlet.init() method after reloading a servlet (change and compile)``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``NullPointerException occurs at BaseWSServlet.init() method after reloading a servlet (change and compile)`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04627" mode="VERIFY" name="Issue 4627?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8147527"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR365382'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``provided private flag to get REMOTE_USER header when calling request.getRemoteUser()``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``provided private flag to get REMOTE_USER header when calling request.getRemoteUser()`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04628" mode="VERIFY" name="Issue 4628?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8147527"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR371755'),\
+      getHcveFact('DOMAIN.PATCH.CR378145')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``replaced try-catch block with instanceof operator to fix performance issue on AIX``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``replaced try-catch block with instanceof operator to fix performance issue on AIX`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04645" mode="VERIFY" name="Issue 4645?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8160163"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR363797'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix to view request URI of threads with use81-style-execute-queues``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix to view request URI of threads with use81-style-execute-queues`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04659" mode="VERIFY" name="Issue 4659?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8179188"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.366372'),'protected',\
+                                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix issue with jsp:plugin mayscript attribute``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix issue with jsp:plugin mayscript attribute`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04660" mode="VERIFY" name="Issue 4660?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8174471"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR370173'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``make JspFactory static for ELHelper``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``make JspFactory static for ELHelpere`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04683" mode="VERIFY" name="Issue 4683?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8182695"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR375931'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``don't dump ejb exception on server side unless debug is on``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``don't dump ejb exception on server side unless debug is on`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04684" mode="VERIFY" name="Issue 4684?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8114958"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR306393'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to `` fix deadlock in FEConnection.close and FEConnectionRuntimeDelegate.getSessionsCurrentCount``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix deadlock in FEConnection.close and FEConnectionRuntimeDelegate.getSessionsCurrentCount`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04685" mode="VERIFY" name="Issue 4685?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8176389"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR381331'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``cache classloading of weblogic.controls.jws.Common$Context``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``cache classloading of weblogic.controls.jws.Common$Context`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04688" mode="VERIFY" name="Issue 4688?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8194951"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR367051'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``add support to handler incomplete endpoint address``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``add support to handler incomplete endpoint address`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04693" mode="VERIFY" name="Issue 4693?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8176394"
+call setHcveResult(\
+  cond(getHcveFact('DOMAIN.PATCH.CR353631,CR381477'),'protected',\
+                                                     'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixed memory leak on client side``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixed memory leak on client side`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04695" mode="VERIFY" name="Issue 4695?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8174786"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR384934'),\
+      getHcveFact('DOMAIN.PATCH.8174786')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct lost messages on SAF forward``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct lost messages on SAF forward`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04696" mode="VERIFY" name="Issue 4696?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8186365"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR381803'),\
+      getHcveFact('DOMAIN.PATCH.8178640'),\
+      getHcveFact('DOMAIN.PATCH.CR373343'),\
+      getHcveFact('DOMAIN.PATCH.8186365'),\
+      getHcveFact('DOMAIN.PATCH.CR383258'),\
+      getHcveFact('DOMAIN.PATCH.8170982')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct SAF client forwarding stall``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct SAF client forwarding stall`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04697" mode="VERIFY" name="Issue 4697?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8178640"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR381803'),\
+      getHcveFact('DOMAIN.PATCH.8178640'),\
+      getHcveFact('DOMAIN.PATCH.CR373343'),\
+      getHcveFact('DOMAIN.PATCH.8186365'),\
+      getHcveFact('DOMAIN.PATCH.CR383258'),\
+      getHcveFact('DOMAIN.PATCH.8170982')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct SAF stal``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct SAF stal`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04698" mode="VERIFY" name="Issue 4698?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8168050"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR333686'),\
+      getHcveFact('DOMAIN.PATCH.CR385083')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix for Distributed garbage Collection call back method not being invoked and memory leak``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix for Distributed garbage Collection call back method not being invoked and memory leak`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04700" mode="VERIFY" name="Issue 4700?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8179499"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR384664'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to `` fix the problem multiple threads could share the ClientInfo instance concurrently``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixthe problem multiple threads could share the ClientInfo instance concurrently`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04725" mode="VERIFY" name="Issue 4725?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8216919"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8216919'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``xaer_nota was occurred when using multidatasource with global tx``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``xaer_nota was occurred when using multidatasource with global tx `` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04765" mode="VERIFY" name="Issue 4765?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8115508"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8115508'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``CHAINENTITYRESOLVER EXCEPTION WHILE CALLING A WEBSERVICE``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``CHAINENTITYRESOLVER EXCEPTION WHILE CALLING A WEBSERVICE`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04766" mode="VERIFY" name="Issue 4766?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[12]$" result="SKIPPED" syntax="wiki" value="not 10.0.1/10.0.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8636905"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8636905'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``all threads were in STANDBY state and WLS did not schedule tasks``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``all threads were in STANDBY state and WLS did not schedule tasks`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04791" mode="VERIFY" name="Issue 4791?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9079504"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9079504'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``support for case sensitive package names for JSP classes for non-windows platforms``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``support for case sensitive package names for JSP classes for non-windows platforms`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04806" mode="VERIFY" name="Issue 4806?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8422724"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.8895699'),\
+      getHcveFact('DOMAIN.PATCH.8422724')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``ignore trusted CAs containing unsupported OIDs, log it``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``ignore trusted CAs containing unsupported OIDs, log it`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04807" mode="VERIFY" name="Issue 4807?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.0" result="SKIPPED" syntax="wiki" value="not 10.0.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8422724"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8422724'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``output warning when certificate has unknown oid``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``output warning when certificate has unknown oid`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04810" mode="VERIFY" name="Issue 4810?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8179644"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR384080'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``handle custom work manager with unconstrained maxthreads for MDB``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``handle custom work manager with unconstrained maxthreads for MDB`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04838" mode="VERIFY" name="Issue 4838?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8160723"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8160723'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixing the ApplicationException Annotation``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixing the ApplicationException Annotation`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04846" mode="VERIFY" name="Issue 4846?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8354755"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8354755'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct java level deadlock in weblogic.deployment.jms.JMSSessionPoolTester``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct java level deadlock in weblogic.deployment.jms.JMSSessionPoolTester`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04852" mode="VERIFY" name="Issue 4852?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8822917"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8822917'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct timer thread deadlock``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct timer thread deadlock`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04858" mode="VERIFY" name="Issue 4858?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.0.1" result="SKIPPED" syntax="wiki" value="not 10.0.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9757998"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9757998'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``REMOTE CONFIGURATION FILE  INCLUDE AUTH BYPASS ARBITRARY COMMAND EXECUTION``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``REMOTE CONFIGURATION FILE  INCLUDE AUTH BYPASS ARBITRARY COMMAND EXECUTION`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04871" mode="VERIFY" name="Issue 4871?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[012]$" result="SKIPPED" syntax="wiki" value="not 10.0.0/10.0.1/10.0.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8230317"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8230317'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix for Managed Server in MSI mode takes 15 min to start using T3 protocol ADMINURL``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix Managed Server in MSI mode takes 15 min to start using T3 protocol ADMINURL`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04873" mode="VERIFY" name="Issue 4873?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[12]$" result="SKIPPED" syntax="wiki" value="not 10.0.1/10.0.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8703594"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8703594'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``disable connection pool shrinking if shrink frequency is 0``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix disable connection pool shrinking if shrink frequency is 0`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A04875" mode="VERIFY" name="Issue 4875?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.0\.[12]$" result="SKIPPED" syntax="wiki" value="not 10.0.1/10.0.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9755794"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9755794'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``WEBLOGIC.SECURITY.SPI.ROLECREATIONEXCEPTION``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``WEBLOGIC.SECURITY.SPI.ROLECREATIONEXCEPTION`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+
+<sdp_group exec="0" id="REL10_3" opt_out="1" name="Checks for 10.3">
+
+<sdp_rule id="A34153" mode="VERIFY" name="Issue 4153?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8160606"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8160606'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``HEAD request for web service WSDL failed with HTTP 404``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``HEAD request for web service WSDL failed with HTTP 404`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34324" mode="VERIFY" name="Issue 4324?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8083879"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR285250'),\
+      getHcveFact('DOMAIN.PATCH.8083879')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``when precompile-continue,precompile are set to true in <jsp-descriptor> ensure that JSP compilation continues even after there is a compilation error``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``when precompile-continue,precompile are set to true in <jsp-descriptor> ensure that JSP compilation continues even after there is a compilation error`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34336" mode="VERIFY" name="Issue 4336?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8174835"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR370000'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``pool counted the no-op skip-tests in it's timing stats, so long normal tests might cause the pool to self-disable briefly and unnecessarily``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``pool counted the no-op skip-tests in it's timing stats, so long normal tests might cause the pool to self-disable briefly and unnecessarily`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34374" mode="VERIFY" name="Issue 4374?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8083963"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR346535'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to `` fix issue in ExclusiveEntityManager``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix issue in ExclusiveEntityManager`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34388" mode="VERIFY" name="Issue 4388?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8192393"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8192393'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``implemented SSL Socket with connection timeout``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``implemented SSL Socket with connection timeout`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34472" mode="VERIFY" name="Issue 4472?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8184141"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR377899'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to `` turn off verbose message``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``turn off verbose message`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34525" mode="VERIFY" name="Issue 4525?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8176809"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8176809'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``not sending the Content-Lenght header for 304 response``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``not sending the Content-Lenght header for 304 responsee`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34539" mode="VERIFY" name="Issue 4539?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8120098"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.332218'),'protected',\
+                                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixed an issue if ejbTimeout() is implemented in superclass of Stateless session bean``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixed an issue if ejbTimeout() is implemented in superclass of Stateless session bean`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34586" mode="VERIFY" name="Issue 4586?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8183459"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR379825'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixes java.util.NoSuchElementException for webservices under heavy load``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixes java.util.NoSuchElementException for webservices under heavy load`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34591" mode="VERIFY" name="Issue 4591?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8187790"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8187790'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``always write ldap updates to master``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``always write ldap updates to master`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34626" mode="VERIFY" name="Issue 4626?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "81744605"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8174460'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``performance issues due to ClassCastExceptions being thrown/caught from non-WebLogic thread(s)``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``performance issues due to ClassCastExceptions being thrown/caught from non-WebLogic thread(s)`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34683" mode="VERIFY" name="Issue 4683?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8182695"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8182695'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``don't dump ejb exception on server side unless debug is on``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``don't dump ejb exception on server side unless debug is on`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34685" mode="VERIFY" name="Issue 4685?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8176389"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8176389'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``cache classloading of weblogic.controls.jws.Common$Context``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``cache classloading of weblogic.controls.jws.Common$Context`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34695" mode="VERIFY" name="Issue 4695?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8174786"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.8174786'),\
+      getHcveFact('DOMAIN.PATCH.CR384934')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct lost messages on SAF forward``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct lost messages on SAF forward`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34696" mode="VERIFY" name="Issue 4696?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8186365"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.CR381803'),\
+      getHcveFact('DOMAIN.PATCH.8178640')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct SAF client forwarding stall``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct SAF client forwarding stall`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34697" mode="VERIFY" name="Issue 4697?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOMAIN_VERSION,$PATCH_ID
+var $PATCH_ID = "8178640"
+if compare('same',$DOMAIN_VERSION,'10.3.0')
+ return setHcveResult(cond(\
+   and(getHcveFact('DOMAIN.PATCH.CR373343'),\
+       getHcveFact('DOMAIN.PATCH.8186365')),'protected',\
+                                            'susceptible'))
+return setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.8178640'),\
+      getHcveFact('DOMAIN.PATCH.CR381803')),'protected',\
+                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct SAF stal``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct SAF stal`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34700" mode="VERIFY" name="Issue 4700?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8179499"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8179499'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to `` fix the problem multiple threads could share the ClientInfo instance concurrently``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixthe problem multiple threads could share the ClientInfo instance concurrently`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34725" mode="VERIFY" name="Issue 4725?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8216919"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8216919'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``xaer_nota was occurred when using multidatasource with global tx``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``xaer_nota was occurred when using multidatasource with global tx`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34740" mode="VERIFY" name="Issue 4740?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8445786"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8445786'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct java level deadlock between TimerManagerImpl and QueueImpl``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct java level deadlock between TimerManagerImpl and QueueImpl`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34766" mode="VERIFY" name="Issue 4766?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8636905"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8636905'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``all threads were in STANDBY state and WLS did not schedule tasks``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``all threads were in STANDBY state and WLS did not schedule tasks`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34769" mode="VERIFY" name="Issue 4769?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8691274"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8691274'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix for dependency injection in Jsf backing bean/ejb3 stateless bean``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix for dependency injection in Jsf backing bean/ejb3 stateless bean`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34810" mode="VERIFY" name="Issue 4810?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8179644"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8179644'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``handle custom work manager with unconstrained maxthreads for MDB``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``handle custom work manager with unconstrained maxthreads for MDB`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34816" mode="VERIFY" name="Issue 4816?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[012]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1/10.3.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9340163"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9340163'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``document style operation must not have a non-header inout or out parameter``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``document style operation must not have a non-header inout or out parameter`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34819" mode="VERIFY" name="Issue 4819?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "378634"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.378634'),'protected',\
+                                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``deployment of EJBs with varargs in interface methods throws JDT compilation error``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``deployment of EJBs with varargs in interface methods throws JDT compilation error`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34820" mode="VERIFY" name="Issue 4820?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[012]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1/10.3.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9467326"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9467326'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``EJB3 WebService Fails to compile when using static nested class``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``EJB3 WebService Fails to compile when using static nested class`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34834" mode="VERIFY" name="Issue 4834?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8176788"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8176788'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``Work Manager rejected tasks spawned as part of an application initialization``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``Work Manager rejected tasks spawned as part of an application initialization`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34837" mode="VERIFY" name="Issue 4837?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9758074"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9758074'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix for Eager refresh of entity bean to refresh only entity cache``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix for Eager refresh of entity bean to refresh only entity cache`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34838" mode="VERIFY" name="Issue 4838?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8160723"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.CR363446'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fixing the ApplicationException Annotation``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fixing the ApplicationException Annotation`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34842" mode="VERIFY" name="Issue 4842?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8218123"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8218123'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``A SUBCLASS OF SYSTEM EXCEPTION WILL NOT BE HANDLED AS APPLICATION EXCEPTION``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``A SUBCLASS OF SYSTEM EXCEPTION WILL NOT BE HANDLED AS APPLICATION EXCEPTION`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34843" mode="VERIFY" name="Issue 4843?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8179501"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8179501'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``EJB3.0 APPLICATIONEXCEPTION ANNOTATION DOES NOT WORK WITH UNCHECKED EXCEPTION``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``EJB3.0 APPLICATIONEXCEPTION ANNOTATION DOES NOT WORK WITH UNCHECKED EXCEPTION`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34844" mode="VERIFY" name="Issue 4844?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9051649"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.8979755'),\
+      getHcveFact('DOMAIN.PATCH.9050041'),\
+      getHcveFact('DOMAIN.PATCH.9051649')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``exclude parent's fields from child's fields while doing java2schema``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``exclude parent's fields from child's fields while doing java2schema`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34846" mode="VERIFY" name="Issue 4846?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8354755"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8354755'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct java level deadlock in weblogic.deployment.jms.JMSSessionPoolTester``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct java level deadlock in weblogic.deployment.jms.JMSSessionPoolTester`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34848" mode="VERIFY" name="Issue 4848?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8665307"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8665307'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``excluding parent's fields from child's fields while doing java2schema``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``excluding parent's fields from child's fields while doing java2schema`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34849" mode="VERIFY" name="Issue 4849?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[0123]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1/10.3.2/10.3.3" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9432985"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9432985'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix an issue where thread is waiting for stateless session bean instance to be released to pool although the instance is available in the pool as it has already been released``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``ix an issue where thread is waiting for stateless session bean instance to be released to pool although the instance is available in the pool as it has already been released`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34852" mode="VERIFY" name="Issue 4852?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[012]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1/10.3.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8822917"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8822917'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``correct timer thread deadlock``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``correct timer thread deadlock`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34855" mode="VERIFY" name="Issue 4855?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9977346"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9977346'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``enabling wtc debug shows the debug messages as <info>``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``enabling wtc debug shows the debug messages as <info>`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34856" mode="VERIFY" name="Issue 4856?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9903513"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9903513'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``allow multiple async topic consumers to be able to receive on a secure destination``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``allow multiple async topic consumers to be able to receive on a secure destination`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34863" mode="VERIFY" name="Issue 4863?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9474375"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9474375'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``wtc transaction problem after untargeting and targeting``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``wtc transaction problem after untargeting and targeting`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34871" mode="VERIFY" name="Issue 4871?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="=~" minimum="^10\.3\.[01]$" result="SKIPPED" syntax="wiki" value="not 10.3.0/10.3.1" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8230317"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8230317'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``fix for Managed Server in MSI mode takes 15 min to start using T3 protocol ADMINURL``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix Managed Server in MSI mode takes 15 min to start using T3 protocol ADMINURL`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34873" mode="VERIFY" name="Issue 4873?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "8703594"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.8703594'),'protected',\
+                                                            'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``disable connection pool shrinking if shrink frequency is 0``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix disable connection pool shrinking if shrink frequency is 0`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34874" mode="VERIFY" name="Issue 4874?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.2" result="SKIPPED" syntax="wiki" value="not 10.3.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "10431993"
+call setHcveResult(cond(\
+  and(getHcveFact('DOMAIN.PATCH.10431993'),\
+      getHcveFact('DOMAIN.PATCH.9755794')),'protected',\
+                                           'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``weblogic.security.spi.rolecreationexception0``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix weblogic.security.spi.rolecreationexception`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34876" mode="VERIFY" name="Issue 4876?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.2" result="SKIPPED" syntax="wiki" value="not 10.3.2" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "10299742"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.10299742'),'protected',\
+                                                             'susceptible'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``WRONG DISPLAY OF THE TARGET OF THE JMS SERVER IN THE CONSOLE``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix WRONG DISPLAY OF THE TARGET OF THE JMS SERVER IN THE CONSOLE`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A34878" mode="VERIFY" name="Issue 4878?">
+<sdp_dependencies>
+<sdp_dependency id="A10020" condition="==" minimum="10.3.0" result="SKIPPED" syntax="wiki" value="not 10.3.0" message="SKIP00"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $PATCH_ID
+var $PATCH_ID = "9696701"
+call setHcveResult(cond(getHcveFact('DOMAIN.PATCH.9696701'),'susceptible',\
+                                                            'protected'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the domain is subject to ``ignore not fatal exception during deployment``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="protected" result="PASSED" syntax="wiki"><![CDATA[The domain is not subject to ``fix to ignore not fatal exception during deployment`` for Oracle WebLogic Server ${DOMAIN_VERSION}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki" message="PATCH0"/>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+</sdp_content>
+</sdp_diaglet>
+

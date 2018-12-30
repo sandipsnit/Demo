@@ -1,0 +1,109 @@
+# M212PROC.def: Collects Information on Running Processes
+# $Id: M212PROC.def,v 1.2 2012/08/30 15:06:02 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M212PROC.def,v 1.2 2012/08/30 15:06:02 mschenke Exp $
+#
+# Change History
+# 20120830  JGS  Add RT class processes filtering.
+
+=head1 NAME
+
+M212PROC - Collects Information on Running Processes
+
+=head1 DESCRIPTION
+
+This module collects information on running processes found in the F</proc>
+directory.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('proc')
+
+#------------------------------------------------------------------------------
+# XPLR_proc section
+#------------------------------------------------------------------------------
+
+section XPLR_proc
+
+# Validate the execution context
+call log_run('Processing PROC sections ...')
+
+pretoc '2:Running Processes from /proc'
+
+=head2 proc - Information on Running Processes
+
+Gathers information on running processes that do not belong to C<RT> class,
+using the following commands:
+
+=over 2
+
+=item o C</usr/bin/pstack ${PID}>
+
+=item o C</usr/bin/pfiles ${PID}>
+
+=back
+
+=cut
+
+# Collect information on processes
+loop $rec (get_zones(false))
+{if $loc = defined($nam = $rec->[0])
+ {var ($ttl,$pre,$exe) = (concat('From Zone ',$nam),\
+                          concat('zones/',$nam),\
+                          concat('/usr/sbin/zlogin ',$nam))
+   call log_info(concat('proc: RUNNING: zone ',$nam),\
+                concat(' Inside PROC collection, collecting from zone ',$nam))
+ }
+ else
+  var ($ttl,$pre,$exe) = ('From Global Zone')
+ var $top = $rec->[1]
+
+ report concat('proc_z_',nvl($nam,'global'))
+ title '---+!! ',$ttl
+ title $TOC
+
+ loop $pid (grepDir(catDir($top,'proc'),'^\d+$','n'))
+ {next !grepCommand(\
+    join(' ',$exe,'/usr/bin/ps','-p',$pid,'-o class= -o fname='),\
+    '(^\s+RT\s|\bdtlogin$|\bnskernd$)','v')
+  call do_remote($pre,$exe,$top,\
+    [concat('proc/pstacks/stack.',$pid),\
+     '/usr/bin/pstack',$pid,\
+     concat('---++ Stack Trace for Process ',$pid)],\
+    [concat('proc/pfiles/files.',$pid),\
+     '/usr/bin/pfiles',$pid,\
+     concat('---++ Open Files in Process ',$pid)])
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',$ttl,']]'
+}
+
+# Adjust the table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

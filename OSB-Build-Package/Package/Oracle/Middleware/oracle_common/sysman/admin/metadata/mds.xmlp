@@ -1,0 +1,69 @@
+<!-- Copyright (c) 2007, 2010, Oracle and/or its affiliates. 
+All rights reserved. -->
+
+<!--
+     These are the metrics for a deployed application
+     
+     MODIFIED   (MM/DD/YY)
+     scgrover    06/22/10 - remove version prop, not needed
+     jhsi        08/19/08 - Modified for weblogic
+     jhsi        01/24/08 - initial version      
+-->
+
+<!-- Metric mds_j2ee_application_rollup -->
+<Metric NAME="mds_j2ee_application_rollup" TYPE="TABLE">
+  <Display>
+    <Label NLSID="mds_j2ee_application_rollup">MDS Metrics</Label>
+  </Display>
+  <TableDescriptor>
+     <ColumnDescriptor NAME="IOsPerMOGet.rate" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="IOsPerMOGet_rate">IOs Per Metadata Object Get</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="IOsPerDocumentGet.rate" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="IOsPerDocumentGet_rate">IOs Per Document Get</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="IOsPerMOContentGet.rate" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="IOsPerMOContentGet_rate">IOs Per MO Content Get</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="getMetadataObject.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="getMetadataObject_throughput">Metadata Object Gets Per Second</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="getMetadataObject.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="getMetadataObject_time">Metadata Object Get Processing Time (seconds)</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="MetadataUpdate.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="MetadataUpdate_throughput">Metadata Updates Per Second</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="MetadataUpdate.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+           <Label NLSID="MetadataUpdate_time">Metadata Update Processing Time (seconds)</Label>
+        </Display>
+     </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">mds:mds_j2ee_application_rollup</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">IOsPerMOGet.rate;IOsPerDocumentGet.rate;IOsPerMOContentGet.rate;getMetadataObject.throughput;getMetadataObject.time;MetadataUpdate.throughput;MetadataUpdate.time</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item></value></argument>]]>
+         </Property>
+  </QueryDescriptor>
+</Metric>
+

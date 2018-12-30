@@ -1,0 +1,498 @@
+<sdp_diaglet platform="aix" product="DB10R1" set="A200DB10R1_aix" title="Oracle Database 10g R1 (10.1.0) Preinstall (AIX)" type="A">
+<sdp_meta id="$Id: A200DB10R1_aix.xml,v 2.7 2012/04/18 15:57:54 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve Temp check" date="20120402" type="history"/>
+<sdp_content set="A200DB10R1_aix" title="Oracle Database 10g R1 (10.1.0)  Preinstall (AIX)" type="check">
+<sdp_group>
+<sdp_rule id="A00010" mode="VERIFY" name="OS Certified?">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_LVL,$OS_BIT
+var $osv = substr(field('\-',0,$OS_LVL),0,3)
+var $lvl = concat(field('-',1,$OS_LVL),'.',field('-',2,command('oslevel -s')))
+var ($cpu) = field('_',1,grepCommand('/usr/sbin/prtconf','Processor Type','if'))
+if !match($cpu,'^POWER')
+ return setHcveResult('processor is not POWER')
+var ($bit) = command('/usr/bin/getconf HARDWARE_BITMODE')
+if !?$bit
+ return setHcveResult('/usr/bin/getconf not executable')
+elsif !match($bit,'^(64|32)$')
+ return('hardware bit not confirmed')
+elsif expr('!=',$bit,64)
+ return setHcveResult('hardware not 64-bit')
+var $hwv = field('\D',0,substr($cpu,5))
+if expr('<=',$hwv,5)
+{if or(expr('==',$osv,520),expr('==',$osv,530),expr('==',$osv,610))
+  return setHcveResult('Certified with Oracle Database 10g')
+}
+elsif expr('==',$hwv,6)
+{if expr('==',$osv,520)
+ {if compare('valid',$lvl,'10.00')
+   return setHcveResult('Certified with Oracle Database 10g')
+ }
+ elsif expr('==',$osv,530)
+ {if compare('valid',$lvl,'06.00')
+   return setHcveResult('Certified with Oracle Database 10g')
+ }
+ elsif expr('==',$osv,610)
+  return setHcveResult('Certified with Oracle Database 10g')
+}
+elsif expr('==',$hwv,7)
+{if expr('==',$osv,530)
+ {if compare('valid',$lvl,'11.02')
+   return setHcveResult('Certified with Oracle Database 10g')
+ }
+ elsif expr('==',$osv,610)
+ {if compare('valid',$lvl,'04.03')
+   return setHcveResult('Certified with Oracle Database 10g')
+ }
+}
+else
+ return setHcveResult(concat($cpu,' is not certified with Oracle Database 10g'))
+return setHcveResult(concat(uc($OS_NAM),' ',$OS_LVL,\
+                            ' is not certified with Oracle Database 10g'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the correct version of AIX required for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Certified with Oracle Database 10g" result="PASSED"><![CDATA[The correct version of AIX is installed on your server.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[!!SHOWSTOPPER!!
+You do not have the correct version of AIX installed on your server. For the certified version of AIX, see the ''Oracle Database 10g Installation Guide for AIX'', My Oracle Support, and Articles 885753.1 and 282036.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00020" mode="VERIFY" name="User in ``/etc/passwd``?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  not(testFile('r','/etc/passwd')),\
+    'Can not read /etc/passwd',\
+  grepFile('/etc/passwd',\
+           concat('^',$usr = command('/usr/bin/id -nu'),':'),\
+           'f'),\
+    'userOK',\
+    concat($usr,' not in /etc/passwd.')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user name of the user who runs this script is in the ``/etc/passwd`` file.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="userOK" result="PASSED"><![CDATA[The ``/etc/passwd`` file contains the user. No action is required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``/etc/passwd`` file does not contain the user or else the file has no read permissions. Add the user to the ``/etc/passwd`` file if the user does not exist in the file. NIS-managed users are not recommended.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00030" mode="VERIFY" name="Group in ``/etc/group``?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  not(testFile('r','/etc/group')),\
+    'Can not read /etc/group',\
+  grepFile('/etc/group',concat('^',command('/usr/bin/id -ng'),':'),'f'),\
+    'GroupOK',\
+    'Group not in /etc/group'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the group to which the user belongs exists in the ``/etc/group`` file.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="GroupOK" result="PASSED"><![CDATA[The ``/etc/group`` file contains the group of the user. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[ALERT
+The ``/etc/group`` file does not contain the group of the user. Add the group to the ``/etc/group`` file.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00040" mode="RECORD" name="Enter ORACLE_HOME">
+<sdp_command default="$ORACLE_HOME" type="PROMPT" variable="$ORACLE_HOME"><![CDATA[Planned ORACLE_HOME location]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the planned Oracle home directory.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00050" mode="VERIFY" name="ORACLE_HOME Valid?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00040" minimum="RECORD" result="FAILED"><![CDATA[Requires an Oracle home.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),    'OHNotSpecified',\
+  not(testDir('d',$ORACLE_HOME)),'OHnotvalid',\
+  not(testDir('l',$ORACLE_HOME)),'OHexists',\
+                                 'OHsymlink'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the Oracle home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="OHexists|OHsymlink" result="PASSED"><![CDATA[The Oracle home directory exists. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[No Oracle Home directory was specified.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[ALERT:
+There is something wrong with the Oracle home directory. Verify the following:
+|*Return Value*|*Action*|
+|OHnotvalid|Ensure that you provided the correct location or that the directory is created and run this script again.|
+|OHsymlink|ORACLE_HOME is a symbolic link.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00060" mode="VERIFY" name="O_H Permissions OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00040" minimum="RECORD" result="FAILED"><![CDATA[Requires an Oracle home.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),    'OHNotSpecified',\
+  not(testDir('d',$ORACLE_HOME)),'OHNotExist',\
+  not(testDir('r',$ORACLE_HOME)),'NoReadPerm',\
+  not(testDir('w',$ORACLE_HOME)),'NoWritePerm',\
+  not(testDir('x',$ORACLE_HOME)),'NoExecutePerm',\
+                                 'CorrectPerms'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user has the correct privileges to install Oracle Database 10g in the Oracle home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="CorrectPerms" result="PASSED"><![CDATA[The permissions for the Oracle home directory are correct. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[No Oracle Home directory was specified.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoReadPerm|Ensure that the install user has read permissions for the Oracle home directory.|
+|NoWritePerm|Ensure that the install user has write permissions for the Oracle home directory.|
+|NoExecutePerm|Ensure that the install user has execute permissions for the Oracle home directory.|
+|OHNotExist|The Oracle home directory does not exist. Create the Oracle home mount point and ensure that the permissions are set correctly (``chmod 755``).|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00070" mode="VERIFY" name="Umask Set to 022?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  expr('==','022',command('/usr/bin/umask')),'UmaskOK','UmaskNotOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``umask`` value is set correctly for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="UmaskOK" result="PASSED"><![CDATA[The ``umask`` value is set correctly for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The ``umask`` value is not set correctly. Set the ``umask`` to 022 before installing Oracle Database 10g. For more information, see the ''Oracle Database 10g Installation Guide for AIX''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00080" mode="VERIFY" name="LDLIBRARYPATH Unset?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(defined(getEnv('LD_LIBRARY_PATH')),'IsSet','UnSet'))]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``LD_LIBRARY_PATH`` environment variable is not set.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="UnSet" result="PASSED"><![CDATA[The ``LD_LIBRARY_PATH`` environment variable is not set. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``LD_LIBRARY_PATH`` environment variable is set in your environment and must be unset before installing Oracle Database 10g.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00090" mode="VERIFY" name="LIBPATH Unset?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(defined(getEnv('LIBPATH')),'IsSet','UnSet'))]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``LIBPATH`` environment variable is not set.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="UnSet" result="PASSED"><![CDATA[The ``LIBPATH`` environment variable is not set. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``LIBPATH`` environment variable is set in your environment and must be unset before installing Oracle Database 10g.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00100" mode="VERIFY" name="Other O_Hs in PATH?">
+<sdp_command type="RDA"><![CDATA[
+var @pth = split(':',getEnv('PATH'))
+loop $lin (grepFile(catFile('/etc','oratab'),'#|^$','v'))
+{var $pat = concat('^',quote(replace(field(':',1,$lin),'\/+$')),'(\/.*)?$')
+ if grep(@pth,$pat)
+  return setHcveResult('OratabEntryInPath')
+}
+call setHcveResult('NoneFound')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the PATH variable does not contain any references to other Oracle home directories based on the ``/etc/oratab`` entries.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NoneFound" result="PASSED"><![CDATA[The PATH does not contain any of the Oracle home directories in the ``/etc/oratab`` file. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The PATH variable contains one or more references to the Oracle home directories found in the ``/etc/oratab`` file. Remove the references from the PATH variable before installing Oracle Database 10g.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00110" mode="VERIFY" name="oraInventory Permissions">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  not(testFile('f','/etc/oraInst.loc')),\
+    'oraInventoryNotFound',\
+  not(testFile('wr',$INV_LOC = \
+    value(grepFile('/etc/oraInst.loc','^inventory_loc','f')))),\
+    'oraInventoryNotOK',\
+    'oraInventoryOK'))
+call setHcveVariable('$INV_LOC')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user installing Oracle Database 10g has sufficient privileges for the ``oraInventory`` directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="oraInventoryOK|oraInventoryNotFound" result="PASSED"><![CDATA[Either the user, who is logged in, has sufficient privileges for the ``oraInventory`` directory to install Oracle Database 10g or it is the first Oracle product to be installed on the system. In this case, the installer creates the ``oraInventory`` directory. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The user, who is logged in, cannot access (write and read) ``oraInventory`` while installing Oracle Database 10g . Verify that the user can write to the directory specified in the ``/etc/oraInst.loc`` file.
+|*Return Value*|*Action*|
+|oraInventoryNotOK|Make sure that the install user has write permissions to ${INV_LOC}|
+|oraInventoryNotFound|The ``/etc/oraInst.loc`` file was not found. This is not a problem if it is the first Oracle installation on the system.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00120" mode="VERIFY" name="Temp Adequate?">
+<sdp_command type="RDA"><![CDATA[
+var ($flg,$tmp,@tbl) = (true,{'/tmp','/tmp'})
+loop $key ('TEMP','TMPDIR')
+{if getEnv($key)
+  var $tmp->{$key} = last
+}
+loop $key (keys(%tmp))
+{if !testDir('d',$tmp->{$key})
+  call push(@tbl,concat($key,' invalidDir'))
+ else
+ {if !testDir('w',$tmp->{$key})
+   call push(@tbl,concat($key,' NoWrite'))
+  if and($flg,expr('>=',get_df($tmp->{$key}),409600))
+   var $flg = false
+ }
+}
+if $flg
+{loop $key (keys(%tmp))
+  call push(@tbl,concat($key,' tooSmall'))
+}
+call setHcveParameter('RULE.A00120',$tmp)
+call setHcveVariable('$TMPDIR')
+var $TMPDIR = getEnv('TMPDIR','/var/tmp')
+if expr('<',get_df($TMPDIR),204800)
+ call push(@tbl,concat('TMPDIR lessThan200'))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'TempSpaceOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that there is sufficient space available for storing temporary files during the Oracle Database 10g installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="TempSpaceOK" result="PASSED"><![CDATA[There is sufficient temporary disk space available for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The temporary space is not configured correctly.
+|*Return Value*|*Action*|
+|/tmp invalidDir|ALERT - ``/tmp`` is not a valid directory. ``/tmp`` needs to be a directory.|
+|/tmp NoWrite|ALERT - The user does not have write permissions to the ``/tmp`` directory.|
+|/tmp tooSmall|ALERT - There is less than the needed 400 MB of free space in the ``/tmp`` directory.|
+|TEMP invalidDir|ALERT - ``TEMP`` is set to ${`RULE.A00120.TEMP} in the environment; however, ${`RULE.A00120.TEMP} is an invalid directory. Take appropriate action.|
+|TEMP NoWrite|ALERT - ``TEMP`` is set to ${`RULE.A00120.TEMP} in the environment; however, the user does not have write permissions to ${`RULE.A00120.TEMP}.|
+|TEMP tooSmall|ALERT - ``TEMP`` is set to ${`RULE.A00120.TEMP} in the environment; however, ${`RULE.A00120.TEMP} has less than the required 400 MB of free space. Make sure your temporary space has at least 400 MB of free space.|
+|TMPDIR invalidDir|ALERT - ``TMPDIR`` is set to ${`RULE.A00120.TMPDIR} in the environment; however, ${`RULE.A00120.TMPDIR} is an invalid directory. Take appropriate action.|
+|TMPDIR NoWrite|ALERT - ``TMPDIR`` is set to ${`RULE.A00120.TMPDIR} in the environment; however, the user does not have write permissions to ${`RULE.A00120.TMPDIR}.|
+|TMPDIR tooSmall|ALERT - ``TMPDIR`` is set to ${`RULE.A00120.TMPDIR} in the environment; however, ${`RULE.A00120.TMPDIR} has less than the required 400 MB of free space. Make sure your temporary space has at least 400 MB of free space.|
+|TMPDIR lessThan200|ALERT - ${`TMPDIR} has less than the required 200 MB of free space. Make sure your ${`TMPDIR} has at least 200 MB of free space.|
+Note: The ``runInstaller`` (OUI) uses or checks for temporary space by checking for the ``TEMP`` environment variable first, then the ``TMP`` environment variable, and finally the ``/tmp`` mount point.
+%BR%The operating system also requires additional space by creating files under ``/tmp`` or using the ``TMPDIR`` environment variable if it finds it.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00130" mode="RECORD" name="Swap (in MB)">
+<sdp_command type="RDA"><![CDATA[if !testFile('x','/usr/sbin/lsps')
+ return setHcveResult('ALERT- SWAP space cannot be determined')
+var ($swp) = match(grepCommand('/usr/sbin/lsps -s','\s*\d+MB','f'),'\s*(\d+)MB')
+call setHcveResult(cond($swp,$swp,'SWAPNotSet'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule shows the amount of free swap space.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00140" mode="VERIFY" name="RAM (in MB)">
+<sdp_command type="RDA"><![CDATA[var ($mem) = match(grepCommand(\
+ "/usr/sbin/lsattr -HE -l sys0 -a realmem",'\s+\d+\s+','f'),'\s+(\d+)\s+')
+call setHcveResult(cond($mem,expr('/',$mem,1024)))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient physical memory to install Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">" minimum="511" result="PASSED"><![CDATA[You have sufficient physical memory (MB) installed to install Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[ALERT:
+You do not have sufficient physical memory (MB) in your system to install Oracle Database 10g.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00150" mode="VERIFY" name="SwapToRAM OK?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A00130" result="FAILED" value="Swap size required"><![CDATA[ALERT- A Swap to Memory ratio cannot be determined because swap is not set up or you do not have execute permissions to determine swap.]]></sdp_dependency>
+<sdp_dependency id="A00140"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var $swp = "%A00130%"
+var $mem = "%A00140%"
+call setHcveResult(cond(expr('<',$swp,1000),  'InsufficientSwap',\
+                        not(expr('>',$mem,0)),'MemNotDetermined',\
+                        expr('<',$swp,$mem),  'SwapLessThanRAM',\
+                                              'SwapToRAMOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the total amount of swap space is greater than or equal to the amount recommended by the ''Oracle Database 10g Installation Guide for AIX''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="SwapToRAMOK" result="PASSED"><![CDATA[The amount of swap space meets the minimum requirement for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The amount of swap space is less than the amount recommended by the ''Oracle Database 10g Installation Guide for AIX''. Verify the requirements and adjust your system accordingly.
+|*Return Value*|*Action*|
+|SwapLessThanRAM|ALERT- Swap space is less than the physical memory. Set swap space to at least the same size as the physical memory.|
+|InsufficientSwap|ALERT- Oracle Database 10g requires at least 1 GB of swap space.|
+|MemNotDetermined|ALERT- A Swap to Memory ratio cannot be determined because you do not have execute permissions to determine the physical memory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00160" mode="VERIFY" name="Disk Space OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00040" minimum="RECORD" result="FAILED"><![CDATA[Requires an Oracle home.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+if !length($ORACLE_HOME)
+ return setHcveResult('OHNotSpecified')
+if !testDir('d',$ORACLE_HOME)
+ return setHcveResult('OHNotValid')
+var $dsk = expr('/',get_df($ORACLE_HOME),1024)
+call setHcveResult(cond(expr('>=',$dsk,3700),'DiskSpaceOK',\
+                        expr('>=',$dsk,2500),'OnlySpaceForOne',\
+                        expr('>=',$dsk,1500),'ClientOnly',\
+                                             'NoSpace'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the amount of disk space in the Oracle home directory is sufficient for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="DiskSpaceOK" result="PASSED"><![CDATA[The Oracle home directory has sufficient disk space to install Oracle Database 10g software, create a database, and install Companion CD products. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[No ``ORACLE_HOME`` value was provided for verification.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The Oracle home directory has insufficient disk space for installing any type of Oracle Database 10g architecture. Verify the specifications.
+|*Return Value*|*Action*|
+|OnlySpaceForOne|${`ORACLE_HOME} has sufficient free disk space to install the Oracle Database 10g software but not enough space to create a database.|
+|ClientOnly|${`ORACLE_HOME} has sufficient free disk space to perform a client installation only.|
+|NoSpace|${`ORACLE_HOME} has insufficient free disk space for an Oracle Database 10g installation.|
+|OHNotValid|Disk space calculations cannot be performed because ${`ORACLE_HOME} is not a valid directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00170" mode="VERIFY" name="AIXTHREAD_SCOPE=S?">
+<sdp_command type="RDA"><![CDATA[var $env = getEnv('AIXTHREAD_SCOPE')
+call setHcveResult(cond(not(defined($env)),    'AIXTHREADNotSet',\
+                        compare('eq',$env,'S'),'AIXTHREAD_SCOPEOK',\
+                                               'AIXTHREAD_SCOPEBad'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``AIXTHREAD_SCOPE`` environment variable is set to ``S``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="AIXTHREAD_SCOPEOK" result="PASSED"><![CDATA[The ``AIXTHREAD_SCOPE`` environment variable setting is correct. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The ``AIXTHREAD_SCOPE`` environment variable is not correct.
+|*Return Value*|*Action*|
+|AIXTHREADNotSet|The ``AIXTHREAD_SCOPE`` environment variable should be set to ``S`` in the environment.|
+|AIXTHREAD_SCOPEBad|The ``AIXTHREAD_SCOPE`` environment variable is set but not set to ``S``. Reset the value to ``S`` in the environment.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00175" mode="VERIFY" name="LINK_CNTRL is Unset?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  defined(getEnv('LINK_CNTRL')),'LINK_CNTRLBad','LINK_CNTRLunset'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that ``LINK_CNTRL`` is not set in the environment.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="LINK_CNTRLunset" result="PASSED"><![CDATA[The ``LINK_CNTRL`` environment variable setting is not set. This setting is not required for AIX 5L. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The ``LINK_CNTRL`` environment variable is set in your environment. Unset it.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00180" mode="VERIFY" name="Got Software Tools?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+macro find_exe
+{var (\@tbl,$exe,$ref) = @arg
+ if findCommand($exe)
+ {var $cmd = readLink(last,last)
+  if !compare('eq',$cmd,$ref)
+   call push(@tbl,concat(ucfirst($exe),'Elsewhere'))
+ }
+ else
+  call push(@tbl,concat(ucfirst($exe),'Notfound'))
+}
+call find_exe(\@tbl,'ar','/usr/ccs/bin/ar')
+call find_exe(\@tbl,'ld','/usr/ccs/bin/ld')
+call find_exe(\@tbl,'nm','/usr/ccs/bin/nm')
+call find_exe(\@tbl,'make','/usr/ccs/bin/make')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'ld_nm_ar_make_found'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required assembly tools for the installation of Oracle Database 10g exist.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ld_nm_ar_make_found" result="PASSED"><![CDATA[All required assembly tools for the Oracle Database 10g installation were found. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required assembly tools for the Oracle Database 10g installation were not found. Check your installation.
+|*Return Value*|*Action*|
+|ArElsewhere|``ar`` is found in ``PATH`` but not in ``/usr/ccs/bin`` or symbolically linked to ``/usr/ccs/bin`` as required|
+|LdElsewhere|``ld`` is found in ``PATH`` but not in ``/usr/ccs/bin`` or symbolically linked to ``/usr/ccs/bin`` as required|
+|NmElsewhere|``nm`` is found in ``PATH`` but not in ``/usr/ccs/bin`` or symbolically linked to ``/usr/ccs/bin`` as required|
+|MakeElsewhere|``make`` is found in ``PATH`` but not in ``/usr/ccs/bin`` or symbolically linked to ``/usr/ccs/bin`` as required|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00190" mode="VERIFY" name="ulimits OK?">
+<sdp_command type="RDA"><![CDATA[var @tbl =()
+macro get_ulimit_unl
+{var (\@tbl,$nam) = @arg
+ var $lmt = field('\s+',1,grepLastFile(concat('^',$nam),'if'))
+ if !defined($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif compare('ne',$lmt,'unlimited')
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+macro get_ulimit_val
+{var (\@tbl,$nam,$ref) = @arg
+ var $lmt = field('\s+',1,grepLastFile(concat('^',$nam,'\('),'if'))
+ if !length($lmt)
+  call push(@tbl,concat($nam,'NotDefined'))
+ elsif and(compare('ne',$lmt,'unlimited'),expr('<',$lmt,$ref))
+  call push(@tbl,concat($nam,'TooSmall'))
+}
+call loadCommand('/usr/bin/ulimit -a')
+call get_ulimit_unl(\@tbl,'Time')
+call get_ulimit_unl(\@tbl,'File')
+call get_ulimit_unl(\@tbl,'Core')
+call get_ulimit_val(\@tbl,'Data',1048576)
+call get_ulimit_val(\@tbl,'Stack',32768)
+call get_ulimit_val(\@tbl,'NoFiles',4096)
+call get_ulimit_val(\@tbl,'Memory',2045680)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'ulimitOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the ``ulimit`` settings are adequate for installing Oracle Database 10g.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ulimitOK" result="PASSED"><![CDATA[The ``ulimit`` settings are adequate for installing Oracle Database 10g. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Review the ``ulimit`` settings and check the recommended values from the ''Oracle Database 10g Installation Guide for AIX'' before installing the software.
+|*Return Value*|*Action*|
+|TimeNotDefined|ulimit(TIME) is not defined|
+|TimeTooSmall|Increase the ulimit(TIME) to unlimited|
+|FileNotDefined|ulimit(FILE) is not defined|
+|FileTooSmall|Increase the ulimit(FILE) to unlimited|
+|DataNotDefined|ulimit(DATA) is not defined|
+|DataTooSmall|Increase the ulimit(DATA) to a minimum of 1048576|
+|StackNotDefined|ulimit(STACK) is not defined|
+|StackTooSmall|Increase the ulimit(STACK) to a minimum of 32768|
+|CoreNotDefined|ulimit(CORE) is not defined|
+|CoreTooSmall|Increase the ulimit(CORE) to unlimited|
+|NoFilesNotDefined|ulimit(NOFILES) is not defined|
+|NoFilesTooSmall|Increase the ulimit(NOFILES) to a minimum of 4096|
+|MemoryNotDefined|ulimit(MEMORY) is not defined|
+|MemoryTooSmall|Increase the ulimit(MEMORY) to a minimum of 2045680|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00200" mode="VERIFY" name="Got OS Packages?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+macro check_package
+{var (\@tbl) = @arg
+ call loadCommand('/usr/bin/lslpp -l')
+ loop $pkg ('bos.adt.base','bos.adt.lib','bos.adt.libm','bos.perf.perfstat',\
+            'bos.perf.libperfstat','bos.perf.proctools')
+ {var $str = field('\s+',2,grepLastFile(quote($pkg),'f'))
+  if $str
+  {if and(compare('ne',$str,'COMMITTED'),compare('ne',$str,'APPLIED'))
+    call push(@tbl,concat('[',$pkg,'] not applied'))
+  }
+  else
+   call push(@tbl,concat('[',$pkg,'] not installed'))
+ }
+}
+call cond(testFile('x','/usr/bin/lslpp'),check_package(\@tbl),\
+                                         push(@tbl,'NoAccess'))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),\
+                                     'All required OS packages are installed'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that all required OS packages are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="All required OS packages are installed" result="PASSED"><![CDATA[All required OS packages are installed. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required OS packages were not met or found. Review the recommended OS packages from the ''Oracle Database 10g Installation Guide for AIX'' before installing the software.
+|*Return Value*|*Action*|
+|... not installed|Install the OS package or its latest version. Refer to the following list of required OS packages: ``bos.adt.base``, ``bos.adt.lib``, ``bos.adt.libm``, ``bos.perf.perfstat``, ``bos.perf.proctools``|
+|... not applied|The package was found but is not applied or committed. Make sure that it is applied.|
+|NoAccess|OS packages could not be verified because the user has no execute permissions to the ``/bin/lslpp`` command. Provide the user with execute permissions.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00210" mode="VERIFY" name="Got OS Patches?">
+<sdp_command type="RDA"><![CDATA[import $OS_LVL
+macro get_patches
+{var (\@tbl) = @arg
+ import $OS_LVL
+ var $OS4 = field('\-',0,$OS_LVL)
+ macro check_patches
+ {var (\@tbl,@pch) = @arg
+  loop $pch (@pch)
+  {if grepCommand(concat('/usr/sbin/instfix -ik ',$pch),'no','if')
+    call push(@tbl,concat('[',$pch,'] not installed'))
+  }
+ }
+ if compare('eq',$OS4,'5200')
+  call check_patches(\@tbl,'IY43980','IY44810','IY45462','IY45707','IY46214',\
+                           'IY46605','IY48525','IY51801','IY59082','IY94343')
+ elsif compare('eq',$OS4,'5300')
+  call check_patches(\@tbl,'IY58143','IY59386','IY60930','IY94343')
+}
+call cond(not(testFile('x','/usr/sbin/instfix')),push(@tbl,'NoAccess'),\
+                                                 get_patches(\@tbl))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'PatchesFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the OS patches required for the Oracle Database 10g installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="PatchesFound" result="PASSED"><![CDATA[All required OS patches are found. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required OS patches were not met or found. Review the recommended OS patches from the ''Oracle Database 10g Installation Guide for AIX'' before installing the software.
+|*Return Value*|*Action*|
+|... not installed|Install the OS patch or its latest version.%BR%5.2: IY43980, IY44810, IY45462, IY45707, IY46214 IY46605, IY48525, IY51801, IY59082 and IY94343.%BR%5.3: IY58143, IY59386, IY60930, IY94343|
+|NoAccess|OS patches could not be verified because the user has no execute permissions to the ``/usr/sbin/instfix`` command. Provide the user with execute permissions.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00220" mode="VERIFY" name="Other OUI Up?">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(cond(\
+  grepCommand('/usr/bin/ps -ef','runInstaller','i'),'AnotherOUIup',\
+                                                    'NoOtherOUI'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for another active ``runInstaller`` process on the system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NoOtherOUI" result="PASSED"><![CDATA[No other ``runInstaller`` process is running. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Stop the other instance of ``runInstaller`` that is active on your system.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

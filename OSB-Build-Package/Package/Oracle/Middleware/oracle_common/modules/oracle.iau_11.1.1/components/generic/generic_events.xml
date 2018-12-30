@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<AuditConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        xsi:schemaLocation="http://xmlns.oracle.com/ias/audit/audit.xsd audit.xsd"
+        xmlns="http://xmlns.oracle.com/ias/audit/audit.xsd">
+<Events>
+  <CommonAttributes>
+<!--    <Attribute name="OrgId" type="string" category="base" autoFilled="true" shortName="orgId" required="true">
+    	<HelpText>ID of the organization that wrote the originating component, usually the domain name of the organization. Example oracle.com</HelpText>
+    </Attribute> -->
+    <Attribute name="ComponentType" type="string" category="base" autoFilled="true"  displayName="Component Type" shortName="compType" required="true">
+    	<HelpText>Type of the component.</HelpText>
+    </Attribute>
+    <Attribute name="InstanceId" type="string" category="context.process" autoFilled="true"  displayName="Instance Id" shortName="instId">
+    	<HelpText>Name of the Oracle Instance, that this component belongs to</HelpText>
+    </Attribute>
+    <!--
+    <Attribute name="HostingClientId" type="string" category="context.process" shortName="clientId">
+    	<HelpText>ID of the client or security group etc. that the message relates to, where applicable</HelpText>
+    </Attribute> -->
+    <Attribute name="HostId" type="string" category="context.process" autoFilled="true" displayName="Host Id" shortName="hostname" inFilterExpr="true">
+    	<HelpText>DNS hostname of originating host</HelpText>
+    </Attribute>
+    <Attribute name="HostNwaddr" type="string" category="context.process" autoFilled="true" displayName="Host Network Address" shortName="hostIp" inFilterExpr="true">
+    	<HelpText>IP or other network address of originating host</HelpText>
+    	</Attribute>
+    <Attribute name="ModuleId" type="string" category="context.process" displayName="Module Id" shortName="moduleId">
+    	<HelpText>ID of the module that originated the message. Interpretation is unique within Component ID.</HelpText>
+    </Attribute>
+    <Attribute name="ProcessId" type="string" category="context.process" autoFilled="true" displayName="Process Identifier" shortName="pid">
+    	<HelpText>ID of the process that originated the message</HelpText>
+    </Attribute>
+    <Attribute name="OracleHome" type="string" category="context.process" autoFilled="true" displayName="Oracle Home" shortName="ohome">
+    	<HelpText>The ORACLE_HOME directory of the component</HelpText>
+    </Attribute>
+    <Attribute name="HomeInstance" type="string" category="context.process" autoFilled="true" displayName="Home Instance" shortName="homeInst">
+    	<HelpText>The ORACLE_INSTANCE directory of the component</HelpText>
+    </Attribute>
+<!--
+    <Attribute name="UpstreamComponentId" type="string" category="context.request" shortName="upECID">
+    	<HelpText>ID of a component that the originating component is working with on the upstream (client) side. Rarely used</HelpText>
+    </Attribute>
+    <Attribute name="DownstreamComponentId" type="string" category="context.request" shortName="dnECID">
+    	<HelpText>ID of a component that the originating component is working with on the downstream (server) side. Rarely used</HelpText>
+    </Attribute>-->
+    <Attribute name="ECID" type="string" category="context.request" autoFilled="true" displayName="Execution Context Identifier" shortName="ecid">
+    	<HelpText>Identifies the thread of execution that the originating component participates in.</HelpText>
+    </Attribute>
+    <Attribute name="RID" type="string" category="context.request" autoFilled="true" displayName="Relationship Id" shortName="rid">
+	<HelpText>This is the relationship identifier, it is used to provide the full and correct calling relationships between threads and processes. </HelpText>
+    </Attribute>
+    <Attribute name="ContextFields" type="string" category="context.request" autoFilled="true" displayName="Context Fields" shortName="ctxFields">
+	<HelpText>This attribute contains the context fields extracted from dms context.</HelpText>
+    </Attribute>
+    <Attribute name="SessionId" type="string"  category="context.request" autoFilled="true"  displayName="Session Id" shortName="sessionId">
+    	<HelpText>ID of the login session.</HelpText>
+    </Attribute>
+<!--
+    <Attribute name="SecondarySessionId" type="string"  category="context.request" shortName="sessionId2">
+    	<HelpText>ID of the secondary login session. Not used.</HelpText>
+    </Attribute>-->
+    <Attribute name="TargetComponentType" type="string" displayName="Target Component Type" shortName="tgtCmpType">
+	<HelpText>This is the target component type.</HelpText>
+    </Attribute>
+    <Attribute name="ApplicationName" type="string"  category="context.request" displayName="Application Name" shortName="appName">
+    	<HelpText>The J2EE application name</HelpText>
+    </Attribute>
+    <Attribute name="EventType" type="string"  category="base" autoFilled="true" displayName="Event Type" shortName="etype" required="true">
+    	<HelpText>The type of the audit event. Use wlst listAuditEvents to list out all the events.</HelpText>
+    </Attribute>
+    <Attribute name="EventCategory" type="string"  category="base" autoFilled="true" displayName="Event Category" shortName="category" required="true">
+    	<HelpText>The category of the audit event.</HelpText>
+    </Attribute>
+    <Attribute name="EventStatus" type="boolean"  category="base" displayName="Event Status" shortName="status" required="true">
+    	<HelpText>The outcome of the audit event - success or failure</HelpText>
+    </Attribute>
+    <Attribute name="TstzOriginating" type="dateTime"  category="base" autoFilled="true" displayName="Time Stamp" shortName="tstmp" required="true">
+    	<HelpText>Date and time when the audit event was generated</HelpText>
+    </Attribute>
+    <Attribute name="ThreadId" type="string"  category="context.request" autoFilled="true"  displayName="Thread Id" shortName="threadId">
+    	<HelpText>ID of the thread that generated this event</HelpText>
+    </Attribute>
+    <Attribute name="ComponentName" type="string"  category="context.request" autoFilled="true"  displayName="Component Name" shortName="compName">
+    	<HelpText>The name of this component</HelpText>
+    </Attribute>    
+    <Attribute name="Initiator" type="string" category="base" displayName="Initiator" shortName="user" required="true" inFilterExpr="true">
+        <HelpText>Identifies the UID of the user who is doing the operation</HelpText>
+    </Attribute>
+    <Attribute name="MessageText" type="string" category="base" displayName="Message Text" shortName="msg" required="true">
+    	<HelpText>Description of the audit event</HelpText>
+    </Attribute>
+    <Attribute name="FailureCode" type="string" category="base" displayName="Failure Code" shortName="failCode" required="true">
+        <HelpText>The error code in case EventStatus = failure </HelpText>
+    </Attribute>
+    <Attribute name="RemoteIP" type="string" displayName="Client IP Address" shortName="remoteIp" inFilterExpr="true">
+    	<HelpText>IP address of the client initiating this event</HelpText>
+    </Attribute>
+    <Attribute name="Target" type="string" displayName="Target User" shortName="target" inFilterExpr="true">
+        <HelpText>Identifies the UID of the user on whom the operation is being done.  E.g. is Alice changes Bob's password, then Alice is the initiator  and Bob is the target</HelpText>
+    </Attribute>
+    <Attribute name="Resource" type="string" displayName="Resource" shortName="resource" inFilterExpr="true">
+        <HelpText>Identifies a resource that is being accessed. A resource can be many things -  web page, file, directory share, web service, XML document,a portlet. The resource can be named as a combination of a host name, and an URI.</HelpText>
+    </Attribute>
+    <Attribute name="Roles" type="string" displayName="Roles" shortName="roles" inFilterExpr="true">
+        <HelpText>The roles that the user was granted at the time of login.</HelpText>
+    </Attribute>
+    <Attribute name="DomainName" type="string" category="context.process" autoFilled="true" displayName="Domain Name" shortName="domainName" inFilterExpr="true">
+    	<HelpText>The WLS/WebSphere Domain</HelpText>
+    </Attribute>
+    <Attribute name="ComponentData" type="string" maxLength="0" category="context.process" autoFilled="true" displayName="Component Data" shortName="componentData">
+    	<HelpText>Where component-specific data are stored when there is no component-specific table in the schema</HelpText>
+    </Attribute>
+    <Attribute name="AuditUser" type="string" displayName="Audit User" shortName="username" required="true" inFilterExpr="true" sinceVersion="1.1">
+        <HelpText>Identifies the user name of the user who is running the application</HelpText>
+    </Attribute> 
+    <Attribute name="TenantId" type="string" displayName="Tenant Id" shortName="tenantId" sinceVersion="1.1">
+        <HelpText>Tenant ID</HelpText>
+    </Attribute>
+    <Attribute name="TransactionId" type="string" displayName="Transaction Id" shortName="txnId">
+        <HelpText>Transaction ID</HelpText>
+    </Attribute>
+    <Attribute name="UserTenantId" type="string" displayName="User Tenant Id" shortName="userTenantId" sinceVersion="1.1">
+        <HelpText>User Tenant ID</HelpText>
+    </Attribute>
+  </CommonAttributes>
+  <Category name="UserSession" displayName="User Sessions">
+    <CommonAttributes>
+      <Attribute name="AuthenticationMethod" type="string" displayName="Authentication Method" shortName="amethod">
+        <HelpText>The Authentication method - password / SSL / Kerberos etc</HelpText>
+      </Attribute>
+    </CommonAttributes>
+      <HelpText> This set of events is for creating and using user sessions on the system.</HelpText>
+      <Event name="UserLogin" displayName="User Logins" shortName="uLogin" xdasName="CreateSession">
+      <HelpText>In multi-tier applications, inner tiers often use some special user id (an end user or an administrator) to log in to the next tier. To make audit reports more meaningful, logins by these special users are considered in a separate category - Internal Logins. The User Logins/Logouts category only records actions by regular users (including administrators)</HelpText>
+    </Event>
+    <Event name="UserLogout" displayName="User Logouts" shortName="uLogout" xdasName="TerminateSession">
+      <HelpText>An end user or administrator logs out.</HelpText>
+    </Event>
+    <Event name="Authentication" displayName="Authentication">
+      <HelpText>Authentication is very similar to UserLogin/InternalLogin, except that no session is created, so there is no corresponding UserLogout/InternalLogout. This event is usually generated by lower layers, while login is generated by higher layers. </HelpText>
+    </Event>
+    <Event name="InternalLogin" displayName="Internal Login" shortName="iLogin" xdasName="CreateSession">
+      <HelpText>This is an internal login between two tiers.</HelpText>
+    </Event>
+    <Event name="InternalLogout" displayName="Internal Logout" shortName="iLogout" xdasName="TerminateSession">
+      <HelpText>This is an internal logout between two tiers.</HelpText>
+    </Event>
+    <Event name="QuerySession" displayName="Query Session" shortName="qSession" >
+      <HelpText>Query the attributes inside a session object for a logged-in user.</HelpText>
+    </Event>
+    <Event name="ModifySession" displayName="Modify Session" shortName="mSession">
+      <HelpText>Modify the attributes inside a session object for a logged-in user.</HelpText>
+    </Event>
+  </Category>
+  <Category name="Authorization" displayName="Authorization" xdasName="DataItemManagement">
+      <HelpText>This set of events is for authorization.</HelpText>
+      <Event name="CheckAuthorization" displayName="Authorization" shortName="authz" xdasName="QueryDataItemAttributes"/>
+  </Category>
+  <Category name="DataAccess" displayName="Data Access" xdasName="DataItemManagement">
+      <HelpText>This set of events creates and works with data items.</HelpText>
+      <Event name="CreateDataItem" displayName="Create Data Item" shortName="createData">
+      <HelpText>Create a data item, for example a file.</HelpText>
+    </Event>
+    <Event name="DeleteDataItem" displayName="Delete Data Item" shortName="deleteData">
+      <HelpText>Delete a data item</HelpText>
+    </Event>
+    <Event name="QueryDataItemAttributes" displayName="Query Data Item Attributes" shortName="qData">
+      <HelpText>Query the attributes associated with a data item.</HelpText>
+    </Event>
+    <Event name="ModifyDataItemAttributes" displayName="Modify Data Item Attributes" shortName="mData">
+      <HelpText>Modify the attributes associated with a data item, for example access control, attributes, ownership, and aliases.</HelpText>
+    </Event>
+  </Category>
+  <Category name="AccountManagement" displayName="Account Management">
+      <HelpText>This set of events is applicable to the management of principal accounts. A principal may be an end-user, or a pseudo-user - a service within the system.</HelpText>
+      <Event name="ChangePassword" displayName="Change Password" shortName="chPasswd" xdasName="ModifyAccount">
+      <HelpText>Change a user's password</HelpText>
+    </Event>
+    <Event name="CreateAccount" displayName="Create Account" shortName="createAcc">
+      <HelpText>Create a user (or group or any other principal) account </HelpText>
+    </Event>
+    <Event name="DeleteAccount" displayName="Delete Account" shortName="delAcc">
+      <HelpText>Delete an account for a user, group or any other principal</HelpText>
+    </Event>
+    <Event name="DisableAccount" displayName="Disable Account" shortName="disableAcc">
+      <HelpText>Disable an account for a user, group, or any other principal.</HelpText>
+    </Event>
+    <Event name="EnableAccount" displayName="Enable Account" shortName="enableAcc">
+      <HelpText>Enable an account for a user, group, or any other principal.</HelpText>
+    </Event>
+    <Event name="QueryAccount" displayName="Query Account" shortName="qAcc">
+      <HelpText>Query the user's account.</HelpText>
+    </Event>
+    <Event name="ModifyAccount" displayName="Modify Account" shortName="mAcc">
+      <HelpText>Modify account attributes.</HelpText>
+    </Event>
+  </Category>
+  <Category name="ServiceManagement" displayName="Service Management">
+      <HelpText>This set of events relate to managing system services and applications.</HelpText>
+      <Event name="InstallService" displayName="Install Service" shortName="install">
+      <HelpText>Install or Upgrade a service or an application.</HelpText>
+    </Event>
+    <Event name="RemoveService" displayName="Remove Service" shortName="deinstall">
+      <HelpText>De-install a service or an application.</HelpText>
+    </Event>
+    <Event name="QueryServiceConfig" displayName="Query Service Configuration" shortName="qAppCfg">
+      <HelpText>Query configuration of a service or application.</HelpText>
+    </Event>
+    <Event name="ModifyServiceConfig" displayName="Modify Service Configuration" shortName="mAppCfg">
+      <HelpText>Configure a service or an application.</HelpText>
+    </Event>
+    <Event name="DisableService" displayName="Disable Service" shortName="disableApp">
+      <HelpText>Shut down or disable a service or application.</HelpText>
+    </Event>
+    <Event name="EnableService" displayName="Enable Service" shortName="enableApp">
+      <HelpText>Start up or enable a service or an application.</HelpText>
+    </Event>
+  </Category>
+  <Category name="ServiceUtilize" displayName="Service Utilize">
+      <HelpText>These events relate to the use of service and applications. They typically map to the execution of a program or a procedure and manipulation of the processing environment.</HelpText>
+      <Event name="InvokeService" displayName="Invoke Service" shortName="startApp">
+      <HelpText>Invoke a service or an application. For example, execute a command line script.</HelpText>
+    </Event>
+    <Event name="TerminateService" displayName="Terminate Service" shortName="stopApp">
+      <HelpText>Terminate a service or an application, either at the instigation of the application itself or by the intervention of the domain in response to user or administrative action.</HelpText>
+    </Event>
+    <Event name="QueryProcessContext" displayName="Query Process Context" shortName="qApp">
+      <HelpText>Query the attributes associated with the current processing context</HelpText>
+    </Event>
+    <Event name="ModifyProcessContext" displayName="Modify Process Context" shortName="mApp">
+      <HelpText>Modify the attributes associated with the current processing context</HelpText>
+    </Event>
+  </Category>
+  <Category name="PeerAssocManagement" displayName="Peer Association Management">
+      <HelpText>This set of events creates and works with communication channels between system components.</HelpText>
+      <Event name="CreatePeerAssoc" displayName="Create Peer Association" shortName="openChan">
+      <HelpText>Create a communication channel between system components</HelpText>
+    </Event>
+    <Event name="TerminatePeerAssoc" displayName="Terminate Peer Association" shortName="closeChan">
+      <HelpText>Terminate a communication channel between system components</HelpText>
+    </Event>
+    <Event name="QueryAssocContext" displayName="Query Association Context" shortName="qChan">
+      <HelpText>Query attributes associated with  a communication channel between system components</HelpText>
+    </Event>
+    <Event name="ModifyAssocContent" displayName="Modify Association Content" shortName="mChan">
+      <HelpText>Modify attributes associated with  a communication channel between system components</HelpText>
+    </Event>
+    <Event name="ReceiveDataViaAssoc" displayName="Receive Data Via Association" shortName="recvChan">
+      <HelpText>Receive data from associated peer</HelpText>
+    </Event>
+    <Event name="SendDataViaAssoc" displayName="Send Data Via Association" shortName="sendChan">
+      <HelpText>Send data to associated peer</HelpText>
+    </Event>
+  </Category>
+  <Category name="DataItemContentAccess" displayName="DataItem Content Access">
+      <HelpText>These events are for forming an association between a service or application and a data item or resource element in order to use its contents or services - for example, a file or directory, device special file, memory segment, communications port, etc.</HelpText>
+      <Event name="CreateDataItemAssoc" displayName="Create Data Item Association" shortName="openData">
+      <HelpText>Open a data item, for example a file.</HelpText>
+    </Event>
+    <Event name="TerminateDataItemAssoc" displayName="Terminate Data Item Association" shortName="closeData">
+      <HelpText>Close a data item, for example a file.</HelpText>
+    </Event>
+    <Event name="QueryDataItemAssocContext" displayName="Query Data Item Association Context" shortName="qDataAttrib">
+      <HelpText>Query attributes of a data item, for example mode of access, size limits, access path, etc.</HelpText>
+    </Event>
+    <Event name="ModifyDataItemAssocContext" displayName="Modify Data Item Association Context" shortName="mDataAttrib">
+      <HelpText>Modify attributes of a data item</HelpText>
+    </Event>
+    <Event name="QueryDataItemContents" displayName="Query Data Item Contents" shortName="readData">
+      <HelpText>Read the data item.</HelpText>
+    </Event>
+    <Event name="ModifyDataItemContent" displayName="Modify Data Item Content" shortName="writeData">
+      <HelpText>Write/Append the data item</HelpText>
+    </Event>
+  </Category>
+  <Category name="Exceptional" displayName="Special Events">
+      <HelpText>
+        These are events that are considered to be outside the generalized
+        events.
+      </HelpText>
+      <Event name="StartSystem" displayName="Start System" shortName="startSys">
+      <HelpText>Boot a system host.</HelpText>
+    </Event>
+    <Event name="ShutdownSystem" displayName="Shutdown System" shortName="stopSys">
+      <HelpText>Shut down the system.</HelpText>
+    </Event>
+    <Event name="ResourceExhausted" displayName="Resource Exhausted" shortName="resExhaust">
+      <HelpText>Resources like data storage resources, communication end points have been exhausted.</HelpText>
+    </Event>
+    <Event name="ResourceCorrupted" displayName="Resource Corrupted" shortName="resCorrupt">
+      <HelpText>Resources such as data storage resources have integrity failures.</HelpText>
+    </Event>
+    <Event name="BackupDatastore" displayName="Backup Datastore" shortName="backupData">
+      <HelpText>Make a backup copy of a data store.</HelpText>
+    </Event>
+    <Event name="RecoverDatastore" displayName="Recover Datastore" shortName="recoverData">
+      <HelpText>Recover a data store from a backup copy.</HelpText>
+    </Event>
+  </Category>
+  <Category name="AuditService" displayName="Audit Service">
+      <CommonAttributes>
+        <Attribute name="TransactionId" type="string" displayName="Transaction Id" shortName="txnIdMethod">
+            <HelpText>Transaction ID</HelpText>
+        </Attribute>
+        <!--
+        <Attribute name="AffectedComponents" type="string" shortName="affectedComponentsMethod">
+            <HelpText>Affected Components</HelpText>
+        </Attribute>
+        <Attribute name="TargetFarm" type="string" shortName="targetFarm">
+            <HelpText>Target Farm Name, e.g im_farm</HelpText>
+        </Attribute>
+        <Attribute name="TargetInstance" type="string" shortName="targetInstance">
+            <HelpText>Target AS Instance Name, e.g as_instance_1</HelpText>
+        </Attribute>
+        <Attribute name="TargetComponent" type="string" shortName="targetComponent">
+            <HelpText>Target Component Name, e.g oid_instance_1</HelpText>
+        </Attribute>
+        <Attribute name="TargetComponentType" type="string" shortName="targetComponentType">
+            <HelpText>Target Component Type, e.g OIDComponent</HelpText>
+        </Attribute>
+
+        <Attribute name="TargetApplication" type="string" shortName="targetApplication">
+            <HelpText>Target J2ee Application Name</HelpText>
+        </Attribute>
+	-->
+      </CommonAttributes>
+      <HelpText>This set of events applies to audit configuration.</HelpText>
+      <Event name="ConfigureAuditPolicy" displayName="Configure Audit Policy" shortName="auditPolicyCfg">
+      <HelpText>Modify parameters that control auditing, for example change the audit filtering.</HelpText>
+    </Event>
+    <Event name="ConfigureAuditRepository" displayName="Configure Audit Repository" shortName="auditRepositoryCfg">
+      <HelpText>Configure the Audit Repository, for example change a file repository to a database repository.</HelpText>
+    </Event>
+  </Category>
+</Events>
+<Levels>
+ <Level name="ExceptionsOnly">
+      <FilterEvent eventName="ResourceExhausted" enabled="true"></FilterEvent>
+      <FilterEvent eventName="ResourceCorrupted" enabled="true"></FilterEvent>
+      <FilterEvent eventName="RecoverDatastore" enabled="true"></FilterEvent>
+ </Level>
+ <Level name="Basic" includesLevel="ExceptionsOnly">
+      <FilterEvent eventName="UserLogin" enabled="true"/>
+      <FilterEvent eventName="UserLogout" enabled="true"/>
+      <FilterEvent eventName="ChangePassword" enabled="true"/>
+      <FilterEvent eventName="CreateAccount" enabled="true"/>
+      <FilterEvent eventName="DeleteAccount" enabled="true"/>
+      <FilterEvent eventName="DisableAccount" enabled="true"/>
+      <FilterEvent eventName="EnableAccount" enabled="true"/>
+      <FilterEvent eventName="ModifyAccount" enabled="true"/>
+      <FilterEvent eventName="InstallService" enabled="true"/>
+      <FilterEvent eventName="RemoveService" enabled="true"/>
+
+      <FilterEvent eventName="EnableService" enabled="true"/>
+      <FilterEvent eventName="DisableService" enabled="true"/>
+      <FilterEvent eventName="StartSystem" enabled="true"/>
+      <FilterEvent eventName="ShutdownSystem" enabled="true"/>
+    </Level>
+ <Level name="Enhanced" includesLevel="Basic">
+      <FilterEvent eventName="CheckAuthorization" enabled="true"/>
+      <FilterEvent eventName="ModifyServiceConfig" enabled="true"/>
+ </Level>
+</Levels>
+
+<FilterPresetDefinitions>
+	<FilterPresetDefinition name="None" displayName="None" helpText="No events">
+	</FilterPresetDefinition>
+	<FilterPresetDefinition name="Low" displayName="Low" helpText="Low filter preset .To be defined by the component">
+  	</FilterPresetDefinition> 
+	<FilterPresetDefinition name="Medium" displayName="Medium" helpText="Medium filter preset. To be defined by the component">
+    </FilterPresetDefinition>
+ 	<FilterPresetDefinition name="All" displayName="All" helpText="All events">
+	</FilterPresetDefinition>
+        <FilterPresetDefinition name="High" displayName="High" helpText="High filter preset. To be defined by the component">
+        </FilterPresetDefinition>
+</FilterPresetDefinitions>
+
+</AuditConfig>

@@ -1,0 +1,134 @@
+# WEBCr11g.def: Defines Common Macros for Oracle Web Cache 11g
+# $Id: WEBCr11.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/WEBCr11.def,v 2.6 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+WEBCr11g - Defines Common Macros for Oracle Web Cache 11g
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to Oracle Web Cache
+in Oracle Fusion Middleware 11g.
+
+The following macros are available:
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('collect_webc_generic','collect_webc_instance')
+
+# Load the common macros
+run library()
+
+=head2 S<collect_webc_generic($hom)>
+
+This macro gathers Oracle Web Cache file permissions and DTD files.
+
+=cut
+
+macro collect_webc_generic
+{var ($hom) = @arg
+ import $WEBC_TAIL
+
+ # Gather Web Cache file permissions
+ debug ' Inside WEBC module, gathering Web Cache File Permissions'
+
+ report perms
+ prefix
+  write '---+ Web Cache File Permissions'
+ loop $fil ($hom,grepDir($hom,'^[\.]+$','vr'))
+ {if testDir('d',$fil)
+   call statDir('an',$fil)
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][File Permissions]]'
+
+ # Collect DTD files related to Web Cache
+ debug ' Inside WEBC module, gathering Web Cache DTD files'
+ pretoc '2:DTD Files'
+ call sort_files(3,$WEBC_TAIL,grepDir(catDir($hom,'dtds'),'\.dtd$','np'))
+ unpretoc
+}
+
+=head2 S<collect_webc_instance($abr,$top,\%cmp)>
+
+This macro collects Oracle Web Cache-related configuration and log files. It
+includes a DMS dump.
+
+=cut
+
+macro collect_webc_instance
+{var ($abr,$top,\%cmp) = @arg
+ import $TOP,$WEBC_TAIL
+
+ debug ' - Getting Oracle Web Cache configuration and log files'
+ loop $key (keys(%cmp))
+ {var ($typ,$cmp) = split('\|',$key,2)
+  next !match($typ,'^WebCache$',true)
+  debug '   - ',$cmp,' component'
+  call setAbbr(concat($abr,'_c_',$cmp))
+  pretoc "2:'",$cmp,"' WebCache Component"
+
+  # Collect the configuration files
+  pretoc '3:Configuration Files'
+  call sort_files(4,$WEBC_TAIL,\
+   grepDir(catDir($top,'config',$typ,$cmp),'\.xml$','dir'))
+  unpretoc
+
+  # Collect the log files
+  pretoc '3:Log Files'
+  call sort_files(4,$WEBC_TAIL,\
+   grepDir(catDir($top,'diagnostics','logs',$typ,$cmp),'log$','dir'))
+  unpretoc
+
+  # Collect the DMS dump
+  if $cmp{$key}
+  {report dms_metrics
+   var ($opmnctl) = grepDir(catDir($top,'bin'),'^opmnctl(\.(bat|exe))?$','fip')
+   var $cmd = concat(quote($opmnctl,'x'),' @instance:',$dsc,\
+                     ' metric op=query PROCESS_UID=',$cmp{$key},\
+                     ' dmsarg="format=raw&nountype=opmn_process" 2>&1')
+   prefix
+   {write '---+ Display of DMS Dump Metrics'
+    write '---## Using: ',encode($cmd)
+   }
+   call writeCommand($cmd)
+   if isCreated(true)
+   {write $TOP
+    toc '3:[[',getFile(),'][rda_report][DMS Dump]]'
+   }
+  }
+  unpretoc
+ }
+ call setAbbr($abr)
+}
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.16: Daniel Mortimer.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

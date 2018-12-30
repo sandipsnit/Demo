@@ -1,0 +1,981 @@
+# S370SOA.def: Collects Oracle SOA Suite Information
+# $Id: S370SOA.def,v 2.21 2012/02/03 07:20:26 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S370SOA.def,v 2.21 2012/02/03 07:20:26 mschenke Exp $
+#
+# Change History
+# 20120201  KRA  Improve 'Repository Information' section.
+
+=head1 NAME
+
+S370SOA - Collects Oracle SOA Suite 11g Information
+
+=head1 DESCRIPTION
+
+This module collects diagnostic information for Oracle SOA Suite 11g or later.
+
+The following reports can be generated and are regrouped under C<Oracle SOA
+Suite>:
+
+=cut
+
+echo tput('bold'),'Processing SOA module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('SOA_ORACLE_HOME','')
+var $SOA_AUTO    = getSetting('SOA_DB_AUTO',1)
+var $SOA_JDK     = getSetting('SOA_JDK','')
+var $SOA_LOCAL   = getSetting('SOA_LOCAL')
+var $TAIL        = getSetting('RDA_TAIL',1000)
+
+var $CFGTOOLLOGS_HOME = catDir($ORACLE_HOME,'cfgtoollogs')
+var $CLONE_HOME       = catDir($ORACLE_HOME,'clone')
+var $INSTALL_HOME     = catDir($ORACLE_HOME,'install')
+var $SYSMAN_HOME      = catDir($ORACLE_HOME,'sysman')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle SOA Suite'
+
+# Load the common macros
+run DBinfo()
+run INSTinfo()
+run library()
+run WLSlib()
+
+# Set the current target
+call setCurrent(addTarget('OH_SOA',{ORACLE_HOME=>$ORACLE_HOME}))
+
+=head1 ORACLE HOME COLLECTIONS
+
+=head2 abbr - Abbreviations
+
+Displays the RDA abbreviations defined for the Oracle home collection.
+
+=cut
+
+debug ' Inside SOA module, collecting defined abbreviations'
+report abbr
+prefix
+{write '---+ Oracle Home Abbreviations'
+ write '|*Abbreviation*|*Location*|'
+}
+var %hsh = getSymbols()
+loop $key (keys(%hsh))
+ write '|',$key,' |',catDir(@{$hsh{$key}}),' |'
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Abbreviations]]'
+
+=head2 error - SOA Error
+
+Indicates that the specified Oracle home does not contain Oracle SOA Suite
+information.
+
+=cut
+
+# Indicate SOA error
+macro dsp_error
+{echo ' Error: The specified Oracle home does not contain SOA information'
+ report error
+ write '** Error: The specified Oracle home does not contain files related to \
+        Oracle SOA 11g or later.**%BR%'
+ write '%BR%'
+ if @arg
+ {write '|*Oracle Home*|',encode($arg[0]),' |'
+  write '|*Install Name*|',$arg[1],' |'
+  write '|*Install Version*|',$arg[2],' |'
+ }
+ toc '2:[[',getFile(),'][rda_report][SOA Error]]'
+}
+
+# Validate the profile type
+var $flg = true
+var $fil = catFile($ORACLE_HOME,'inventory','ContentsXML','comps.xml')
+if testFile('fr',$fil)
+{if xmlFind(xmlLoadFile($fil),'PRD_LIST/TL_LIST/COMP')
+ {var ($xml) = (last)
+  var $ver = xmlValue($xml,'VER')
+  var $dsc = xmlData(xmlFind($xml,'EXT_NAME'))
+  if !and(match($dsc,'^(Oracle SOA Suite 11g|\
+                        SOA Application Server 11g)',true),\
+          match($ver,'^11\.'))
+  {call dsp_error($ORACLE_HOME,$dsc,$ver)
+   var $flg = false
+  }
+ }
+}
+if $flg
+{if !testDir('d',catDir($ORACLE_HOME,'soa'))
+  call dsp_error()
+}
+
+=head2 rep_info - Repository Information
+
+Collects the repository information from the Oracle SOA Suite database.
+
+=cut
+
+# Define a database connection macro
+macro set_db
+{var ($usr,$sid) = @arg
+
+ # Determine the user password
+ if compare('eq',$usr,'/')
+  var ($usr,$pwd) = ('','')
+ elsif hasSqlPassword($usr,$sid)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+
+ # Change the database context
+ var $old = setSqlLogin($usr,$pwd,$sid,getSetting('SOA_SYSDBA'))
+ var $env = cond(getSetting('SOA_SWITCH'),setSqlSid($sid))
+ var $try = setSqlFailure(0)
+
+ # Test the database connection
+ if testSql()
+  return (false,$old,$env,$try)
+ else
+  return (true,$old,$env,$try)
+}
+
+# Get the SID from config file
+var $flg = false
+var $usr = uc(getSetting('SOA_LOGIN','SYSTEM'))
+if $SOA_AUTO
+{# Get the database connection details
+ var $sid = undef
+ loop $key (grepSetting('^SOA_DOM\d+_REQ_DOMAIN$'))
+ {var $dom = catDir(getSetting($key))
+  next !testDir('d',$dom)
+  next !testFile('r',catFile($dom,'config','jdbc','SOADataSource-jdbc.xml'))
+  next !xmlFind(xmlLoadFile(lastFile()),'jdbc-data-source/jdbc-driver-params')
+  var ($xml) = last
+  if xmlFind($xml,'properties/property|name *="^user$"')
+  {var $usr = xmlData(xmlFind(last,'value'))
+   var $sid = field('@',1,xmlData(xmlFind($xml,'url')))
+   if match($sid,'^[\w\-\.]+:\d+\/')
+   {# Pattern for service name, eg: hostname:port/service
+    var $sid = replace($sid,'/','::')
+   }
+   elsif match($sid,'ldap',true)
+   {echo tput('reverse'),'Warning:'
+    echo "RDA does not support database connection using LDAP. Run the setup \
+          again in advanced mode to provide the connection details."
+    echo tput('off')
+    var ($SOA_LOCAL,$flg) = (true)
+    break
+   }
+   var ($flg,$old,$env,$try) = set_db($usr,$sid)
+   break
+  }
+ }
+}
+elsif $SOA_LOCAL
+ var $flg = true
+elsif getSetting('SOA_SID')
+{var ($sid) = last
+ var $usr   = uc(getSetting('SOA_LOGIN','SYSTEM'))
+ var ($flg,$old,$env,$try) = set_db($usr,$sid)
+}
+else
+ var ($SOA_LOCAL,$flg) = (true)
+
+# Collect the repository information
+if $flg
+{debug ' Inside SOA module, gathering the repository information'
+ report rep_info
+ var $TTL = '---+!! SOA Repository Information'
+ var @DBG = ('',\
+             '  - Getting tablespace information',\
+             concat('  - Getting free space in default tablespaces for ',$usr),\
+             concat('  - Getting extents of default tablespaces for ',$usr),\
+             concat('  - Getting total number of invalid objects for ',$usr),\
+             concat('  - Getting list of invalid objects for ',$usr),\
+             '  - Getting total number of rows in Cube_Instance table',\
+             '  - Getting total number of rows in Cube_Scope table',\
+             '  - Getting total number of rows in Dlv_Message table',\
+             '  - Getting total number of rows in Dlv_Subscription table',\
+             '  - Getting total number of rows in Audit_Trail table',\
+             '  - Getting total number of rows in Audit_Details table',\
+             '  - Getting total number of rows in Test_Details table',\
+             '  - Getting total number of rows in Document_Ci_Ref table',\
+             '  - Getting total number of rows in Native_Correlation table',\
+             '  - Getting total number of rows in Xml_Document table',\
+             '  - Getting total number of rows in Attachment table',\
+             '  - Getting total number of rows in Attachment_Ref table',\
+             '  - Getting total number of rows in Ci_Indexes table',\
+             '  - Getting RCU schema related information',\
+             concat('  - Getting table health related information for ',$usr),\
+             '  - Getting SOA schema version information',\
+             '  - Getting composite instance count information',\
+             '  - Getting cube instance count information',\
+             '  - Getting last 1 day composite summary information',\
+             '  - Getting last 2 days composite summary information',\
+             '  - Getting top 10 composite summary information',\
+             '  - Getting top 10 reference instance summary information',\
+             '  - Getting top 10 component instance summary information',\
+             '  - Getting top 10 cube instance summary information',\
+             '  - Getting top 10 mediator instance summary information',\
+             '  - Getting top 10 HWF task instance summary information',\
+             '  - Getting top 10 rules instance summary information',\
+             '  - Getting distributed lock timeout information',\
+             '  - Getting total number of rows in V$Pending_Xatrans$ table',\
+             '  - Getting total number of rows in V$Xatrans$ table',\
+             '  - Getting total number of rows in Pending_Trans$ table',\
+             '  - Getting total number of rows in Dba_2pc_Pending table',\
+             '  - Getting total number of rows in Dba_Pending_Transactions \
+                  table',\
+             '  - Getting total number of rows in Dbms_System table',\
+             '  - Getting NLS_Database_Parameters table information')
+ var @TTL = ('',\
+             '---+ Tablespace Information',\
+             concat('---+ Free Space in Default Tablespaces for ',$usr),\
+             concat('---+ Extents of Default Tablespaces for ',$usr),\
+             concat('---+ Total Number of Invalid Objects for ',$usr),\
+             concat('---+ List of Invalid Objects for ',$usr),\
+             '---+ Number of Rows in Cube_Instance Table',\
+             '---+ Number of Rows in Cube_Scope Table',\
+             '---+ Number of Rows in Dlv_Message Table',\
+             '---+ Number of Rows in Dlv_Subscription Table',\
+             '---+ Number of Rows in Audit_Trail Table',\
+             '---+ Number of Rows in Audit_Details Table',\
+             '---+ Number of Rows in Test_Details Table',\
+             '---+ Number of Rows in Document_Ci_Ref Table',\
+             '---+ Number of Rows in Native_Correlation Table',\
+             '---+ Number of Rows in Xml_Document Table',\
+             '---+ Number of Rows in Attachment Table',\
+             '---+ Number of Rows in Attachment_Ref Table',\
+             '---+ Number of Rows in Ci_Indexes Table',\
+             '---+ Repository Creation Utility (RCU) Schema Information',\
+             '---+ Table Health Information',\
+             '---+ SOA Schema Version Information',\
+             '---+ Composite Instance Count Information',\
+             '---+ Cube Instance Count Information',\
+             '---+ Last 1 Day Composite Summary Information',\
+             '---+ Last 2 Days Composite Summary Information',\
+             '---+ Top 10 Composite Summary Information',\
+             '---+ Top 10 Reference Instance Summary Information',\
+             '---+ Top 10 Component Instance Summary Information',\
+             '---+ Top 10 Cube Instance Summary Information',\
+             '---+ Top 10 Mediator Instance Summary Information',\
+             '---+ Top 10 HWF Task Instance Summary Information',\
+             '---+ Top 10 Rules Instance Summary Information',\
+             '---+ Distributed Lock Timeout Information',\
+             '---+ Number of Rows in V$Pending_Xatrans$ Table',\
+             '---+ Number of Rows in V$Xatrans$ Table',\
+             '---+ Number of Rows in Pending_Trans$ Table',\
+             '---+ Number of Rows in Dba_2pc_Pending Table',\
+             '---+ Number of Rows in Dba_Pending_Transactions Table',\
+             '---+ Number of Rows in Dbms_System Table',\
+             '---+ NLS_Database_Parameters Table Information')
+ var @TXT = (undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             undef,\
+             "Displays the SOA schema version for the domain.",\
+             "Selects the total count of composite instance records from the \
+              ``COMPOSITE_INSTANCE`` table, grouping them by state and \
+              ordering them by state count.",\
+             "Selects the total count of cube instance records from the \
+              ``CUBE_INSTANCE`` table, grouping them by state and ordering \
+              them by state count.",\
+             "Selects the count of composite instances created in the last 24 \
+              hours from the ``COMPOSITE_INSTANCE`` table, grouping them by \
+              state and ordering them by state count.",\
+             "Selects the count of composite instances created in the last 48 \
+              hours from the ``COMPOSITE_INSTANCE`` table, grouping them by \
+              state and ordering them by state count.",\
+             "Selects the total count of composite instances from the \
+              ``COMPOSITE_INSTANCE`` table, grouping them by state and \
+              composite DN. We then order the results by composite instance \
+              count and display the first 10 rows.",\
+             "Selects the total count of reference instances from the \
+              ``REFERENCE_INSTANCE`` table, grouping them by state, reference \
+              name and composite DN. We then order the results by reference \
+              instance count and display the first 10 rows.",\
+             undef,\
+             "Selects the total count of cube instances from the \
+              ``CUBE_INSTANCE`` table, grouping them by state, component name \
+              and composite revision. We then order the results by cube \
+              instance count and display the first 10 rows.",\
+             "Selects the total number of Mediator instances from the \
+              ``MEDIATOR_INSTANCE`` table, grouping them by component state \
+              and component name. We then order the results by mediator \
+              instance count and display the first 10 rows.",\
+             "Selects the total task count from the ``WFTASKHISTORY`` table, \
+              grouping them by status, component name and composite DN. We \
+              then order them by task count and display the first 10 rows.",\
+             "Selects the total rules instance count from the \
+              ``BRDECISIONINSTANCE`` table, grouping them by state and \
+              component DN. We then order the results by rule instance \
+              count and display the first 10 rows.")
+ var @HDR = ('',\
+             '|*Username*|*Created*|*Default Tablespace*|*Temp Tablespace*|',\
+             '|*Default Tablespace*|*Free Tablespace (MiB)*|',\
+             '|*Tablespace Name*|*Initial Extent*|*Next Extent*|*Pct Increase*|\
+               *Allocation Type*|*Segment Space Management*|\
+               *Extent Management*|',\
+             '| *Count*|',\
+             '|*Owner*|*Object Name*|*Object Type*|*Status*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '|*Component Id*|*Component Name*|*MRC Name*|*MR Name*|*MR Type*|\
+               *Owner*|*Version*|*Status*|*Upgraded*|*Start Time*|*Modified*|',\
+             '|*Table Name*| *Segment Size (MiB)*| *Extent Used*| \
+               *Total Rows*|*Last Analyzed Date*|',\
+             '',\
+             '| *Instance Count*| *State*|',\
+             '| *Instance Count*| *State*|',\
+             '| *Instance Count*| *State*|*Composite DN*|',\
+             '| *Instance Count*| *State*|*Composite DN*|',\
+             '| *Instance Count*| *State*|*Composite DN*|',\
+             '| *Instance Count*| *State*|*Reference Name*|*Composite DN*|',\
+             '| *Instance Count*| *State*|*Component DN*|',\
+             '| *Instance Count*| *State*|*Component Name*|*Composite Name*|\
+                *Composite Revision*|',\
+             '| *Instance Count*| *Component State*|*Component Name*|',\
+             '| *History Count*|*State*|*Component Name*|*Composite DN*|',\
+             '| *Instance Count*| *State*|*Component DN*|',\
+             '|*Name*|*Value*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '| *Count*|',\
+             '|*Parameter*| *Value*|')
+ set $sql
+ {SELECT '|' ||
+ "       username || ' |' ||
+ "       TO_CHAR(created,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       default_tablespace || ' |' ||
+ "       temporary_tablespace || ' |'
+ " FROM dba_users
+ " WHERE username = ':1';
+ "PROMPT ___Macro_separator(2)___
+ "SELECT '|' ||
+ "       tablespace_name || ' | ' ||
+ "       SUM(bytes) / 1048576 || '|'
+ " FROM dba_free_space
+ " WHERE tablespace_name IN (
+ "        SELECT default_tablespace
+ "         FROM dba_users
+ "         WHERE username = ':1')
+ " GROUP BY tablespace_name
+ " ORDER BY tablespace_name;
+ "PROMPT ___Macro_separator(3)___
+ "SELECT '|' ||
+ "       tablespace_name || ' | ' ||
+ "       initial_extent || '| ' ||
+ "       next_extent || '| ' ||
+ "       pct_increase || '|' ||
+ "       allocation_type || ' |' ||
+ "       segment_space_management || ' |' ||
+ "       extent_management || ' |'
+ " FROM dba_tablespaces
+ " WHERE tablespace_name IN (
+ "        SELECT default_tablespace
+ "         FROM dba_users
+ "         WHERE username = ':1')
+ " ORDER BY tablespace_name;
+ "PROMPT ___Macro_separator(4)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM all_objects
+ " WHERE status = 'INVALID'
+ "   AND owner = ':1';
+ "PROMPT ___Macro_separator(5)___
+ "SELECT '|' ||
+ "       owner || ' |' ||
+ "       object_name || ' |' ||
+ "       object_type || ' |' ||
+ "       status || ' |'
+ " FROM all_objects
+ " WHERE status = 'INVALID'
+ "   AND owner = ':1';
+ "PROMPT ___Macro_separator(6)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM cube_instance;
+ "PROMPT ___Macro_separator(7)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM cube_scope;
+ "PROMPT ___Macro_separator(8)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM dlv_message;
+ "PROMPT ___Macro_separator(9)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM dlv_subscription;
+ "PROMPT ___Macro_separator(10)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM audit_trail;
+ "PROMPT ___Macro_separator(11)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM audit_details;
+ "PROMPT ___Macro_separator(12)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM test_details;
+ "PROMPT ___Macro_separator(13)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM document_ci_ref;
+ "PROMPT ___Macro_separator(14)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM native_correlation;
+ "PROMPT ___Macro_separator(15)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM xml_document;
+ "PROMPT ___Macro_separator(16)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM attachment;
+ "PROMPT ___Macro_separator(17)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM attachment_ref;
+ "PROMPT ___Macro_separator(18)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM ci_indexes;
+ "PROMPT ___Macro_separator(19)___
+ "SELECT '|' ||
+ "       comp_id || ' |' ||
+ "       comp_name || ' |' ||
+ "       mrc_name || ' |' ||
+ "       mr_name || ' |' ||
+ "       mr_type || ' |' ||
+ "       owner || ' |' ||
+ "       version || ' |' ||
+ "       status || ' |' ||
+ "       upgraded || ' |' ||
+ "       start_time || ' |' ||
+ "       modified || ' |'
+ " FROM schema_version_registry;
+ }
+ if getSetting('SOA_DEHYD_STORE')
+ {append $sql
+  {PROMPT ___Macro_separator(20)___
+  "SELECT '|' ||
+  "       dt.table_name || ' | ' ||
+  "       ds.bytes/1024/1024 || '| ' ||
+  "       ds.extents || '| ' ||
+  "       dt.num_rows || '|' ||
+  "       TO_CHAR(dt.last_analyzed,'DD-Mon-YYYY HH24:MI:SS') || ' |'
+  " FROM dba_segments ds,dba_tables dt
+  " WHERE dt.owner = ds.owner
+  "   AND dt.owner = ':1'
+  "   AND dt.tablespace_name = ds.tablespace_name
+  "   AND dt.table_name = ds.segment_name
+  "   AND ds.segment_type = 'TABLE'
+  "   AND dt.table_name IN ('AUDIT_TRAIL','COMPONENT_INSTANCE',
+  "                         'COMPOSITE_INSTANCE','CUBE_INSTANCE','DLV_MESSAGE',
+  "                         'DOCUMENT_CI_REF','MEDIATOR_CASE_INSTANCE',
+  "                         'MEDIATOR_INSTANCE','REFERENCE_INSTANCE',
+  "                         'WORK_ITEM','XML_DOCUMENT','');
+  }
+  var ($HDR[21],$col21) = getSqlColumns('RDA','','VERSION')
+  call clearSqlColumns('RDA')
+  if $col21
+  {append $sql
+   {PROMPT ___Macro_separator(21)___
+   "SELECT :2
+   " FROM version;
+   }
+  }
+  append $sql
+  {PROMPT ___Macro_separator(22)___
+  "SELECT '| ' ||
+  "       COUNT(*) || '| ' ||
+  "       state || '|'
+  " FROM composite_instance
+  " GROUP BY state
+  " ORDER BY COUNT(*) DESC;
+  "PROMPT ___Macro_separator(23)___
+  "SELECT '| ' ||
+  "       COUNT(*) || '| ' ||
+  "       state || '|'
+  " FROM cube_instance
+  " GROUP BY state
+  " ORDER BY COUNT(*) DESC;
+  "PROMPT ___Macro_separator(24)___
+  "SELECT '| ' ||
+  "       COUNT(*) || '| ' ||
+  "       state || '|' ||
+  "       composite_dn || ' |'
+  " FROM composite_instance
+  " WHERE created_time > SYSDATE - 1
+  " GROUP BY state,composite_dn
+  " ORDER BY COUNT(*) DESC;
+  "PROMPT ___Macro_separator(25)___
+  "SELECT '| ' ||
+  "       COUNT(*) || '| ' ||
+  "       state || '|' ||
+  "       composite_dn || ' |'
+  " FROM composite_instance
+  " WHERE created_time > SYSDATE - 2
+  " GROUP BY state,composite_dn
+  " ORDER BY COUNT(*) DESC;
+  "PROMPT ___Macro_separator(26)___
+  "SELECT *
+  " FROM ( SELECT '| ' ||
+  "               COUNT(*) || '| ' ||
+  "               state || '|' ||
+  "               composite_dn || ' |'
+  "         FROM composite_instance
+  "         GROUP BY state,composite_dn
+  "         ORDER BY COUNT(*) DESC )
+  " WHERE ROWNUM <= 10;
+  "PROMPT ___Macro_separator(27)___
+  "SELECT *
+  " FROM ( SELECT '| ' ||
+  "               COUNT(*) || '| ' ||
+  "               state || '|' ||
+  "               reference_name || ' |' ||
+  "               composite_dn || ' |'
+  "         FROM reference_instance
+  "         GROUP BY state,reference_name,composite_dn
+  "         ORDER BY COUNT(*) DESC )
+  " WHERE ROWNUM <= 10;
+  "PROMPT ___Macro_separator(28)___
+  "SELECT *
+  " FROM ( SELECT '| ' ||
+  "               COUNT(*) || '| ' ||
+  "               state || '|' ||
+  "               component_dn || ' |'
+  "         FROM component_instance
+  "         GROUP BY state,component_dn
+  "         ORDER BY COUNT(*) DESC )
+  " WHERE ROWNUM <= 10;
+  "PROMPT ___Macro_separator(29)___
+  "SELECT *
+  " FROM ( SELECT '| ' ||
+  "               COUNT(*) || '| ' ||
+  "               state || '|' ||
+  "               component_name || ' |' ||
+  "               composite_name || ' |' ||
+  "               composite_revision || ' |'
+  "         FROM cube_instance
+  "         GROUP BY state,component_name,composite_name,composite_revision
+  "         ORDER BY COUNT(*) DESC )
+  " WHERE ROWNUM <= 10;
+  "PROMPT ___Macro_separator(30)___
+  "SELECT *
+  " FROM ( SELECT '| ' ||
+  "               COUNT(*) || '| ' ||
+  "               component_state || '|' ||
+  "               component_name || ' |'
+  "         FROM mediator_instance
+  "         GROUP BY component_state,component_name
+  "         ORDER BY COUNT(*) DESC )
+  " WHERE ROWNUM <= 10;
+  "PROMPT ___Macro_separator(31)___
+  "SELECT *
+  " FROM ( SELECT '| ' ||
+  "               COUNT(*) || '|' ||
+  "               state || ' |' ||
+  "               componentname || ' |' ||
+  "               compositedn || ' |'
+  "         FROM wftaskhistory
+  "         GROUP BY state,componentname,compositedn
+  "         ORDER BY COUNT(*) DESC )
+  " WHERE ROWNUM <= 10;
+  "PROMPT ___Macro_separator(32)___
+  "SELECT *
+  " FROM ( SELECT '| ' ||
+  "               COUNT(*) || '| ' ||
+  "               state || '|' ||
+  "               component_dn || ' |'
+  "         FROM brdecisioninstance
+  "         GROUP BY state,component_dn
+  "         ORDER BY COUNT(*) DESC )
+  " WHERE ROWNUM <= 10;
+  }
+ }
+ append $sql
+ {PROMPT ___Macro_separator(33)___
+ "SELECT '|' ||
+ "       SUBSTR(name,0,512) || '|' ||
+ "       NVL(SUBSTR(value,0,512), '%NULL%') || '|'
+ " FROM v$parameter
+ " WHERE name = 'distributed_lock_timeout';
+ "PROMPT ___Macro_separator(34)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM v$pending_xatrans$;
+ "PROMPT ___Macro_separator(35)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM v$xatrans$;
+ "PROMPT ___Macro_separator(36)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM pending_trans$;
+ "PROMPT ___Macro_separator(37)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM dba_2pc_pending;
+ "PROMPT ___Macro_separator(38)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM dba_pending_transactions;
+ "PROMPT ___Macro_separator(39)___
+ "SELECT '| ' ||
+ "       COUNT(*) || '|'
+ " FROM dbms_system;
+ "PROMPT ___Macro_separator(40)___
+ "SELECT '|' ||
+ "       parameter || ' | ' ||
+ "       value || '|'
+ " FROM nls_database_parameters
+ " WHERE parameter LIKE 'NLS%CHARACTERSET';
+ }
+ call separator(1)
+ call writeSql(bindSql($sql,$usr,$col21))
+ call separator(0,'Repository Information')
+}
+
+# Restore the previous context
+if !$SOA_LOCAL
+{if defined($env)
+  call setSqlSid($env)
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+}
+
+=head2 product_info - Product Information
+
+Gathers the product information if Oracle SOA Suite is installed in a separate
+Oracle home.
+
+=cut
+
+if getSetting('SOA_DISTINCT_HOME')
+{debug ' Inside SOA module, processing Product Information (can take time)'
+ report product_info
+ write '---+!! SOA Oracle Home Product Information'
+ write $TOC
+
+ write '---+ Files in SOA Oracle Home'
+ call statDir('an',$ORACLE_HOME)
+ write $TOP
+
+ call inventory_details(catDir($ORACLE_HOME,'inventory'),\
+                        getSetting('SOA_INTERIM'))
+ toc '2:[[',getFile(),'][rda_report][Product Information]]'
+}
+
+=head2 Install and Configuration
+
+Gathers the Oracle Fusion Middleware configuration and installation files.
+
+=cut
+
+debug ' Inside SOA module, gathering installation and configuration information'
+pretoc '2:Installation and Configuration'
+call sort_files(3,$TAIL,\
+  grepDir($CFGTOOLLOGS_HOME,'\.(ini|log|properties|xml)','dir'),\
+  grepDir($CLONE_HOME,'\.log','dir'),\
+  grepDir($INSTALL_HOME,'\.(ini|log)','dir'))
+unpretoc
+
+if testDir('d',catDir($ORACLE_HOME,'diagnostics'))
+{debug ' Inside SOA module, gathering diagnostics information'
+ pretoc '2:Diagnostics'
+ call sort_files(3,$TAIL,\
+   grepDir(lastDir(),'\.((conf|ini|xml|properties|err)$|log)|\~','dir'))
+ unpretoc
+}
+
+=head2 Manifest Information
+
+Gathers the Oracle home manifest information.
+
+=cut
+
+debug ' Inside SOA module, getting Oracle home manifest information \
+        (can take time)'
+pretoc '2:Manifest Information'
+call dsp_manifest(3,$ORACLE_HOME)
+unpretoc
+
+=head2 Application Files
+
+Gathers the Oracle SOA-related application files.
+
+=cut
+
+debug ' Inside SOA module, gathering application files'
+pretoc '2:Application Files'
+loop $key (grepSetting('^SOA_DOM\d+_REQ_DOMAIN$'))
+{var ($dir,$dom,%fil) = ()
+
+ # Get the application files
+ if testFile('fr',catFile(getSetting($key),'config','config.xml'))
+ {var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'BCDEPR'))
+  var $dom = xmlData(xmlFind($obj,'domain/name'))
+  if xmlFind($obj,'domain/app-deployment|name *="^soa-infra"')
+  {var ($xml) = last
+   if xmlFind($xml,'source-path')
+    var $fil{getNativePath(xmlData(last))} = true
+   if xmlFind($xml,'plan-dir')
+    var $dir = getNativePath(xmlData(last))
+   if xmlFind($xml,'plan-path')
+    var $fil{getNativePath(xmlData(last))} = true
+  }
+ }
+
+ # Write the application files
+ report concat('d_',$dom,'_app_files')
+ prefix
+ {write "---+ '",$dom,"' Domain Application Files"
+  write '   * Links point to files that have been collected in their \
+              original format. Opening them directly in your browser \
+              can present risks. To prevent them, access the file \
+              outside the browser or use the link to save them and use \
+              an adequate viewer.'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ loop $fil (grepDir($dir,'^[^\.]','np'))
+  var $fil{$fil} = true
+ loop $fil (keys(%fil))
+ {if testFile('fr',$fil)
+  {var $lnk = encode(addSymbol($fil))
+   var $siz = getSize($fil)
+   if $siz
+   {output d,concat('app_',basename($fil))
+    if ${CUR.LAST}->write_data($fil)
+     var $lnk = concat('[[',${CUR.LAST}->get_raw(true),'][_blank][',$lnk,']]')
+    end ${CUR.LAST}
+   }
+   write '|',$lnk,' | ',$siz,'|',\
+             getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),"][rda_report]['",$dom,"' Domain]]"
+}
+unpretoc
+
+=head2 jdk_info - JDK Information
+
+Checks for the available Java Development Kit and reports its version.
+
+=cut
+
+debug ' Inside SOA module, gathering jar files'
+report jdk_info
+prefix
+{write '---+!! JDK Information'
+ write $TOC
+}
+var @tbl = grepDir(replace($SOA_JDK,'\\:',':'),'^java(\.exe)?$','inr')
+loop $cmd (@tbl)
+{if testFile('fx',$cmd)
+ {write '---++ JDK Location: ',encode(catSymbol($cmd))
+  call statFile('p',$cmd)
+  var $cmd = quote($cmd,'x')
+  write '---++++!! JDK Version'
+  call writeCommand(concat($cmd,' -version 2>&1'))
+  write '---++++!! JDK Full Version'
+  call writeCommand(concat($cmd,' -fullversion 2>&1'))
+  write $TOP
+ }
+}
+if !hasOutput(true)
+{write '---+ JDK information'
+ write '**No java executable found inside the JDK directory structure.**'
+}
+toc '2:[[',getFile(),'][rda_report][JDK Information]]'
+
+=head2 jdk_libs - Java Libs
+
+Gathers information about all C<*.jar> files located in the common directory.
+For each Jar file, the report collects file information and the output from
+C<cksum>.
+
+=cut
+
+debug ' Inside SOA module, gathering Java libs information'
+report java_libs
+prefix
+{write '---+!! Information about Java Libs'
+ write '%TOC3-2%'
+}
+var $cmd = findCommand('cksum')
+loop $jar (grepDir(catDir($ORACLE_HOME,'j2ee','home'),'\.jar$','inr'),\
+           grepDir(catDir($ORACLE_HOME,'jlib'),'\.jar$','inr'),\
+           grepDir(catDir($ORACLE_HOME,'lib'),'\.jar$','inr'),\
+           grepDir(catDir($ORACLE_HOME,'jdbc','lib'),'\.(jar|zip)$','dir'))
+{if testFile('f',$jar)
+ {if match($jar,concat('^',quote($ORACLE_HOME),'\b'))
+   write '---++ ',encode(catSymbol($jar))
+  else
+   write '---++ ',encode($jar)
+  call statFile('p',$jar)
+  if $cmd
+  {write '---++++!! cksum: (checksum size filename)'
+   call writeCommand(concat($cmd,' ',quote($jar,'x')))
+  }
+  write $TOP
+ }
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Java Libs]]'
+
+=head2 SYSMAN
+
+Gathers SYSMAN information.
+
+=cut
+
+debug ' Inside SOA module, gathering SYSMAN information'
+pretoc '2:SYSMAN'
+call sort_files(3,$TAIL,grepDir($SYSMAN_HOME,'\.(log|properties|xml)','inr'),\
+                        grepDir(catDir($SYSMAN_HOME,'config'),'^[^\.]','pn'),\
+                        grepDir(catDir($SYSMAN_HOME,'log'),'^[^\.]','pn'))
+unpretoc
+
+=head1 COMMON HOME INFORMATION
+
+Includes the reports generated by the IREQ module about the common home.
+
+=cut
+
+toc '%PUSH("%SPLIT%")%'
+toc '%PUSH("1+:Common Product Home")%'
+toc '%INCLUDE("',${CUR.GROUP},'_IREQ_SOA_CH.toc")%'
+toc '%POP2%'
+
+=head1 ORACLE WEBLOGIC SERVER DOMAIN COLLECTIONS
+
+Includes all reports collected for the specified Oracle WebLogic Server domains.
+
+=cut
+
+# Identify the domains per Oracle WebLogic Server home
+var (@orp,%dom,%nam,%top) = ()
+loop $key (grepSetting('^SOA_DOM\d+_REQ_DOMAIN$'))
+{var $tid = substr($key,0,-11)
+ var $dom = catDir(getSetting($key))
+ next !testDir('d',$dom)
+
+ if missing($dom{$dom})
+  var $dom{$dom} = addTarget('DOM_Req$$',{DOMAIN_HOME   =>$dom,\
+                                          MISSING_HOME  =>1,\
+                                          MISSING_COMMON=>1})
+ if and(defined($par = $dom{$dom}->get_wl_home),\
+        testDir('d',$par->get_info('wlh')))
+  call push($top{$par->get_info('oid')},$tid)
+ else
+  call push(@orp,$tid)
+ var $nam{$tid} = basename($dom)
+}
+
+# Report the domains per Oracle WebLogic Server home
+var $cnt = 0
+loop $oid (keys(%top))
+{var ($flg,$tid) = ($cnt,replace($top{$oid}->[0],'_DOM','_TOP'))
+ incr $cnt
+ toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1+:Oracle WebLogic Server Overview")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_WREQ_',$tid,'.toc")%'
+ toc '%POP2%'
+ loop $tid (@{$top{$oid}})
+ {toc '%PUSH("%SPLIT%")%'
+  toc '%PUSH("1+:',"'",$nam{$tid},"'",' Domain")%'
+  toc '%INCLUDE("',${CUR.GROUP},'_WREQ_',$tid,'.toc")%'
+  toc '%POP2%'
+ }
+}
+
+# Report domains that are not associated to a Oracle WebLogic Server home
+pretoc '%PUSH("0:   * Orphan Domains")%'
+loop $tid (@orp)
+{toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1+:',"'",$nam{$tid},"'",' Domain")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_WREQ_',$tid,'.toc")%'
+ toc '%POP2%'
+}
+if hasTocOutput(true)
+ toc '%POP%'
+
+unpretoc
+
+# Restore the default target
+call setCurrent()
+
+=head1 SEE ALSO
+
+L<S301WREQ.def|modules::S301WREQ>,
+L<S313IREQ.def|modules::S313IREQ>,
+L<DBinfo.def|modules::DBinfo>,
+L<INSTinfo.def|modules::INSTinfo>,
+L<library.def|modules::library>,
+L<WLSlib.def|modules::WLSlib>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.14:  Greg Cook, Andrew Salt.
+
+=item RDA 4.21:  Raja Vairavaraja.
+
+=item RDA 4.24:  Greg Cook, Antony Reynolds, Andrew Salt, Maria Salzberger.
+
+=item RDA 4.25:  Maria Salzberger.
+
+=item RDA 4.26:  Shawn Bailey, Maria Salzberger.
+
+=item RDA 4.27:  Shawn Bailey, Maria Salzberger.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

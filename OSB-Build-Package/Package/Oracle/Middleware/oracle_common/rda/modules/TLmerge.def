@@ -1,0 +1,793 @@
+# TLmerge.def: Merges Alert Log and Trace Files
+# $Id: TLmerge.def,v 2.15 2012/04/26 09:56:29 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TLmerge.def,v 2.15 2012/04/26 09:56:29 mschenke Exp $
+#
+# Change History
+# 20120426  KRA  Improve the credential management.
+
+=head1 NAME
+
+TLmerge - Merges Alert Logs and Trace Files
+
+=head1 DESCRIPTION
+
+This tool extracts information from alert log and trace files from the local
+node or remote nodes and merges them in a single report. It can extract data
+from Oracle Database, Oracle Real Application Cluster, and Automatic
+Storage Management contexts. It considers events in a provided time stamp range
+only.
+
+For remote collections:
+
+=over 4
+
+=item *
+
+A remote collection setup must be performed before running this tool. Use a
+command similar to the following:
+
+<rda> -vX Remote setup_cluster /
+
+=item *
+
+Data is extracted remotely from all relevant alert logs and trace files. They
+are merged into a single file, which is transferred back into the F<remote>
+subdirectory.
+
+=item *
+
+Final merge report of all the remote merged files is shown in the F<extern>
+subdirectory.
+
+=item *
+
+You can merge files from remote machines again later with or without individual
+time corrections (offsets).
+
+=item *
+
+A list of available remote result sets can be provided.
+
+=back
+
+By default, a maximum of 10 trace lines per record are shown in the final
+output. If required, you can change this limit by executing the tool in
+advanced mode.
+
+<rda> -vT -p advanced merge
+
+=head1 USAGE
+
+This tool can be used in two ways:
+
+=over 3
+
+=item a)
+
+Runs interactively. It requests the user to enter the required information.
+
+<rda> -vT merge
+
+=item b)
+
+Runs from the command line. The input can be given in the command line using
+the following syntax:
+
+<rda> [-e MERGE_LINES=<n>] -vT merge:A:<set>:<start>,<end>[,<path>|...]
+
+Performs a new merge from remote nodes. E<lt>setE<gt> is the result name. The
+result name starts with a letter followed by alphanumeric characters. The
+next argument includes the start and end time stamps. Time stamps are in the
+format C<DD-Mon-YYYY_HH24:MI:SS>. You can provide additional full paths to
+locate rotated alert logs. RDA searches in those directories, for files that
+contain the 'basename' in their name. To alter the maximum number of lines to
+consider in trace log entries, specify an alternative value for the
+C<MERGE_LINES> setting.
+
+<rda> [-e MERGE_LINES=<n>] -vT merge:B:<set>:<start>,<end>[,<path>|...]
+
+Performs a new merge on the local node. It takes the same argument as used for
+remote collections.
+
+<rda> -vT merge:C:<set>
+
+Merges existing data without time corrections.
+
+<rda> -vT merge:D:<set>:<node>=<offset>,...
+
+Merges existing data with time corrections. Names assigned by the setup should
+be used for <node>. The offsets are specified in seconds and can be either
+positive or negative (for example, NOD001=-1.450).
+
+<rda> -vT merge:E
+
+Lists all available remote collections.
+
+=back
+
+=cut
+
+# Initialisation
+var $ORACLE_HOME = ${ORACLE_HOME:getEnv('ORACLE_HOME','')}
+var $ORACLE_SID  = ${ORACLE_SID:getEnv('ORACLE_SID','')}
+var $RE_SET      = '^[A-Za-z]\w*$'
+
+# Load the common macros
+run MERGElib()
+
+#------------------------------------------------------------------------------
+# Define the remote operation macros
+#------------------------------------------------------------------------------
+
+# Check a remote installation
+macro check_install
+{var ($nod,$flg) = @arg
+
+ # Check the remote RDA installation
+ if rda($nod,'-c',true)
+ {if !$flg
+   return 1
+ }
+
+ # Check for any shell or RDA error
+ loop $lin (getRemoteLines())
+ {if match($lin,'(^RDA-00014:|^\s+File .* altered$)')
+  {next $flg
+   return -1
+  }
+  return 1
+ }
+
+ # Indicate a successfull RDA installation
+ return 0
+}
+
+# Get a remote setting
+macro get_node
+ return getSetting(concat('REMOTE_',$arg[0],$arg[1]),$arg[2])
+
+# Define the storage detection macro
+macro get_storage
+{var ($nod,$loc,$rem) = @arg
+
+ var $dst = getRemoteSetup($nod)
+ var $src = getRemoteSetup($nod,true)
+
+ # Detect a local node
+ if !isRemote($nod)
+ {if transfer($loc,$src,$rem,$dst,true)
+   return ('R','_STORAGE=LOCAL')
+  else
+   return ('n')
+ }
+
+ # When needed, create the remote directory
+ call rexec($nod,concat('mkdir -p ',$rem))
+
+ # Test the transfer of the setup file
+ if put($nod,$loc,$src,$rem,$dst)
+  return ('n')
+
+ # Detect if RDA software and data collection are separated
+ if get_node($nod,'_SPLIT')
+  return ('I','_STORAGE=SPLIT')
+
+ # Detect the current install is shared with the remote node
+ if testFile('r',catFile($rem,$dst))
+  return ('I','_STORAGE=SHARED')
+
+ # Otherwise assume a remote storage
+ return ('I','_STORAGE=REMOTE')
+}
+
+# Define the software installation macro
+macro do_install
+{var ($nod,$top) = @arg
+
+ # Determine if software alterations are allowed
+ var $flg = or(${REMOTE_ALTER_ALLOWED},get_node($nod,'_SPLIT'))
+
+ # When not yet done, install the software
+ if check_install($nod,$flg)
+ {# When needed, create or modify the remote directory
+  if expr('>',last,0)
+   call rexec($nod,concat('mkdir -p ',$top))
+  else
+   call rexec($nod,concat("chmod -R u+w ",$top))
+
+  # Transfer RDA software
+  if mput($nod,true,'.','(^rda[\.\_]|\.txt$|^RDA$|^modules$)',$top)
+   return 'i'
+
+  # Check the remote software allowing only altered modules
+  if check_install($nod,$flg)
+   return 'c'
+ }
+
+ # Indicate a successful completion
+ return 'R'
+}
+
+macro do_run
+{var ($nod,$wrk,$set,$beg,$end,$add) = @arg
+ import $MERGE_LINES
+
+ if rda($nod,concat(' -s ',catFile($wrk,getRemoteSetup($nod)),\
+        ' -e RPT_DIRECTORY=',catFile($wrk,$nod),\
+        ',RPT_GROUP=',${CUR.GROUP},\
+        ',MERGE_LINES=',$MERGE_LINES,\
+        " -vdyT 'merge:L:",$set,',',$nod,':',$beg,',',$end,',',$add,"'"))
+  return 'r'
+
+ # Indicate a successful completion
+ return 'T'
+}
+
+# Define the package transfer macro
+macro do_transfer
+{var ($nod,$rem,$set) = @arg
+
+ if get($nod,catDir($rem,$nod,'extern'),\
+             concat(${CUR.PREFIX},$nod,'_',$set,'.txt'),\
+             ${OUT.P})
+  return 't'
+
+ # Indicate a successful completion
+ return '-'
+}
+
+#------------------------------------------------------------------------------
+# Define the actions
+#------------------------------------------------------------------------------
+
+# Merge a result set with time stamp adjustments
+macro do_adjust
+{var ($set,\%off,$flg) = @arg
+
+ var %dlt = ()
+ var @fil = grepDir(${OUT.P},\
+                    concat('^',${CUR.PREFIX},'[A-Z0-9]+_',$set,'\.txt$'),\
+                    'inp')
+
+ if @fil
+ {# Determine node list
+  var $pat = concat('^',${CUR.PREFIX},'([A-Z0-9]+)_\w*\.txt$')
+  loop $fil (@fil)
+  {next ! match(basename($fil),$pat,true)
+   var ($nod) = last
+   var @nod = (@nod,$nod)
+   var $tbl{$nod} = $fil
+   var $dlt{$fil} = $off{$nod}
+  }
+
+  # Determine time corrections
+  if $flg
+  {call setTempSetting('MERGE_PHASE','offset')
+   call setTempSetting('MERGE_NODES',join('|',@nod))
+   call requestSetting('TLmerge')
+   loop $nod (@nod)
+   {if getSetting(concat('MERGE_OFFSET_',$nod),0)
+     var $dlt{$tbl{$nod}} = last
+   }
+  }
+
+  # Merging result set
+  debug ' Inside TLmerge, merging adjusted result set (',scalar(@fil),' files)'
+  return merge_files($set,'all',\@fil,\%dlt,false)
+ }
+ return
+}
+
+# Extract data from alert log and trace files
+macro do_collect
+{var ($nod,$set,$beg,$end,$add) = @arg
+ import $ORACLE_HOME
+
+ var $pat = '^[0-3]\d\-[A-Za-z]{3}\-[1-2]\d{3}_[0-2]\d:[0-5]\d:[0-5]\d$'
+ if !match($beg,$pat)
+  die 'Start time format should be DD-Mon-YYYY_HH24:MI:SS'
+ if !match($end,$pat)
+  die 'End time format should be DD-Mon-YYYY_HH24:MI:SS'
+ var ($day,$mon,$yer,$hur,$min,$sec) = split('[\-\_\:]',$beg)
+ var $beg = mktime($sec,$min,$hur,$day,$mon,$yer)
+ var ($day,$mon,$yer,$hur,$min,$sec) = split('[\-\_\:]',$end)
+ var $end = mktime($sec,$min,$hur,$day,$mon,$yer)
+
+ # Load the common database macros
+ run DBinfo()
+
+ # Purge the old files
+ call purge('S',$set,-1)
+
+ # Define a macro to eliminate duplicate directories
+ var @dir = ()
+ macro check_dir
+ {var (\@ref,$dir,@sub) = @arg
+
+  if $dir
+  {if @sub
+    var $dir = catDir($dir,@sub)
+   loop $ref (@ref)
+   {if sameDir($dir,$ref)
+     return undef
+   }
+   var @ref = (@ref,$dir)
+  }
+  return $dir
+ }
+
+ # Extract database alert log and trace data
+ debug ' Inside TLmerge, looking for a database context'
+ var $cnt = 0
+ var $dia = get_adr_home()
+ if check_dir(\@dir,get_bdump())
+ {var $dir = last
+  var $typ = cond($dia,'DB:trace','DB:bdump')
+  debug ' Inside TLmerge, extracting DB alert log data from ',$dir
+  var $cnt = extract_alert_data($set,$beg,$end,$cnt,$typ,\
+                                grepDir($dir,'\.log$','p'))
+  debug ' Inside TLmerge, extracting DB trace data from ',$dir
+  var $cnt = extract_trace_data($set,$beg,$end,$cnt,$typ,\
+                                grepDir($dir,'\.trc$','p'))
+ }
+ loop $fil (split('\|',$add))
+ {var $fil = catFile($fil)
+  var ($dir,$nam) = (dirname($fil),basename($fil))
+  if testDir('dr',$dir)
+  {debug ' Inside TLmerge, extracting rotated DB alert log data in ',$dir
+   var @fil = grepDir($dir,concat(quote($nam),'.*'),'p')
+   var $cnt = extract_alert_data($set,$beg,$end,$cnt,'DB:extra',\
+     grep(@fil,'\.(bzip2|gz|taz|tbz|tgz|z|zip)$','v'))
+  }
+ }
+ if check_dir(\@dir,get_cdump())
+ {var $dir = last
+  debug ' Inside TLmerge, extracting DB trace data from ',$dir
+  var $cnt = extract_trace_data($set,$beg,$end,$cnt,'DB:cdump',\
+                                grepDir($dir,'\.trc$','p'))
+ }
+ if check_dir(\@dir,$dia,'incident')
+ {var $dir = last
+  debug ' Inside TLmerge, extracting DB trace data from ',$dir
+  var $cnt = extract_trace_data($set,$beg,$end,$cnt,'DB:incident',\
+                                grepDir($dir,'\.trc$','r'))
+ }
+ if check_dir(\@dir,get_udump())
+ {var $dir = last
+  debug ' Inside TLmerge, extracting DB trace data from ',$dir
+  var $cnt = extract_trace_data($set,$beg,$end,$cnt,'DB:udump',\
+                                grepDir($dir,'\.trc$','p'))
+ }
+
+ # Extract the cluster log data
+ debug ' Inside TLmerge, looking for a cluster context'
+ if get_crs_home()
+ {var $crs = last
+  debug ' Inside TLmerge, extracting cluster data'
+  if testDir('d',catDir($crs,'log',${RDA.NODE}))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:alert/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'crs','log'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:crs/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'crsd'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:crs/log',\
+                               grepDir($dir,'\.log$','r'))
+  }
+  if testDir('d',catDir($crs,'css','log'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:css/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'css','init'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:css/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'cssd'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:css/log',\
+                               grepDir($dir,'\.log$','r'))
+  }
+  if testDir('d',catDir($crs,'racg','dump'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:racg/dump',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',$dir = catDir($crs,'log',${RDA.NODE},'racg'))
+  {debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:racg/dump',\
+                               grepDir($dir,'\.log$','r'))
+  }
+  if testDir('d',$alt = catDir($ORACLE_HOME,'log',${RDA.NODE},'racg'))
+  {if !sameDir($alt,$dir)
+   {debug ' Inside TLmerge, extracting CRS trace data from ',$alt
+    var $cnt = extract_rac_data($set,$beg,$end,$cnt,'DB:racg/dump',\
+                                grepDir($alt,'\.log$','r'))
+   }
+  }
+  if testDir('d',catDir($crs,'evm','log'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:evm/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'evm','init'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:evm/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'evmd'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:evm/log',\
+                               grepDir($dir,'\.log$','r'))
+  }
+  if testDir('d',$dir = catDir($crs,'log',${RDA.NODE},'client'))
+  {debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:client/log',\
+                               grepDir($dir,'\.log$','r'))
+  }
+  if testDir('d',$alt = catDir($ORACLE_HOME,'log',${RDA.NODE},'client'))
+  {if !sameDir($alt,$dir)
+   {debug ' Inside TLmerge, extracting CRS trace data from ',$alt
+    var $cnt = extract_rac_data($set,$beg,$end,$cnt,'DB:client/log',\
+                                grepDir($alt,'\.log$','r'))
+   }
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'admin'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:admin/log',\
+                               grepDir($dir,'\.log$','r'))
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'ohasd'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:ohasd/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'gpnpd'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:gpnpd/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'agent','crsd'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:agent/crsd/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+  if testDir('d',catDir($crs,'log',${RDA.NODE},'agent','ohasd'))
+  {var $dir = lastDir()
+   debug ' Inside TLmerge, extracting CRS trace data from ',$dir
+   var $cnt = extract_rac_data($set,$beg,$end,$cnt,'CRS:agent/ohasd/log',\
+                               grepDir($dir,'\.log$','p'))
+  }
+ }
+ if testDir('d',catDir($ORACLE_HOME,'oracm','log'))
+ {var $dir = lastDir()
+  debug ' Inside TLmerge, extracting RAC trace data from ',$dir
+  var $cnt = extract_oracm_log($set,$beg,$end,$cnt,'RAC:oracm/log',\
+                               grepDir($dir,'\.log$','p'))
+ }
+
+ # Extract ASM alert log and trace data
+ var ($asm,$old,$sid,$try) = get_asm_context()
+ if $asm
+ {# Force a new determination of the destinations
+  debug ' Inside TLmerge, looking for an ASM context'
+  var $ORACLE_HOME = $asm
+  call find_dest('ASM_')
+  var $dia = get_adr_home()
+
+  # Extract the data
+  if check_dir(\@dir,get_bdump())
+  {var $dir = last
+   var $typ = cond($dia,'ASM:trace','ASM:bdump')
+   debug ' Inside TLmerge, extracting ASM alert log data from ',$dir
+   var $cnt = extract_alert_data($set,$beg,$end,$cnt,$typ,\
+                                 grepDir($dir,'\.log$','p'))
+   debug ' Inside TLmerge, extracting ASM trace data from ',$dir
+   var $cnt = extract_trace_data($set,$beg,$end,$cnt,$typ,\
+                                 grepDir($dir,'\.trc$','p'))
+  }
+  if check_dir(\@dir,get_cdump())
+  {var $dir = last
+   debug ' Inside TLmerge, extracting ASM trace data from ',$dir
+   var $cnt = extract_trace_data($set,$beg,$end,$cnt,'ASM:cdump',\
+                                 grepDir($dir,'\.trc$','p'))
+  }
+  if check_dir(\@dir,$dia,'incident')
+  {var $dir = last
+   debug ' Inside TLmerge, extracting ASM trace data from ',$dir
+   var $cnt = extract_trace_data($set,$beg,$end,$cnt,'ASM:incident',\
+                                 grepDir($dir,'\.trc$','r'))
+  }
+  if check_dir(\@dir,get_udump())
+  {var $dir = last
+   debug ' Inside TLmerge, extracting ASM trace data from ',$dir
+   var $cnt = extract_trace_data($set,$beg,$end,$cnt,'ASM:udump',\
+                                 grepDir($dir,'\.trc$','p'))
+  }
+
+  # Restore the previous context
+  call setSqlSid($sid)
+  call setSqlLogin($old)
+  call setSqlFailure($try)
+ }
+
+ # Merge extracted information
+ if $cnt
+ {debug ' Inside TLmerge, merging data collected (',$cnt,' files)'
+  var @tmp = grepDir(${OUT.S},\
+                     concat('^',${CUR.PREFIX},$set,'_\d+\.tmp$'),'inp')
+  var %off = ()
+  return merge_files($set,$nod,\@tmp,\%off,true)
+ }
+ return undef
+}
+
+# List available result sets
+macro do_list
+{echo '\012Available Result Sets:'
+ var $pat = concat('^',${CUR.PREFIX},'[A-Z0-9]+_(\w*)\.txt$')
+ var $lst = ''
+ loop $fil (grepDir(${OUT.P},\
+                    concat('^',${CUR.PREFIX}),'in'))
+ {var ($set) = match($fil,$pat,true)
+  if compare('ne',$set,$lst)
+  {echo "- Set '",$set,"':"
+   var $lst = $set
+  }
+  echo '    ',$fil
+ }
+ if !$lst
+  echo '  No sets found'
+}
+
+# Merge a result set
+macro do_merge
+{var ($set) = @arg
+
+ var @fil  = grepDir(${OUT.P},\
+                     concat('^',${CUR.PREFIX},'[A-Z0-9]+_',$set,'\.txt$'),\
+                     'inp')
+ if @fil
+ {debug ' Inside TLmerge, merging result set (',scalar(@fil),' files)'
+  var %off = ()
+  return merge_files($set,'all',\@fil,\%off,false)
+ }
+ return
+}
+
+# Perform a remote collection
+macro do_request
+{var ($set,$beg,$end,$add) = @arg
+
+ # Initialization
+ if !${REMOTE_NODES}
+ {echo 'Missing remote collection setup'
+  return
+ }
+ var @nod = split(',',last)
+
+ # Recover step information for aborted sessions
+ if initSteps(true)
+  call endSteps()
+
+ # Check if there are pending remote requests
+ loop $nod (@nod)
+ {if isRemote($nod)
+  {call initRemote()
+   break
+  }
+ }
+
+ # Perform the data collection in separate threads
+ loop $nod (@nod)
+ {call setTempSetting(concat('REMOTE_',$nod,'_STEP'),'N')
+  thread
+  {import $add,$beg,$end,$nod,$set
+
+   if match(getStep($nod,'N'),'-')
+    var $stp = 'N'
+   else
+    var $stp = getStep($nod,'N')
+   var $top = get_node($nod,'_HOME','.')
+   var $wrk = get_node($nod,'_WORK',${GRP.D_CWD})
+
+   # Detect the storage type of the remote node
+   if compare('eq',$stp,'N')
+   {debug $nod,': Detecting storage type'
+    var $stp = setStep($nod,get_storage($nod,${GRP.D_CWD},$wrk))
+   }
+
+   # Install the software on the remote node
+   if compare('eq',$stp,'I')
+   {debug $nod,': Installing RDA software'
+    var $stp = setStep($nod,do_install($nod,$top))
+   }
+
+   # Execute remotely RDA command
+   if compare('eq',$stp,'R')
+   {debug $nod,': Running RDA command'
+    var $stp = setStep($nod,do_run($nod,$wrk,$set,$beg,$end,$add))
+   }
+
+   # Transfer the report package
+   if compare('eq',$stp,'T')
+   {debug $nod,': Transfering report package'
+    var $stp = setStep($nod,do_transfer($nod,$wrk,$set))
+   }
+  }
+ }
+ wait
+ call endSteps()
+}
+
+#------------------------------------------------------------------------------
+# Main program
+#------------------------------------------------------------------------------
+
+echo tput('bold'),'Merging alert log and trace files ...',tput('off')
+call setAbbr('MERGE')
+
+# Execute the request
+if ${TST_ARGS}
+{var ($opt,$set,$arg) = split(':',last,3)
+ var $MERGE_LINES = ${MERGE_LINES:10}
+ if compare('eq',$opt,'A')
+ {if !match($set,$RE_SET)
+   die 'Missing set'
+  call do_request($set,split(',',$arg))
+  if do_merge($set)
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'B')
+ {if !match($set,$RE_SET)
+   die 'Missing set'
+  if do_collect('local',$set,split(',',$arg))
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'C')
+ {if !match($set,$RE_SET)
+   die 'Missing set'
+  if do_merge($set)
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'D')
+ {if !match($set,$RE_SET)
+   die 'Missing set'
+  var ($flg,%off) = (false)
+  loop $off (split(',',$arg))
+  {var ($nod,$val) = (key($off),value($off))
+   if and(match($nod,'^[A-Za-z0-9]+$'),num($val))
+    var ($flg,$off{$nod}) = (true,$val)
+  }
+  if cond($flg,do_adjust($set,\%off,false),do_merge($set))
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'E')
+  call do_list()
+ elsif compare('eq',$opt,'L')
+ {var ($set,$nod) = split(',',$set)
+  if !match($set,$RE_SET)
+   die 'Missing set'
+  call do_collect(nvl($nod,'NOD001'),$set,split(',',$arg))
+ }
+}
+else
+{call setTempSetting('MERGE_PHASE','menu')
+ call requestSetting('TLmerge')
+ var $opt = ${MERGE_MENU}
+ var $set = ${MERGE_SET}
+ var $MERGE_LINES = ${MERGE_LINES:10}
+ if compare('eq',$opt,'A')
+ {call do_request($set,${MERGE_BEGIN},\
+                       ${MERGE_END},\
+                       ${MERGE_LOG_FILES})
+  if do_merge($set)
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'B')
+ {if do_collect('local',$set,${MERGE_BEGIN},\
+                             ${MERGE_END},\
+                             ${MERGE_LOG_FILES})
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'C')
+ {if do_merge($set)
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'D')
+ {var %off = ()
+  if do_adjust($set,\%off,true)
+  {call renderFile(last)
+   echo 'Merge results: ',last
+  }
+  else
+   echo 'No data found'
+ }
+ elsif compare('eq',$opt,'E')
+  call do_list()
+ elsif compare('eq',$opt,'L')
+  call do_collect('NOD000',$set,${MERGE_BEGIN},\
+                                ${MERGE_END},\
+                                ${MERGE_LOG_FILES})
+}
+
+=head1 WARNING
+
+Currently the tool does not support the data extraction from files in XML
+format. Oracle Database 11g stores alert logs in both XML and text formats,
+therefore the data is extracted from the alert log in text format.
+
+=head1 SEE ALSO
+
+L<MERGElib.def|modules::MERGElib>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.9:  Bob Caldwell, Michel Villette.
+
+=item RDA 4.10: Michel Villette.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

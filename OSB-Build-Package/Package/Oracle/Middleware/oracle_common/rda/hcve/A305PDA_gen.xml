@@ -1,0 +1,286 @@
+<sdp_diaglet product="Portal" set="A305PDA_gen" title="Oracle Portal Preinstall (Generic)" type="A">
+<sdp_meta id="$Id: A305PDA_gen.xml,v 2.5 2012/05/13 14:31:26 mschenke Exp $" type="version"/>
+<sdp_meta author="KRA" change="Improve URLs" date="20120508" type="history"/>
+<sdp_content set="A305PDA_gen" title="Oracle Portal Preinstall (Generic)" type="check">
+<sdp_group>
+<sdp_rule id="A00011" mode="RECORD" name="SystemVariables">
+<sdp_command type="SQL"><![CDATA[DEFINE runos=''
+COL runos new_value runos_new
+VARIABLE checkos VARCHAR2(10)
+DECLARE
+ oscheck VARCHAR2(25);
+BEGIN
+ SELECT DECODE(SUBSTR(value,1,1),'/','env','set')
+  INTO oscheck
+  FROM v$parameter
+  WHERE UPPER(name) = 'CONTROL_FILES';
+ :checkos := oscheck;
+END;
+/
+SELECT :checkos runos
+ FROM dual;
+HOST &&runos_new;]]></sdp_command>
+<sdp_description><![CDATA[The rule lists the operating system variables.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00012" mode="RECORD" name="OS Specifics">
+<sdp_command type="SQL"><![CDATA[SELECT host_name
+ FROM v$instance;]]></sdp_command>
+<sdp_description><![CDATA[This rule lists the operating system requirements.
+A fully qualified hostname includes the name of the server and the domain. The installer requires that the fully qualified information appear in the configuration file "hosts" for your computer.
+Hosts file should have the following format:
+  IP_Address Fully_qualified_name Short_name Alias
+  Example: ``138.1.137.14 example1.example.com example1 example2``
+There could be operating system patches you must download and install before installing Oracle 9i Application Server (9iAS). Operating system patches are specific to the operating system on which 9iAS is installed.
+Oracle 9iAS does not support spanning the installation over multiple disks. Space must be available in a single disk.
+  J2EE and Web Cache require 435 MB
+  Portal and Wireless require 1.2 GB
+  9iAS developer Kits require 701 MB
+A temporary or swap space of at least 1GB is required.
+A minimum requirement of Portal and Wireless installation only is 256 MB. Additional 9iAS installation products require 512 MB
+The Oracle 9iAS Installation Guide is included with the product CDs received from Oracle Corporation. An on-line version of the guide is available at: http://www.oracle.com/technetwork/middleware/portal/overview/index.html.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00013" mode="RECORD" name="PortalRepository">
+<sdp_command type="SQL"><![CDATA[SELECT banner
+ FROM v$version;]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the Portal Repository Database version.
+For additional information, see:
+Knowledge Article 199101.1 How to install Portal 9.0.2.x in a Remote Database
+Knowledge Article 218106.1 Install Oracle9iAS Portal 9.0.2.x Oracle 9.2.x Database]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00021" mode="RECORD" name="Enter InfraInfo">
+<sdp_command default="%A00012%:7777" type="PROMPT"><![CDATA[InfrastuctureServerName:Port]]></sdp_command>
+<sdp_description><![CDATA[Enter Infrastructure Servername and Port.]]></sdp_description>
+</sdp_rule>
+<sdp_rule id="A00022" mode="RECORD" name="InfraHttp">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00021" minimum="RECORD" result="FAILED"><![CDATA[Requires rule A00021.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON SIZE 10000 FORMAT WOR
+DEFINE InfraServerURL=%A00021%;
+SET DEFINE ON
+DECLARE
+ req   utl_http.req;
+ resp  utl_http.resp;
+ name  VARCHAR2(256);
+ value VARCHAR2(1024);
+ iURL  VARCHAR2(100) := 'http://&InfraServerURL';
+ cURL  VARCHAR2(100);
+ comp  VARCHAR2(200);
+BEGIN
+ FOR x IN 1..3
+ LOOP
+  SELECT DECODE(x,1,iURL,
+                  2,iURL||'/pls/orasso/orasso.wwsso_app_admin.ls_login',
+                  3,iURL||'/oiddas')
+   INTO cURL
+   FROM dual;
+  SELECT DECODE(x,1,'HTTP Server Listener',
+                  2,'Single Sign On',
+                  3,'Internet Directory')
+   INTO comp
+   FROM dual;
+  dbms_output.put_line(x || '. Testing ' || comp || ':');
+  req := utl_http.begin_request(cURL);
+  utl_http.set_header(req,'User-Agent','Mozilla/4.0');
+  resp := utl_http.get_response(req);
+  dbms_output.put_line('HTTP response status code: ' || resp.status_code);
+  dbms_output.put_line('HTTP response reason phrase: ' || resp.reason_phrase);
+  FOR i IN 1..utl_http.get_header_count(resp)
+  LOOP
+   utl_http.get_header(resp,i,name,value);
+   dbms_output.put_line(name || ': ' || SUBSTR(value,1,225));
+  END LOOP;
+  dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+  utl_http.end_response(resp);
+ END LOOP;
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule ensures that Oracle9iAS HTTP Server of Infrastructure is started before installing Oracle9iAS Portal.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="OK" result="PASSED"><![CDATA[For additional information, see:<p>
+Knowledge Article 226750.1 Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Verify if Oracle HTTP Server is up and running.
+Enter the following URL:  http://servername:port/
+If you cannot access this page verify the status of Oracle HTTP Server. You can do this from Oracle Enterprise Manager website or from command line using DCM:
+  $ dcmctl getstate -v
+Starting services using EM site:
+EM Site is accessed via a browser using the following URL:
+  http://servername:1810
+For the correct URL, specific to your installation, refer to setupinfo.txt file located in: $ORACLE_HOME/Apache/Apache
+If both Infrastructure and Middle-tier are installed on the same server, then $ORACLE_HOME is Infrastructure $ORACLE_HOME.
+- Navigate to the Infrastructure Farm.
+- Select the service and Start.
+Starting services using DCM:
+- Start HTTP Server and OC4J
+  $ dcmctl start -v
+- Start HTTP Server only
+  $ dcmctl start -ct ohs -v
+- Start OC4J only
+  $ dcmctl start -ct oc4j -v
+For more information, see:
+Knowledge Article 200475.1 9iAS Release 2 (9.0.2) Start/Stop Instructions
+Knowledge Article 226750.1 Post Install checks for the Oracle9i Application Server Release 2 Infrastructure Installation]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00031" mode="VERIFY" name="initParamJavaPoolSize">
+<sdp_command type="SQL"><![CDATA[SELECT value/1048576
+ FROM v$parameter
+ WHERE LOWER(name) = 'java_pool_size';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="64" result="PASSED"><![CDATA[For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Modify the initialization parameter file (spfile.ora/ init.ora) and restart the database. For more information, see
+Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00032" mode="VERIFY" name="initParamLargePoolSize">
+<sdp_command type="SQL"><![CDATA[SELECT value/1048576
+ FROM v$parameter
+ WHERE LOWER(name) = 'large_pool_size';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="0" result="PASSED"><![CDATA[For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Modify the initialization parameter file (spfile.ora/init.ora) and restart the database. For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00033" mode="VERIFY" name="initParamSharedPoolSize">
+<sdp_command type="SQL"><![CDATA[SELECT value/1048576
+ FROM v$parameter
+ WHERE LOWER(name) = 'shared_pool_size';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="100" result="PASSED"><![CDATA[For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Modify the initialization parameter file (spfile.ora/init.ora) and restart the database. For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00034" mode="VERIFY" name="initParamDbBlockSize">
+<sdp_command type="SQL"><![CDATA[SELECT value
+ FROM v$parameter
+ WHERE LOWER(name) = 'db_block_size';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="8192" result="PASSED"><![CDATA[For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Modify the initialization parameter file (spfile.ora/init.ora) and restart the database. For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00035" mode="VERIFY" name="initParamDbCacheSize">
+<sdp_command type="SQL"><![CDATA[SELECT value/1048576
+ FROM v$parameter
+ WHERE LOWER(name) = 'db_cache_size';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="50" result="PASSED"><![CDATA[For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Set the DB_CACHE_SIZE parameter value to a minimum of 52428800 bytes (50 MB). Modify the initialization parameter file (spfile.ora/init.ora) and restart the database.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00036" mode="VERIFY" name="initParamProcesses">
+<sdp_command type="SQL"><![CDATA[SELECT value
+ FROM v$parameter
+ WHERE LOWER(name) = 'processes';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">" minimum="150" result="PASSED"><![CDATA[For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Modify the initialization parameter file (spfile.ora/init.ora) and restart the database.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00037" mode="VERIFY" name="initParamSessions">
+<sdp_command type="SQL"><![CDATA[SELECT value
+ FROM v$parameter
+ WHERE LOWER(name) = 'sessions';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="165" result="PASSED"><![CDATA[For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The SESSIONS parameter value is expected to be at least 110% of the value set for the PROCESSES parameter. Modify the initialization parameter file (spfile.ora/init.ora) and restart the database.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00038" mode="VERIFY" name="initParamNlsLanguage">
+<sdp_command type="SQL"><![CDATA[SELECT value
+ FROM v$parameter
+ WHERE LOWER(name) = 'nls_language';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the database resources. Portal repository installation requires higher database resources during the installation. These may be reduced after the installation or configuration of Portal in the database.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="AMERICAN" result="PASSED"><![CDATA[For more information, see
+Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Modify the initialization parameter file (spfile.ora/init.ora) and restart the database. For more information, see Knowledge Article 202561.1 Recommended Database Resources and Tablespace size required to Install Portal 9.0.2]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00041" mode="VERIFY" name="javaObjectsSYS">
+<sdp_command type="SQL"><![CDATA[SELECT count(*)
+ FROM dba_objects
+ WHERE object_type LIKE 'JAVA%'
+AND owner = 'SYS';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the number of Java objects in the SYS schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">" minimum="10000" result="PASSED"><![CDATA[The total number of Java objects in the SYS schema in an Oracle 9i database is expected to be at least 11125.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle JVM is not enabled or it is configured incorrectly in the database. At least 11125 Java objects are expected in the SYS schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00042" mode="VERIFY" name="javaObjectsORDSYS">
+<sdp_command type="SQL"><![CDATA[SELECT count(*)
+ FROM dba_objects
+ WHERE object_type LIKE 'JAVA%'
+AND owner = 'ORDSYS';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the number of Java objects in the ORDSYS schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="863" result="PASSED"><![CDATA[The total number of Java objects in the ORDSYS schema in an Oracle 9i database is expected to be at least 863.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle JVM is not enabled or it is configured incorrectly in the database. At least 863 Java objects are expected in the ORDSYS schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00043" mode="VERIFY" name="javaObjectsWKSYS">
+<sdp_command type="SQL"><![CDATA[SELECT count(*)
+ FROM dba_objects
+ WHERE object_type LIKE 'JAVA%'
+AND owner = 'WKSYS';]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the number of Java objects in the WKSYS schema.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="40" result="PASSED"><![CDATA[The total number of Java objects in the WKSYS schema in an Oracle 9i database is expected to be at least 40.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Either Oracle JVM is not enabled or it is configured incorrectly in the database. At least 40 java objects are expected in the WKSYS schema.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A00044" mode="RECORD" name="EMWebsite">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00012" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires rule A00012.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="SQL"><![CDATA[SET SERVEROUTPUT ON SIZE 10000 FORMAT WOR
+DEFINE EMWebsiteHost=%A00012%;
+SET DEFINE ON
+DECLARE
+ req   utl_http.req;
+ resp  utl_http.resp;
+ name  VARCHAR2(256);
+ value VARCHAR2(1024);
+ iURL  VARCHAR2(100) := 'http://&EMWebsiteHost:1810/';
+BEGIN
+ req := utl_http.begin_request(iURL);
+ utl_http.set_header(req,'User-Agent','Mozilla/4.0');
+ resp := utl_http.get_response(req);
+ IF resp.status_code = '200'
+ THEN
+  dbms_output.put_line(
+  'Ensure Enterprise Manager Website (EMCTL) is shutdown before installation.');
+  dbms_output.put_line('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+  dbms_output.put_line('HTTP response status code: ' || resp.status_code);
+  dbms_output.put_line('HTTP response reason phrase: ' || resp.reason_phrase);
+  FOR i IN 1..utl_http.get_header_count(resp)
+  LOOP
+   utl_http.get_header(resp, i, name, value);
+   dbms_output.put_line(name || ': ' || SUBSTR(value,1,225));
+  END LOOP;
+ ELSE
+  dbms_output.put_line('Enterprise Manager Website (EMCTL) is not started');
+ END IF;
+END;
+/]]></sdp_command>
+<sdp_description><![CDATA[This rule ensures that the Enterprise Manager Web site is shut down.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="is not started$" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[If Application Server is being installed on a Server with an existing 9i product (Oracle Server or Application Server) then Enterprise Manager (EMCTL) is shutdown before installation.
+Set the infrastructure environment:
+	$ emctl stop
+or
+	Services Control Panel => Stop the EMWebsite Services]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

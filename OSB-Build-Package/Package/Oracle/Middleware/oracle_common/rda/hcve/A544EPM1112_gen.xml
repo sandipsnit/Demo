@@ -1,0 +1,2838 @@
+<sdp_diaglet product="EPM1112" set="A544EPM1112_gen" title="Oracle Enterprise Performance Management 11.1.2 Server Preinstall (Generic)" type="A">
+<sdp_meta id="$Id: A544EPM1112_gen.xml,v 1.14 2012/09/10 06:54:03 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve Windows EPM 11.1.2.2 Product Restrictions check and database references" date="20120822" type="history"/>
+<sdp_content set="A544EPM1112_gen" title="Oracle Enterprise Performance Management 11.1.2 Server Preinstall (Generic)" type="check">
+
+<sdp_facts>
+<sdp_fact id="F00002">
+<sdp_description><![CDATA[This fact collection gets required information for HP-UX operating system parameters.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="EPM.OS.HPUX"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[
+var @tbl = split('\s+',\
+  grepCommand('/usr/sbin/swlist -l bundle','Base Quality Pack Bundle','if'))
+var ($lin) = grep(@tbl,'^B\.11\.','f')
+if and(match($lin,'^B\.11\.23\.'),compare('valid',substr($lin,8),'0703.059a'))
+ call setHcveParameter('EPM.OS.HPUX.QPV2','true')
+if and(match($lin,'^B\.11\.31\.'),compare('valid',substr($lin,8),'0803.318a'))
+ call setHcveParameter('EPM.OS.HPUX.QPV3','true')
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00003">
+<sdp_description><![CDATA[This fact collection gets required information for Linux operating system parameters.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="EPM.OS.LINUX"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$OS_TYP
+var $hsh = {}
+if compare('eq',$OS_TYP,'Oracle',true)
+{if match($OS_NAM,'Update\s*(\d+)',true)
+  var ($hsh->{'OL','UL'}) = last
+ elsif match($OS_NAM,'release\s*\d+\.(\d+)',true)
+  var ($hsh->{'OL','UL'}) = last
+}
+elsif compare('eq',$OS_TYP,'Red Hat')
+{if match($OS_NAM,'Update\s*(\d+)',true)
+  var ($hsh->{'RH','UL'}) = last
+ elsif match($OS_NAM,'release\s*\d+\.(\d+)',true)
+  var ($hsh->{'RH','UL'}) = last
+}
+elsif compare('eq',$OS_TYP,'SuSe')
+{var ($lin) = grepFile('/etc/SuSE-release','^PATCHLEVEL','if')
+ var $hsh->{'SUSE','SP'} = value($lin)
+}
+call setHcveParameter('EPM.OS.LINUX',$hsh)
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00004">
+<sdp_description><![CDATA[This fact collection gets required information for Solaris operating system parameters.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="EPM.OS.SOL"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[var ($lin) = grepFile('/etc/release','Solaris','if')
+var $val = field('\D',0,field('_u',1,$lin))
+call setHcveParameter('EPM.OS.SOL.UL',$val)
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00005">
+<sdp_description><![CDATA[This fact collection gets required information for Windows operating system parameters.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="EPM.OS.WIN"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[import $OS_LVL
+var ($val) = match($OS_LVL,'(\d+)')
+call setHcveParameter('EPM.OS.WIN.SP',nvl($val,0))
+]]></sdp_command>
+</sdp_fact>
+
+<sdp_fact id="F00010">
+<sdp_description><![CDATA[This fact collection gets required processor information.]]></sdp_description>
+<sdp_parameters>
+<sdp_parameter name="EPM.PROCESSOR"/>
+</sdp_parameters>
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$OS_PLT
+var $prc = $OS_ARC
+if compare('eq',$OS_PLT,'AIX')
+{var @prc = grepCommand('/usr/sbin/prtconf','Processor','i')
+ var $cpu = field('_',1,grep(@prc,'Processor Type','f'))
+ if !match($cpu,'^POWER')
+  var $prc = 'not POWER'
+ else
+  var $prc = concat('POWER',field('\D',0,substr($cpu,5)))
+ var $num = field('\:\s+',1,grep(@prc,'Number of Processors','if'))
+}
+if compare('eq',$OS_PLT,'HP-UX')
+ var $num = grepCommand('/var/adm/syslog/syslog.log','processor','ic')
+if compare('eq',$OS_PLT,'Linux')
+ var $num = grepCommand('/proc/cpuinfo','processor','ic')
+if compare('eq',$OS_PLT,'Sun')
+ var $num = value(grepCommand('uname -X','NumCPU','if'))
+if compare('eq',$OS_PLT,'Windows')
+{var $prc = getEnv('PROCESSOR_IDENTIFIER')
+ var $num = field('\s+',1,grepCommand('systeminfo','^Processor','if'))
+}
+call setHcveParameter('EPM.PROCESSOR.TYPE',$prc)
+call setHcveParameter('EPM.PROCESSOR.NUMBER',$num)
+]]></sdp_command>
+</sdp_fact>
+
+</sdp_facts>
+
+<sdp_group title="Purpose">
+
+<sdp_rule id="A00010" mode="RECORD" name="Select Purpose(s)">
+<sdp_command type="RDA"><![CDATA[
+call setHcveVariable('$BOOK_EPM_STRT','$BOOK_FMW')
+var $BOOK_EPM_STRT = 'Oracle Enterprise Performance Management System \
+  Installation Start Here Release 11.1.2.1'
+var $BOOK_FMW = 'Oracle Fusion Middleware System Requirements and \
+  Specifications 11g Release 1 (11.1.1)'
+# Select the purposes
+var ($cnt,%rsp,@all,@itm) = (0,'*','*')
+loop $rec (\
+  ['PRE','Are EPM Server prerequisites ready?'],\
+  ['DIR','Is the EPM Server Installer directory ready?'],\
+  ['DEL','Is the computer for EPM Server cleaned of prior installs?'])
+{var ($abr,$dsc) = @{$rec}
+ call push(@itm,incr($cnt),$dsc)
+ call push(@all,$rsp{$cnt} = $abr)
+}
+call setTempSetting('HCVE_INFO','pick')
+call setTempSetting('HCVE_INFO_BEF',\
+  'Indicate the purpose(s) you have for running this check:')
+call setTempSetting('HCVE_INFO_ITM',join('|',@itm))
+call setTempSetting('HCVE_INFO_RSP',join('|',%rsp))
+call setTempSetting('HCVE_DEFAULT',join('|',@all))
+call requestSetting('HCVEinfo')
+call setHcveResult($sel = getSetting('HCVE_SELECT'))
+
+# Indicate which purposes are picked
+if match($sel,'(PRE|DIR)')
+ call setHcveParameter('EPM.PURPOSE.BEF',true)
+loop $key (split('\|',$sel))
+ call setHcveParameter(concat('EPM.PURPOSE.',$key),true)
+]]></sdp_command>
+<sdp_command type="GROUP" exec="EPM.PURPOSE.BEF">BEF</sdp_command>
+<sdp_command type="GROUP" exec="EPM.PURPOSE.PRE">PRE</sdp_command>
+<sdp_command type="GROUP" exec="EPM.PURPOSE.DIR">DIR</sdp_command>
+<sdp_command type="GROUP" exec="EPM.PURPOSE.DEL">DEL</sdp_command>
+<sdp_description><![CDATA[This rule prompts the user to select the purpose(s) and launches related rules.]]></sdp_description>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="BEF" title="Common to Pre-install and Installer directory">
+
+<sdp_rule id="A00100" mode="RECORD" name="EPM Version">
+<sdp_command default="11.1.2.2" type="PROMPT" variable="$EPM_VERSION"><![CDATA[EPM Version]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the EPM version they plan to install.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00110" mode="RECORD" name="OS Platform">
+<sdp_command type="RDA"><![CDATA[import $OS_PLT
+call setHcveResult($OS_PLT)
+]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the operating system platform name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00111" mode="RECORD" name="OS Bit">
+<sdp_command type="RDA"><![CDATA[import $OS_BIT
+call setHcveResult($OS_BIT)
+]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the operating system bit width.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00112" mode="RECORD" name="Linux Type">
+<sdp_command type="RDA"><![CDATA[import $OS_TYP
+call setHcveResult(nvl($OS_TYP,'NA'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the Linux type.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00113" mode="RECORD" name="OS Name">
+<sdp_command type="RDA"><![CDATA[import $OS_NAM
+call setHcveResult($OS_NAM)
+]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the operating system name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00120" mode="VERIFY" name="OS OK for 11.1.2.0?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00100" minimum="11.1.2.0" result="SKIPPED" value="Not EPM version 11.1.2.0"><![CDATA[Only applies to EPM version 11.1.2.0.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+import $OS_BIT,$OS_LVL,$OS_NAM,$OS_PLT,$OS_TYP,$OS_VER
+if compare('eq',$OS_PLT,'AIX')
+ return setHcveResult(cond(\
+   and(match($OS_VER,'^5\.3\b'),expr('==',$OS_BIT,64)),\
+     cond(compare('valid',field('-',1,$OS_LVL),'08'),'Adequate',\
+                                                     'MinTL8'),\
+   and(match($OS_VER,'^6\.1\b'),expr('==',$OS_BIT,64)),\
+     cond(compare('valid',field('-',1,$OS_LVL),'02'),'Adequate',\
+                                                     'MinTL2'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'HP-UX')
+ return setHcveResult(cond(\
+   and(compare('eq',$OS_VER,'11.23'),\
+       match(getHcveFact('EPM.PROCESSOR.TYPE'),'Itanium',true)),\
+     cond(getHcveFact('EPM.OS.HPUX.QPV2'),'Adequate',\
+                                          'QPV2'),\
+   and(compare('eq',$OS_VER,'11.31'),\
+       match(getHcveFact('EPM.PROCESSOR.TYPE'),'Itanium',true)),\
+     cond(getHcveFact('EPM.OS.HPUX.QPV3'),'Adequate',\
+                                          'QPV3'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'Linux')
+{if compare('eq',$OS_TYP,'Oracle')
+  return setHcveResult(cond(\
+    match($OS_NAM,'release 4',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),7),'Adequate',\
+                                                          'MinUL7'),\
+    match($OS_NAM,'release 5',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),3),'Adequate',\
+                                                          'MinUL3'),\
+    'Inadequate'))
+ if compare('eq',$OS_TYP,'Red Hat')
+  return setHcveResult(cond(\
+    match($OS_NAM,'release 4',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),7),'Adequate',\
+                                                          'MinUL7'),\
+    match($OS_NAM,'release 5',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),3),'Adequate',\
+                                                          'MinUL3'),\
+    'Inadequate'))
+ return setHcveResult('Inadequate')
+}
+if compare('eq',$OS_PLT,'Sun')
+ return setHcveResult(cond(\
+   and(compare('eq',$OS_VER,'2.9'),expr('==',$OS_BIT,64)),\
+     cond(expr('>=',getHcveFact('EPM.OS.SOL.UL'),9),'Adequate',\
+                                                    'MinUL9'),\
+   and(compare('eq',$OS_VER,'2.10'),expr('==',$OS_BIT,64)),\
+     cond(expr('>=',getHcveFact('EPM.OS.SOL.UL'),4),'Adequate',\
+                                                    'MinUL4'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'Windows')
+ return setHcveResult(cond(\
+   match($OS_NAM,'2003'),\
+     cond(match($OS_NAM,'R2'),                          'Adequate',\
+          expr('>=',field('Service Pack ',1,$OS_LVL),2),'Adequate',\
+                                                        'MinSP2')),\
+   and(match($OS_NAM,'2008'),not(match($OS_NAM,'R2')),\
+     cond(match($OS_LVL,'Service Pack'),'Adequate',\
+                                        'MinSP1'),\
+   'Inadequate'))
+return setHcveResult('Inadequate')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies if the operating system is certified for EPM Server 11.1.2.0.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The operating system is adequate for EPM Server 11.1.2.0.]]></sdp_action>
+<sdp_action condition="==" minimum="Inadequate" result="FAILED"><![CDATA[The operating system is inadequate for EPM Server 11.1.2.0. Use a certified operating system.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The operating system is missing necessary upgrades. Update the operating system to the minimum requirements.
+|*Return Value*|*Action*|
+|MinSP1|Service Pack 1 is required.|
+|MinSP2|Service Pack 2 is required.|
+|MinTL2|Technology Level 2 is required.|
+|MinTL8|Technology Level 8 is required.|
+|MinUL3|Update Level 3 is required.|
+|MinUL4|Update Level 4 is required.|
+|MinUL7|Update Level 7 is required.|
+|MinUL9|Update Level 9 is required.|
+|QPV2|B.11.23.0703.059a Base Quality Pack Bundle for HP-UX 11i V2, March 2007 or later is required.|
+|QPV3|B.11.31.0803.318a Base Quality Pack Bundle for HP-UX 11i V3, March 2008 or later is required.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00130" mode="VERIFY" name="OS OK for 11.1.2.1?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00100" minimum="11.1.2.1" result="SKIPPED" value="Not EPM version 11.1.2.1"><![CDATA[Only applies to EPM version 11.1.2.1.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+import $OS_BIT,$OS_LVL,$OS_NAM,$OS_PLT,$OS_TYP,$OS_VER
+if compare('eq',$OS_PLT,'AIX')
+ return setHcveResult(cond(\
+   and(match($OS_VER,'^5\.3\b'),expr('==',$OS_BIT,64)),\
+     cond(compare('valid',field('-',1,$OS_LVL),'08'),'Adequate',\
+                                                     'MinTL8'),\
+   and(match($OS_VER,'^6\.1\b'),expr('==',$OS_BIT,64)),\
+     cond(compare('valid',field('-',1,$OS_LVL),'02'),'Adequate',\
+                                                     'MinTL2'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'HP-UX')
+ return setHcveResult(cond(\
+   and(compare('eq',$OS_VER,'11.23'),\
+       match(getHcveFact('EPM.PROCESSOR.TYPE'),'Itanium',true)),\
+     cond(getHcveFact('EPM.OS.HPUX.QPV2'),'Adequate',\
+                                          'QPV2'),\
+   and(compare('eq',$OS_VER,'11.31'),\
+       match(getHcveFact('EPM.PROCESSOR.TYPE'),'Itanium',true)),\
+     cond(getHcveFact('EPM.OS.HPUX.QPV3'),'Adequate',\
+                                          'QPV3'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'Linux')
+{if compare('eq',$OS_TYP,'Oracle')
+  return setHcveResult(cond(\
+    match($OS_NAM,'release 4',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),7),'Adequate',\
+                                                          'MinUL7'),\
+    match($OS_NAM,'release 5',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),3),'Adequate',\
+                                                          'MinUL3'),\
+    'Inadequate'))
+ if compare('eq',$OS_TYP,'Red Hat')
+  return setHcveResult(cond(\
+    match($OS_NAM,'release 4',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),7),'Adequate',\
+                                                          'MinUL7'),\
+    match($OS_NAM,'release 5',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),3),'Adequate',\
+                                                          'MinUL3'),\
+    'Inadequate'))
+ if compare('eq',$OS_TYP,'SuSE')
+  return setHcveResult(check($OS_NAM,\
+    'SLES-10',\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.SUSE.SP'),1),'Adequate',\
+                                                            'MinSP1'),\
+    'SLES-11',\
+      'Adequate',\
+    'Inadequate'))
+ return setHcveResult('Inadequate')
+}
+if compare('eq',$OS_PLT,'Sun')
+ return setHcveResult(cond(\
+   and(compare('eq',$OS_VER,'2.9'),expr('==',$OS_BIT,64)),\
+     cond(expr('>=',getHcveFact('EPM.OS.SOL.UL'),9),'Adequate',\
+                                                    'MinUL9'),\
+   and(compare('eq',$OS_VER,'2.10'),expr('==',$OS_BIT,64)),\
+     cond(expr('>=',getHcveFact('EPM.OS.SOL.UL'),4),'Adequate',\
+                                                    'MinUL4'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'Windows')
+ return setHcveResult(check($OS_NAM,\
+   '2003',\
+     cond(match($OS_NAM,'R2'),                          'Adequate',\
+          expr('>=',field('Service Pack ',1,$OS_LVL),2),'Adequate',\
+                                                        'MinSP2'),\
+   '2008',\
+     cond(match($OS_NAM,'R2'),\
+       cond(expr('==',$OS_BIT,64),                    'Adequate',\
+                                                      'Inadequate'),\
+       cond(expr('>=',getHcveFact('EPM.OS.WIN.SP'),1),'Adequate',\
+                                                      'MinSP1')),\
+   'Inadequate'))
+return setHcveResult('Inadequate')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies if the operating system is certified for EPM Server 11.1.2.1.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The operating system is adequate for EPM Server 11.1.2.1.]]></sdp_action>
+<sdp_action condition="==" minimum="Inadequate" result="FAILED"><![CDATA[The operating system is inadequate for EPM Server 11.1.2.1. Use a certified operating system.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The operating system is missing necessary upgrades. Update the operating system to the minimum requirements.
+|*Return Value*|*Action*|
+|MinSP1|Service Pack 1 is required.|
+|MinSP2|Service Pack 2 is required.|
+|MinTL2|Technology Level 2 is required.|
+|MinTL8|Technology Level 8 is required.|
+|MinUL3|Update Level 3 is required.|
+|MinUL4|Update Level 4 is required.|
+|MinUL7|Update Level 7 is required.|
+|MinUL9|Update Level 9 is required.|
+|QPV2|B.11.23.0703.059a Base Quality Pack Bundle for HP-UX 11i v2, March 2007 or later is required.|
+|QPV3|B.11.31.0803.318a Base Quality Pack Bundle for HP-UX 11i V3, March 2008 or later is required.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00140" mode="VERIFY" name="OS OK for 11.1.2.2?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00100" minimum="11.1.2.2" result="SKIPPED" value="Not EPM version 11.1.2.2"><![CDATA[Only applies to EPM version 11.1.2.2.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+import $OS_BIT,$OS_LVL,$OS_NAM,$OS_PLT,$OS_TYP,$OS_VER
+if compare('eq',$OS_PLT,'AIX')
+ return setHcveResult(cond(\
+   and(match($OS_VER,'^5\.3\b'),expr('==',$OS_BIT,64)),\
+     cond(compare('valid',field('-',1,$OS_LVL),'08'),'Adequate',\
+                                                     'MinTL8'),\
+   and(match($OS_VER,'^6\.1\b'),expr('==',$OS_BIT,64)),\
+     cond(compare('valid',field('-',1,$OS_LVL),'02'),'Adequate',\
+                                                     'MinTL2'),\
+   and(match($OS_VER,'^7\.1\b'),expr('==',$OS_BIT,64)),\
+                                                     'Adequate',\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'HP-UX')
+ return setHcveResult(cond(\
+   and(compare('eq',$OS_VER,'11.31'),\
+       match(getHcveFact('EPM.PROCESSOR.TYPE'),'Itanium',true)),\
+     cond(getHcveFact('EPM.OS.HPUX.QPV3'),'Adequate',\
+                                          'QPV3'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'Linux')
+{if compare('eq',$OS_TYP,'Oracle')
+  return setHcveResult(cond(\
+    match($OS_NAM,'release 4',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),7),'Adequate',\
+                                                          'MinUL7'),\
+    match($OS_NAM,'release 5',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),3),'Adequate',\
+                                                          'MinUL3'),\
+    and(match($OS_NAM,'release 6',true),expr('==',$OS_BIT,64)),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),1),'Adequate',\
+                                                          'MinUL1'),\
+    'Inadequate'))
+ if compare('eq',$OS_TYP,'Red Hat')
+  return setHcveResult(cond(\
+    match($OS_NAM,'release 4',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),7),'Adequate',\
+                                                          'MinUL7'),\
+    match($OS_NAM,'release 5',true),\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.OL.UL'),3),'Adequate',\
+                                                          'MinUL3'),\
+    'Inadequate'))
+ if compare('eq',$OS_TYP,'SuSE')
+  return setHcveResult(check($OS_NAM,\
+    'SLES-10',\
+      cond(expr('>=',getHcveFact('EPM.OS.LINUX.SUSE.SP'),1),'Adequate',\
+                                                            'MinSP1'),\
+    'SLES-11',\
+      'Adequate',\
+    'Inadequate'))
+ return setHcveResult('Inadequate')
+}
+if compare('eq',$OS_PLT,'Sun')
+ return setHcveResult(cond(\
+   and(compare('eq',$OS_VER,'2.9'),expr('==',$OS_BIT,64)),\
+     cond(expr('>=',getHcveFact('EPM.OS.SOL.UL'),9),'Adequate',\
+                                                    'MinUL9'),\
+   and(compare('eq',$OS_VER,'2.10'),expr('==',$OS_BIT,64)),\
+     cond(expr('>=',getHcveFact('EPM.OS.SOL.UL'),6),'Adequate',\
+                                                    'MinUL6'),\
+   'Inadequate'))
+if compare('eq',$OS_PLT,'Windows')
+ return setHcveResult(check($OS_NAM,\
+   '2003',\
+     cond(match($OS_NAM,'R2'),                      'Adequate',\
+          expr('>=',getHcveFact('EPM.OS.WIN.SP'),2),'Adequate',\
+                                                    'MinSP2'),\
+   '2008',\
+     cond(match($OS_NAM,'R2'),\
+       cond(expr('==',$OS_BIT,64),'Adequate',\
+                                  'Inadequate'),\
+       cond(expr('>=',getHcveFact('EPM.OS.WIN.SP'),2),'Adequate',\
+                                                      'MinSP2')),\
+   'Inadequate'))
+return setHcveResult('Inadequate')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies if the operating system is certified for EPM Server 11.1.2.2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The operating system is adequate for EPM Server 11.1.2.2.]]></sdp_action>
+<sdp_action condition="==" minimum="Inadequate" result="FAILED"><![CDATA[The operating system is inadequate for EPM Server 11.1.2.2. Use a certified operating system.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The operating system is missing necessary upgrades. Update the operating system to the minimum requirements.
+|*Return Value*|*Action*|
+|MinSP1|Service Pack 1 is required.|
+|MinSP2|Service Pack 2 is required.|
+|MinTL2|Technology Level 2 is required.|
+|MinTL8|Technology Level 8 is required.|
+|MinUL1|Update Level 1 is required.|
+|MinUL3|Update Level 3 is required.|
+|MinUL6|Update Level 6 is required.|
+|MinUL7|Update Level 7 is required.|
+|MinUL9|Update Level 9 is required.|
+|QPV3|B.11.31.0803.318a Base Quality Pack Bundle for HP-UX 11i V3, March 2008 or later is required.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00200" mode="RECORD" name="Install Location">
+<sdp_command type="PROMPT" default="$ORACLE_HOME" variable="$EPM_HOME"><![CDATA[Install location]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts for the location where the products are going to be installed.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00201" mode="VERIFY" name="Valid Install Location?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="RECORD" result="SKIPPED" value="No install location"><![CDATA[Requires an install location.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_HOME
+var @tbl = ()
+var $pat = cond(isWindows(),'[\000-\054\057\073-\100\133\^\140\173-\175\177]',\
+                isCygwin(), '[\000-\054\057\073-\100\133\^\140\173-\175\177]',\
+                            '[\000-\054\073-\100\133\134\^\140\173-\175\177]')
+var $pth = replace($EPM_HOME,'^([A-Za-z]:)','')
+if !testDir('e',$EPM_HOME)
+ return setHcveResult('notExist')
+if match($pth,$pat)
+ call push(@tbl,'notValidCharacter')
+if expr('>',length($EPM_HOME),100)
+ call push(@tbl,'tooLong')
+return setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Valid'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the install location is valid.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Valid" result="PASSED"><![CDATA[The install location is valid.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is an issue with the install location.
+|*Return Value*|*Action*|
+|notExist|The install location does not exist. Repeat checks with correct install location.|
+|notValidCharacter|The path to the install location contains characters other than letters, numbers, "-", "_", "~", and ".". The path must be corrected.|
+|tooLong|The path to the install location contains more than 100 characters. The path must be corrected.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00210" mode="VERIFY" name="User Access?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="RECORD" result="SKIPPED" value="No install location"><![CDATA[Requires an install location.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A00201" minimum="PASSED" result="SKIPPED" value="Install location must be valid"><![CDATA[Requires a valid install location.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_HOME
+var @tbl = ()
+if !testDir('r',$EPM_HOME)
+ call push(@tbl,'notRead')
+if !testDir('w',$EPM_HOME)
+ call push(@tbl,'notWrite')
+if !testDir('x',$EPM_HOME)
+ call push(@tbl,'notExecute')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Acceptable'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user has the needed access to the install location.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Acceptable" result="PASSED"><![CDATA[The user has the needed access to the install location. No action needed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The user does not have the required access to the install location.
+|*Return Value*|*Action*|
+|notRead|The user does not have read permission to the install location.|
+|notWrite|The user does not have write permission to the install location.|
+|notExecute|The user does not have execute permission to the install location.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00410" mode="VERIFY" name="HP-UX Patches?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="HP-UX" result="SKIPPED" value="Not HP-UX"><![CDATA[Only applies to HP-UX.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER,$BOOK_FMW
+macro check_patch
+{var (\@tbl,$pch,@pch) = @arg
+ var $pat = concat('(',join('|',$pch,@pch),')')
+ if !grepLastFile($pat,'if')
+  call push(@tbl,concat('[',$pch,'] not installed'))
+}
+if !loadCommand('/usr/sbin/swlist -l fileset')
+ return setHcveResult('NoAccess')
+if match($OS_VER,'^11\.23$')
+{call check_patch(\@tbl,'PHCO_35524','PHCO_36744','PHCO_38717','PHCO_40920',\
+                        'PHCO_41860')
+ call check_patch(\@tbl,'PHCO_36673','PHCO_37228','PHCO_38273','PHCO_38637',\
+                        'PHCO_40571')
+ call check_patch(\@tbl,'PHKL_35029','PHKL_36826','PHKL_37121','PHKL_41057')
+ call check_patch(\@tbl,'PHKL_35478','PHKL_36085','PHKL_36319')
+ call check_patch(\@tbl,'PHSS_35978','PHSS_36343','PHSS_37500','PHSS_38140',\
+                        'PHSS_40543','PHSS_41184')
+ call check_patch(\@tbl,'PHSS_35979','PHSS_36336','PHSS_36342','PHSS_37201',\
+                        'PHSS_37492','PHSS_37947','PHSS_38134','PHSS_39093',\
+                        'PHSS_39821','PHSS_40537','PHSS_41178','PHSS_41491',\
+                        'PHSS_42043')
+ call check_patch(\@tbl,'PHSS_37201','PHSS_37492','PHSS_37947','PHSS_38134',\
+                        'PHSS_39093','PHSS_39821','PHSS_40537','PHSS_41178',\
+                        'PHSS_41491','PHSS_42043')
+}
+elsif match($OS_VER,'^11\.31$')
+{call check_patch(\@tbl,'PHCO_38050','PHCO_38837','PHCO_39604','PHCO_40211',\
+                        'PHCO_41092','PHCO_41291','PHCO_41407','PHCO_42165',\
+                        'PHCO_42326')
+ call check_patch(\@tbl,'PHKL_36248','PHKL_37454','PHKL_38054','PHKL_38544',\
+                        'PHKL_38604','PHKL_39310','PHKL_39624','PHKL_40383',\
+                        'PHKL_40922','PHKL_41442')
+ call check_patch(\@tbl,'PHKL_36249','PHKL_37453','PHKL_38053','PHKL_38605',\
+                        'PHKL_39311','PHKL_39625','PHKL_40384','PHKL_41006',\
+                        'PHKL_42515','PHKL_42752')
+ call check_patch(\@tbl,'PHSS_37202','PHSS_37493','PHSS_37948','PHSS_37955',\
+                        'PHSS_38135','PHSS_39094','PHSS_39822','PHSS_40538',\
+                        'PHSS_41179','PHSS_41492','PHSS_42040')
+ call check_patch(\@tbl,'PHSS_37501','PHSS_38141','PHSS_40544','PHSS_41185',\
+                        'PHSS_42980')
+ call check_patch(\@tbl,'PHSS_38139','PHSS_39102','PHSS_40542','PHSS_41183',\
+                        'PHSS_41496')
+}
+else
+ call push(@tbl,'NotChecked')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OSpatchesFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the required OS patches for the Oracle Database 11g R2 installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="OSpatchesFound|NotChecked" result="PASSED"><![CDATA[All required OS patches are adequate. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="NoAccess" result="FAILED" syntax="wiki"><![CDATA[You do not have access to ``/usr/sbin/swlist``.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required OS patches were not met or found. Review the recommended OS patches from the ${'BOOK_FMW} before installing the software.
+|*Return Value*|*Action*|
+|PHCO_35524 missing|PHCO_35524 (last known superseding patch PHCO_41860)|
+|PHCO_36673 missing|PHCO_36673 (last known superseding patch PHCO_40571)|
+|PHCO_38050 missing|PHCO_38050 (last known superseding patch PHCO_42326)|
+|PHKL_35029 missing|PHKL_35029 (last known superseding patch PHKL_41057)|
+|PHKL_35478 missing|PHKL_35478 (last known superseding patch PHKL_36319)|
+|PHKL_36248 missing|PHKL_36248 (last known superseding patch PHKL_41442)|
+|PHKL_36249 missing|PHKL_36249 (last known superseding patch PHKL_42752)|
+|PHSS_35978 missing|PHSS_35978 (last known superseding patch PHSS_41184)|
+|PHSS_35979 missing|PHSS_35979 (last known superseding patch PHSS_42043)|
+|PHSS_37201 missing|PHSS_37201 (last known superseding patch PHSS_42043)|
+|PHSS_37202 missing|PHSS_37202 (last known superseding patch PHSS_42040)|
+|PHSS_37501 missing|PHSS_37501 (last known superseding patch PHSS_42980)|
+|PHSS_38139 missing|PHSS_38139 (last known superseding patch PHSS_41496)|
+The list of superseding patches may be incomplete and patches installed in this system may already include patches that supersede the requirements.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00500" mode="VERIFY" name="NPTL Selected?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var (@rsp) = command('getconf GNU_LIBTHREAD_VERSION')
+if !match($rsp,'^NPTL')
+ return setHcveResult('NPTL not default')
+return setHcveResult(cond(compare('valid',substr($rsp,5),'2.3.4'),\
+  'NPTL is default','Inadequate NPTL'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that NPTL (Native POSIX Threads Library) is the default threads implementation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NPTL is default" result="PASSED"><![CDATA[Native POSIX Threads Library (NPTL) is appropriately the default threads implementation on Linux.]]></sdp_action>
+<sdp_action condition="==" minimum="Inadequate NPTL" result="FAILED"><![CDATA[The Native POSIX Threads Library (NPTL) must be version 2.3.4 or later.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The Linux operating system must have Native POSIX Threads Library (NPTL) as the default threads implementation.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00510" mode="VERIFY" name="Linux 4 32-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00112" minimum="(Oracle|Red Hat)" result="SKIPPED" value="Not Oracle or Red Hat Linux"><![CDATA[Only applies to Oracle Linux or Red Hat Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="elease 4" result="SKIPPED" value="Not Linux 4"><![CDATA[Only applies to Linux 4.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="32" result="SKIPPED" value="Not 32-bit"><![CDATA[Only applies to 32-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.15.92.0.2','13'])
+call cmp_os_pkg(\@tbl,'compat-db',['4.1.25','9'])
+call cmp_os_pkg(\@tbl,'compat-libstdc++-296',['2.96','132.7.2'])
+call cmp_os_pkg(\@tbl,'control-center',['2.8.0','12'])
+call cmp_os_pkg(\@tbl,'gcc',['3.4.3','22.1'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['3.4.3','22.1'])
+call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4','2.9'])
+call cmp_os_pkg(\@tbl,'gnome-libs-1',['1.4.1.2.90','44.1'])
+call cmp_os_pkg(\@tbl,'libaio',['0.3.105'])
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.105'])
+call cmp_os_pkg(\@tbl,'libstdc++',['3.4.3','22.1'])
+call cmp_os_pkg(\@tbl,'libstdc++-devel',['3.4.3','22.1'])
+call cmp_os_pkg(\@tbl,'make-1',['3.80','5'])
+call cmp_os_pkg(\@tbl,'openmotif21',['2.1.30','11.'],'32-bit','i[3-6]86',\
+                                    '(RH|rh)?(EL|el)\d.*$')
+call cmp_os_pkg(\@tbl,'pdksh',['5.2.14','30'])
+call cmp_os_pkg(\@tbl,'setarch',['1.6','1'])
+call cmp_os_pkg(\@tbl,'sysstat',['5.0.5','1'])
+call cmp_os_pkg(\@tbl,'xscreensaver',['4.18','5.rhel4'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for Linux 4 32-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00511" mode="VERIFY" name="Linux 4 64-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00112" minimum="(Oracle|Red Hat)" result="SKIPPED" value="Not Oracle or Red Hat Linux"><![CDATA[Only applies to Oracle Linux or Red Hat Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="elease 4" result="SKIPPED" value="Not Linux 4"><![CDATA[Only applies to Linux 4.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="64" result="SKIPPED" value="Not 64-bit"><![CDATA[Only applies to 64-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.15.92.0.2'])
+call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'elfutils-libelf',['0.97'])
+call cmp_os_pkg(\@tbl,'elfutils-libefl-devel',['0.97'])
+call cmp_os_pkg(\@tbl,'gcc',['3.4.5'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['3.4.5'])
+call cmp_os_pkg(\@tbl,'glibc',['2.3.4','2.19'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'glibc',['2.3.4','2.19'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.4'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.3.4'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.12','1.7.'],'i686','i686',\
+                                    '(RH|rh)?(EL|el)\d.*$')
+call cmp_os_pkg(\@tbl,'libaio',['0.3.105'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libaio',['0.3.105'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.105'])
+call cmp_os_pkg(\@tbl,'libgcc',['3.4.5'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libgcc',['3.4.5'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'libstdc++',['3.4.5'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libstdc++',['3.4.5'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'libstdc++-devel',['3.4.5'])
+call cmp_os_pkg(\@tbl,'make',['3.80'])
+call cmp_os_pkg(\@tbl,'sysstat',['5.0.5'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for Linux 4 64-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00512" mode="VERIFY" name="Linux 5 32-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00112" minimum="(Oracle|Red Hat)" result="SKIPPED" value="Not Oracle or Red Hat Linux"><![CDATA[Only applies to Oracle Linux or Red Hat Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="elease 5" result="SKIPPED" value="Not Linux 5"><![CDATA[Only applies to Linux 5.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="32" result="SKIPPED" value="Not 32-bit"><![CDATA[Only applies to 32-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+var $rsl = getHcveResult('A00120')
+var $rsp = getHcveResult('A00130')
+if !or(match($rsl,'(Adequate|MinUL)'),match($rsp,'(Adequate|MinUL)'))
+ return setHcveResult('NA')
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.16.91.0.5','23.4'])
+call cmp_os_pkg(\@tbl,'control-center',['2.8.0','12'])
+call cmp_os_pkg(\@tbl,'compat-db',['4.1.25','9'])
+call cmp_os_pkg(\@tbl,'compat-libstdc++-296',['2.96','132.7.2'])
+call cmp_os_pkg(\@tbl,'gcc',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'glibc-common',['2.3.4','2.9'])
+call cmp_os_pkg(\@tbl,'libaio',['0.3.106'])
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.106'])
+call cmp_os_pkg(\@tbl,'libstdc++',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'libstdc++-devel',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'make',['3.80','202.2'])
+call cmp_os_pkg(\@tbl,'setarch',['1.6','1'])
+call cmp_os_pkg(\@tbl,'sysstat',['5.0.5','1'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for Linux 5 32-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00513" mode="VERIFY" name="Linux 5 64-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00112" minimum="(Oracle|Red Hat)" result="SKIPPED" value="Not Oracle or Red Hat Linux"><![CDATA[Only applies to Oracle Linux or Red Hat Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="elease 5" result="SKIPPED" value="Not Linux 5"><![CDATA[Only applies to Linux 5.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="64" result="SKIPPED" value="Not 64-bit"><![CDATA[Only applies to 64-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+var $rsl = getHcveResult('A00120')
+var $rsp = getHcveResult('A00130')
+if !or(match($rsl,'(Adequate|MinUL)'),match($rsp,'(Adequate|MinUL)'))
+ return setHcveResult('NA')
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.17.50.0.6'])
+call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'elfutils-libelf',['0.125'])
+call cmp_os_pkg(\@tbl,'elfutils-libelf-devel',['0.125'])
+call cmp_os_pkg(\@tbl,'gcc',['4.1.1'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['4.1.1'])
+call cmp_os_pkg(\@tbl,'glibc',['2.5','12'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'glibc',['2.5','12'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'glibc-common',['2.5'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.5','12'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.5'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.12','1.7.'],'i686','i686',\
+                                    '(RH|rh)?(EL|el)\d.*$')
+call cmp_os_pkg(\@tbl,'libaio',['0.3.106'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libaio',['0.3.106'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.106'])
+call cmp_os_pkg(\@tbl,'libgcc',['4.1.1'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libgcc',['4.1.1'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'libstdc++',['4.1.1'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libstdc++',['4.1.1'],'64-bit','x86_64')
+call cmp_os_pkg(\@tbl,'libstdc++-devel',['4.1.1'])
+call cmp_os_pkg(\@tbl,'make',['3.81'])
+call cmp_os_pkg(\@tbl,'redhat-lsb',['3.1','12.3.EL.0.2'])
+call cmp_os_pkg(\@tbl,'sysstat',['7.0.0'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for Linux 5 64-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[This rule applies only to Oracle Linux 5 64-bit or Red Hat Linux 5 64-bit.]]></sdp_action>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00515" mode="VERIFY" name="Linux 6 64-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00112" minimum="Oracle" result="SKIPPED" value="Not Oracle Linux"><![CDATA[Only applies to Oracle Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="elease 6" result="SKIPPED" value="Not Linux 6"><![CDATA[Only applies to Linux 6.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="64" result="SKIPPED" value="Not 64-bit"><![CDATA[Only applies to 64-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.20.51.0.2','5.11.el6'])
+call cmp_os_pkg(\@tbl,'compat-libcap',['1','1.10','1'])
+call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3','69.el6'])
+call cmp_os_pkg(\@tbl,'gcc',['4.4.4','13.el6'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['4.4.4','13.el6'])
+call cmp_os_pkg(\@tbl,'glibc',['2.12','1.7.el6'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.12','1.7.el6'],'x86_64')
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.12','1.7.el6'],'i686')
+call cmp_os_pkg(\@tbl,'libaio',['0.3.107','10.el6'])
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.107','10.el6'])
+call cmp_os_pkg(\@tbl,'libgcc',['4.4.4','13.el6'])
+call cmp_os_pkg(\@tbl,'libstdc++',['4.4.4','13.el6'])
+call cmp_os_pkg(\@tbl,'libstdc++-devel',['4.4.4','13.el6'])
+call cmp_os_pkg(\@tbl,'sysstat',['9.0.4','11.el6'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for Linux 6 64-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[This rule applies only to Oracle Linux 6 64-bit.]]></sdp_action>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00520" mode="VERIFY" name="SuSE 10 32-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="SLES-10" result="SKIPPED" value="Not SuSE SLES-10"><![CDATA[Only applies to SuSE SLES-10.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="32" result="SKIPPED" value="Not 32-bit"><![CDATA[Only applies to 32-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.16.91.0.5','23'])
+call cmp_os_pkg(\@tbl,'compat',['2006.1.25','11.2'])
+call cmp_os_pkg(\@tbl,'compat-libstdc++',['5.0.7','22.2'])
+call cmp_os_pkg(\@tbl,'gcc',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.4','31.2'])
+call cmp_os_pkg(\@tbl,'libaio',['0.3.104'])
+call cmp_os_pkg(\@tbl,'libaio',['0.3.106'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.104'])
+call cmp_os_pkg(\@tbl,'libstdc++',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'libstdc++-devel',['4.1.0','28.4'])
+call cmp_os_pkg(\@tbl,'make',['3.80','202.2'])
+call cmp_os_pkg(\@tbl,'openmotif21-libs',['2.1.30'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for SuSE SLES-10 32-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00521" mode="VERIFY" name="SuSE 10 64-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="SLES-10" result="SKIPPED" value="Not SuSE SLES-10"><![CDATA[Only applies to SuSE SLES-10.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="64" result="SKIPPED" value="Not 64-bit"><![CDATA[Only applies to 64-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.16.91.0.5'])
+call cmp_os_pkg(\@tbl,'compat-libstdc++',['5.0.7','22.2'])
+call cmp_os_pkg(\@tbl,'gcc',['4.1.0'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['4.1.0'])
+call cmp_os_pkg(\@tbl,'glibc',['2.4','31.2'])
+call cmp_os_pkg(\@tbl,'glibc-32bit',['2.4','31.2'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.4'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.12','1.7.'],'i686','i686',\
+                                    '(RH|rh)?(EL|el)\d.*$')
+call cmp_os_pkg(\@tbl,'glibc-devel-32bit',['2.4'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libaio',['0.3.104'])
+call cmp_os_pkg(\@tbl,'liabio-devel',['0.3.104'])
+call cmp_os_pkg(\@tbl,'libelf',['0.8.5'])
+call cmp_os_pkg(\@tbl,'libgcc',['4.1.0'])
+call cmp_os_pkg(\@tbl,'libstdc++',['4.1.0'])
+call cmp_os_pkg(\@tbl,'libstdc++-devel',['4.1.0'])
+call cmp_os_pkg(\@tbl,'make',['3.80'])
+call cmp_os_pkg(\@tbl,'sysstat',['6.0.2'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for SuSE SLES-10 64-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00522" mode="VERIFY" name="SuSE 11 32-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="SLES-11" result="SKIPPED" value="Not SuSE SLES-11"><![CDATA[Only applies to SuSE SLES-11.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="32" result="SKIPPED" value="Not 32-bit"><![CDATA[Only applies to 32-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.19','11.28'])
+call cmp_os_pkg(\@tbl,'gcc',['4.3','62.198'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['4.3','62.198'])
+call cmp_os_pkg(\@tbl,'glibc',['2.9','13.2'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.9','13.2'])
+call cmp_os_pkg(\@tbl,'libaio',['0.3.106'],'32-bit','i[3-6]86')
+call cmp_os_pkg(\@tbl,'libaio',['0.3.104','140.22'])
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.104','140.22'])
+call cmp_os_pkg(\@tbl,'libgcc43',['4.3.3_20081022','11.18'])
+call cmp_os_pkg(\@tbl,'libstdc++43',['4.3.3_20081022','11.18'])
+call cmp_os_pkg(\@tbl,'libstdc++43-devel',['4.3.3_20081022','11.18'])
+call cmp_os_pkg(\@tbl,'make',['3.81','128.20'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for SuSE SLES-11 32-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00523" mode="VERIFY" name="SuSE 11 64-bit RPMs?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="SLES-11" result="SKIPPED" value="Not SuSE SLES-11"><![CDATA[Only applies to SuSE SLES-11.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="64" result="SKIPPED" value="Not 64-bit"><![CDATA[Only applies to 64-bit operating system.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_NAM,$BOOK_FMW
+var $rsp = getHcveResult('A00130')
+if !and(match($rsp,'Adequate'),match($OS_NAM,'SLES-11'))
+ return setHcveResult('NA')
+call setHcveVariable('$SERVER_NAME')
+var $SERVER_NAME = ${RDA.MACHINE}
+
+macro chk_ksh_93t
+{var (\@tbl) = @arg
+ if !chk_os_pkg('ksh')
+  return push(@tbl,'[ksh] not installed')
+ while get_os_pkg()
+ {var ($ver,$rel) = (last)
+  var ($sub) = match($ver,'^93(\w+)$')
+  if !or(compare('eq',$sub,'t'),compare('gt',$sub,$spc))
+   call push(@tbl,concat('[ksh-',$ver,'-',$rel,'] found'))
+ }
+}
+
+var @tbl = ()
+call cmp_os_pkg(\@tbl,'binutils',['2.19','11.28'])
+call cmp_os_pkg(\@tbl,'gcc',['4.3'])
+call cmp_os_pkg(\@tbl,'gcc-32bit',['4.3'])
+call cmp_os_pkg(\@tbl,'gcc-c++',['4.3','62.198'])
+call cmp_os_pkg(\@tbl,'glibc',['2.9','13.2'])
+call cmp_os_pkg(\@tbl,'glibc-32bit',['2.9'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.9'])
+call cmp_os_pkg(\@tbl,'glibc-devel',['2.12','1.7.'],'i686','i686',\
+                                    '(RH|rh)?(EL|el)\d.*$')
+call cmp_os_pkg(\@tbl,'glibc-devel-32bit',['2.9','13.2'])
+call chk_ksh_93t(\@tbl)
+call cmp_os_pkg(\@tbl,'libaio',['0.3.104','140.22'])
+call cmp_os_pkg(\@tbl,'libaio-32bit',['0.3.104'])
+call cmp_os_pkg(\@tbl,'libaio-devel',['0.3.104','140.22'])
+call cmp_os_pkg(\@tbl,'libaio-devel-32bit',['0.3.104'])
+call cmp_os_pkg(\@tbl,'libgcc43',['4.3.3_20081022','11.18'])
+call cmp_os_pkg(\@tbl,'libstdc++33',['3.3.3'])
+call cmp_os_pkg(\@tbl,'libstdc++33-32bit',['3.3.3'])
+call cmp_os_pkg(\@tbl,'libstdc++43',['4.3.3_20081022','11.18'])
+call cmp_os_pkg(\@tbl,'libstdc++43-devel',['4.3.3_20081022','11.18'])
+call cmp_os_pkg(\@tbl,'libstdc++43-devel-32bit',['4.3.3_20081022'])
+call cmp_os_pkg(\@tbl,'make',['3.81','128.20'])
+call cmp_os_pkg(\@tbl,'sysstat',['8.1.5','7.8'])
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'RPMsOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required RPMs for SuSE SLES-11 32-bit are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[This rule applies only to SuSE SLES-11 64-bit.]]></sdp_action>
+<sdp_action condition="==" minimum="RPMsOK" result="PASSED" syntax="wiki"><![CDATA[The packages on ${SERVER_NAME} are adequate.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The system is missing or has inadequate versions of required packages. Refer to ${'BOOK_FMW} for the required packages.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00700" mode="VERIFY" name="7-Zip Available?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[Only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[if getRegValue('HKLM\SOFTWARE\7-Zip','Path')
+ return setHcveResult('Available')
+return setHcveResult('NotAvailable')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that 7-Zip is available for unzipping files.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[7-Zip, which is installed, is a good tool for extracting a long path of embedded directories. This is required for EPM installation.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Ensure you have a good decompression tool that can handle long paths of embedded directories. WinZip has had problems with long paths.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00710" mode="VERIFY" name="Windows 2008 UAC Off?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[Only applies to Windows.]]></sdp_dependency>
+<sdp_dependency condition="=~" id="A00113" minimum="2008" result="SKIPPED" value="Not Windows 2008"><![CDATA[Only applies to Windows 2008.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $key = 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\system'
+call setHcveResult(cond(match(getRegValue($key,'EnableLUA'),'0x0'),'Off','On'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that User Account Control (UAC) is turned off on Windows 2008 systems.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Off" result="PASSED"><![CDATA[User Account Control (UAC) is properly turned off.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[User Account Control should be turned off, but is turned on.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00800" mode="Verify" name="Open File Limit OK?">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A00110" minimum="(Linux|Sun)" result="SKIPPED" value="Not Linux or Solaris"><![CDATA[Only applies to Linux and Solaris.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var $shl = getEnv('SHELL')
+var @tbl = ()
+if match($shl,'csh')
+ var ($val) = command(concat($shl,' -f -c "limit descriptors"'))
+else
+ var ($val) = command(concat($shl,' -c "ulimit -n"'))
+var $val = field('\s+',1,$val)
+if compare('eq',$val,'unlimited')
+ return setHcveResult('Adequate')
+if !testCommand('/usr/sbin/lsof')
+ call push(@tbl,'/usr/sbin/lsof')
+else
+{var ($cnt) = grepCommand('/usr/sbin/lsof','\w','c')
+ if expr('>=',$cnt,$val)
+  call push(@tbl,'too many open files')
+}
+if expr('<',$val,4096)
+ call push(@tbl,'Inadequate')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the open file limit is at least 4096 and that there are not more files open than the open file limit.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The limit of open files is set to 4096 or higher and the number of open files in not more than the open file limit.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|/usr/sbin/lsof|The user was unable to execute ``/usr/sbin/lsof``. Correct the issue.|
+|Inadequate|Increase the limit of open files to 4096 or greater.|
+|too many open files|More files were open than allowed by the open file limit. Correct the issue.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="PRE" title="Pre-install only checks">
+
+<sdp_rule id="A10000" mode="RECORD" name="Install Products List">
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('@PRD')
+# Select the product
+var ($cnt,%rsp,@all,@itm) = (0)
+loop $rec (\
+  ['WLS',   'WebLogic Server'],\
+  ['OHS',   'Oracle HTTP Server'],\
+  ['COL',   'Common Oracle Libraries'],\
+  ['HSS',   'Shared Services'],\
+  ['EPMA',  'Performance Management Architect'],\
+  ['CM',    'Calculation Manager'],\
+  ['ESSB',  'Essbase Server'],\
+  ['API',   'Application Programming Interface'],\
+  ['EAS',   'Essbase Administration Services'],\
+  ['EIS',   'Essbase Integration Server'],\
+  ['APS',   'Provider Services'],\
+  ['ESSBS', 'Essbase Studio Server'],\
+  ['RAF',   'Reporting and Analysis Framework'],\
+  ['FR',    'Financial Reporting'],\
+  ['IR',    'Interactive Reporting'],\
+  ['PR',    'Production Reporting'],\
+  ['WA',    'Web Analysis'],\
+  ['HFMS',  'Financial Management Server'],\
+  ['HFMDS', 'Database Server for Financial Management'],\
+  ['FCM',   'Financial Close Management'],\
+  ['PLN',   'Planning'],\
+  ['HPS',   'Performance Scorecard'],\
+  ['HSFS',  'Strategic Finance Server'],\
+  ['PCM',   'Profitability and Cost Management'],\
+  ['DM',    'Disclosure Management'],\
+  ['FDMDS', 'FDM Database Server'],\
+  ['FDMFS', 'FDM folder structure'],\
+  ['FDMAS', 'FDM Application Server'],\
+  ['FDMWS', 'FDM Web Server'],\
+  ['ERPI',  'ERP Integrator'],\
+  ['HDRMDS','Data Relationship Management Database Server'],\
+  ['HDRMAS','Data Relationship Management Application Server'],\
+  ['FDN',   'Foundation Web Service'])
+{var ($abr,$dsc) = @{$rec}
+ call push(@itm,incr($cnt),$dsc)
+ call push(@PRD,$rsp{$cnt} = $abr)
+ call setHcveParameter(concat('EPM.PRODUCT.',$abr),$dsc)
+}
+call setHcveParameter('EPM.PRODUCT.INS','EPM System Installer')
+call setTempSetting('HCVE_INFO','pick')
+call setTempSetting('HCVE_INFO_BEF',\
+  'Indicate the product(s) you are planning to install:')
+call setTempSetting('HCVE_INFO_ITM',join('|',@itm))
+call setTempSetting('HCVE_INFO_RSP',join('|',%rsp))
+call setTempSetting('HCVE_DEFAULT',join('|',@PRD))
+call requestSetting('HCVEinfo')
+call setHcveResult($sel = getSetting('HCVE_SELECT'))
+
+# Indicate which products must be checked
+var @PRD = split('\|',$sel)
+]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the list of products to be installed.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10100" mode="VERIFY" name="AIX Product Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="AIX" result="SKIPPED" value="Not AIX"><![CDATA[Only applies to AIX.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$EPM_VERSION
+if compare('VALID',$EPM_VERSION,'11.1.2.2')
+ var @lst = grep(@PRD,\
+   '^(EPMA|FCM|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HDRMDS|HFMS|HSFS|PCM|PR)$')
+else
+ var @lst = grep(@PRD,\
+   '^(DM|EPMA|FCM|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HFMS|HSFS|PCM|PR)$')
+call setHcveResult(cond(scalar(@lst),join("\012",@lst),'noRestrictedProducts'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule reports products in the install products list that are not supported on AIX.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="noRestrictedProducts" result="PASSED"><![CDATA[There are no AIX restrictions on the products in the install products list.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The following products in the install products list are not supported on AIX operating systems:
+|*Return Value*|*Action*|
+|DM|&nbsp;&nbsp;${EPM.PRODUCT.DM}|
+|EPMA|&nbsp;&nbsp;${EPM.PRODUCT.EPMA}|
+|FCM|&nbsp;&nbsp;${EPM.PRODUCT.FCM}|
+|FDMAS|&nbsp;&nbsp;${EPM.PRODUCT.FDMAS}|
+|FDMDS|&nbsp;&nbsp;${EPM.PRODUCT.FDMDS}|
+|FDMFS|&nbsp;&nbsp;${EPM.PRODUCT.FDMFS}|
+|FDMWS|&nbsp;&nbsp;${EPM.PRODUCT.FDMWS}|
+|FR|&nbsp;&nbsp;${EPM.PRODUCT.FR}|
+|HDRMAS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMAS}|
+|HDRMDS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMDS}|
+|HFMS|&nbsp;&nbsp;${EPM.PRODUCT.HFMS}|
+|HSFS|&nbsp;&nbsp;${EPM.PRODUCT.HSFS}|
+|PCM|&nbsp;&nbsp;${EPM.PRODUCT.PCM}|
+|PR|&nbsp;&nbsp;${EPM.PRODUCT.PR}|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10110" mode="VERIFY" name="HP-UX Product Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="HP-UX" result="SKIPPED" value="Not HP-UX"><![CDATA[Only applies to HP-UX.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_BIT,$EPM_VERSION
+if compare('VALID',$EPM_VERSION,'11.1.2.2')
+ var @lst = grep(@PRD,\
+   '^(EPMA|FCM|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HDRMDS|HFMS|HSFS|PR)$')
+else
+ var @lst = grep(@PRD,\
+   '^(DM|EPMA|FCM|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HFMS|HSFS)$')
+if expr("==",$OS_BIT,64)
+ call push(@lst,grep(@PRD,'^(PR|PCM)$'))
+if and(expr("==",$OS_BIT,64),\
+       match(getHcveFact('EPM.PROCESSOR.TYPE'),'Itanium',true))
+ call push(@lst,grep(@PRD,'^EPMA$'))
+if match(getHcveFact('EPM.PROCESSOR.TYPE'),'RISC',true)
+ call push(@lst,grep(@PRD,'^(PCM|PLN)$'))
+call setHcveResult(cond(scalar(@lst),join("\012",@lst),'noRestrictedProducts'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule reports products in the install products list that are not supported on HP-UX.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="noRestrictedProducts" result="PASSED"><![CDATA[There are no HP-UX restrictions on the products in the install products list.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The following products in the install products list are not supported on HP-UX operating systems:
+|*Return Value*|*Action*|
+|DM|&nbsp;&nbsp;${EPM.PRODUCT.DM}|
+|EPMA|&nbsp;&nbsp;${EPM.PRODUCT.EPMA}|
+|FCM|&nbsp;&nbsp;${EPM.PRODUCT.FCM}|
+|FDMAS|&nbsp;&nbsp;${EPM.PRODUCT.FDMAS}|
+|FDMDS|&nbsp;&nbsp;${EPM.PRODUCT.FDMDS}|
+|FDMFS|&nbsp;&nbsp;${EPM.PRODUCT.FDMFS}|
+|FDMWS|&nbsp;&nbsp;${EPM.PRODUCT.FDMWS}|
+|FR|&nbsp;&nbsp;${EPM.PRODUCT.FR}|
+|HDRMAS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMAS}|
+|HDRMDS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMDS}|
+|HFMS|&nbsp;&nbsp;${EPM.PRODUCT.HFMS}|
+|HSFS|&nbsp;&nbsp;${EPM.PRODUCT.HSFS}|
+%BR%The following products are not supported on HP-UX 64-bit operating systems:
+|*Return Value*|*Action*|
+|PCM|&nbsp;&nbsp;${EPM.PRODUCT.PCM}|
+|PR|&nbsp;&nbsp;${EPM.PRODUCT.PR}|
+%BR%The following products are not supported on HP-UX 64-bit operating systems on Itanium machines:
+|*Return Value*|*Action*|
+|EPMA|&nbsp;&nbsp;${EPM.PRODUCT.EPMA}|
+%BR%The following products are not supported on HP-UX operating systems on RISC machines:
+|*Return Value*|*Action*|
+|PCM|&nbsp;&nbsp;${EPM.PRODUCT.PCM}|
+|PLN|&nbsp;&nbsp;${EPM.PRODUCT.PLN}|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10120" mode="VERIFY" name="Linux Product Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$EPM_VERSION
+if compare('VALID',$EPM_VERSION,'11.1.2.2')
+ var @lst = grep(@PRD,\
+   '^(EPMA|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HDRMDS|HFMS|HSFS|PR)$')
+else
+ var @lst = grep(@PRD,\
+   '^(DM|EAS|EPMA|FCM|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HFMS|HSFS|PR)$')
+call setHcveResult(cond(scalar(@lst),join("\012",@lst),'noRestrictedProducts'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule reports products in the install products list that are not supported on Linux.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="noRestrictedProducts" result="PASSED"><![CDATA[There are no Linux restrictions on the products in the install products list.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The following products in the install products list are not supported on Linux operating systems:
+|*Return Value*|*Action*|
+|DM|&nbsp;&nbsp;${EPM.PRODUCT.DM}|
+|EAS|&nbsp;&nbsp;${EPM.PRODUCT.EAS}|
+|EPMA|&nbsp;&nbsp;${EPM.PRODUCT.EPMA}|
+|FCM|&nbsp;&nbsp;${EPM.PRODUCT.FCM}|
+|FDMAS|&nbsp;&nbsp;${EPM.PRODUCT.FDMAS}|
+|FDMDS|&nbsp;&nbsp;${EPM.PRODUCT.FDMDS}|
+|FDMFS|&nbsp;&nbsp;${EPM.PRODUCT.FDMFS}|
+|FDMWS|&nbsp;&nbsp;${EPM.PRODUCT.FDMWS}|
+|FR|&nbsp;&nbsp;${EPM.PRODUCT.FR}|
+|HDRMAS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMAS}|
+|HDRMDS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMDS}|
+|HFMS|&nbsp;&nbsp;${EPM.PRODUCT.HFMS}|
+|HSFS|&nbsp;&nbsp;${EPM.PRODUCT.HSFS}|
+|PR|&nbsp;&nbsp;${EPM.PRODUCT.PR}|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10122" mode="VERIFY" name="Linux RPMs Required by Products">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[Only applies to Linux.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_TYP,$OS_NAM,$OS_BIT
+if !grep(@PRD,'^(EAS|EIS|ESSB)$')
+ return setHcveResult('NA')
+var @tbl = ()
+if expr('==',$OS_BIT,64)
+ call cmp_os_pkg(\@tbl,'libaio',['0.3.105','2'],'x86_64')
+if and(match($OS_TYP,'(Red Hat|Oracle)'),match($OS_NAM,'release [56]',true))
+{call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3','61'])
+ call cmp_os_pkg(\@tbl,'gcc',['4.1.2'])
+}
+else
+{call cmp_os_pkg(\@tbl,'compat-libstdc++-33',['3.2.3','47.3'])
+ call cmp_os_pkg(\@tbl,'gcc',['3.4.6'])
+}
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that RPMs required by specific products in the install products list are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED" value="No special requirements."><![CDATA[No products in the install products list require specific Linux RPMs.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[All Linux RPMs required specifically by products in install products list are installed.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The identified RPMs need to be installed for some product in the install products list.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10130" mode="VERIFY" name="Solaris Product Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Sun" result="SKIPPED" value="Not Solaris"><![CDATA[Only applies to Solaris.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$EPM_VERSION
+if compare('VALID',$EPM_VERSION,'11.1.2.2')
+ var @lst = grep(@PRD,\
+   '^(EPMA|FCM|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HDRMDS|HFMS|HSFS)$')
+else
+ var @lst = grep(@PRD,\
+   '^(DM|EPMA|FCM|FDMAS|FDMDS|FDMFS|FDMWS|FR|HDRMAS|HFMS|HSFS)$')
+call setHcveResult(cond(scalar(@lst),join("\012",@lst),'noRestrictedProducts'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule reports products in the install products list that are not supported on Solaris.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="noRestrictedProducts" result="PASSED"><![CDATA[There are no Solaris restrictions on the products in the install products list.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The following products in the install products list are not supported on Solaris operating systems:
+|*Return Value*|*Action*|
+|DM|&nbsp;&nbsp;${EPM.PRODUCT.DM}|
+|EPMA|&nbsp;&nbsp;${EPM.PRODUCT.EPMA}|
+|FCM|&nbsp;&nbsp;${EPM.PRODUCT.FCM}|
+|FDMAS|&nbsp;&nbsp;${EPM.PRODUCT.FDMAS}|
+|FDMDS|&nbsp;&nbsp;${EPM.PRODUCT.FDMDS}|
+|FDMFS|&nbsp;&nbsp;${EPM.PRODUCT.FDMFS}|
+|FDMWS|&nbsp;&nbsp;${EPM.PRODUCT.FDMWS}|
+|FR|&nbsp;&nbsp;${EPM.PRODUCT.FR}|
+|HDRMAS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMAS}|
+|HDRMDS|&nbsp;&nbsp;${EPM.PRODUCT.HDRMDS}|
+|HFMS|&nbsp;&nbsp;${EPM.PRODUCT.HFMS}|
+|HSFS|&nbsp;&nbsp;${EPM.PRODUCT.HSFS}|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10140" mode="VERIFY" name="Windows Itanium Product Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[Only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$EPM_VERSION
+if !match(getHcveFact('EPM.PROCESSOR.TYPE'),'Itanium',true)
+ return setHcveResult('notItanium')
+if compare('VALID',$EPM_VERSION,'11.1.2.2')
+ return setHcveResult('ItaniumNotCertified')
+var @lst = grep(@PRD,\
+  '^(CM|EPMA|ERPI|FDMAS|FDMWS|FDN|FR|HFMS|HSFS|IR|PCM|PR|RAF|WA)$')
+call setHcveResult(cond(scalar(@lst),join("\012",@lst),'noRestrictedProducts'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule reports products in the install products list that are not supported on Windows on Itanium-based machines.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notItanium" result="SKIPPED"><![CDATA[This rule only applies to Windows on Itanium-based machines.]]></sdp_action>
+<sdp_action condition="==" minimum="ItaniumNotCertified" result="SKIPPED"><![CDATA[Itanium-based Windows platforms are not certified for EPM 11.1.2.2.]]></sdp_action>
+<sdp_action condition="==" minimum="noRestrictedProducts" result="PASSED"><![CDATA[There are no Windows Itanium restrictions on the products in the install products list.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The following products in the install products list are not supported on Windows operating systems on Itanium-based machines:
+|*Return Value*|*Action*|
+|CM|&nbsp;&nbsp;${EPM.PRODUCT.CM}|
+|EPMA|&nbsp;&nbsp;${EPM.PRODUCT.EPMA}|
+|ERPI|&nbsp;&nbsp;${EPM.PRODUCT.ERPI}|
+|FDMAS|&nbsp;&nbsp;${EPM.PRODUCT.FDMAS}|
+|FDMWS|&nbsp;&nbsp;${EPM.PRODUCT.FDMWS}|
+|FDN|&nbsp;&nbsp;${EPM.PRODUCT.FDN}|
+|FR|&nbsp;&nbsp;${EPM.PRODUCT.FR}|
+|HFMS|&nbsp;&nbsp;${EPM.PRODUCT.HFMS}|
+|HSFS|&nbsp;&nbsp;${EPM.PRODUCT.HSFS}|
+|IR|&nbsp;&nbsp;${EPM.PRODUCT.IR}|
+|PCM|&nbsp;&nbsp;${EPM.PRODUCT.PCM}|
+|PR|&nbsp;&nbsp;${EPM.PRODUCT.PR}|
+|RAF|&nbsp;&nbsp;${EPM.PRODUCT.RAF}|
+|WA|&nbsp;&nbsp;${EPM.PRODUCT.WA}|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10141" mode="VERIFY" name="Windows EPM 11.1.2.2 Product Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[Only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$EPM_VERSION
+if !compare('VALID',$EPM_VERSION,'11.1.2.2')
+ return setHcveResult('notEPM11.1.2.2')
+if grep(@PRD,'^PR$')
+ return setHcveResult('PR')
+call setHcveResult('noRestrictedProducts')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule reports EPM 11.1.2.2 products restricted for all Windows platforms.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notEPM11.1.2.2" result="SKIPPED"><![CDATA[This rule only applies to EPM 11.1.2.2.]]></sdp_action>
+<sdp_action condition="==" minimum="noRestrictedProducts" result="PASSED"><![CDATA[There are no general Windows restrictions on EPM 11.1.2.2 products in the install products list.]]></sdp_action>
+<sdp_action result="WARNING" syntax="wiki"><![CDATA[Do not use ${EPM.PRODUCT.PR} Teradata Engine. It is not supported with Windows operating systems.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10150" mode="VERIFY" name="Windows 2008 64-bit Product Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[Only applies to Windows.]]></sdp_dependency>
+<sdp_dependency condition="==" id="A00111" minimum="64" result="SKIPPED" value="Not 64-bit"><![CDATA[Only applies to 64-bit systems.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_NAM
+if !match($OS_NAM,'2008')
+ return setHcveResult('not2008')
+var @lst = grep(@PRD,'^(EPMA|HFMS)$')
+var @grp = grep(@PRD,'^(FDMAS|FDMDS|FDMFS|FDMWS|HSFS)$')
+if not(and(scalar(@lst),scalar(@grp)))
+ return setHcveResult('None')
+var $key = 'HKLM\SOFTWARE\Microsoft\InetStp'
+var $ver = hex2int(getRegValue($key,'MajorVersion'))
+if expr('>=',$ver,7)
+{if not(grep(@PRD,'^HSFS$'))
+  return setHcveResult('IIS7+')
+ if and(match(getRegValue($key,'Metabase'),'0x0*1'),\
+        match(getRegValue($key,'ADSICompatibility'),'0x0*1'),\
+        match(getRegValue($key,'WMICompatibility'),'0x0*1'),\
+        match(getRegValue($key,'LegacyScripts'),'0x0*1'),\
+        match(getRegValue($key,'LegacySnapin'),'0x0*1'),\
+        grepCommand(concat('reg query "',grepDir($key,'Extensions'),'"'),\
+          '\w','ifc'),\
+        grepCommand(concat('reg query "',grepDir($key,'Extensions',\
+          '{FCC764A0-2A38-11d1-B9C6-00A0C922E750}')),'\w','ifc'),\
+        grepCommand(concat('reg query "',grepDir($key,\
+          '{763A6C86-F30F-11D0-9953-00C04FD9191C1}')),'\w','ifc'))
+  return setHcveResult('IIS7+')
+ return setHcveResult('IIS7 note')
+}
+if isNumber($ver)
+ return setHcveResult('IIS insufficient')
+return setHcveResult('IIS not installed')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for any Windows 2008 64-bit associated restricted products in the install products list and provides needed notices.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="not2008" result="SKIPPED"><![CDATA[This rule only applies to Windows 2008 64-bit.]]></sdp_action>
+<sdp_action condition="==" minimum="None" result="PASSED"><![CDATA[There is no attempt to install a mixture of 32-bit and 64-bit applications.]]></sdp_action>
+<sdp_action condition="==" minimum="IIS7+" result="PASSED"><![CDATA[Since IIS 7 or later is installed, 32-bit and 64-bit servlets may be installed on the same computer.]]></sdp_action>
+<sdp_action condition="==" minimum="IIS7 note" result="FAILED"><![CDATA[${EPM.PRODUCT.HSFS} requires that IIS 7 have the IIS 6.0 Compatibility mode applied. Ensure that the IIS 6.0 Compatibility mode is applied.]]></sdp_action>
+<sdp_action condition="==" minimum="IIS insufficient" result="FAILED"><![CDATA[Unless IIS 7 or later is installed, 32-bit and 64-bit servlets may not be installed on the same computer.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[IIS (Microsoft Intenet Information Services) 7 or later must be used for 32-bit and 64-bit servlets to be used on the same computer.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10160" mode="VERIFY" name="Windows Office Restrictions?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[Only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_BIT,$EPM_VERSION
+macro office_name
+{var $pth = cond(expr('==',$OS_BIT,64),\
+                                'HKLM\SOFTWARE\Wow6432Node\Microsoft\Office',\
+                                'HKLM\SOFTWARE\Microsoft\Office')
+ if !@pth = grepRegValue($pth,'ProductName')
+  return 'NotFound'
+ return getRegValue(pop(@pth),'ProductName')
+}
+if and(compare('VALID',$EPM_VERSION,'11.1.2.2'),grep(@PRD,'^FDM'))
+ return setHcveResult(cond(match(office_name(),'2010'),'2010','need2010'))
+if !@lst = grep(@PRD,'^DM$')
+ return setHcveResult('NA')
+var $nam = office_name()
+if match($nam,'NotFound')
+ return setHcveResult('no Office')
+call setHcveResult(cond(\
+  and(match($nam,'2003'),match($nam,'professional',true)),'Office adequate',\
+  match($nam,'2007'),                                     'Office adequate',\
+  match($nam,'2010'),                                     'Office adequate',\
+  'no adaquate Office'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies an adequate version of Microsoft Office is installed if there are any Microsoft Office dependent products in the install products list and the machine uses a Windows operating system.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[There are no Microsoft Office dependent products in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="2010" result="PASSED"><![CDATA[All Microsoft Office dependent products in the install products list are supported with Microsoft Office 2010.]]></sdp_action>
+<sdp_action condition="==" minimum="need2010" result="FAILED"><![CDATA[FDM Server requires Microsoft Office 2010. All other EPM products that are dependent upon Microsoft Office are supported on Microsoft Office 2010. Install Microsoft Office 2010.]]></sdp_action>
+<sdp_action condition="==" minimum="Office adequate" result="PASSED" syntax="wiki"><![CDATA[${EPM.PRODUCT.DM} is supported with the Microsoft Office version installed on this computer.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[${EPM.PRODUCT.DM} requires Microsoft Office 2003 Professional Edition, Microsoft Office 2007, or Microsoft Office 2010.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10162" mode="VERIFY" name="32-bit Binaries Required?">
+<sdp_command type="RDA"><![CDATA[import @PRD,$EPM_VERSION,$OS_TYPE
+if !compare('VALID',$EPM_VERSION,'11.1.2.2')
+ return setHcveResult('notEPM11.1.2.2')
+if match($OS_TYPE,'Windows')
+ var @lst = grep(@PRD,'^(FDMAS|FDMDS|FDMFS|FDMWS|HSFS|IR)$')
+else
+ var @lst = grep(@PRD,'^IR$')
+call setHcveResult(cond(scalar(@lst),join("\012",@lst),'noRestrictedProducts'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for products that require 32-binaries only.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notEPM11.1.2.2" result="SKIPPED"><![CDATA[This rule applies to EPM 11.1.2.2 only.]]></sdp_action>
+<sdp_action condition="==" minimum="noRestrictedProducts" result="PASSED"><![CDATA[No products restricted to 32-bit binaries are in the install products list.]]></sdp_action>
+<sdp_action result="WARNING" syntax="wiki"><![CDATA[Ensure the following products are being installed with 32-bit binaries only:
+|*Return Value*|*Action*|
+|FDMAS|&nbsp;&nbsp;${EPM.PRODUCT.FDMAS}|
+|FDMDS|&nbsp;&nbsp;${EPM.PROduCT.FDMDS}|
+|FDMFS|&nbsp;&nbsp;${EPM.PRODUCT.FDMFS}|
+|FDMWS|&nbsp;&nbsp;${EPM.PRODUCT.FDMWS}|
+|HSFS|&nbsp;&nbsp;${EPM.PRODUCT.HSFS}|
+|IR|&nbsp;&nbsp;${EPM.PRODUCT.IR}|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10170" mode="VERIFY" name="Foundation CPUs Requirement?">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A10000" minimum="FDN" result="SKIPPED" value="FDN not being installed"><![CDATA[Only applies only if Foundation Web Service is in the install products list.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('$EPM_PROC_NUM')
+var $EPM_PROC_NUM = getHcveFact('EPM.PROCESSOR.NUMBER')
+call setHcveResult(cond(expr('>=',$EPM_PROC_NUM,4),'Adequate','Inadequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that there is an adequate number of processor cores available for Foundation Web Services.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[There is an adequate number of processors for Foundation Services in a distributed production server environment.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Foundation Services in a distributed production server environment requires at least four processor cores. Only ${EPM_PROC_NUM} cores were found on this machine. Ensure that there are at least four processor cores available for Foundation Services.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10200" mode="RECORD" name="Number EAS Users">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A10000" minimum="EAS" result="SKIPPED" value="EAS not being installed"><![CDATA[Only applies if Essbase Administration Services is in the install products list.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="0" variable="$EAS_USERS"><![CDATA[Maximum concurrent Essbase Administration Services users]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user to supply the maximum number of concurrent EAS users anticipated.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10201" mode="RECORD" name="Number FDMDS Users">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A10000" minimum="FDMDS" result="SKIPPED" value="FDMDS not being installed"><![CDATA[Only applies if FDM Database Server is in the install products list.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="0" variable="$FDMDS_USERS"><![CDATA[Maximum concurrent FDM Database Server users]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user to supply the maximum number of concurrent FDMDS users anticipated.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10202" mode="RECORD" name="Number FDMAS Users">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A10000" minimum="FDMAS" result="SKIPPED" value="FDMAS not being installed"><![CDATA[Only applies if FDM Application Server is in the install products list.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="0" variable="$FDMAS_USERS"><![CDATA[Maximum concurrent FDM Application Server users]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user to supply the maximum number of concurrent FDMAS users anticipated.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10210" mode="RECORD" name="Physical Memory (in GiB)">
+<sdp_command type="RDA"><![CDATA[import $OS_PLT
+call setHcveVariable('$SYS_MEM')
+macro get_wmic_value
+{var (undef,$val) = command(@arg)
+ return trim($val)
+}
+if compare('eq',$OS_PLT,'AIX')
+{var ($mem) = match(grepCommand(\
+   "/usr/sbin/lsattr -HE -l sys0 -a realmem",'\s+\d+\s+','f'),'\s+(\d+)\s+')
+ var $mem = expr('/',$mem,1048576)
+}
+if compare('eq',$OS_PLT,'HP-UX')
+{if grepCommand('/usr/contrib/bin/machinfo','Memory\s*[=:]\s*(\d+)\s*MB','f1')
+  var $mem = expr('/',last,1024)
+ else
+ {var $mem = nvl(\
+    field('\s+',6,grepFile('/var/adm/syslog/syslog.log','Physical','f')),\
+    field('\s+',6,grepFile('/var/adm/syslog/OLDsyslog.log','Physical','f')),\
+    field('\s+',1,grepCommand('/usr/sbin/dmesg','Physical:','f')),\
+    cond(getSetting('NO_CSTM'),0,\
+      expr('*',1024,match(grepCommand(\
+        "/usr/bin/echo 'selall;info;wait;infolog;view;done' | /usr/sbin/cstm",\
+        'Total Configured Memory','f'),'\:\s+(\d+)\s+MB'))),\
+    0)
+  var $mem = expr('/',$mem,1048576)
+ }
+}
+elsif compare('eq',$OS_PLT,'Linux')
+{var $mem = nvl(\
+   field('\s+',1,grepCommand('/usr/bin/free -m','Mem','f')),\
+   0)
+ var $mem = expr('/',$mem,1024)
+}
+elsif compare('eq',$OS_PLT,'Sun')
+{var $mem = nvl(\
+   field('\s+',2,grepCommand('/usr/sbin/prtconf','Memory','f')),\
+   0)
+ var $mem = expr('/',$mem,1024)
+}
+elsif compare('eq',$OS_PLT,'Windows')
+{if ?trim(field(':',1,grepCommand('systeminfo','^Available Physical Memory:',\
+                                  'f')))
+ {var ($mem,$unt) = split('\s',last)
+  var $mem = replace($mem,'[,\.]','',true)
+  var $mem = check($unt,'^[Kk]',expr('/',$mem,1048576),\
+                        '^[Mm]',expr('/',$mem,1024),\
+                        '^[Gg]',$mem,\
+                                expr('/',$mem,1073741824))
+ }
+ if !isNumber($mem)
+ {var $mem = get_wmic_value('wmic OS get FreePhysicalMemory')
+  var $mem = expr('/',$mem,1073741824)
+ }
+}
+if or(not(isNumber($mem)),expr('==',$mem,0))
+ return setHcveResult('notDetermined')
+var $SYS_MEM = $mem
+return setHcveResult($SYS_MEM)
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the amount of available physical memory or physical memory on the computer.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10211" mode="VERIFY" name="Physical Memory OK?">
+<sdp_dependencies>
+<sdp_dependency condition="!=" id="A10210" minimum="notDetermined" result="SKIPPED" value="Amount of physical memory unknown"><![CDATA[Only applies if the amount of physical memory is known.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+import $SYS_MEM,@PRD,$EAS_USERS,$FDMAS_USERS,$FDMDS_USERS,$EPM_VERSION
+call setHcveVariable('$EPM_REQ_RAM')
+var ($nba,$dec) = frac(expr('/',nvl($FDMAS_USERS,0),75))
+if $dec
+ incr $nba
+if expr('<',nvl($FDMDS_USERS,0),150)
+ var $nbd = 2
+else
+{var ($nbd,$dec) = frac(expr('/',$FDMDS_USERS,75))
+ if $dec
+  incr $nbd
+}
+var %req = (\
+  API     => 0.25,\
+  APS     => 0.332031,\
+  CM      => 0.25,\
+  DM      => 4,\
+  EAS     => expr('*',$EAS_USERS,0.3125),\
+  EIS     => 0.25,\
+  EPMA    => 2,\
+  ERPI    => 2,\
+  ESSB    => 1,\
+  ESSBS   => 0.25,\
+  FCM     => 4,\
+  FDMAS   => expr('*',2,$nba),\
+  FDMDS   => $nbd,\
+  FDMWS   => 2,\
+  FR      => 1,\
+  HDRMAS  => 2,\
+  HDRMDS  => 2,\
+  HFMS    => 4,\
+  HFMDS   => 4,\
+  HPS     => 1,\
+  HSFS    => 2,\
+  HSS     => 1.5,\
+  IR      => 1,\
+  OHS     => 1,\
+  PCM     => 2,\
+  PLN     => 2,\
+  PR      => 0.25,\
+  RAF     => 2,\
+  WA      => 1,\
+  WLS     => 0.448281)
+var $EPM_REQ_RAM = 0
+loop $prd (@PRD)
+{if exists($req{$prd})
+  incr $EPM_REQ_RAM,$req{$prd}
+}
+if and(compare('VALID',$EPM_VERSION,'11.1.2.2'),grep(@PRD,'^FDN$'))
+ var $EPM_REQ_RAM = max(32,$EPM_REQ_RAM)
+call setHcveResult(cond(expr('>=',$SYS_MEM,$EPM_REQ_MEM),'Adequate',\
+                                                         'Inadequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that there is sufficient physical memory for the products in the install products list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED" syntax="wiki"><![CDATA[The ${SYS_MEM} GiB of physical memory meets the requirement for ${EPM_REQ_RAM} GiB needed for the products in the install products list.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The ${SYS_MEM} GiB of physical memory does not meet the requirement for ${EPM_REQ_RAM} GiB needed for the products in the install products list.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10230" mode="RECORD" name="Available Disk Space (in GiB)">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00201" minimum="PASSED" result="SKIPPED" value="Install location does not exist"><![CDATA[The installation location must exist.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_HOME
+call setHcveVariable('$EPM_HOME_DSK')
+var $EPM_HOME_DSK = expr('/',get_df($EPM_HOME),1048576)
+call setHcveResult(cond(and(isNumber($EPM_HOME_DSK),expr('>',$EPM_HOME_DSK,0)),\
+  $EPM_HOME_DSK,'notDetermined'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the amount of disk space available in the product installation directory.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A10231" mode="VERIFY" name="Disk Space OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00201" minimum="PASSED" result="SKIPPED" value="Install location does not exist"><![CDATA[The installation location must exist.]]></sdp_dependency>
+<sdp_dependency condition="!=" id="A10230" minimum="notDetermined" result="SKIPPED" value="Available disk space unknown"><![CDATA[The amount of available disk space must be known.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$EPM_HOME_DSK
+if !isNumber($EPM_HOME_DSK)
+ return setHcveResult('notDetermined')
+call setHcveVariable('$EPM_REQ_DSK')
+var %req = (\
+  API    => 0.039063,\
+  APS    => 0.664063,\
+  COL    => 0.878906,\
+  CM     => 0.043945,\
+  DM     => 8,\
+  EAS    => 1,\
+  EIS    => 0.332031,\
+  EPMA   => 0.12207,\
+  ERPI   => 0.292969,\
+  ESSB   => 2,\
+  ESSBS  => 0.117188,\
+  FCM    => 8,\
+  FDMWS  => 0.390625,\
+  FR     => 0.390625,\
+  HDRMAS => 0.488281,\
+  HDRMDS => 15,\
+  HFMS   => 64,\
+  HFMDS  => 24,\
+  HPS    => 4,\
+  HSFS   => 0.683594,\
+  HSS    => 0.78125,\
+  IR     => 1,\
+  OHS    => 1.2,\
+  PCM    => 8,\
+  PLN    => 8,\
+  PR     => 0.390625,\
+  RAF    => 4.390625,\
+  WA     => 2,\
+  WLS    => 1.4)
+var $EPM_REQ_DSK = 0
+loop $prd (@PRD)
+{if exists($req{$prd})
+  incr $EPM_REQ_DSK,$req{$prd}
+}
+call setHcveResult(cond(expr('>=',$EPM_HOME_DSK,$EPM_REQ_DSK),'Adequate',\
+                                                              'Inadequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule determines if the available disk space is adequate for the products in the install products list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED" syntax="wiki"><![CDATA[The ${EPM_HOME_DSK} GiB of available disk space meets the requirement for ${EPM_REQ_DSK} GiB of disk space needed for the products in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED" syntax="wiki"><![CDATA[The available space in ${EPM_HOME} could not be determined. Ensure that there is at least ${EPM_REQ_DSK} GiB of available space in ${EPM_HOME}]]>.</sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The ${EPM_HOME_DSK} GiB of available disk space does not meet the requirement for ${EPM_REQ_DSK} GiB of available space needed to install the products in the install products list.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10250" mode="VERIFY" name="Temp Space OK?">
+<sdp_command type="RDA"><![CDATA[
+var ($flg,$tmp,@tbl) = (true,{'/tmp','/tmp'})
+loop $key ('TMP','TMPDIR')
+{if getEnv($key)
+  var $tmp->{$key} = last
+}
+loop $key (keys(%tmp))
+{if !testDir('d',$tmp->{$key})
+  call push(@tbl,concat($key,' invalidDir'))
+ else
+ {if !testDir('w',$tmp->{$key})
+   call push(@tbl,concat($key,' NoWrite'))
+  if and($flg,expr('>=',get_df($tmp->{$key}),1048576))
+   var $flg = false
+ }
+}
+if $flg
+{loop $key (keys(%tmp))
+  call push(@tbl,concat($key,' tooSmall'))
+}
+call setHcveParameter('RULE.A10250',$tmp)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'TempSpaceOK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that there is sufficient temporary space for installing Enterprise Performance Management.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="TempSpaceOK" result="PASSED"><![CDATA[There is sufficient temporary space.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is insufficient temporary space.
+|*Return value*|*Action*|
+|/tmp invalidDir|ALERT - ``/tmp`` is not a valid directory. ``/tmp`` must be a directory.|
+|/tmp NoWrite|ALERT - The user does not have write permissions to the ``/tmp`` directory.|
+|/tmp tooSmall|ALERT - There is less than the needed 1 GiB of free space in the ``/tmp`` directory.|
+|TMP invalidDir|ALERT - ``TMP`` is set to ${`RULE.A00250.TMP} in the environment; however, ${`RULE.A00250.TMP} is an invalid directory. Take appropriate action.|
+|TMP NoWrite|ALERT - ``TMP`` is set to ${`RULE.A00250.TMP} in the environment; however, the user does not have write permissions to ${`RULE.A00250.TMP}.|
+|TMP tooSmall|ALERT - ``TMP`` is set to ${`RULE.A00250.TMP} in the environment; however, ${`RULE.A00250.TMP} has less than the required 1 GiB of free space. Make sure your temporary space has at least 1 GiB of free space.|
+|TMPDIR invalidDir|ALERT - ``TMPDIR`` is set to ${`RULE.A00250.TMPDIR} in the environment; however, ${`RULE.A00250.TMPDIR} is an invalid directory. Take appropriate action.|
+|TMPDIR NoWrite|ALERT - ``TMPDIR`` is set to ${`RULE.A00250.TMPDIR} in the environment; however, the user does not have write permissions to ${`RULE.A00250.TMPDIR}.|
+|TMPDIR tooSmall|ALERT - ``TMPDIR`` is set to ${`RULE.A00250.TMPDIR} in the environment; however, ${`RULE.A00250.TMPDIR} has less than the required 1 GiB of free space. Make sure your temporary space has at least 1 GiB of free space.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10300" mode="VERIFY" name="User Privileges?">
+<sdp_command type="RDA"><![CDATA[import $EPM_HOME,$OS_PLT
+macro check_priv
+{var $flg = true
+ loop $lin (grepCommand(concat('net user ',${RDA.LOGIN}),\
+   '(^(Global|Local) Group Memberships|^\s+\S)'))
+ {if $flg
+  {next !match($lin,'^Local')
+   var $flg = false
+  }
+  if match($lin,'\bAdministrators\b')
+   return true
+  break match($lin,'^Global')
+ }
+ return false
+}
+var $usr = ${RDA.USER}
+var @tbl = ()
+if !match(getHcveResult('A00210'),'Acceptable|SKIPPED')
+ call push(@tbl,getHcveResult('A00210'))
+if and(compare('eq',$OS_PLT,'Linux'),compare('eq',$usr,'root'))
+ call push(@tbl,'root')
+if and(compare('eq',$OS_PLT,'Windows'),not(check_priv()))
+ call push(@tbl,'notAdministrator')
+if !compare('eq',$OS_PLT,'Windows')
+{if !testFile('r','/etc/passwd')
+  call push(@tbl,'Cannot read /etc/passwd')
+ else
+ {var $cmd = cond(compare('eq',$OS_PLT,'Sun'),'/usr/xpg4/bin/id -nu',\
+                                              '/usr/bin/id -nu')
+  if !grepFile('/etc/passwd',concat('^',$usr = first(command($cmd)),':'),'f')
+   call push(@tbl,'$usr not in /etc/passwd')
+ }
+ if !testFile('r','/etc/group')
+  call push(@tbl,'Cannot read /etc/group')
+ else
+ {var $cmd = cond(compare('eq',$OS_PLT,'Sun'),'/usr/xpg4/bin/id -ng',\
+                                              '/usr/bin/id -ng')
+  if !grepFile('/etc/group',concat('^',command($cmd),':'),'f')
+   call push(@tbl,'Group not in /etc/group')
+ }
+}
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the user has the privileges needed to install the products.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The user has the privileges needed to install the products.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Issues were found with the user and their privileges:
+|*Return Value*|*Action*|
+|notRead|The user must have read permissions to the install location.|
+|notWrite|The user must have write permissions to the install location.|
+|notExecute|The user must have execute permissions to the install location.|
+|root|The installing user should not be ``root``.|
+|notAdministrator|The user must have ``Administrator`` privileges for installation.|
+|Cannot read /etc/passwd|The user could not read the ``/etc/passwd`` file to verify they are listed.|
+|not in /etc/passwd|The ``/etc/passwd`` file does not contain the user. Add the user to the ``/etc/passwd`` file.|
+|Cannot read /etc/group|The user could not read the ``/etc/group`` file to verity that the group is listed.|
+|not in /etc/group|The ``/etc/group`` file does not contain the group. Add the group to the ``/etc/group`` file.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10400" mode="VERIFY" name="Graphics Display?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Linux" result="SKIPPED" value="Not Linux"><![CDATA[This rule only applies to Linux.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD
+if !?@lst = grep(@PRD,'^(FR|PR|WA)$')
+ return setHcveResult('NA')
+if or(match(grepCommand('set','^XS_EXEC','f'),'X11 /. xvfb'),\
+            grepCommand('DISPLAY','\w','c'))
+ return setHcveResult('Adequate')
+return setHcveResult(join("\012",@lst))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if a hardware display is installed or an X virtual frame buffer is active, if on Linux and products in the install products list require this.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[There are no products in the install products list that are dependent upon a display.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[Graphic display requirements are satisifed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Either a graphics display must be installed on the machine or X virtual frame buffer must be installed and activated. This is required for:
+|*Return Value*|*Action*|
+|FR|&nbsp;&nbsp;${EPM.PRODUCT.FR}|
+|PR|&nbsp;&nbsp;${EPM.PRODUCT.PR}|
+|WA|&nbsp;&nbsp;${EPM.PRODUCT.WA}|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10500" mode="VERIFY" name="Ports Available?">
+<sdp_command type="RDA"><![CDATA[import @PRD
+var @tmp = ('GEN')
+call push(@tmp,@PRD)
+
+%req = (\
+  CM     => [8500,8543],\
+  DM     => [8600,8653],\
+  EAS    => [10080,10083],\
+  EIS    => [3388],\
+  EPMA   => [80,443,5251,5255,9097,19091,19047,19101,19145],\
+  ERPI   => [6550,6553],\
+  ESSB   => [1423,6423,[32768,33768]],\
+  ESSBS  => [5300,9080],\
+  FCM    => [8100,8700,8743],\
+  FDMDS  => [135,[137,139],445,[1024,65536]],\
+  FDMWS  => [80,443],\
+  FDN    => [80,19000,28080,28443],\
+  FR     => [8200,8243,8297,8299],\
+  HDRMAS => [80,443,[5200,5400]],\
+  HFMS   => [25,80,135,443,[1024,5536],[8205,8209]],\
+  HPS    => [18080,18081,18443,18444],\
+  HSFS   => [80,443,7750],\
+  GEN    => [443,1423,1521,[8205,8209],19000,[32768,33768]],\
+  IR     => [[6810,6817]],\
+  PCM    => [6743,6756],\
+  PLN    => [8300,8343,11333],\
+  RAF    => [[6800,6805],6860,45000,45043],\
+  WA     => [16000,16043,28080,28443],\
+  WLS    => [7001])
+var (@out,@prt) = ()
+loop $lin (grepCommand('netstat -an','LISTEN|ESTABLISHED'))
+{var ($prt) = match($lin,'[\.:](\d+)\s')
+ if !grep(@prt,concat('^',$prt,'$'),'f')
+  call push(@prt,$prt)
+}
+loop $prd (@tmp)
+{next missing($req{$prd})
+ var @lst = ()
+ var @req = ()
+ loop $rec (@{$req{$prd}})
+  call push(@req,cond(ref($rec),$rec,[$rec]))
+ loop $prt (@prt)
+ {loop $rec (@req)
+  {next or(expr('<',$prt,$rec->[0]),expr('>',$prt,$rec->[-1]))
+   call push(@lst,$prt)
+   break
+  }
+ }
+ if defined($lst[0])
+  call push(@out,concat($prd,'[ port conflict ',join("\040",@lst),']'))
+}
+call setHcveResult(cond(scalar(@out),join("\012",@out),'NoConflicts'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the ports required by the products in the install products list are already in use.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[There are no products in the install products list that have reserved ports.]]></sdp_action>
+<sdp_action condition="==" minimum="NoConflicts" result="PASSED"><![CDATA[Active ports on the computer do not overlap with default ports that would be used by the products on the install products list.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the ports required by the products on the install products list are already used. The ports being used and what is using them can be seen by running ``netstat -nab``. Recommend that the output be sent to a file (for example, ``netstate -nab > portusage.txt``) for easier analysis. Make appropriate adjustments.
+|*Return Value*|*Action*|
+|CM...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.CM}.|
+|DM...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.DM}.|
+|EAS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.EAS}.|
+|EIS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.EIS}.|
+|EPMA...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.EPMA}.|
+|ERPI...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.ERPI}|
+|ESSB...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.ESSB}.|
+|ESSBS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.ESSBS}.|
+|FCM...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.FCM}.|
+|FDMDS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.FDMDS}.|
+|FDMWS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.FDMWS}.|
+|FDN...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.FDN}.|
+|FR...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.FR}.|
+|GEN...|There is an overlap of active ports and ports generally needed by EPM for the web-tier.|
+|HDRMAS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.HDRMAS}.|
+|HFMS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.HFMS}.|
+|HPS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.HPS}.|
+|HSFS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.HSFS}.|
+|IR...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.IR}.|
+|PCM...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.PCM}.|
+|PLN...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.PLN}.|
+|RAF...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.RAF}.|
+|WA...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.WA}.|
+|WLS...|There is an overlap of active ports and ports typically used by ${EPM.PRODUCT.WLS}.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10550" mode="VERIFY" name="Inventory Access?">
+<sdp_command type="RDA"><![CDATA[import $OS_PLT
+var @tbl = ()
+if match($OS_PLT,'(HP-UX|Sun)')
+ var ($pth) = grepFile('/var/opt/oraInst.loc','\w','f')
+if match($OS_PLT,'(AIX|Linux)')
+ var ($pth) = grepFile('/etc/oraInst.loc','\w','f')
+if compare('eq',$OS_PLT,'Windows')
+{var $pth = cond(hasRegOption(),\
+   nvl(getReg64Value('HKLM\SOFTWARE\Oracle','inst_loc'),\
+       getReg32Value('HKLM\SOFTWARE\Oracle','inst_loc')),\
+   getRegValue('HKLM\SOFTWARE\Oracle','inst_loc'))
+ if !?$pth
+ {var $drv = ${ENV.SYSTEMDRIVE:'C:'}
+  var $pth = catDir($drv,'Program Files','Oracle','Inventory')
+ }
+}
+if !testDir('e',$pth)
+ call push(@tbl,'notExist')
+if !testDir('r',$pth)
+ call push(@tbl,'notRead')
+if !testDir('w',$pth)
+ call push(@tbl,'notWrite')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user has the needed privileges to the Oracle inventory directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The user has the necessary access to the Oracle inventory directory.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is an issue with accessing the Oracle inventory directory.
+|*Return Value*|*Action*|
+|notExist|The expected directory does not exist.|
+|notRead|The user does not have read permissions to the directory.|
+|notWrite|The user does not have write permissions to the directory.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10600" mode="VERIFY" name="Acrobat Reader OK?">
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_PLT
+if !grep(@PRD,'^IR$')
+ return setHcveResult('NA')
+if compare('eq',$OS_PLT,'Windows')
+{var @key = grepReg32Value('HKLM\SOFTWARE\Adobe\Acrobat Reader','InstallDate')
+ if !or(@key,hasRegOption(),expr('==',$OS_BIT,32))
+  var @key = grepRegValue('HKLM\SOFTWARE\Wow6432Node\Adobe\Acrobat Reader',\
+                         'InstallDate')
+ var $max = 0
+ loop $key (@key)
+ {if match($key,'Acrobat Reader\\(\d+(\.\d+)*)\\',true)
+  {var ($ver) = last
+   if compare('valid',$ver,$max)
+    var $max = $ver
+  }
+ }
+ return setHcveResult(cond(expr('>',$max,0),$max,'notFound'))
+}
+elsif findCommand('acroread',true)
+{var (@pth) = splitDir(last)
+ call pop(@pth)
+ var $ver = pop(@pth)
+ if isNumber($ver = pop(@pth))
+  return setHcveResult($ver)
+}
+call setHcveResult('notFound')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if Acrobat Reader is adequate if Acrobat Reader dependent products are in the install products list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[No Acrobat Reader dependent products are in the install products lists.]]></sdp_action>
+<sdp_action condition="==" minimum="notFound" result="FAILED"><![CDATA[No Acrobat Reader was found. Install Acrobat Reader 7.0 or later.]]></sdp_action>
+<sdp_action condition=">=" minimum="7" result="PASSED"><![CDATA[An adequate version of Acrobat Reader is installed. No action required.]]></sdp_action>
+<sdp_action condition="<" minimum="7" result="FAILED"><![CDATA[The installed version of Acrobat Reader is not supported by products in the install products list. Install Acrobat Reader 7.0 or later.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[No Acrobat Reader was found. Install Acrobat Reader 7.0 or later.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10610" mode="VERIFY" name="NET OK?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[This rule only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD
+if !grep(@PRD,'^(DM|HDRMDS)$')
+ return setHcveResult('NA')
+call setHcveVariable('$NET_MIN')
+var $NET_MIN = 3.5
+var $min = cond(grep(@PRD,'^HDRMDS$'),3.5,1.1)
+var ($dir,$ver) = (0,0)
+var $drv = ${ENV.SYSTEMDRIVE:'C:'}
+loop $dir (findDir(catDir($drv,'WINDOWS','Microsoft.NET','Framework'),\
+  '^v\d+(\.\d+)+','i'))
+{var $dir = substr($dir,1)
+ if compare('newer',$dir,$ver)
+  var $ver = $dir
+}
+if !$ver
+ return setHcveResult('No.NET')
+if compare('valid',$ver,$NET_MIN)
+ return setHcveResult('Valid.NET')
+if expr('==',$min,1.1)
+{if compare('valid',$ver,$min)
+  return setHcveResult('ValidDM.NET')
+}
+return setHcveResult(cond(expr('==',$min,3.5),'Old.NET','DMOld.NET'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the required .NET framework for .NET sensitive products in the install products list is available.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED" syntax="wiki"><![CDATA[There are no .NET sensitive products in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="Valid.NET" result="PASSED" syntax="wiki"><![CDATA[An adequate .NET framework is available for ${EPM.PRODUCT.DM} and ${EPM.PRODUCT.HDRMDS}. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="ValidDM.NET" result="PASSED" syntax="wiki"><![CDATA[An adequate .NET framework is available for ${EPM.PRODUCT.DM}. ${EPM.PRODUCT.DM} requires .NET framework for Taxonomy Designer.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[An adequate .NET framework is not available. The EPM Installer should add it automatically. Verify that it is present after installation.
+|*Return Value*|*Action*|
+|No.NET|No .NET framework was found.|
+|Old.NET|The .NET framework is too old of a version. At least version ${NET_MIN} is required.|
+|DMOld.NET|The .NET framework is too old of a version. ${EPM.PRODUCT.DM} requires .NET framework version 1.1 or later for Taxonomy Designer.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10620" mode="VERIFY" name="ODP OK?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[This rule only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD
+if !grep(@PRD,'^(DM|EPMA|FDMAS|FDMDS|FDMFS|FDMWS|HDRMAS|HFMS|HSFS)$')
+ return setHcveResult('NA')
+return setHcveResult(cond(\
+  command('reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP"'),\
+                                                                  'Installed',\
+  command('reg query "HKLM\SOFTWARE\Oracle\ODP.NET"'),            'Installed',\
+  'notFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that Oracle Data Provider (ODP) is adequate, if ODP dependent products are in the install products list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[No Oracle Data Provider (ODP) dependent products are in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="Installed" result="PASSED"><![CDATA[Oracle Data Provider (ODP) for .NET, which is required, is installed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Microsoft .NET Data Provider for Oracle, Oracle Data Provider for .NET 2.0 (ODP) is missing. It is required for ${EPM.PRODUCT.DM}, ${EPM.PRODUCT.EPMA}, ${EPM.PRODUCT.FDMAS}, ${EPM.PRODUCT.FDMDS}, ${EPM.PRODUCT.FDMFS}, ${EPM.PRODUCT.FDMWS}, ${EPM.PRODUCT.HDRMAS}, ${EPM.PRODUCT.HFMS}, and ${EPM.PRODUCT.HSFS}.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10630" mode="VERIFY" name="MDAC OK?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[This rule only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_NAM
+if !grep(@PRD,'^(FDMAS|FDMWS|HDRMAS)$')
+ return setHcveResult('NA')
+return setHcveResult(cond(\
+  match($OS_NAM,'2003'),'IncludedWindows2003',\
+  compare('VALID',\
+          getRegValue('HKLM\SOFTWARE\Microsoft\DataAccess','FullInstallVer'),\
+          '2.8'),       'Adequate',\
+                        'Inadequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[Tis rule verifies that Microsoft Data Access Components (MDAC) 2.8 are installed, if MDAC dependent products are in the install products list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[There are no Microsoft Data Access Components (MDAC) dependent products in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="IncludedWindows2003" result="PASSED"><![CDATA[Microsoft Windows 2003 includes Microsoft Data Access Components (MDAC) 2.8.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate" result="PASSED" syntax="wiki"><![CDATA[Microsoft Data Access Components 2.8 or later, as required by ${EPM.PRODUCT.FDMAS}, ${EPM.PRODUCT.FDMWS}, and ${EPM.PRODUCT.HDRMAS} are installed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Install Microsoft Data Access Components (MDAC) 2.8 or later. Required for ${EPM.PRODUCT.FDMAS}, ${EPM.PRODUCT.FDMWS}, and ${EPM.PRODUCT.HDRMAS}.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10640" mode="VERIFY" name="DCOM Enabled?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[This rule only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD
+if !grep(@PRD,'^(HDRMDS|HFMS)$')
+ return setHcveResult('NA')
+return setHcveResult(cond(match(getRegValue('HKLM\SOFTWARE\Microsoft\Ole',\
+                                'EnableDCOM'),'Y',true),'Enabled','notEnabled'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that Distributed Component Object Model (DCOM) is enabled, if DCOM dependent products are in the intall products list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[There are no Distributed Component Object Model (DCOM) dependent products in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="Enabled" result="PASSED" syntax="wiki"><![CDATA[Distributed Component Object Model (DCOM), needed for ${EPM.PRODUCT.HDRMAS} and ${EPM.PRODUCT.HFMS}, is enabled on this computer.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Distributed Component Object Model (DCOM), needed for ${EPM.PRODUCT.HDRMAS} and ${EPM.PRODUCT.HFMS}, is not enabled on this computer.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10650" mode="VERIFY" name="Report Converter OK?">
+<sdp_dependencies>
+<sdp_dependency condition="==" id="A00110" minimum="Windows" result="SKIPPED" value="Not Windows"><![CDATA[This rule only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_NAM,$EPM_VERSION
+if !grep(@PRD,'^FR$')
+ return setHcveResult('NA')
+if compare('VALID',$EPM_VERSION,'11.1.2.2')
+ return setHcveResult('Embedded')
+if !match($OS_NAM,'2008')
+{var @pth = grepReg32Value('HKLM\SOFTWARE\Adobe\Adobe Distiller','InstallPath')
+ if ($pth) = grep(@pth,'\\v6\.0$','f')
+ {var ($str) = grepReg32Value('HKLM\SOFTWARE\Adobe\Adobe SVG Viewer','path')
+  if and(getReg32Value($pth,'InstallPath'),getRegValue($str,'path'))
+   return setHcveResult('Adequate Adobe Distiller')
+ }
+ var @lst = grep(@pth,'\\\d\.\d$')
+ loop $pth (@lst)
+ {@elm = split($pth,'\\')
+  var $cnt = expr('-',scalar(@elm),1)
+  if expr('>=',substr(field('\.',0,$elm[$cnt])),8)
+  {if and(getReg32Value($pth,'InstallPath'),getReg32Value($str,'path'))
+    return setHcveResult('Adequate Adobe Distiller')
+  }
+ }
+}
+return setHcveResult(cond(\
+  or(getReg32Value('HKLM\SOFTWARE\GPL Ghostscript\8.63','GS_DLL'),\
+     getReg64Value('HKLM\SOFTWARE\GPL Ghostscript\8.63','GS_DLL'),\
+     getRegValue('HKLM\SOFTWARE\Wow6432Node\GPL Ghostscript\8.63','GS_DLL')),\
+                                                  'Adequate GPL Ghostscript',\
+  or(getReg32Value('HKLM\SOFTWARE\AFPL Ghostscript\8.51','GS_DLL'),\
+     getReg32Value('HKLM\SOFTWARE\AFPL Ghostscript\8.54','GS_DLL'),\
+     getReg64Value('HKLM\SOFTWARE\AFPL Ghostscript\8.51','GS_DLL'),\
+     getReg64Value('HKLM\SOFTWARE\AFPL Ghostscript\8.54','GS_DLL'),\
+     getRegValue('HKLM\SOFTWARE\Wow6432Node\AFPL Ghostscript\8.51','GS_DLL'),\
+     getRegValue('HKLM\SOFTWARE\Wow6432Node\AFPL Ghostscript\8.54','GS_DLL')),\
+                                                  'Adequate AFPL Ghostscript',\
+  or(getReg32Value('HKLM\SOFTWARE\GNU Ghostscript\7.0.6','GS_DLL'),\
+     getReg64Value('HKLM\SOFTWARE\GNU Ghostscript\7.0.6','GS_DLL'),\
+     getRegValue('HKLM\SOFTWARE\Wow6432Node\GNU Ghostscript\7.0.6','GS_DLL')),\
+                                                  'Adequate GNU Ghostscript',\
+  match($OS_NAM,'2008'),                          'No adequate Ghostscript',\
+  'No adequate converter'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that an adequate report converter is available, if report converter dependent products are in the install products list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[No report converter dependent products are in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="Embedded" result="SKIPPED"><![CDATA[PDF writers are embedded in the product.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate Adobe Distiller" result="PASSED"><![CDATA[An appropriate version of Adobe Distiller and Adobe SVG Viewer is installed on this computer.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate AFPL Ghostscript" result="PASSED"><![CDATA[An appropriate version of AFPL Ghostscript is installed on this computer.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate GNU Ghostscript" result="PASSED"><![CDATA[An appropriate version of GNU Ghostscript is installed on this computer.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate GPL Ghostscript" result="PASSED"><![CDATA[An appropriate version of GPL Ghostscript is installed on this computer.]]></sdp_action>
+<sdp_action condition="==" minimum="No adequate Ghostscript" result="FAILED" syntax="wiki"><![CDATA[GPL Ghostscript 8.63, or AFPL Ghostscript 8.51 or 8.54, or GNU Ghostscript 7.0.6 32-bit only must be installed for ${EPM.PRODUCT.FR}.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Adobe Distiller 6.0 or 8.0 or later and Adobe SVG Viewer; or GPL Ghostscript 8.63; or AFPL Ghostscript 8.51 or 8.54; or GNU Ghostscript 7.0.6 32-bit only must be installed for ${EPM.PRODUCT.FR}.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A10660" mode="VERIFY" name="OLEDB Driver?">
+<sdp_command type="RDA"><![CDATA[import @PRD,$OS_PLT,$OS_BIT,$BOOK_EPM_STRT
+if !grep(@PRD,'^(EPMA|FDMAS|HFMS|HSFS)$')
+ return setHcveResult('NA')
+if compare('eq',$OS_PLT,'Windows')
+{if hasRegOption()
+ {loop $key ('HKLM\SOFTWARE\Oracle\KEY_OraDB11g_home1',\
+             'HKLM\SOFTWARE\Oracle\KEY_OraDB10g_home1',\
+             'HKLM\SOFTWARE\Oracle\KEY_OraClient11g_home1',\
+             'HKLM\SOFTWARE\Oracle\KEY_OraClient10g_home1')
+  {if nvl(getReg64Value($key,'OLEDB'),\
+          getReg32Value($key,'OLEDB'))
+    return setHcveResult('Adequate')
+  }
+ }
+ else
+ {loop $key ('HKLM\SOFTWARE\Oracle\KEY_OraDB11g_home1',\
+             'HKLM\SOFTWARE\Oracle\KEY_OraDB10g_home1',\
+             'HKLM\SOFTWARE\Oracle\KEY_OraClient11g_home1',\
+             'HKLM\SOFTWARE\Oracle\KEY_OraClient10g_home1',\
+             'HKLM\SOFTWARE\Wow6432NodeOracle\KEY_OraDB11g_home1',\
+             'HKLM\SOFTWARE\Wow6432NodeOracle\KEY_OraDB10g_home1',\
+             'HKLM\SOFTWARE\Wow6432NodeOracle\KEY_OraClient11g_home1',\
+             'HKLM\SOFTWARE\Wow6432NodeOracle\KEY_OraClient10g_home1')
+  {if getRegValue($key,'OLEDB')
+    return setHcveResult('Adequate')
+  }
+ }
+ return setHcveResult('notInstalled')
+}
+var @pth = command('which oledb')
+if or(match($pth[0],'^no oledb'),match($pth[0],'command not found',true))
+ return setHcveResult('notInstalled')
+if !findCommand('oledb')
+ return setHcveResult('notFound')
+call setHcveResult('Adequate')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the Oracle OLEDB driver(s) are adequate for the products in the install product list.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[There are no Oracle OLEDB driver dependent products in the install products list.]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[Oracle OLEDB driver(s) are installed. No action needed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is an issue with OLEDB driver(s). Refer to ${`BOOK_EPM_STRT} for requirements.
+|*Return Value*|*Action*|
+|notFound|oledb not found|
+|notInstalled|No OLEDB driver is installed.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11000" mode="VERIFY" name="Active Hyperion Repository?">
+<sdp_command type="PROMPT" default="N" variable="$DB_ON"><![CDATA[Is the Hyperion Shared Services database Repository (Hyperion Repository) configured and running on an Oracle database (y/n)?]]></sdp_command>
+<sdp_command type="RDA"><![CDATA[import $DB_ON
+call setHcveResult(cond(match($DB_ON,'^(y|Y)'),'OK','notOK'))
+]]></sdp_command>
+<sdp_description syntax="wiki"><![CDATA[This rule asks if the Hyperion Shared Services database Repository (Hyperion Repository) is ready for checking. An answer of yes, will require:%BR%1. The location of the Hyperion Repository or Hyperion Repository client.%BR%2. The connection identifier for the Hyperion Repository.%BR%3. The user name and password for the Hyperion Repository.%BR%4. Temporary tablespace label.%BR%5. EPM tablespace label.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="OK" result="PASSED"><![CDATA[The Hyperion Repository can be checked.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The Hyperion Shared Services database Repository must be installed and properly configured before installing EPM.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11010" mode="RECORD" name="Home Hyperion Repository">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="$ORACLE_HOME" variable="$DB_ORACLE_HOME"><![CDATA[Hyperion Repository or Hyperion Repository Client Home]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the Hyperion Repository home or its client's home.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A11020" mode="RECORD" name="Connection Identifier Hyperion Repository">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Shared Services database Repository be active.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="-" variable="$DB_CI"><![CDATA[Connection Identifier for the Hyperion Repository]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the connection identifier for the Oracle Repository.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A11030" mode="RECORD" name="Username Hyperion Repository">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="$DB_USR" variable="$DB_USR"><![CDATA[User name for Hyperion Repository]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the user name for the Hyperion Shared Services database Repository.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A11040" mode="RECORD" name="Temp Tablespace">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="TEMP" variable="$TMP_TSP"><![CDATA[Temporary tablespace label]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the temporary tablespace name for the database.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A11050" mode="RECORD" name="EPM Tablespace">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="PROMPT" default="EPM" variable="$EPM_TSP"><![CDATA[EPM tablespace label]]></sdp_command>
+<sdp_description><![CDATA[This rule obtains the EPM tablespace name for the database.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A11100" mode="VERIFY" name="Access Hyperion Repository?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DB_CI,$DB_USR,$EPM_TSP,$TMP_TSP,$DB_ORACLE_HOME
+var $loc = setEnv('ORACLE_HOME',$DB_ORACLE_HOME)
+call setSqlTimeout(0)
+call setSqlLogin($DB_USR,undef,$DB_CI,false)
+if testSql()
+ return setHcveResult(concat('Connection error: [',getSqlMessage(),']'))
+else
+{set $sql
+ {SELECT 'version=' || version
+ " FROM v$instance;
+ "SELECT 'role=' || role
+ " FROM session_roles;
+ "SELECT 'privilege=' || privilege
+ " FROM session_privs
+ " WHERE privilege IN ('CREATE SESSION','CREATE VIEW');
+ "SELECT 'CharacterSet=' || value
+ " FROM nls_database_parameters
+ " WHERE upper(parameter) = 'NLS_CHARACTERSET';
+ "SELECT lower(name) || '=' || value
+ " FROM v$parameter
+ " WHERE lower(name) IN ('db_block_size',
+                         'processes',
+                         'sessions');
+ }
+ if match($EPM_TSP,'^[A-Za-z0-9][\w\$\#]{0,29}$')
+ {append $sql
+  {SELECT 'EPMSpace=' || SUM(bytes)
+  " FROM dba_data_files
+  " WHERE tablespace_name = UPPER(':2')
+  " GROUP BY tablespace_name;
+  "SELECT 'data|' || file_name || '|' || autoextensible || '|' || increment_by
+  " FROM dba_data_files
+  " WHERE tablespace_name = UPPER(':2');
+  }
+ }
+ if match($TMP_TSP,'^[A-Za-z0-9][\w\$\#]{0,29}$')
+ {append $sql
+  {SELECT 'TempSpace=' || SUM(x)
+  " FROM (SELECT bytes_cached x
+  "        FROM v$temp_extent_pool
+  "        WHERE tablespace_name = UPPER(':3')
+  "       UNION
+  "       SELECT bytes_free x
+  "        FROM v$temp_space_header
+  "        WHERE tablespace_name = UPPER(':3')
+  "      );
+  }
+ }
+}
+call setHcveResult(cond(loadSql(bindSql($sql,$DB_USR,$EPM_TSP,$TMP_TSP)),'OK',\
+                         concat('Load error: [',getSqlMessage(),']')))
+call setEnv('ORACLE_HOME',$loc)
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the database user has adequate privileges.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="OK" result="PASSED"><![CDATA[HCVE has loaded the required information from the database. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Take appropriate actions to fix the reported error.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11110" mode="VERIFY" name="Database Version?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+call setHcveResult(value(grepLastSql('^version=','f')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the databases is 11g, as required.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^11\." result="PASSED"><![CDATA[The database is 11g. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The database was not determined to be 11g. Ensure that an 11g database is used for the Hyperion Repository.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11120" mode="VERIFY" name="User Roles and Privileges?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var (@tbl,%rol,%prv) = ()
+
+loop $lin (grepLastSql('^role='))
+ var $rol{value($lin)} = 1
+if and(missing($rol{'RESOURCE'}),missing($rol{'DBA'}))
+ call push(@tbl,'RESOURCE')
+
+loop $lin (grepLastSql('^privilege='))
+ var $prv{value($lin)} = 1
+loop $nam ('CREATE SESSION','CREATE VIEW')
+{if missing($prv{$nam})
+  call push(@tbl,$nam)
+}
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user has the RESOURCE role, and CREATE SESSION and CREATE VIEW privileges.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="OK" result="PASSED"><![CDATA[The user has the required roles and privileges.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The user does not have some required role or privilege.
+|*Return Value*|*Action*|
+|RESOURCE|The user must have the RESOURCE role added. Take appropriate action.|
+|CREATE SESSION|The user must have the CREATE SESSION privilege. Take appropriate action.|
+|CREATE VIEW|The user must have the CREATE VIEW privilege. Take appropriate action.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11130" mode="VERIFY" name="Database Character Set?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if grepLastSql('^CharacterSet=','f')
+ return setHcveResult(value(last))
+return setHcveResult('notDetermined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the repository database is using the AL32UTF8 character set.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="AL32UTF8" result="PASSED"><![CDATA[The repository database is set to use the ``AL32UT8`` character set, as required.]]></sdp_action>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED"><![CDATA[HCVE was unable to determine the character set selected for the repository database. It must be ``AL32UTF8``. Make any corrections required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The repository character set must be changed to ``AL32UTF8``.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11140" mode="VERIFY" name="Number Database Processes?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if grepLastSql('^processes=','f')
+ return setHcveResult(value(last))
+return setHcveResult('notDetermined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the repository database is set for 600 or more processes.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED"><![CDATA[HCVE was unable to determine the number of processes set for the repository database. It must be set to ``600`` or more. Make any corrections required.]]></sdp_action>
+<sdp_action condition=">=" minimum="600" result="PASSED"><![CDATA[The repository database is set for 600 or more processes, as required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The number of processes for the repository must be changed to ``600`` or more.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11150" mode="VERIFY" name="Number Database Sessions?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if grepLastSql('^sessions=','f')
+ return setHcveResult(value(last))
+return setHcveResult('notDetermined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the repository database is set for 750 or more sessions.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED"><![CDATA[HCVE was unable to determine the number of sessions set for the repository database. It must be set to ``750`` or more. Make any corrections required.]]></sdp_action>
+<sdp_action condition=">=" minimum="750" result="PASSED"><![CDATA[The repository database is set for 750 or more sessions, as required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The number of sessions for the repository must be changed to ``750`` or more.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11200" mode="VERIFY" name="Temp Tablespace (GiB)?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if grepLastSql('^TempSpace=','f')
+ return setHcveResult(expr('/',value(last),1073741824))
+return setHcveResult('notDetermined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the temporary tablespace is 1 GiB or more.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED"><![CDATA[HCVE was unable to determine the size of the temporary tablespace. It must be 1 GiB or more. Make any corrections required.]]></sdp_action>
+<sdp_action condition=">=" minimum="1" result="PASSED"><![CDATA[The temporary tablespace is 1 GiB or more, as required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The size of the temporary tablespace must be increased to 1 GiB or more.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11300" mode="VERIFY" name="EPM Tablespace (GiB)?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if grepLastSql('^EPMSpace=','f')
+ return setHcveResult(expr('/',value(last),1073741824))
+return setHcveResult('notDetermined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the EPM repository tablespace is 1 GiB or more.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED"><![CDATA[HCVE was unable to determine the size of the EPM repository tablespace. It must be 1 GiB or more. Make any corrections required.]]></sdp_action>
+<sdp_action condition=">=" minimum="1" result="PASSED"><![CDATA[The EPM repository tablespace is 1 GiB or more, as required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The size of the EPM repository tablespace must be increased to 1 GiB or more.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11310" mode="VERIFY" name="EPM Auto Extend?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if grepLastSql('^data\|','f')
+ return setHcveResult(field('\|',2,last))
+return setHcveResult('notDetermined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the EPM repository tablespace is set for Auto Extend.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED"><![CDATA[HCVE was unable to determine if Auto Extend is selected or not. It must be selected. Make any corrections required.]]></sdp_action>
+<sdp_action condition="==" minimum="YES" result="PASSED"><![CDATA[The EPM repository tablespace is set for Auto Extend, as required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The EPM repository tablespace is not set for Auto Extend. Make the necessary change.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11320" mode="VERIFY" name="Extend Size (MiB)?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A11000" minimum="PASSED" result="SKIPPED" value="Hyperion Repository not ready"><![CDATA[This rule requires that the Hyperion Repository be active.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A11100" minimum="PASSED" result="SKIPPED" value="Hyperion Repository access failed"><![CDATA[This rule requires that the Hyperion Repository access be successful.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $siz = value(grepLastSql('^db_block_size=','f'))
+if !isNumber($siz)
+ return setHcveResult('blockSizeUnknown')
+if grepLastSql('^data\|','f')
+ return setHcveResult(expr('/',expr('*',$siz, field('\|',3,last)),1048576))
+return setHcveResult('notDetermined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the size of extend is 500 MiB or more, as required.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="notDetermined" result="FAILED"><![CDATA[HCVE was unable to determine the size of each extend. It must be 500 MiB or more. Make any corrections required.]]></sdp_action>
+<sdp_action condition="==" minimum="blockSizeUnknown" result="FAILED"><![CDATA[HCVE was unable to determine the database's block size.]]></sdp_action>
+<sdp_action condition=">=" minimum="500" result="PASSED"><![CDATA[The EPM repository tablespace is set for extends of 500 MiB or more, as required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The EPM repository tablespace is not set for extends of 500 MiB or more, as required. Make the necessary change.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="DIR" title="Installer Directory Checks">
+
+<sdp_rule id="A20000" mode="RECORD" name="Installer Location">
+<sdp_command type="PROMPT" default="$ORACLE_HOME" variable="$EPM_INSTALLER_HOME"><![CDATA[Installer (installTool) location]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts for the installer location. The location where ``installTool`` is located and will be run.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A20001" mode="VERIFY" name="Valid Installer Location?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A20000" minimum="RECORD" result="SKIPPED" value="No installer location"><![CDATA[Requires an installer location.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_INSTALLER_HOME
+var @tbl = ()
+var $pat = cond(isWindows(),'[\000-\054\057\073-\100\133\^\140\173-\175\177]',\
+                isCygwin(), '[\000-\054\057\073-\100\133\^\140\173-\175\177]',\
+                            '[\000-\054\073-\100\133\134\^\140\173-\175\177]')
+var $pth = replace($EPM_INSTALLER_HOME,'^([A-Za-z]:)','')
+if !testDir('e',$EPM_INSTALLER_HOME)
+ return setHcveResult('notExist')
+if match($pth,$pat)
+ call push(@tbl,'notValidCharacter')
+if expr('>',length($EPM_INSTALLER_HOME),100)
+ call push(@tbl,'tooLong')
+return setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Valid'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the installer location is valid.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Valid" result="PASSED"><![CDATA[The installer location is valid.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is an issue with the installer location.
+|*Return Value*|*Action*|
+|notExist|The installer location does not exist. Repeat checks with correct installer location.|
+|notValidCharacter|The path to the installer location contains characters other than letters, numbers, "-", "_", "~", and ".". The path must be corrected.|
+|tooLong|The path to the installer location contains more than 100 characters. The path must be corrected.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A20010" mode="VERIFY" name="installTool OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A20001" minimum="PASSED" result="SKIPPED" value="Installer location invalid"><![CDATA[Requires a valid installer location.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_INSTALLER_HOME
+return setHcveResult(cond(\
+  testFile('x',catFile($EPM_INSTALLER_HOME,'installTool.sh')),\
+    'Executable',\
+  testFile('r',catFile($EPM_INSTALLER_HOME,'installTool.cmd')),\
+    'Executable',\
+  testFile('x',catFile($EPM_INSTALLER_HOME,'installTool')),\
+    'Executable',\
+  testFile('f',catFile($EPM_INSTALLER_HOME,'installTool.sh')),\
+    'Found',\
+  testFile('f',catFile($EPM_INSTALLER_HOME,'installTool.cmd')),\
+    'Found',\
+  testFile('f',catFile($EPM_INSTALLER_HOME,'installTool')),\
+    'Found',\
+ 'NotFound'))
+call setHcveResult('NotFound')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that ``installTool`` is present and executable.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Executable" result="PASSED"><![CDATA[``installTool`` is present and executable in the installation directory.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NotFound|``installTool`` is not present in the ${`INSTALLER_HOME} directory. Verify the presence of ``installTool`` in the installer directory.|
+|Found|Ensure that the installing user has the privileges required to execute ``installTool``.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A20020" mode="VERIFY" name="User Access?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A20001" minimum="PASSED" result="SKIPPED" value="Installer location must be valid"><![CDATA[Requires a valid installer location.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_INSTALLER_HOME,$EPM_VERSION
+var @tbl = ()
+if !testDir('r',$EPM_INSTALLER_HOME)
+ call push(@tbl,'notRead')
+if and(compare('OLDER',$EPM_VERSION,'11.1.2.2'),\
+       not(testDir('w',$EPM_INSTALLER_HOME)))
+ call push(@tbl,'notWrite')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Acceptable'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the user has the required access to the installer location.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Acceptable" result="PASSED"><![CDATA[The user has the required access to the installer location. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The user does not have the required access to the installer location.
+|*Return Value*|*Action*|
+|notRead|The user does not have read permission to the installer location.|
+|notWrite|The user does not have write permission to the installer location.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+<sdp_rule id="A20030" mode="VERIFY" name="Installer Files OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A20000" minimum="RECORD" result="SKIPPED"><![CDATA[Requires the EPM Installer directory.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A20001" minimum="PASSED" result="SKIPPED"><![CDATA[Requires that the EPM Installer directory is valid.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_INSTALLER_HOME
+call setHcveVariable('$TOP_ASSEMBLIES')
+var ($TOP_ASSEMBLIES,@tbl) = (catDir($EPM_INSTALLER_HOME,'assemblies'))
+if findDir($TOP_ASSEMBLIES,'\w','n')
+{loop $dir (last)
+ {var $cnt = 0
+  loop $sub (findDir([$TOP_ASSEMBLIES,$dir],'^11\.'))
+  {var $dat = catFile($sub,'assembly.dat')
+   if !testFile('f',catFile($TOP_ASSEMBLIES,$dat))
+    call push(@tbl,concat($dat,' missing'))
+   elsif !testFile('r',lastFile())
+    call push(@tbl,concat($dat,' not readable'))
+   elsif testFile('z',lastFile())
+    call push(@tbl,concat($dat,' empty'))
+   incr $cnt
+  }
+  if !$cnt
+   call push(@tbl,concat('No assemblies in ',$dir))
+  elsif decr($cnt)
+   call push(@tbl,concat('Multiple assemblies in ',$dir))
+ }
+}
+else
+ return setHcveResult('NoInstallFiles')
+
+if !testDir('d',catDir($EPM_INSTALLER_HOME,'jre'))
+ call push(@tbl,'jre missing')
+elsif !testDir('r',lastDir())
+ call push(@tbl,'jre not readable')
+
+if !testFile('f',catFile($EPM_INSTALLER_HOME,'setup.jar'))
+ call push(@tbl,'setup.jar missing')
+elsif !testFile('r',lastFile())
+ call push(@tbl,'setup.jar not readable')
+elsif !getSize(lastFile())
+ call push(@tbl,'setup.jar empty')
+
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OK'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the files in the installer directory have loaded correctly.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition='==' minimum="OK" result="PASSED"><![CDATA[No issues were found in the installer directory.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Issues were found in the installer directory that indicate the product installation files did not all load correctly. Analyze the findings and take appropriate corrective action.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A20100" mode="RECORD" name="HTTP Server Package Checker">
+<sdp_dependencies>
+<sdp_dependency condition="!~" id="A00110" minimum="Windows" result="SKIPPED" value="Does not apply to Windows"><![CDATA[This rule does not apply to Windows.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A20001" minimum="PASSED" result="SKIPPED" value="Installer directory not valid"><![CDATA[Requires that the EPM Installer directory is valid.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $EPM_INSTALLER_HOME
+if !testFile('x',catFile($EPM_INSTALLER_HOME,'ohs','Disk1','runInstaller'))
+ return setHcveResult('could not be run')
+var @rsp = command(concat(\
+  catDir($EPM_INSTALLER_HOME,'ohs','Disk1','runInstaller'),\
+  ' -p -response',\
+  catFile('~','oraInventory')))
+return setHcveResult(join("\012",@rsp))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule runs the Oracle HTTP Server Packages Checker and reports the findings.]]></sdp_description>
+</sdp_rule>
+
+</sdp_group>
+
+<sdp_group exec="0" id="DEL" title="Prior Installs Removed">
+
+<sdp_rule id="A30000" mode="VERIFY" name="Ports Active?">
+<sdp_command type="RDA"><![CDATA[var (%tbl,%use) = ()
+loop $lin (grepCommand('netstat -an','LISTEN|ESTABLISHED'))
+{if match($lin,'[\.:](\d+)\s')
+  var $use{last} = 1
+}
+loop $req (\
+  '80','135','1423','3388','5300','6373','6756','8001','8200','8297','8299',\
+  '8300','8500','8700','9097','10080','11333','13080','16000','19091','28080')
+{if exists($use{$req})
+  var $tbl{$req} = 1
+}
+loop $prt (keys(%use))
+{if expr('<',$prt,5140)
+ {if expr('>=',$prt,5100)
+   var $tbl{$prt} = 2
+ }
+ elsif expr('<',$prt,5255)
+ {if expr('>=',$prt,5250)
+   var $tbl{$prt} = 2
+ }
+ elsif expr('<',$prt,6805)
+ {if expr('>=',$prt,6800)
+   var $tbl{$prt} = 2
+ }
+ elsif expr('<',$prt,6817)
+ {if expr('>=',$prt,6810)
+   var $tbl{$prt} = 2
+ }
+ elsif expr('<',$prt,33768)
+ {if expr('>=',$prt,32768)
+   var $tbl{$prt} = 2
+ }
+}
+var @tbl = keys(%tbl,'IA')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'portsInactive'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if any of the ports normally used by EPM products are active.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="portsInactive" result="PASSED"><![CDATA[The ports normally used by EPM products are not active. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Ports normally used by EPM products are active. Determine what is using the port(s) to ensure it is not a previous installation. Executing ``netstat -nab > netstat.txt`` and examining the resulting ``netstat.txt`` file may assist in this analysis.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A30010" mode="VERIFY" name="Environment Clean?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+var $cmd = cond(isWindows(),'set','env')
+loop $lin (grepCommand($cmd,'(Hyperion|Middleware|Oracle).*=','i'))
+ call push(@tbl,key($lin))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Clean'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the environment variables do not have settings from prior Oracle installations.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Clean" result="PASSED"><![CDATA[No evidence of prior Oracle installations was found in the environment variables.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Environment variables were found that contained settings from Oracle installations.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A30020" mode="VERIFY" name="Central Inventory?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+if or(isWindows(),isCygwin())
+{if cond(hasRegOption(),\
+   nvl(getReg64Value('HKLM\SOFTWARE\Oracle','inst_loc'),\
+       getReg32Value('HKLM\SOFTWARE\Oracle','inst_loc')),\
+   getRegValue('HKLM\SOFTWARE\Oracle','inst_loc'))
+  return setHcveResult(cond(testDir('d',last),last,'NotFound'))
+ loop $dir (getEnv('PROGRAMFILES'),getEnv('ProgramW6432'))
+ {next !?$dir
+  if testDir('d',catDir($dir,'Oracle','Inventory'))
+   return setHcveResult(lastDir())
+ }
+ return setHcveResult('NotFound')
+}
+loop $dir ('~/oraInventory','~/.oracle.instances')
+{if ?($rsp) = grepCommand(concat('env ',$dir),'oraInst.loc','f')
+ {call push(@tbl,catFile($dir,'oraInst.loc'))
+  loop $lin (loadFile(catFile($dir,'oraInst.loc')))
+  {if testDir('e',$lin)
+    call push(@tbl,$lin)
+  }
+ }
+}
+return setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'NotFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the central inventory does not exist.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NotFound" result="PASSED"><![CDATA[No evidence of prior Oracle installations was found in the search for central inventory.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Locations were found that contained remenants from Oracle installations.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A30030" mode="VERIFY" name="Directories Clean?">
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+if or(isWindows(),isCygwin())
+{var %dir = (\
+   catDir(${ENV.USERPROFILE},'.oracle.instances'),1,\
+   catDir(${ENV.SYSTEMDRIVE:'C:'},'Oracle','Middleware'),1)
+ loop $key ('PROGRAMFILES','ProgramFiles(x86)','ProgramW6432')
+ {if getEnv($key)
+   var $dir{catDir(last,'Oracle Hyperion Disclosure Management')} = 1
+ }
+ loop $dir(keys(%dir))
+ {if testDir('e',$dir)
+   call push(@tbl,$dir)
+ }
+ var %dir = ()
+ loop $key ('COMMONPROGRAMFILES','CommonProgramFiles(x86)','CommonProgramW6432')
+ {if getEnv($key)
+   var $dir{catDir(last,'InstallShield')} = 1
+ }
+ loop $dir (keys(%dir))
+  call push(@tbl,findDir($dir,'(brio|hyperion|oracle|universal)','i'))
+}
+else
+ call push(@tbl,grepCommand('env /','(/Oracle|/Middleware|/EPMSystem)'))
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Clean'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the directories do not have evidence of prior Oracle installations.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Clean" result="PASSED"><![CDATA[No directory evidence was found of prior Oracle installations.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Evidence was found in the directories of prior Oracle installations.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A30040" mode="VERIFY" name="Microsoft Registry Clean?">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A00110" minimum="Windows" result="SKIPPED" value="Only applies to Windows"><![CDATA[This rule only applies to Windows.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var @tbl = ()
+var $key = 'HKCU\Software'
+call push(@tbl,grepCommand(concat('reg query "',$key,'"'),\
+  '(^HK.*\\(Brio|Hyperion( .*)?|Oracle))\s*$','i1'))
+loop $key ('HKLM\SOFTWARE','HKLM\SOFTWARE\wow6432node')
+{var @lst = grepCommand(concat('reg query "',$key,'"'),\
+   '(^HK.*\\(Brio|Hyperion( .*)?|Oracle))\s*$','i1')
+ call push(@tbl,grep(@lst,'Oracle\s+MyDesktop','iv'))
+}
+loop $key ('HKLM\SYSTEM\ControlSet001\Services',\
+           'HKLM\SYSTEM\ControlSet002\Services',\
+           'HKLM\SYSTEM\ControlSet003\Services')
+ call push(@tbl,grepCommand(concat('reg query "',$key,'"'),\
+   '(^HK.*\\(Hyperion|Oracle HyS9))\s*$','i1'))
+var $pre = 'HKLM\SYSTEM\CurrentControlSet\Services'
+call push(@tbl,grepCommand(concat('reg query "',$key,'"'),\
+  '(^HK.*\\(BPS|Hyperion|HyS9|Oracle))\s*$','i1'))
+var $key = concat('HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\',\
+  'Uninstall\{A713F236-6F27-4779-AD70-C1290CBC99B6}')
+if match(getRegValue($key,'EPMINS-00665'),'0x80000002')
+ call push(@tbl,$key)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Clean'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the registry does not have settings from prior Oracle installations.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Clean" result="PASSED"><![CDATA[No evidence of prior Oracle installations was found in the registry.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Registry entries were found indicating prior Oracle installations.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+
+</sdp_content>
+</sdp_diaglet>

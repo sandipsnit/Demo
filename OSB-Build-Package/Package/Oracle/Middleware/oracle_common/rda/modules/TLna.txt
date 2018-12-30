@@ -1,0 +1,376 @@
+<!-- $Id: TLna.txt,v 2.4 2012/08/22 13:51:48 mschenke Exp $ -->
+<!-- $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TLna.txt,v 2.4 2012/08/22 13:51:48 mschenke Exp $ -->
+<Network_Advisor>
+<Formats>
+<Adapter name='COMMON'>
+<Format type='METHOD' name='LDAP' status='T'><![CDATA[Centralized naming.
+ A naming method that resolves a database service or net service name to a
+ connect descriptor, stored in a central directory server.]]></Format>
+<Format type='METHOD' name='LOCAL' status='T'><![CDATA[Localized naming.
+ A naming method that locates network addresses by using information configured
+ and stored on each individual client's tnsnames.ora file. Local naming is most
+ appropriate for simple distributed networks with a small number of services
+ that change infrequently.]]></Format>
+<Format type='METHOD' name='ONAMES' status='T'><![CDATA[Centralized naming.
+ An Oracle directory service made up of a system of Oracle Names servers that
+ provide name-to-address resolution for each service on the network.]]></Format>
+<Format type='SECTION' name='TNS12154' status='T'><![CDATA[---## Trace
+ Assessment for the TNS-12154 Messsage (Could not resolve service name)]]></Format>
+<Format type='SECTION' name='TNS12154' status='F'><![CDATA[This message
+ indicates that Oracle Net could not find the alias specified for a connection
+ in the client's tnsnames.ora file or other naming adapter.]]></Format>
+<Format type='SECTION' name='TNS12541' status='T'><![CDATA[---## Trace
+ Assessment for the TNS-12541 Messsage (no listener)]]></Format>
+<Format type='SECTION' name='TNS12541' status='F'><![CDATA[This message occurs
+ when the listener for the destination server is down or unreachable when you
+ try to connect. This can be due to the listener not being started or being
+ incorrectly configured, or it can be due to a network connection problem.]]></Format>
+<Format type='SUMMARY' name='NAMESDEFDOMAIN' status='T'>${`NAMESDEFDOMAIN}</Format>
+<Format type='SUMMARY' name='NAMESDIRECTORY' status='F'><![CDATA[The parameter
+ 'NAMES.DIRECTORY_PATH' does NOT exist in the sqlnet.ora file. The parameter
+ defaults to using the LOCAL adapter.%BR%
+**Suggestion**: Explicitly provide an entry in the sqlnet.ora file:
+ NAMES.DIRECTORY_PATH= (TNSNAMES, ONAMES, HOSTNAME)]]></Format>
+<Format type='SUMMARY' name='NAMESDIRECTORY' status='T'>${`NAMESDIRECTORY}</Format>
+<Format type='SUMMARY' name='PFILE' status='T'>${`PFILE}</Format>
+<Format type='SUMMARY' name='SERVICENAME' status='T'>${`SERVICENAME}</Format>
+<Format type='SUMMARY' name='TRACELVL' status='F'><![CDATA[The trace file level
+ was not found.]]></Format>
+<Format type='SUMMARY' name='TRACELVL' status='T'>${`TRACELVL}</Format>
+<Format type='SUMMARY' name='TRACENAME' status='T'>${`TRACENAME}</Format>
+</Adapter>
+<Adapter name='LDAP'>
+<Format type='SECTION' name='TITLE' status='F'><![CDATA[Some of the findings
+ may not apply, depending on the naming method you have
+ configured.%BR%&nbsp;]]></Format>
+<Format type='SECTION' name='TITLE' status='T'><![CDATA[---+ LDAP Naming Method]]></Format>
+<Format type='FINDING' name='COND_T_OPENSYNCCONN_T_LDAPQUERYUNSUCCESSFUL'
+ status='T'><![CDATA[The distinguished name ${QUERYDIRDISTINQUISHNAME} could
+ not be found in the LDAP server located at host=${`LDAPHOST} and
+ port=${`LDAPPORT}.]]></Format>
+<Format type='ADVICE' name='COND_T_OPENSYNCCONN_T_LDAPQUERYUNSUCCESSFUL'
+ status='T'><![CDATA[Possible reasons for failures include:
+%SEQ%The distinguished name's attributes and values are incorrect.
+%NEXT%This entry does not exist within the directory.
+%NEXT%The DEFAULT_ADMIN_CONTEXT parameter in the ldap.ora file is incorrect.
+%NEXT%The host and port values in the ldap.ora file point to an alternate LDAP
+ location.
+%ENDSEQ%]]></Format>
+<Format type='FINDING' name='COND_T_OPENSYNCCONN_T_LDAPOPENFAIL'
+ status='T'><![CDATA[The underlying protocol could not contact the OID server
+ located at ${`LDAPHOST} on port ${`LDAPPORT}.]]></Format>
+<Format type='ADVICE' name='COND_T_OPENSYNCCONN_T_LDAPOPENFAIL'
+ status='T'><![CDATA[Please perform the following:
+%SEQ%Make sure the host ${`LDAPHOST} and port number ${`LDAPPORT} are correctly
+ defined in the ldap.ora file.
+%NEXT%Verify the OS command ``ping ${LDAPHOST}`` or ``telnet ${LDAPHOST}``
+ works.
+%NEXT%If using OID, verify oidmon and oidldapd are running on the OID server.
+%NEXT%If a firewall is in place, verify it allows traffic to communicate on
+ port ${`LDAPPORT}.
+%ENDSEQ%]]></Format>
+<Format type='FINDING' name='COND_T_QUERYDIRDIST_T_QUERYUNSUCCESS_T_SVCNOTFND'
+ status='T'><![CDATA[The service name ${`QUERYDIRDISTINQUISHNAME} was not found
+ in the directory server located at ${`LDAPHOST} on port ${`LDAPPORT}. Reasons
+ include:
+%SEQ%The full DN of the service name is incorrect.
+%NEXT%The ldap.ora parameter DEFAULT_ADMIN_CONTEXT may be incorrect. An
+ alternate directory server is being contacted.
+%ENDSEQ%]]></Format>
+<Format type='FINDING' name='LDAPORANOTEXIST' status='T'><![CDATA[The ldap.ora
+ file does not exist.]]></Format>
+<Format type='ADVICE' name='LDAPORANOTEXIST' status='T'><![CDATA[ldap.ora must
+ be located in $ORACLE_HOME/network/admin and TNS_ADMIN environment variable
+ can not be used to relocate the file.]]></Format>
+<Format type='SUMMARY' name='QUERYDIRDISTINQUISHNAME' status='T'>${`QUERYDIRDISTINQUISHNAME}</Format>
+</Adapter>
+<Adapter name='LOCAL'>
+<Format type='SECTION' name='TITLE' status='F'><![CDATA[Some of the findings
+ may not apply, depending on the naming method you have
+ configured.%BR%&nbsp;]]></Format>
+<Format type='SECTION' name='TITLE' status='T'><![CDATA[---+ LOCAL Naming Method]]></Format>
+<Format type='ADVICE' name='ALIASDOM' status='T'><![CDATA[The service name
+ ${`SERVICENAME} concatenated with the domain name ${`NAMESDEFDOMAIN} matches
+ an entry in the ${`TNSNAMES:tnsname.ora file}.
+ No further action is needed.]]></Format>
+<Format type='ADVICE' name='COND_F_ALDOM_T_DOM' status='T'><![CDATA[Since the
+ NAMES.DEFAULT_DOMAIN parameter has a value set either:
+%SEQ%Add a TNS service name entry for
+ ``${NAMESDEFDOMAIN?${SERVICENAME}.${NAMESDEFDOMAIN}:${SERVICENAME}}`` in the
+ TNSNAMES.ORA; or
+%NEXT%Try commenting out the NAMES.DEFAULT_DOMAIN parameter from the sqlnet.ora
+ file.
+%ENDSEQ%]]></Format>
+<Format type='ADVICE' name='COND_NOSERVICE_DOMSET_DIRSET' status='T'><![CDATA[If
+ the alias ${`SERVICENAME} exists in the tnsnames.ora file.%BR%
+Try commenting out the NAMES.DEFAULT_DOMAIN parameter from the sqlnet.ora file
+ and retrying the operation.]]></Format>
+<Format type='ADVICE' name='COND_T_ALDOM_DIFFDOMS' status='T'><![CDATA[The
+ service name used ${`SERVICENAME} contains a domain name that is different
+ from what is set in the NAMES.DEFAULT_DOMAIN parameter set in the sqlnet.ora
+ file.]]></Format>
+<Format type='ADVICE' name='COND_T_ALDOM_F_DOM' status='T'><![CDATA[The alias
+ ${`SERVICENAME} you have entered exists in the tnsnames.ora file
+ ${`TNSNAMES:''&lt;tnsnames.ora could not be determined&gt;''}, but there seems
+ to be a domain appended to it.
+%SEQ%Try connecting with the fully qualified alias as your connect string.
+%NEXT%Try adding the parameter 'NAMES.DEFAULT_DOMAIN' to your ${`PFILE} file
+ with a value equal to the domain appended to your alias in the tnsnames.ora
+ file.
+%ENDSEQ%]]></Format>
+<Format type='FINDING' name='LOCALQUERYNAMENOTFOUND' status='T'><![CDATA[The
+ tnsnames.ora entry ${`LOCALQUERYNAME} was not found in the tnsnames.ora file.]]></Format>
+<Format type='ADVICE' name='LOCALQUERYNAMENOTFOUND' status='T'><![CDATA[If the
+ TNS alias ${`LOCALQUERYNAME} does not exist in the ${`TNSNAMES} file, manually
+ add an entry for ${`LOCALQUERYNAME} in the tnsnames.ora file using a text
+ editor, or use the net configuration tools (e.g. Oracle Net Configuration
+ Assistant or Oracle Net Manager) to add the entry to the tnsnames.ora
+ file.]]></Format>
+<Format type='FINDING' name='LOCALQUERYUNSUCCESSFUL' status='T'><![CDATA[To
+ resolve ${`SERVICENAME}, Oracle Net checked:
+%SEQ%System names file: ${`SYSTEMNAMESFILE:''(undetermined)''},
+%NEXT%Local names file: ${`LOCALNAMESFILE:''(undetermined)''}.
+%ENDSEQ%]]></Format>
+<Format type='ADVICE' name='LOCALQUERYUNSUCCESSFUL' status='T'><![CDATA[
+Generally, there are several possible courses of action:
+%SEQ%Make sure a TNS service name entry for
+ ``${NAMESDEFDOMAIN?${SERVICENAME}.${NAMESDEFDOMAIN}:${SERVICENAME}}`` in the
+ tnsnames.ora file exists.
+%NEXT%The wrong tnsnames.ora file is being read. Confirm that ${`TNSNAMES:it}
+ is the expected file.
+%NEXT%Make sure the alias ${`LOCALQUERYNAME} is spelled correctly in the
+ tnsnames.ora.
+%NEXT%Try commenting out the NAMES.DEFAULT_DOMAIN parameter from the sqlnet.ora
+ file.
+%ENDSEQ%]]></Format>
+<Format type='FINDING' name='NAMESDEFDOMAIN' status='F'><![CDATA[The
+ NAMES.DEFAULT_DOMAIN parameter is not specified the ${`PFILE} file, so a net
+ service name in the form of 'alias.domain' is not required.]]></Format>
+<Format type='FINDING' name='NAMESDEFDOMAIN' status='T'><![CDATA[
+NAMES.DEFAULT_DOMAIN parameter is set to ${`NAMESDEFDOMAIN} in the ${`PFILE}
+ file.]]></Format>
+<Format type='ADVICE' name='NAMESDEFDOMAIN' status='T'><![CDATA[If the alias
+ ${`SERVICENAME} exists in the tnsnames.ora file, try commenting out the
+ NAMES.DEFAULT_DOMAIN parameter from the sqlnet.ora file and retrying the
+ operation.]]></Format>
+<Format type='FINDING' name='NAMESUCCESSFULLYQUERIED' status='T'><![CDATA[The
+ trace file indicates the service name ${`SERVICENAME} was resolved (Name
+ successfully queried).]]></Format>
+<Format type='FINDING' name='SERVICENAME' status='T'><![CDATA[The connect
+ string attempted was ${`SERVICENAME}.]]></Format>
+<Format type='FINDING' name='SYNTAXERRTNSNAMES' status='T'><![CDATA[There were
+ **syntax errors (NL-00427)** found in the trace file for the tnsnames.ora
+ file.]]></Format>
+<Format type='ADVICE' name='SYNTAXERRTNSNAMES' status='T'><![CDATA[There were
+ syntax errors in the tnsnames.ora file in the form of a misplaced
+ parenthesis.%BR%Please use the net configuration tools to recreate the
+ tnsnames.ora file, or manually correct the problem.]]></Format>
+<Format type='SUMMARY' name='LOCALQUERYNAME' status='T'>${`LOCALQUERYNAME}</Format>
+<Format type='SUMMARY' name='TNSNAMES' status='T'>${`TNSNAMES:''Could not be determined''}</Format>
+</Adapter>
+<Adapter name='ONAMES'>
+<Format type='SECTION' name='TITLE' status='F'><![CDATA[Some of the findings
+ may not apply, depending on the naming method you have
+ configured.%BR%&nbsp;]]></Format>
+<Format type='SECTION' name='TITLE' status='T'><![CDATA[---+ ONAMES Naming Method]]></Format>
+<Format type='FINDING' name='NS12541' status='T'><![CDATA[The Names Server
+ located at ${`ONAMESHOST} is not running or could not be contacted on port
+ ${`ONAMESPORT}.]]></Format>
+<Format type='ADVICE' name='NS12541' status='T'><![CDATA[Perform the following:
+%SEQ%If a firewall is in place, verify it allows traffic to communicate on port
+ ${`ONAMESPORT}.
+%NEXT%Start the nameserver with the ``namesctl start`` command. Verify the
+ correct nameserver is being contacted via the HOST and PORT values for the
+ names.preferred_servers parameter in the client sqlnet.ora file.
+%ENDSEQ%]]></Format>
+<Format type='FINDING' name='NS12545' status='T'><![CDATA[Names Server located
+ at ${`NAMESPREFSERVER:''(undetermined)''} is not running or could not be
+ contacted. The host ${`ONAMESHOST} cannot be accessed via the network.]]></Format>
+<Format type='ADVICE' name='NS12545' status='T'><![CDATA[Perform the following:
+%SEQ%Verify the OS command ``ping ${ONAMESHOST}`` works.
+%NEXT%Change the HOST value in the names.preferred_servers from ${`ONAMESHOST}
+ to its IP address.
+%NEXT%Verify the correct nameserver is being contacted via the HOST and PORT
+ values for the names.preferred_servers parameter in the client sqlnet.ora
+ file. See [[https://support&#46;oracle&#46;com/rs?type=doc&id=114085.1][Knowledge Article 114085.1]],
+ section 7.3 for additional help regarding this advice.
+%ENDSEQ%]]></Format>
+<Format type='FINDING' name='ONAMESQUERYUNSUCCESSFUL' status='T'><![CDATA[Names
+ Server located at ${`NAMESPREFSERVER} is running, but the service name could
+ not be resolved.]]></Format>
+<Format type='ADVICE' name='ONAMESQUERYUNSUCCESSFUL' status='T'><![CDATA[Verify
+ the correct nameserver is being contacted via the HOST and PORT values for the
+ names.preferred_servers parameter in the client sqlnet.ora file.]]></Format>
+<Format type='FINDING' name='ONAMESSVROK_ONAMESQUERYUNSUCCESSFUL'
+ status='T'><![CDATA[The Oracle Names server
+ ${`NAMESPREFSERVER:''(undetermined)''} did not contain an entry for service
+ ``${NAMESDEFDOMAIN?${SERVICENAME}.${NAMESDEFDOMAIN}:${SERVICENAME}}`` in the
+ names cache. The NAMES.PREFERRED_SERVER parameter set in ${`PFILE} could be
+ wrong value.]]></Format>
+<Format type='ADVICE' name='ONAMESSVROK_ONAMESQUERYUNSUCCESSFUL'
+ status='T'><![CDATA[Perform the following:
+%SEQ%Verify that
+ ``${NAMESDEFDOMAIN?${SERVICENAME}.${NAMESDEFDOMAIN}:${SERVICENAME}}`` exists
+ in the names cache by issuing this command at the nameserver:%BR%
+``NAMESCTL> query ${NAMESDEFDOMAIN?${SERVICENAME}.${NAMESDEFDOMAIN}:${SERVICENAME}} a.smd``
+%NEXT%The TNS address can be manually added to the nameserver by using the
+ following command line syntax:%BR%
+``NAMESCTL> register ${NAMESDEFDOMAIN?${SERVICENAME}.${NAMESDEFDOMAIN}:${SERVICENAME}} -t ORACLE_DATABASE -d (DESCRIPTION= %BR%
+(ADDRESS=(PROTOCOL=TCP)(HOST=oracle_listener_host)(PORT=oracle_listener_port)%BR%
+(CONNECT_DATA=(SID=oracle_sid)))``
+%ENDSEQ%]]></Format>
+<Format type='SUMMARY' name='NAMESPREFSERVER' status='T'>${`NAMESPREFSERVER}</Format>
+<Format type='SUMMARY' name='NAMESPREFSERVER' status='F'>Parameter does not exist in sqlnet.ora.</Format>
+<Format type='SUMMARY' name='ONAMESHOST' status='T'>${`ONAMESHOST}</Format>
+<Format type='SUMMARY' name='ONAMESPORT' status='T'>${`ONAMESPORT}</Format>
+<Format type='SUMMARY' name='ONAMESQUERYNAME' status='T'>${`ONAMESQUERYNAME}</Format>
+</Adapter>
+<Adapter name='TNS12541'>
+<Format type='SECTION' name='TITLE' status='F' />
+<Format type='SECTION' name='TITLE' status='T'><![CDATA[---+ TNS-12541]]></Format>
+<Format type='FINDING' name='RET12541' status='T'><![CDATA[The trace file
+ verifies the existence of a TNS-12541 error.]]></Format>
+<Format type='FINDING' name='RET12541_NSPTRD_NT' status='T'><![CDATA[The
+ client was not able to make a connection to port ${`PORTRESOLVEDTO} on
+ ${`LOOKINGUPIP}]]></Format>
+<Format type='ADVICE' name='RET12541_NSPTRD_NT' status='T'><![CDATA[On an NT
+ server, an Oracle Network connection is redirected to a newly created Oracle
+ thread. This particular thread is listening for incoming connections on
+ ${`LOOKINGUPIP} on port ${`PORTRESOLVEDTO}. The port number assignment is done
+ by the operating system. This is the default behavior and can only be worked
+ around. This failure normally occurs if a firewall is in place between the
+ client and the server. However, regardless if a firewall exists, try the
+ following:
+%SEQ%In the ORACLE_HOME\bin directory, open the file ``oracle.key`` and note
+ the registry location.
+%NEXT%Run regedit or regedt32 and navigate to the location specified by the
+ ``oracle.key`` file, such as ``HKEY_LOCAL_MACHINE\Software\Oracle\Home0``
+%NEXT%Add the value ``USE_SHARED_SOCKET`` and set this value to ``TRUE`` (for
+ more information, see Knowledge Article 124140.1 'How to configure
+ USE_SHARED_SOCKET for Windows NT/2000')
+%NEXT%Restart Oracle and the TNS listener and attempt the connection again.
+%ENDSEQ%
+Another alternative is to setup a shared server environment. Because
+ connections are redirected to a newly created Oracle thread, the Oracle
+ thread's listening port number is foreign to a firewall. Firewalls will not
+ allow connections to these dynamic port numbers, which for this connection is
+ ${`PORTRESOLVEDTO}.%BR%
+Use a Shared Server (MTS) environment, where port numbers can be explicitly
+ defined, as a workaround. Oracle Network connections will be redirected to
+ these predefined port numbers which can be defined as part of a firewall's
+ rules. An example configuration is:%BR%
+``DISPATCHERS="(ADDRESS=(PROTOCOL=TCP)(HOST=144.25.16.201)(PORT=5000))(DISPATCHERS=1)"``%BR%
+``DISPATCHERS="(ADDRESS=(PROTOCOL=TCP)(HOST=144.25.16.201)(PORT=5001))(DISPATCHERS=1)"``%BR%
+In this example, the firewall must allow connections to ports 5000 and 5001.]]></Format>
+<Format type='FINDING' name='RET12541_NSPTRD_noNT' status='T'><![CDATA[The
+ client was not able to make a connection to the destination server.]]></Format>
+<Format type='ADVICE' name='RET12541_NSPTRD_noNT' status='T'><![CDATA[TCP could
+ not make a physical connection to the destination server. Shared Servers
+ (formerly MTS) are being used. Reasons for this failure are:
+%SEQ%The dispatchers have started on an alternate IP address and the hostname
+ that was returned to the client is foreign to the client machine.
+%NEXT%A firewall is blocking the connection between the client and server.
+%ENDSEQ%
+To correct the behavior, perform the following steps:
+%LIST%When using dispatchers, each dispatcher starts on a listening address of
+ the server's default hostname and an OS assigned port number. The listener
+ requested that the client reconnect using a hostname of ${`LOOKINGUPIP} and a
+ port number of ${`PORTRESOLVEDTO}.
+%NEXT%Verify the hostname ${`LOOKINGUPIP} is accessible form the client since
+ it may be different that the hostname defined in the tnsnames.ora file.%BR%
+Many times this problem arises because there are multiple network inferfaces on
+ a server and DBAs or network administrators may want sqlnet traffic to come in
+ on the nondefault network interface. To do this, dispatchers must be
+ configured to explicitly listen on a predefined hostname or IP address as
+ in:%BR%
+``DISPATCHERS="(ADDRESS=(PROTOCOL=TCP)(HOST=144.25.16.201))(DISPATCHERS=2)"``
+%NEXT%Because dispatchers listen on an available port given by the OS, there
+ is no method of predicting which port number will be in use.%BR%
+There is also no range of which port numbers will be used either. Normally,
+ firewalls will not allow connections to these dynamic port numbers, which for
+ this connection is ${`PORTRESOLVEDTO}. In this case, dispatcher port numbers
+ must be explicity defined during their configuration, such as:%BR%
+``DISPATCHERS="(ADDRESS=(PROTOCOL=TCP)(HOST=144.25.16.201)(PORT=5000))(DISPATCHERS=1)"``%BR%
+``DISPATCHERS="(ADDRESS=(PROTOCOL=TCP)(HOST=144.25.16.201)(PORT=5001))(DISPATCHERS=1)"``%BR%
+In this example, the firewall must allow connections to ports 5000 and 5001.
+%ENDLIST%]]></Format>
+<Format type='FINDING' name='RET12541_noNSPTRD_NT' status='T'><![CDATA[The
+ client was not able to make a connection to port ${`PORTRESOLVEDTO} on
+ ${`LOOKINGUPIP}]]></Format>
+<Format type='ADVICE' name='RET12541_noNSPTRD_NT' status='T'><![CDATA[TCP
+ could not make a physical connection to the desination server. Reasons for
+ this failure are:
+%SEQ%The TNS Listener is not running on port ${`PORTRESOLVEDTO} on the machine
+ ${`LOOKINGUPIP}.
+%NEXT%The machine ${`LOOKINGUPIP} is an incorrect destination.
+%NEXT%A firewall is blocking the connection between the client and server.
+%ENDSEQ%
+To correct the failure, perform the following steps:
+%LIST%On the server, run the command:%BR%
+``netstat -an &#124; find ${PORTRESOLVEDTO}``%BR%
+The output should show that port is in a LISTEN state, as in this example:%BR%
+``  TCP    0.0.0.0:${PORTRESOLVEDTO}        0.0.0.0:0        LISTENING``%BR%
+If the port is not listening then the listener is not running or the listener
+ is not running on the expected port. Verify the TCP address in the
+ listener.ora file contains an entry for (PORT = ${`PORTRESOLVEDTO}) and start
+ the listener.%BR%
+If (PORT = ${`PORTRESOLVEDTO}) does exist in the listener.ora file, then the
+ specified parameter file is not being read. Set the TNS_ADMIN environment
+ variable to the directory location of the listener.ora file and try again.
+%NEXT%From the client, use the OS command ``ping ${LOOKINGUPIP}``. Note any IP
+ address that is returned.%BR%
+On the server, execute ``ipconfig/all`` and verify that one of the adapters
+ shows that it has an IP address that is the same as what the client translated
+ the hostname to. If they do not match, then contact your network administrator
+ in order to have the client be able to translate the server's hostname
+ ${`LOOKINGUPIP} to the correct IP address.
+%NEXT%If a firewall exists between the client and the server:%BR%
+Then the network administrator must be informed that TCP traffic going to port
+ must be allowed through the firewall. If the port is open, then there is
+ another aspect of the firewall not letting the connection through (i.e. the
+ firewall is blocking certain source IP addresses, there are special firewall
+ setups for sqlnet for your particular firewall, etc).
+%ENDLIST%]]></Format>
+<Format type='FINDING' name='RET12541_noNSPTRD_noNT' status='T'><![CDATA[The
+ client was not able to make a connection to port ${`PORTRESOLVEDTO} on
+ ${`LOOKINGUPIP}]]></Format>
+<Format type='ADVICE' name='RET12541_noNSPTRD_noNT' status='T'><![CDATA[TCP
+ could not make a physical connection to the destination server. Reasons for
+ this failure are:
+%SEQ%The TNS Listener is not running on port ${`PORTRESOLVEDTO} on the machine
+ ${`LOOKINGUPIP}.
+%NEXT%The machine is an incorrect destination.
+%NEXT%A firewall is blocking the connection between the client and server.
+%ENDSEQ%
+To correct the failure, perform the following steps:
+%LIST%On the server, run the command:%BR%
+``netstat -an &#124; grep ${PORTRESOLVEDTO}``%BR%
+The output should show that port is in a LISTEN state, as in this example:%BR%
+``*.${PORTRESOLVEDTO}        *.*        0      0 24576      0 LISTEN``%BR%
+If the port is not listening then the listener is not running or the listener
+ is not running on the expected port. Verify the TCP address in the
+ listener.ora file contains an entry for (PORT = ${PORTRESOLVEDTO}) and start
+ the listener.%BR%
+If (PORT = ${`PORTRESOLVEDTO}) does exist in the listener.ora file, then the
+ specified parameter file is not being read. Set the TNS_ADMIN environment
+ variable to the directory location of the listener.ora file, restart the
+ listener, and try the connection again.
+%NEXT%From the client, use the OS command ``ping ${LOOKINGUPIP}``. Note any IP
+ address that is returned.%BR%
+On the server, execute ``/usr/sbin/ifconfig -a`` and verify that one of the
+ adapters shows that it has an IP address that is the same as what the client
+ translated the hostname to. If they do not match, then contact your network
+ administrator in order to have the client be able to translate the server's
+ hostname ${`LOOKINGUPIP} to the correct IP address.
+%NEXT%If a firewall exists between the client and the server:%BR%
+Then the network administrator must be informed that TCP traffic going to port
+ ${`PORTRESOLVEDTO} must be allowed through the firewall. If the port is open,
+ then there is another aspect of the firewall not letting the connection
+ through (i.e. the firewall is blocking certain source IP addresses, there are
+ special firewall setups for sqlnet for your particular firewall, etc).
+%ENDLIST%]]></Format>
+<Format type='SUMMARY' name='LOOKINGUPIP' status='T'>${`LOOKINGUPIP}</Format>
+<Format type='SUMMARY' name='PORTRESOLVEDTO' status='T'>${`PORTRESOLVEDTO}</Format>
+</Adapter>
+</Formats>
+</Network_Advisor>

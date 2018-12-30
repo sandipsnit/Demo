@@ -1,0 +1,1150 @@
+<?xml version='1.0'?>
+
+<!-- Copyright (c) 2007, 2012, Oracle and/or its affiliates. 
+All rights reserved. -->
+
+<!--
+    Name: DAS Server - service component of DAS 
+    Type: oracle_eps_server
+
+    MODIFIED  (MM/DD/YY)
+    msasidha   11/08/12 - bug 15851980
+    scgrover   09/02/10 - add server type
+    akarkala   12/04/09 - bug-8585775
+    proxy      07/01/09 - XbranchMerge proxy_fix8452125 from
+                          st_emasgc_project-21452
+    akarkala   03/23/09 - XbranchMerge akarkala_em_ws_idm_bug_fixes_19mar2009
+                          from st_emasgc_project-21452
+    akarkala   01/28/09 - bug-7870565
+    sreddy     09/20/08 - remove log metrics
+    akarkala   09/11/08 - Cutover to wls
+    bevoss     05/07/08 - Remove cmdb mas references
+    akarkala   03/27/08 - 
+    vnukal     02/20/08 - monitoring 10.1.4 version
+    akarkala   02/03/08 - Adding lastchangenumber
+    akarkala   01/20/08 - Changes for profile qrtz status
+    akarkala   12/20/07 - 
+    bevoss     08/14/07 - Adding cmdb mas.xmlp
+    akarkala   11/06/07 - XbranchMerge akarkala_beta3_federation_fix_as11beta3
+                          from st_emasgc_as11beta3
+    akarkala   10/19/07 - XbranchMerge akarkala_beta3_federation_fix from main
+    akarkala   10/18/07 - making mbeanhostport property optional for federation
+    akarkala   07/20/07 - Adding workaround for runtime federeation
+    akarkala   01/31/07 - Adding 11g metrics
+    stakeda    12/11/06 - Moved from LDAP_MAIN_LINUX to EMASGC_MAIN_LINUX
+    ajagtap    06/10/06 - fix bug #5309282 
+    btridip    05/16/06 - fix for bug 5228937 
+    btridip    03/19/06 - Add ODS prefix to packages/types for odssm access 
+    btridip    03/02/06 - Adding transient columns for delta computation of 
+                          metrics 
+    btridip    01/18/06 - Change last processed change to pending changes 
+    btridip    01/11/06 - cumulative metric aded 
+    btridip    11/07/05 - Making changes for resource bundles 
+    btridip    10/25/05 - btridip_dip_em_txn
+    btridip    10/19/05 - Adding status field for running instances. 
+    rbollu     09/20/05 - rbollu_grid_em_eps_console
+    mbanerji   03/01/04 - initial script
+-->
+
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd" [
+<!ENTITY j2ee_application_response SYSTEM "./j2ee_application_response.xmlp">
+]>
+
+
+<TargetMetadata META_VER="8.3" TYPE="oracle_eps_server" CATEGORY_PROPERTIES="VersionCategory;serverType"
+                RESOURCE_BUNDLE_PACKAGE="oracle.sysman.emas.rsc.gen.iam">
+  <Display>
+    <Label NLSID="oracle_eps_server_name">Directory Integration Platform Server</Label>
+  </Display>
+
+  <AssocTarget ASSOC_TARGET="epsldap" TYPE="oracle_ldap" ASSOC_TYPE="CONNECTS_TO" />
+  <AssocTarget ASSOC_TARGET="oc4j" TYPE="oc4j" ASSOC_TYPE="CONNECTS_TO"/>
+  <AssocTarget ASSOC_TARGET="httpServer" TYPE="oracle_apache" ASSOC_TYPE="CONNECTS_TO"/>
+  <AssocTarget ASSOCIATION_NAME="farm" ASSOC_TARGET_TYPE="*"/>
+  <AssocTarget ASSOCIATION_NAME="managedBy" ASSOC_TARGET_TYPE="*"/>
+  <AssocTarget ASSOCIATION_NAME="managedServer" ASSOC_TARGET_TYPE="*"/>
+
+
+  <Metric NAME="Response" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1013plus;11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oracle_eps_server_response">Response</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="SQL">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1013plus"/>
+      </ValidIf>
+      <Property NAME="STATEMENT" SCOPE="GLOBAL"> BEGIN ODS.MyODIGetDIPInfo.GetStatus(:1,:2) ; END; </Property>
+      <Property NAME="NUMROWS" SCOPE="GLOBAL">25</Property>
+      <Property NAME="SQLINPARAM1" SCOPE="INSTANCE">host</Property>
+      <Property NAME="SQLOUTPARAMPOS" SCOPE="GLOBAL">2</Property>
+      <Property NAME="SQLOUTPARAMTYPE" SCOPE="GLOBAL">ODS.EPS_STATUS_ARRAY_TYPE</Property>
+      <Property NAME="ConnectDescriptor" SCOPE="INSTANCE" OPTIONAL="TRUE">ConnectDescriptor</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">password</Property>
+    </QueryDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <ValidIf>
+           <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+         </ValidIf>
+         <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">weblogic_j2eeserver:application</Property>
+	 <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+         <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+	 <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="appName.parameter" SCOPE="INSTANCE">appName</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+         <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item></value></argument>]]>
+         </Property>
+
+      </QueryDescriptor>
+  </Metric>
+
+  <Metric NAME="ODIserverRunningInstances" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oracle_eps_server_integration_server_running_instances">Directory Integration Server</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="instNum" TYPE="NUMBER" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_server_inst_num">Instance</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="hostName" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_server_host_name">Directory Integration Server Host</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="instStatus" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_server_status">Status</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LDAPhostName" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_server_ldap_host_name">LDAP Server </Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="lastWakeTime" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_server_instance_wakeUp_Time">Start Time</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="downTimeCount" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_server_instance_downtime_count">Downtime Count</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="SQL">
+      <Property NAME="STATEMENT" SCOPE="GLOBAL"> BEGIN ODS.MyODIGetDIPInfo.GetRunningInstances (:1,:2) ; END; </Property>
+      <Property NAME="NUMROWS" SCOPE="GLOBAL">25</Property>
+      <Property NAME="SQLINPARAM1" SCOPE="INSTANCE">host</Property>
+      <Property NAME="SQLOUTPARAMPOS" SCOPE="GLOBAL">2</Property>
+      <Property NAME="SQLOUTPARAMTYPE" SCOPE="GLOBAL">ODS.EPS_EMD_ODI_INST_ARRAY_TYPE</Property>
+      <Property NAME="ConnectDescriptor" SCOPE="INSTANCE" OPTIONAL="TRUE">ConnectDescriptor</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">password</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <Metric NAME="ODIIntegrationProfileStatus" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oracle_eps_server_integration_profile_status">Directory Integration Profiles</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Profile_App_Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_profile_name">Identifier</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Type" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_profile_Type">Type</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="State" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_profile_state">State</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="LastExecutionTime" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_profile_last_exec_time">Last Execution Time</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="OIDChangesPending" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_profile_dip_last_chg_num">Pending Changes</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="SynchronizationIntvl" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="integration_profile_sync_intvl">Execution Interval (secs) </Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_profile_exec_status">Execution Status</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ProfileErrors" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_integration_profile_errors">Execution Error</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="SQL">
+      <Property NAME="STATEMENT" SCOPE="GLOBAL"> BEGIN ODS.ODIGetDIPInfo.GetProfileInfo (:1) ; END; </Property>
+      <Property NAME="NUMROWS" SCOPE="GLOBAL">10</Property>
+      <Property NAME="SQLOUTPARAMPOS" SCOPE="GLOBAL">1</Property>
+      <Property NAME="SQLOUTPARAMTYPE" SCOPE="GLOBAL">ODS.DIP_EMD_PROFILE_ARRAY_TYPE</Property>
+      <Property NAME="ConnectDescriptor" SCOPE="INSTANCE" OPTIONAL="TRUE">ConnectDescriptor</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">password</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <Metric NAME="ODIIntgProfileCummStats" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1013plus;11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oracle_eps_server_intg_profile_cumm_stats">Directory Integration Profile Cumulative Statistics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="ChangesFailed" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_prof_cmet_cf">Total Changes Failed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ChangesSynchronized" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_prof_cmet_cs">Total Changes Synchronized</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeltaChangesFailed" TYPE="NUMBER" IS_KEY="FALSE"  TRANSIENT="TRUE"
+         COLUMN_NAME='DeltaChangesFailed'
+         COMPUTE_EXPR="(_ChangesFailed > ChangesFailed) ? ChangesFailed : (ChangesFailed - _ChangesFailed)">
+        <Display>
+          <Label NLSID="oracle_eps_server_intgprof_cmet_dcf">Total Changes Failed during the last interval</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeltaChangesSynchronized" TYPE="NUMBER" IS_KEY="FALSE"  TRANSIENT="TRUE"
+         COLUMN_NAME='DeltaChangesSynchronized'
+         COMPUTE_EXPR="(_ChangesSynchronized > ChangesSynchronized) ? ChangesSynchronized : (ChangesSynchronized - _ChangesSynchronized)">
+        <Display>
+          <Label NLSID="oracle_eps_server_intgprof_cmet_dcs">Total Changes Synchronized during the last interval</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="SQL">
+      <ValidIf>
+        <CategoryProp NAME="VersionCategory" CHOICES="1013plus"/>
+      </ValidIf>
+      <Property NAME="STATEMENT" SCOPE="GLOBAL"> BEGIN ODS.MyODIGetDIPInfo.GetCummProfileMetric (:1) ; END; </Property>
+      <Property NAME="NUMROWS" SCOPE="GLOBAL">10</Property>
+      <Property NAME="SQLOUTPARAMPOS" SCOPE="GLOBAL">1</Property>
+      <Property NAME="SQLOUTPARAMTYPE" SCOPE="GLOBAL">ODS.EPS_CUMM_METRIC_ARRAY_TYPE</Property>
+      <Property NAME="ConnectDescriptor" SCOPE="INSTANCE" OPTIONAL="TRUE">ConnectDescriptor</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">password</Property>
+    </QueryDescriptor>
+    <ExecutionDescriptor>
+        <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+        </ValidIf>
+        <GetTable NAME="DIPOperationSummary"/>
+        <GroupBy NAME="result1" FROM_TABLE="DIPOperationSummary">
+            <AggregateColumn NAME="ChangesFailed" COLUMN_NAME="total_fail_count" OPERATOR="SUM"/>
+            <AggregateColumn NAME="ChangesSynchronized" COLUMN_NAME="total_pass_count" OPERATOR="SUM"/>
+        </GroupBy>
+    </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="ODIIntegrationProfileStatistics" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="1013plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="oracle_eps_server_integration_profile_statistics">Directory Integration Profile Statistics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Profile_App_Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_prof_name">Identifier</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Type" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_prof_type">Type</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ChangesFailed" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_prof_met_cf">Changes Failed</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ChangesSynchronized" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="oracle_eps_server_intg_prof_cs">Changes Synchronized</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeltaChangesFailed" TYPE="NUMBER" IS_KEY="FALSE"  TRANSIENT="TRUE"
+         COLUMN_NAME='DeltaChangesFailed'
+         COMPUTE_EXPR="(_ChangesFailed > ChangesFailed) ? ChangesFailed : (ChangesFailed - _ChangesFailed)">
+        <Display>
+          <Label NLSID="oracle_eps_server_intgprof_met_dcf">Changes Failed during the last interval</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="DeltaChangesSynchronized" TYPE="NUMBER" IS_KEY="FALSE"  TRANSIENT="TRUE"
+         COLUMN_NAME='DeltaChangesSynchronized'
+         COMPUTE_EXPR="(_ChangesSynchronized > ChangesSynchronized) ? ChangesSynchronized : (ChangesSynchronized - _ChangesSynchronized)">
+        <Display>
+          <Label NLSID="oracle_eps_server_intgprof_met_dcs">Changes Synchronized during the last interval</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="SQL">
+      <Property NAME="STATEMENT" SCOPE="GLOBAL"> BEGIN ODS.MyODIGetDIPInfo.GetProfileInfo (:1) ; END; </Property>
+      <Property NAME="NUMROWS" SCOPE="GLOBAL">10</Property>
+      <Property NAME="SQLOUTPARAMPOS" SCOPE="GLOBAL">1</Property>
+      <Property NAME="SQLOUTPARAMTYPE" SCOPE="GLOBAL">ODS.EPS_PROFILE_METRIC_ARRAY_TYPE</Property>
+      <Property NAME="ConnectDescriptor" SCOPE="INSTANCE" OPTIONAL="TRUE">ConnectDescriptor</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">UserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">password</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+<!-- 11g Metrics Begin Here -->
+<!-- Prov profile operational Metric -->
+  <Metric NAME="dip_prov_operations" TYPE="TABLE" NUM_CACHE_VALUES="12"
+          FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="dip_prov_ops_metrics">DIP Prov profile runtime operational metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="dip_prov_ops_name">Profile Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ReportingComponentNodeID" TYPE="STRING" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="ReportingComponentNodeID">MAS Topology ID</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_createGroup.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_add_grp">Successful Add Group operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_createIdentity.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_add_iden">Successful Add Identity operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_createSubscription.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_add_subs">Successful Add Subscription operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_createUser.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_add_user">Successful Add User operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_deleteGroup.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_delete_grp">Successful Delete Group operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_deleteIdentity.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_delete_iden">Successful Delete Identity operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_deleteSubscription.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_delete_subs">Successful Delete Subscription operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_deleteUser.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_delete_user">Successful Delete User operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_updateGroup.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_modify_grp">Successful Modify Group operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_updateIdentity.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_modify_iden">Successful Modify Identity operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_updateUser.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_modify_user">Successful Modify User operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_createGroup.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_add_grp">Failed Add Group operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_createIdentity.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_add_iden">Failed Add Identity operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_createSubscription.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_add_subs">Failed Add Subscription operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_createUser.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_add_user">Failed Add User operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_deleteGroup.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_delete_grp">Failed Delete Group operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_deleteIdentity.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_delete_iden">Failed Delete Identityoperations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_deleteSubscription.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_delete_subs">Failed Delete Subscription operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_deleteUser.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_delete_user">Failed Delete User operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_updateGroup.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_modify_grp">Failed Modify Group operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_updateIdentity.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_modify_iden">Failed Modify Identity operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_updateUser.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_modify_user">Failed Modify User operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="prov_pass_total" TYPE="STRING" 
+            COMPUTE_EXPR="(pass_createGroup.count + pass_createIdentity.count + pass_createSubscription.count +  pass_createUser.count + pass_updateGroup.count + pass_updateIdentity.count + pass_updateUser.count)">
+        <Display>
+          <Label NLSID="dip_prov_ops_pass_total_count">Total Successful Provisioning Ops for profile</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="prov_fail_total" TYPE="STRING"
+            COMPUTE_EXPR="(fail_createGroup.count + fail_createIdentity.count + fail_createSubscription.count + fail_createUser.count + fail_updateGroup.count + fail_updateIdentity.count + fail_updateUser.count)">
+        <Display>
+          <Label NLSID="dip_prov_ops_fail_total_count">Total Failed Provisioning Ops for profile</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+                        Name;ReportingComponentNodeID;pass_createGroup.count;pass_createIdentity.count;pass_createSubscription.count;pass_createUser.count;
+                        pass_deleteGroup.count;pass_deleteIdentity.count;pass_deleteSubscription.count;pass_deleteUser.count;
+                        pass_updateGroup.count;pass_updateIdentity.count;pass_updateUser.count;
+                        fail_createGroup.count;fail_createIdentity.count;fail_createSubscription.count;fail_createUser.count;
+                        fail_deleteGroup.count;fail_deleteIdentity.count;fail_deleteSubscription.count;fail_deleteUser.count;
+                        fail_updateGroup.count;fail_updateIdentity.count;fail_updateUser.count
+      </Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_eps_server:dip_prov_operations</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!-- Sync profile operational Metric -->
+  <Metric NAME="dip_sync_operations" TYPE="TABLE" NUM_CACHE_VALUES="12"
+          FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="dip_sync_ops_metrics">DIP Sync profile runtime operational metrics</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="dip_sync_ops_name">Profile Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ReportingComponentNodeID" TYPE="STRING" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="ReportingComponentNodeID">MAS Topology ID</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_addEntry.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_sync_ops_pass_add">Successful Add operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_deleteEntry.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_sync_ops_pass_delete">Successful Delete operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="pass_modifyEntry.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_sync_ops_pass_modify">Successful Modify operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_addEntry.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_sync_ops_fail_add">Failed Add operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_deleteEntry.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_sync_ops_fail_delete">Failed Delete operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="fail_modifyEntry.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_sync_ops_fail_modify">Failed Modify operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Skipped.count" TYPE="STRING">
+        <Display>
+          <Label NLSID="dip_sync_ops_skipped">Skipped operations</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="sync_pass_total" TYPE="STRING"
+                        COMPUTE_EXPR="(pass_addEntry.count + pass_modifyEntry.count)">
+        <Display>
+          <Label NLSID="dip_sync_ops_pass_total_count">Total Successful Synchronization Ops for profile</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="sync_fail_total" TYPE="STRING"
+                        COMPUTE_EXPR="(fail_addEntry.count + fail_modifyEntry.count)">
+        <Display>
+          <Label NLSID="dip_sync_ops_fail_total_count">Total Failed Synchronization Ops for profile</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">
+                        Name;ReportingComponentNodeID;pass_addEntry.count;pass_deleteEntry.count;pass_modifyEntry.count;
+                        fail_addEntry.count;fail_deleteEntry.count;fail_modifyEntry.count;Skipped.count
+      </Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_eps_server:dip_sync_operations</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+    </QueryDescriptor>
+  </Metric>
+  <!-- Ops Summary Metric -->
+  <Metric NAME="DIPOperationSummary" TYPE="TABLE" NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="DIPOperationSummary">DIP Operations Summary</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="allsyncops_pass_count_tmp" TRANSIENT="TRUE" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allsyncops_pass_count_tmp">(Transient) Total Count of all Successful Sync Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="allsyncops_fail_count_tmp" TRANSIENT="TRUE" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allsyncops_fail_count_tmp">(Transient) Total Count of all Successful Sync Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="allprovops_pass_count_tmp" TRANSIENT="TRUE" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allprovops_pass_count_tmp">(Transient) Total Count of all Successful Sync Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="allprovops_fail_count_tmp" TRANSIENT="TRUE" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allprovops_fail_count_tmp">(Transient) Total Count of all Successful Sync Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="allsyncops_pass_count" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allsyncops_pass_count">Total Count of all Successful Sync Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="allsyncops_fail_count" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allsyncops_fail_count">Total Count of all Failed Sync Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="allprovops_pass_count" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allprovops_pass_count">Total Count of all Successful Prov Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="allprovops_fail_count" TYPE="STRING" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="allprovops_fail_count">Total Count of all Failed Prov Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="total_pass_count" TYPE="STRING"
+            COMPUTE_EXPR="(allsyncops_pass_count + allprovops_pass_count)">
+        <Display>
+          <Label NLSID="total_pass_count">Total Successfull Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="total_fail_count" TYPE="STRING"
+            COMPUTE_EXPR="(allsyncops_fail_count + allprovops_fail_count)">
+        <Display>
+          <Label NLSID="total_fail_count">Total Failed Ops</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+        <ValidIf>
+          <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+        </ValidIf>
+        <GetTable NAME="dip_sync_operations"/>
+        <GetTable NAME="dip_prov_operations"/>
+        <JoinTables NAME="resulttable" OUTER="TRUE">
+            <Table NAME="dip_sync_operations"/>
+            <Table NAME="dip_prov_operations"/>
+            <Column NAME="sync_pass_total" TABLE_NAME="dip_sync_operations"/>
+            <Column NAME="sync_fail_total" TABLE_NAME="dip_sync_operations"/>
+            <Column NAME="prov_pass_total" TABLE_NAME="dip_prov_operations"/>
+            <Column NAME="prov_fail_total" TABLE_NAME="dip_prov_operations"/>
+        </JoinTables>
+        <GroupBy NAME="result1" FROM_TABLE="resulttable">
+            <AggregateColumn NAME="allsyncops_pass_count_tmp" COLUMN_NAME="sync_pass_total" OPERATOR="SUM" DEFAULT_WHEN_EMPTY="true" DEFAULT_VALUE="0"/>
+            <AggregateColumn NAME="allsyncops_fail_count_tmp" COLUMN_NAME="sync_fail_total" OPERATOR="SUM" DEFAULT_WHEN_EMPTY="true" DEFAULT_VALUE="0"/>
+            <AggregateColumn NAME="allprovops_pass_count_tmp" COLUMN_NAME="prov_pass_total" OPERATOR="SUM" DEFAULT_WHEN_EMPTY="true" DEFAULT_VALUE="0"/>
+            <AggregateColumn NAME="allprovops_fail_count_tmp" COLUMN_NAME="prov_fail_total" OPERATOR="SUM" DEFAULT_WHEN_EMPTY="true" DEFAULT_VALUE="0"/>
+            <ComputeColumn NAME="allsyncops_pass_count" EXPR="allsyncops_pass_count_tmp > 0 ? allsyncops_pass_count_tmp : 0"/>
+            <ComputeColumn NAME="allsyncops_fail_count" EXPR="allsyncops_fail_count_tmp > 0 ? allsyncops_fail_count_tmp : 0"/>
+            <ComputeColumn NAME="allprovops_pass_count" EXPR="allprovops_pass_count_tmp > 0 ? allprovops_pass_count_tmp : 0"/>
+            <ComputeColumn NAME="allprovops_fail_count" EXPR="allprovops_fail_count_tmp > 0 ? allprovops_fail_count_tmp : 0"/>
+        </GroupBy>
+    </ExecutionDescriptor>
+  </Metric>
+
+  <Metric NAME="DIP" TYPE="TABLE"  NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="DIP">DIP</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="Name">Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Host" TYPE="STRING">
+        <Display>
+          <Label NLSID="Host">Host</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Parent" TYPE="STRING">
+        <Display>
+          <Label NLSID="Parent">Parent</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Process" TYPE="STRING">
+        <Display>
+          <Label NLSID="Process">Process</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ReportingComponentNodeID" TRANSIENT="TRUE" TYPE="STRING">
+        <Display>
+          <Label NLSID="ReportingComponentNodeID">ReportingComponentNodeID</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">DIP</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Name;Host;Parent;Process;ReportingComponentNodeID</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+  <!-- DIPHealth Metric -->
+  <Metric NAME="DIPHealth" TYPE="TABLE"  NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="QUARTZSTATUS_DEF">DIP Health Metric</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="WLSServerName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="QUARTZSTATUS_ServerName">WebLogic Server Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING">
+        <Display>
+          <Label NLSID="QUARTZSTATUS_Name">Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Host" TYPE="STRING">
+        <Display>
+          <Label NLSID="QUARTZSTATUS_Host">Host</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="QuartzStatus" TYPE="STRING">
+        <Display>
+          <Label NLSID="QUARTZSTATUS_Status">Quartz Scheduler Status</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="MBeanStatus" TYPE="STRING">
+        <Display>
+          <Label NLSID="QUARTZSTATUS_MBeanStatus">MBean Status</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_eps_server:DIPHealth</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">ServerName;Name;Host;QuartzStatus;MBeanStatus</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <Metric NAME="DIPProvisioningProfiles" TYPE="TABLE"  NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="DIPProvisioningProfiles">DIPProvisioning Profiles</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="DIPProvProfileName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="DIPProvProfileName">DIP Provisioning Profile Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Host" TYPE="STRING">
+        <Display>
+          <Label NLSID="Host">Host</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING">
+        <Display>
+          <Label NLSID="ProfileType">Profile Type</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_eps_server:DIPProvisioningProfiles</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">DIPProvProfileName;Host;Name</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <Metric NAME="DIPSyncProfiles" TYPE="TABLE"  NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="DIPSynchronizationProfiles">DIP Synchronization Profiles</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="DIPSyncProfileName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="DIPSyncProfileName">DIP Synchronization Profile Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Host" TYPE="STRING">
+        <Display>
+          <Label NLSID="Host">Host</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING">
+        <Display>
+          <Label NLSID="ProfileType">Profile Type</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_eps_server:DIPSyncProfiles</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">DIPSyncProfileName;Host;Name</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!--  Consolidated metric using ADML -->
+  <Metric NAME="dip_all_profiles_key_columns" TYPE="TABLE"  NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="dip_all_profiles_key_columns">DIP All Profiles (Consolidated)</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="DIP_Profile_Name">DIP Profile Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Host" TYPE="STRING">
+        <Display>
+          <Label NLSID="Host">Host</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Process" TYPE="STRING">
+        <Display>
+          <Label NLSID="Process">DIP Process</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="lastExecTm.value" TYPE="STRING">
+        <Display>
+          <Label NLSID="Last_Exec_Time">Last Execution Time</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="lastSuccessExecTm.value" TYPE="STRING">
+        <Display>
+          <Label NLSID="lastSuccessExecTm_value">Last Successful Execution Time</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="lastExecErr.value" TYPE="STRING">
+        <Display>
+          <Label NLSID="lastExecErr_value">Last Execution Error Value</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ReportingComponentNodeID" TRANSIENT="TRUE" TYPE="STRING">
+        <Display>
+          <Label NLSID="ReportingComponentNodeID">MAS Topology Node ID</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processProfile.avg" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="processProfile_avg">Avg Processing Time</Label>
+          <Unit NLSID="ms">millisec</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processProfile.maxTime" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="processProfile_maxTime">Max Processing Time</Label>
+          <Unit NLSID="ms">millisec</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processProfile.minTime" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="processProfile_minTime">Min Processing Time</Label>
+          <Unit NLSID="ms">millisec</Unit>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="processProfile.qrtzStatus" TYPE="STRING">
+        <Display>
+          <Label NLSID="processProfile_qrtzstatus">Profile Job Status</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="lastSyncStatus.value" TYPE="STRING">
+        <Display>
+          <Label NLSID="lastSyncStatus_value">Status of last sync operation</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="lastChangeKey.value" TYPE="STRING">
+        <Display>
+          <Label NLSID="lastChangeKey_value">Last Change Number</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_eps_server:dip_all_profiles_key_columns</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Name;Host;Process;lastExecTm.value;lastSuccessExecTm.value;lastExecErr.value;ReportingComponentNodeID;processProfile.avg;processProfile.maxTime;processProfile.minTime;processProfile.qrtzStatus;lastSyncStatus.value;lastChangeKey.value</Property>
+    </QueryDescriptor>
+  </Metric>
+
+  <!--  Aggregated metric using ADML -->
+  <Metric NAME="dip_aggregated_metrics" TYPE="TABLE"  NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+    <ValidIf>
+      <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+    </ValidIf>
+    <Display>
+      <Label NLSID="dip_aggregated_metrics">DIP All Profiles (Aggregated Metrics)</Label>
+    </Display>
+    <TableDescriptor>
+      <ColumnDescriptor NAME="Ld_TotalChangesAttempted" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="Ld_TotalChangesAttempted">Total Changes Attempted</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Ld_TotalSuccessfulChanges" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="Ld_TotalSuccessfulChanges">Total Successful Changes</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Pf_AvgProfileExecTime" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="Pf_AvgProfileExecTime">Average Profile Execution Time(ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Pf_AvgLDAPWriteTime" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="Pf_AvgLDAPWriteTime">Average LDAP Write Time</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="Pf_AvgLDAPSearchTime" TYPE="NUMBER">
+        <Display>
+          <Label NLSID="Pf_AvgLDAPSearchTime">Average LDAP Search Time</Label>
+        </Display>
+      </ColumnDescriptor>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JMX">
+      <Property NAME="serviceURL" SCOPE="INSTANCE">serviceURL</Property>
+      <Property NAME="UserName" SCOPE="INSTANCE">WeblogicUserName</Property>
+      <Property NAME="password" SCOPE="INSTANCE">WeblogicPassword</Property>
+      <Property NAME="metric" SCOPE="GLOBAL">oracle_eps_server:dip_aggregated_metrics</Property>
+      <Property NAME="MetricSource" SCOPE="GLOBAL">Weblogic</Property>
+      <Property NAME="JEEHome" SCOPE="INSTANCE">WebLogicHome</Property>
+      <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+      <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+      <Property NAME="columnOrder" SCOPE="GLOBAL">Ld_TotalChangesAttempted;Ld_TotalSuccessfulChanges;Pf_AvgProfileExecTime;Pf_AvgLDAPWriteTime;Pf_AvgLDAPSearchTime</Property>
+    </QueryDescriptor>
+  </Metric>
+  
+<!-- Resource Usage Metric -->
+<Metric NAME="ResourceUsage" TYPE="TABLE"  NUM_CACHE_VALUES="12" FORCE_CACHE="TRUE" COLLECT_WHEN_NO_REPOS="TRUE">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="dip_ResourceUsage">Resource Usage</Label>
+  </Display>
+  <TableDescriptor>
+      <ColumnDescriptor NAME="memory.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="dip_resource_memory_component">Memory Utilization (KB)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="dip_resource_memoryPercentage_component">Memory Utilization (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display FOR_SUMMARY_UI="TRUE">
+          <Label NLSID="dip_resource_cpu_component">CPU Utilization (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+    <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+    <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+    <Property NAME="wlshome" SCOPE="INSTANCE">WebLogicHome</Property>
+    <Property NAME="domainhome" SCOPE="INSTANCE">DomainHome</Property>
+    <Property NAME="servername" SCOPE="INSTANCE">ServerNames</Property>
+    <Property NAME="command">%perlBin%/perl</Property>
+    <Property NAME="args">%scriptsDir%/iam/weblogicResUsage.pl %wlshome% %servername% %domainhome%</Property>
+    <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+    <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+  </QueryDescriptor>
+</Metric>
+
+  <InstanceProperties>
+    <InstanceProperty NAME="OracleHome" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+         <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="pre904;904plus;1013plus"/>
+         </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_OracleHome_iprop">Oracle home path</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="version" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+      <Display>
+        <Label NLSID="oracle_eps_server_version_iprop">Version</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="UserName" CREDENTIAL="TRUE" OPTIONAL="FALSE">
+         <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="pre904;904plus;1013plus"/>
+         </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_UserName_iprop">Username</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="password" CREDENTIAL="TRUE" OPTIONAL="FALSE">
+         <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="pre904;904plus;1013plus"/>
+         </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_password_iprop">Password</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="ConnectDescriptor" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+         <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="pre904;904plus;1013plus"/>
+         </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_ConnectDescriptor_iprop">OID Connect Descriptor</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="host" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+         <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="pre904;904plus;1013plus"/>
+         </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_host_iprop">Host Name</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="appName" CREDENTIAL="FALSE" OPTIONAL="FALSE">
+         <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus"/>
+         </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_appName">Application Name</Label>
+      </Display>
+    </InstanceProperty>
+
+    <!-- Adding instance props for mas farm-->
+    <InstanceProperty NAME="farmName" OPTIONAL="TRUE">
+        <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+        </ValidIf>
+        <Display>
+            <Label NLSID="oracle_eps_server_farmName">Farm Name</Label>
+        </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="serviceURL" OPTIONAL="FALSE">
+        <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+        </ValidIf>
+        <Display>
+            <Label NLSID="oracle_eps_server_farmServiceURL">WebLogic JMX Service URL</Label>
+        </Display>
+    </InstanceProperty>
+      <InstanceProperty NAME="ServerNames">
+	      <ValidIf>
+            <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+        </ValidIf>
+         <Display>
+            <Label NLSID="oracle_eps_server_serverNames">Server Names</Label>
+         </Display>
+      </InstanceProperty>
+     <InstanceProperty NAME="WeblogicUserName" OPTIONAL="FALSE" >
+              <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_wlsUserName">WebLogic Monitoring User Name</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="WeblogicPassword"  CREDENTIAL="TRUE" OPTIONAL="FALSE"  >
+         <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_wlsPassword">WebLogic Monitoring Password</Label>
+      </Display>
+    </InstanceProperty>
+     <InstanceProperty NAME="WebLogicHome">
+              <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_wlsserverHome">WebLogic Server Home</Label>
+      </Display>
+    </InstanceProperty>
+     <InstanceProperty NAME='DomainHome' CREDENTIAL="FALSE" >
+              <ValidIf>
+                <CategoryProp NAME="VersionCategory" CHOICES="11plus" />
+            </ValidIf>
+      <Display>
+        <Label NLSID="oracle_eps_server_domainhome">WebLogic Domain Home</Label>
+      </Display>
+    </InstanceProperty>
+    <InstanceProperty NAME="VersionCategory" IS_COMPUTED="TRUE">
+      <Display>
+        <Label NLSID="oracle_eps_server_versionCategory">Version Category</Label>
+      </Display>
+    </InstanceProperty>
+    <DynamicProperties NAME="ComputeVC" FORMAT="ROW"
+                       PROP_LIST="VersionCategory">
+      <QueryDescriptor FETCHLET_ID="VersionRangeComputer">
+        <Property NAME="Version" SCOPE="INSTANCE">version</Property>
+	<Property NAME="DefaultRange" SCOPE="GLOBAL">11plus</Property>
+        <Property NAME="pre904" SCOPE="GLOBAL">9.0.2</Property>
+        <Property NAME="904plus" SCOPE="GLOBAL">9.0.4;</Property>
+        <Property NAME="1013plus" SCOPE="GLOBAL">10.1.4;</Property>
+        <Property NAME="11plus" SCOPE="GLOBAL">11.1;</Property>
+      </QueryDescriptor>
+    </DynamicProperties>
+  </InstanceProperties>
+</TargetMetadata>

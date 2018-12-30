@@ -1,0 +1,56 @@
+# AGTcfg.def: Assists Oracle Enterprise Manager Agent Collection Setup
+# $Id: AGTcfg.def,v 1.2 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/AGTcfg.def,v 1.2 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+AGTcfg - Assists Oracle Enterprise Manager Agent Collection Setup
+
+=head1 DESCRIPTION
+
+This module provides associated logic for the setup of the Oracle Enterprise
+Manager Agent collections.
+
+=cut
+
+#------------------------------------------------------------------------------
+# Section init: Module initialization
+#------------------------------------------------------------------------------
+section init
+
+#------------------------------------------------------------------------------
+# Section find_version: Identify the Oracle Enterprise Manager Agent version
+#------------------------------------------------------------------------------
+section find_version
+
+var ($pgm,$ver) = (catCommand(${AGT_HOME},'bin',${AS.BATCH:'emctl'}),'')
+once
+{if loadCommand(concat($pgm,' status agent'))
+ {if grepLastFile('\sRelease\s','f')
+   break ($ver) = match(last,'\s(\d+(\.\d+){3,})')
+  if grepLastFile('\sCloud Control\s','f')
+   break ($ver) = match(last,'\s(\d+(\.\d+){3,})')
+ }
+ if loadCommand(concat($pgm,' getversion agent'))
+ {if grepLastFile('\sRelease\s','f')
+   break ($ver) = match(last,'\s(\d+(\.\d+){3,})')
+  if grepLastFile('\sCloud Control\s','f')
+   break ($ver) = match(last,'\s(\d+(\.\d+){3,})')
+ }
+}
+if length($ver)
+ var ${AUX.dft} = $ver
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,136 @@
+# CRSload.def: Collects CRS diagnostic collection tool results
+# $Id: CRSload.def,v 2.8 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/CRSload.def,v 2.8 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+CRSload - Collects CRS Diagnostic Collection Tool Results
+
+=head1 DESCRIPTION
+
+=head2 crs_diag_tool - CRS Diagnostic Collection Tool
+
+This module executes the Cluster Ready Services (CRS) diagnostic collection
+tool and collects the produced files.
+
+=cut
+
+debug ' Inside LOAD module, running CRS diagnostic collection tool'
+report crs_diag_tool
+
+# Remove old reports
+var $abr = setAbbr('CRS')
+call purge('E','.',0,0,true)
+
+# Check if CRS collection is disabled
+if !${CRS_LOAD}
+ return
+
+# Check if Perl is available
+var $prl = ${CUR.PERL}
+if !$prl
+ return
+
+# Initialization
+var $ORACLE_HOME = ${ORACLE_HOME:getEnv('ORACLE_HOME','')}
+
+# Determine ORA_CRS_HOME
+var $ORA_CRS_HOME = ${CLUSTER_CRS_HOME}
+if !?$ORA_CRS_HOME
+ run CRSinit(\$ORA_CRS_HOME)
+if !testDir('d',$ORA_CRS_HOME)
+ return
+
+# Run diacollection.pl
+var $fil = catFile($ORA_CRS_HOME,'bin','diagcollection.pl')
+if testFile('fr',$fil)
+{var ($pgm,@opt) = (lastCommand())
+ if !isAbsolute($dir = ${OUT.E})
+  var $dir = getGroupDir('D_CWD',$dir)
+
+ # Determine the command options
+ if !or(isWindows(),isCygwin())
+ {if grepFile($fil,'\[--nocore\]','fi')
+  {if !${CRS_CORE:0}
+    var @opt = ('--nocore')
+  }
+  elsif ${CRS_CORE:0}
+   var @opt = ('--core')
+  if grepFile($fil,'\[--afterdate\]','fi')
+  {if match(${CRS_AFTER},'^([01]\d/[0-3]\d/\d{4})$')
+    var @opt = (@opt,'--afterdate',last)
+  }
+ }
+ if grepFile($fil,'\[--crshome\]','fi')
+  var @opt = (@opt,'--crshome',$ORA_CRS_HOME)
+
+ # Set the CRS environment
+ var $env_crs = setEnv('ORA_CRS_HOME',$ORA_CRS_HOME)
+ var $env_oh  = setEnv('ORACLE_HOME',$ORACLE_HOME)
+
+ # Generate the job and execute it
+ if isWindows()
+ {var $job = createTemp('CRS','.bat',true)
+  call writeTemp('CRS','@echo off')
+  call writeTemp('CRS','cd /d "',getNativePath($dir),'"')
+  call writeTemp('CRS','"',$prl,'" ',$pgm,' --collect --crs ',join(' ',@opt))
+ }
+ elsif isVms()
+ {var $job = createTemp('CRS','.com',true)
+  call writeTemp('CRS','$ SET DEFAULT ',$dir)
+  call writeTemp('CRS',join(' ','$','perl',$pgm,'--collect','--crs',@opt))
+ }
+ else
+ {var $job = createTemp('CRS','.sh',true)
+  call writeTemp('CRS','cd "',$dir,'"')
+  call writeTemp('CRS',join(' ',quote($prl,'x'),$pgm,'--collect','--crs',@opt))
+ }
+ call closeTemp('CRS')
+ call command(quote($job,'x'))
+ call unlinkTemp('CRS')
+
+ # Restore the previous environment
+ call setEnv('ORA_CRS_HOME',$env_crs)
+ call setEnv('ORACLE_HOME', $env_oh)
+
+ # Rename the produced files and generate the report
+ prefix
+ {write '---+ Cluster Ready Services (CRS) Diagnostic Collection Tool Results'
+  write '|*File Name*|*Last Modified Date*| *Size*|'
+ }
+ loop $src (grepDir($dir,'^(core|crs|ocr|ora)Data.*\.(gz|zip)$','in'))
+ {var ($nam,$ext) = match($src,'^(core|crs|ocr|ora)Data.*\.(gz|zip)$','i')
+  var $dst = concat(${CUR.PREFIX},$nam,'.',$ext)
+  if transfer($dir,$src,$dir,$dst)
+  {var $fil = catFile($dir,$dst)
+   write '|[[extern/',$dst,'][_blank][',encode($src),']]|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),'| ',\
+         getSize($fil),'|'
+  }
+ }
+ if isCreated(true)
+ {write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use \
+              the link to save them and use an adequate viewer.'
+  toc '2:[[',getFile(),'][rda_report][CRS Diagnostic Collection Tool]]'
+ }
+}
+
+=head1 SEE ALSO
+
+L<CRSinit.def|modules::CRSinit>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

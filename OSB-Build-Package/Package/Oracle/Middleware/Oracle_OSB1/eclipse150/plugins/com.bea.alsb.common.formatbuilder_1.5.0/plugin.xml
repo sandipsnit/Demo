@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.core.runtime.contentTypes">
+      <content-type
+            file-extensions="mfl"
+            default-charset="UTF-8"
+            name="%mflContentTypeName"
+            priority="high"
+            id="mfl"
+            base-type="org.eclipse.core.runtime.xml">
+         <describer class="com.bea.wli.ide.formatbuilder.MFLContentDescriber"/>
+   </content-type>
+   </extension>
+   
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            launcher="com.bea.wli.ide.formatbuilder.editors.FormatBuilderEditor"
+            contributorClass="com.bea.wli.ide.mapper.editors.FormatBuilderEditorContributor"
+            default="true"
+            extensions="mfl"
+            icon="resources/images/formatbuilder/message-format-file-16.png"
+            id="com.bea.alsb.common.formatbuilder.editors.FormatBuilderEditor"
+            name="%FormatBuilderEditor">
+         <contentTypeBinding contentTypeId="com.bea.alsb.common.formatbuilder.MFL"/>
+      </editor>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.perspectiveExtensions">
+      <perspectiveExtension
+            targetID="com.bea.alsb.common.mapper.perspectives.MapperPerspective">
+         <actionSet
+               id="com.bea.alsb.common.formatbuilder.actionSet">
+         </actionSet>
+      </perspectiveExtension>
+   </extension>
+   <extension
+         point="org.eclipse.ui.actionSets">
+      <actionSet
+            label="Launch Format Builder Action Set"
+            visible="false"
+            id="com.bea.alsb.common.formatbuilder.actionSet">
+         <menu
+               label="%Run"
+               path="additions"
+               id="org.eclipse.ui.run">
+            <separator
+                  name="weblogicIntegrationGroup">
+            </separator>
+         </menu>
+         <menu
+               label="%WeblogicIntegration"
+               path="org.eclipse.ui.run/weblogicIntegrationGroup"
+               id="weblogicIntegrationMenu">
+            <separator
+                  name="formatBuilderGroup">
+            </separator>
+         </menu>
+         <action
+               label="%FormatBuilder"
+               icon="resources/images/formatbuilder/message-format-file-16.png"
+               class="com.bea.wli.ide.formatbuilder.actions.FormatBuilderMenuAction"
+               menubarPath="org.eclipse.ui.run/weblogicIntegrationMenu/formatBuilderGroup"
+               id="com.bea.alsb.common.formatbuilder.actions.FormatBuilderMenuAction">
+         </action>
+      </actionSet>
+   </extension>
+   <!--
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            objectClass="org.eclipse.core.resources.IFile"
+            nameFilter="*.mfl"
+            id="com.bea.alsb.common.formatbuilder.contextPopUp">
+         <action
+               label="%OpenWithFormatBuilder"
+               icon="resources/images/formatbuilder/message-format-file-16.png"
+               class="com.bea.wli.ide.formatbuilder.actions.FormatBuilderPopUpAction"
+               enablesFor="1"
+               id="com.bea.alsb.common.formatbuilder.actions.FormatBuilderPopUpAction">
+         </action>
+      </objectContribution>
+   </extension>
+   -->
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <wizard
+            name="%NewMFLFile"
+            icon="resources/images/formatbuilder/message-format-file-wiz-16.png"
+			category="com.bea.alsb.common.mapper"
+            class="com.bea.wli.ide.formatbuilder.wizards.MFLNewWizard"
+            id="com.bea.alsb.common.formatbuilder.wizards.MFLNewWizard">
+         <description>
+            %NewMFLFileDescription
+         </description>
+      </wizard>
+      <wizard
+            name="%NewMFLFile"
+            icon="resources/images/formatbuilder/message-format-file-wiz-16.png"
+			category="com.bea.alsb.util.ui"
+            class="com.bea.wli.ide.formatbuilder.wizards.MFLNewWizard"
+            id="com.bea.alsb.common.formatbuilder.wizards.MFLNewWizard">
+         <description>
+            %NewMFLFileDescription
+         </description>
+      </wizard>
+   </extension>
+
+</plugin>

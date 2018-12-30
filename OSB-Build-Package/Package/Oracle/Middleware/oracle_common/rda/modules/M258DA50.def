@@ -1,0 +1,177 @@
+# M258DA50.def: Collects Sun Enterprise Network Array Information
+# $Id: M258DA50.def,v 1.1 2012/05/24 07:15:29 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M258DA50.def,v 1.1 2012/05/24 07:15:29 mschenke Exp $
+#
+# Change History
+# 20120516  PRO  Initial version
+
+=head1 NAME
+
+M258DA50 - Collects Sun Enterprise Network Array Information
+
+=head1 DESCRIPTION
+
+Collects Sun Enterprise Network Array (SENA) information. The following reports
+can be generated and are regrouped under C<Sun Enterprise Network Array>:
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('photon')
+
+# -----------------------------------------------------------------------------
+# XPLR_photon section
+# -----------------------------------------------------------------------------
+
+section XPLR_photon
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing DA50 sections ...')
+
+if !testFile('f','/usr/sbin/luxadm')
+ return log_info('Luxadm not installed')
+if !testDir('d','/dev/es')
+ return log_info('No Network Array enclosures found')
+
+# Determine SENAs and SES links
+var ($nam,%arr,%lnk) = ()
+if loadCommand('/usr/sbin/luxadm probe 2>/dev/null')
+{loop $lin (grepLastFile('SENA|Logical'))
+ {if match($lin,'Name:(\w+)')
+  {var ($nam) = last
+   var $arr{$nam} = 1
+  }
+  elsif match($lin,'Path:\/dev\/es\/(\w+)')
+   call push($lnk{$nam},last)
+ }
+}
+
+# Stop execution when no SENAs have been found
+if !?$nam
+ return log_info('No Network Array enclosures found')
+
+=head2 da50_all - Overview
+
+Collects the following commands:
+
+=over 2
+
+=item o C</usr/bin/ls -l /dev/es>
+
+=item o C</usr/sbin/luxadm probe>
+
+=item o C</usr/sbin/luxadm probe -p>
+
+=back
+
+=cut
+
+pretoc '2: Sun Enterprise Network Array'
+debug ' Inside DA50 collection, gathering DA50 commands for all SENAs'
+report da50_all
+title '---+!! Sun Enterprise Network Array : Overview'
+title $TOC
+loop $rec (\
+ ['disks/photon/luxadm_probe',\
+  '/usr/sbin/luxadm','probe',\
+  '---+ Attached Subsystems'],\
+ ['disks/photon/luxadm_probe-p',\
+  '/usr/sbin/luxadm','probe -p',\
+  '---+ Physical Path Name for Attached Subsystems'],\
+ ['disks/photon/ls-l_dev.es',\
+  '/usr/bin/ls','-l /dev/es',\
+  '---+ Logical Links in /dev/es',''])
+{call do_exec($rec)
+ if compare('eq',$rec->[2],'probe')
+  sleep
+}
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Overview]]'
+
+=head2 Sun Storage Network Array Details
+
+For each SENA returned by command C</usr/sbin/luxadm probe>, collects the
+following commands:
+
+=over 2
+
+=item o C</usr/sbin/luxadm display>
+
+=item o C</usr/sbin/luxadm display -r>
+
+=item o C</usr/sbin/luxadm -e dump_map>
+
+=item o C</usr/sbin/luxadm -e port>
+
+=item o C</usr/sbin/luxadm -v display>
+
+=back
+
+=cut
+
+pretoc '3: Network Arrays'
+loop $nam (keys(%arr))
+{debug ' Inside DA50 collection, gathering DA50 commands for SENA : ',$nam
+ report concat('da50_arr_',$nam)
+ title '---+!! Sun Enterprise Network Array ',$nam,' Information'
+ title $TOC
+ loop $rec (\
+   [join('/','disks/photon/boxnames',$nam,'luxadm_display'),\
+    '/usr/sbin/luxadm',concat('display ',$nam),\
+    '---+ Device'],\
+   [join('/','disks/photon/boxnames',$nam,'luxadm_v_display'),\
+    '/usr/sbin/luxadm',concat('display -v ',$nam),\
+    '---+ Mod Sense'],\
+   [join('/','disks/photon/boxnames',$nam,'luxadm_display-r'),\
+    '/usr/sbin/luxadm',concat('display -r ',$nam),\
+    '---+ Errors'],\
+   [join('/','disks/photon/boxnames',$nam,'luxadm_-e_dump_map'),\
+    '/usr/sbin/luxadm',concat('-e dump_map ',$nam),\
+    '---+ World Wide Name'],\
+   [join('/','disks/photon/boxnames',$nam,'luxadm_-e_port'),\
+    '/usr/sbin/luxadm',concat('-e port ',$nam),\
+    '---+ Host Bus Adapter Port'])
+ {call do_exec($rec)
+  sleep
+ }
+ if isCreated(true)
+  toc '4:[[',getFile(),'][rda_report][',ucfirst($nam),']]'
+}
+
+# Create SES links for each SENA
+loop $nam (keys(%lnk))
+{loop $pth (@{$lnk{$nam}})
+  call addEntry('E','L',concat('disks/photon/boxnames/',$nam),$pth)
+}
+
+# Adjust the table of contents
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

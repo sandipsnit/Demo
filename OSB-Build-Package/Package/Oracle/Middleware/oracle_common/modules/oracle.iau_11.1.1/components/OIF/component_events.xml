@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><AuditConfig componentType="OIF" xmlns="http://xmlns.oracle.com/ias/audit/audit.xsd">
+  <Events componentType="OIF" displayName="Oracle Identity Federation">
+    <CommonAttributes>
+      
+      <Attribute maxLength="255" name="RemoteProviderID" displayName="Remote Provider ID" type="string">
+        <HelpText>The provider ID of the remote server</HelpText>
+      </Attribute>
+      <Attribute maxLength="255" name="ProtocolVersion" displayName="Protocol Version" type="string">
+        <HelpText>The version of the protocol being used (examples: SAML2.0, Libv11)</HelpText>
+      </Attribute>
+      <Attribute maxLength="255" name="NameIDQualifier" displayName="Name ID Qualifier" type="string">
+        <HelpText>The qualifier of the nameID of the subject</HelpText>
+      </Attribute>
+      <Attribute maxLength="255" name="NameIDValue" displayName="Name ID Value" type="string">
+        <HelpText>The value of the nameID of the subject</HelpText>
+      </Attribute>
+      <Attribute maxLength="255" name="NameIDFormat" displayName="Name ID Format" type="string">
+        <HelpText>The format of the NameID of the subject</HelpText>
+      </Attribute>
+      <Attribute maxLength="255" name="SessionID" displayName="Session ID" type="string">
+        <HelpText>The ID of the current session</HelpText>
+      </Attribute>
+      <Attribute maxLength="255" name="FederationID" displayName="Federation ID" type="string">
+        <HelpText>The ID of the federation</HelpText>
+      </Attribute>
+    </CommonAttributes>
+    <Category name="UserSession" unusedAttributes="ModuleId TargetComponentType Target Resource Roles">
+      <CommonAttributes>
+        
+        <Attribute maxLength="255" name="UserID" displayName="User ID" type="string">
+          <HelpText>The identifier of the user corresponding to the session</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="FederationType" displayName="Federation Type" type="string">
+          <HelpText>The type of the federation that is being created or deleted (SP/IdP)</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event displayName="Local Authentication" name="LocalAuthentication" unusedAttributes="RemoteProviderID ProtocolVersion NameIDQualifier NameIDValue NameIDFormat FederationID FederationType">
+        <HelpText>Authentication of a user</HelpText>
+        <Attribute maxLength="255" name="AuthenticationMechanism" displayName="Authentication Mechanism" type="string">
+          <HelpText>The authentication mechanism used during local authentication</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="AuthenticationEngineID" displayName="Authentication Engine ID" type="string">
+          <HelpText>The identifier of the authentication engine used during local authentication</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Local Logout" name="LocalLogout" unusedAttributes="RemoteProviderID ProtocolVersion NameIDQualifier NameIDValue NameIDFormat FederationID FederationType">
+        <HelpText>Logout of a user</HelpText>
+      </Event>
+      <Event displayName="Create User Session" name="CreateUserSession" unusedAttributes="RemoteProviderID ProtocolVersion NameIDQualifier NameIDValue NameIDFormat FederationID FederationType">
+        <HelpText>Creation of a user session after a successful login</HelpText>
+        <Attribute maxLength="255" name="AuthenticationMechanism" displayName="Authentication Mechanism" type="string">
+          <HelpText>The authentication mechanism used during local authentication</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Delete User Session" name="DeleteUserSession" unusedAttributes="RemoteProviderID ProtocolVersion NameIDQualifier NameIDValue NameIDFormat FederationID FederationType">
+        <HelpText>Deletion of a user session after logout</HelpText>
+      </Event>
+      <Event displayName="Create User Federation" name="CreateUserFederation" unusedAttributes="SessionID AuthenticationMethod">
+        <HelpText>Creation of a user federation between two remote servers</HelpText>
+      </Event>
+      <Event displayName="Delete User Federation" name="DeleteUserFederation" unusedAttributes="SessionID AuthenticationMethod">
+        <HelpText>Deletion of a user federation between two remote servers</HelpText>
+      </Event>
+      <Event displayName="Create Active User Federation" name="CreateActiveUserFederation" unusedAttributes="NameIDQualifier NameIDValue NameIDFormat">
+        <HelpText>Creation of an active federation after successful login</HelpText>
+      </Event>
+      <Event displayName="Delete Active User Federation" name="DeleteActiveUserFederation" unusedAttributes="NameIDQualifier NameIDValue NameIDFormat">
+        <HelpText>Deletion of an active federation after logout</HelpText>
+      </Event>
+      <Event displayName="Update User Federation" name="UpdateUserFederation" unusedAttributes="SessionID AuthenticationMethod">
+        <HelpText>Modification of a user federation</HelpText>
+        <Attribute maxLength="255" name="OldNameIDQualifier" type="string">
+          <HelpText>The nameID qualifier before the update took place</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="OldNameIDValue" displayName="Old Name ID Value" type="string">
+          <HelpText>The nameID value before the update took place</HelpText>
+        </Attribute>
+      </Event>
+    </Category>
+    <Category displayName="Protocol Flow" name="ProtocolFlow" unusedAttributes="ModuleId TargetComponentType Target Resource Roles">
+      <HelpText>The set of events corresponding to general protocol flow</HelpText>
+      <CommonAttributes>
+        
+        <Attribute maxLength="255" name="Binding" displayName="Binding" type="string">
+          <HelpText>The binding used to send the message (SOAP, POST, GET, Aritifact,...)</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="Role" displayName="Role" type="string">
+          <HelpText>The role of OIF during the protocol step performed (ex. Service Provider/ Identity Provider/Attribute Authority/..)</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="UserID" displayName="User ID" type="string">
+          <HelpText>The identifier of the user in this protocol step</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="MessageType" displayName="Message Type" type="string">
+          <HelpText>The type of the message (ex. SSOLoginRequest/SSOLoginResponse/SSOLogoutRequest/...)</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="AssertionVersion" displayName="Assertion Version" type="string">
+          <HelpText>The version number of the assertion corresponding to this event (ex. 2.0)</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="IssueInstant" displayName="Issue Instant" type="string">
+          <HelpText>The value of the "IssueInstant" attribute of the assertion</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="Issuer" displayName="Issuer" type="string">
+          <HelpText>The value of the "Issuer" attribute of the assertion</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="AssertionID" displayName="Assertion ID" type="string">
+          <HelpText>The value of the "AssertionID" attribute of the assertion</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event displayName="Incoming Message" name="IncomingMessage" unusedAttributes="NameIDQualifier NameIDValue NameIDFormat SessionID FederationID AssertionVersion IssueInstant Issuer AssertionID">
+        <HelpText>Protocol message received</HelpText>
+        <Attribute maxLength="3999" name="IncomingMessageString" displayName="Incoming Message String" type="string">
+        </Attribute>
+        <Attribute maxLength="0" name="IncomingMessageStringCLOB" displayName="Incoming Message String CLOB" type="string">
+        </Attribute>
+      </Event>
+      <Event displayName="Outgoing Message" name="OutgoingMessage" unusedAttributes="NameIDQualifier NameIDValue NameIDFormat SessionID FederationID AssertionVersion IssueInstant Issuer AssertionID">
+        <HelpText>Protocol message sent (Success only)</HelpText>
+        <Attribute maxLength="3999" name="OutgoingMessageString" displayName="Outgoing Message String" type="string">
+        </Attribute>
+        <Attribute maxLength="0" name="OutgoingMessageStringCLOB" displayName="Outgoing Message String CLOB" type="string">
+        </Attribute>
+      </Event>
+      <Event displayName="Assertion Creation" name="AssertionCreation" unusedAttributes="Binding Role MessageType">
+        <HelpText>Creation of an assertion (Success only)</HelpText>
+      </Event>
+      <Event displayName="Assertion Consumption" name="AssertionConsumption" unusedAttributes="Binding Role MessageType">
+        <HelpText>Consumption of an assertion (Success only)</HelpText>
+      </Event>
+    </Category>
+    <Category displayName="Security" name="Security" unusedAttributes="ModuleId TargetComponentType Target Resource Roles RemoteProviderID ProtocolVersion NameIDQualifier NameIDValue NameIDFormat SessionID FederationID">
+      <HelpText>Events relating to security operations such as encryption and signing</HelpText>
+      <CommonAttributes>
+        
+        <Attribute maxLength="255" name="Type" displayName="Type" type="string">
+          <HelpText>The type of cryptographic data being processed (XML, String)</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event displayName="Create Signature" name="CreateSignature">
+        <HelpText>Creation of a digital signature</HelpText>
+      </Event>
+      <Event displayName="Verify Signature" name="VerifySignature">
+        <HelpText>Verification of a digital signature</HelpText>
+      </Event>
+      <Event displayName="Encrypt Data" name="EncryptData">
+        <HelpText>Encryption of data</HelpText>
+      </Event>
+      <Event displayName="Decrypt Data" name="DecryptData">
+        <HelpText>Decryption of data</HelpText>
+      </Event>
+    </Category>
+    <Category displayName="Server Configuration" name="ServerConfiguration" unusedAttributes="ModuleId TargetComponentType Target Resource Roles RemoteProviderID NameIDQualifier NameIDValue NameIDFormat SessionID FederationID">
+      <HelpText>Events relating to server configuration changes</HelpText>
+      <CommonAttributes>
+        
+        <Attribute maxLength="255" name="PropertyName" displayName="Property Name" type="string">
+          <HelpText>The name of the configuration property</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="PropertyType" displayName="Property Type" type="string">
+          <HelpText>The type of the property (examples: PropertiesList, PropertiesMap, String, Boolean)</HelpText>
+        </Attribute>
+        <Attribute inFilterExpr="true" maxLength="255" name="PeerProviderID" displayName="Peer Provider ID" type="string">
+          <HelpText>The ID of the trusted provider associated with the modified property (If the modified property does not correspond to a trusted provider, this attribute is empty.)</HelpText>
+        </Attribute>
+        <Attribute inFilterExpr="true" maxLength="255" name="PropertyContext" displayName="Property Context" type="string">
+          <HelpText>The location of the property in the configuration</HelpText>
+        </Attribute>
+        <Attribute maxLength="255" name="Description" displayName="Description" type="string">
+          <HelpText>Description of the trusted provider</HelpText>
+        </Attribute>
+        <Attribute inFilterExpr="true" maxLength="255" name="OldValue" displayName="Old Value" type="string">
+          <HelpText>The value of the property before the configuration change</HelpText>
+        </Attribute>
+        <Attribute inFilterExpr="true" maxLength="255" name="NewValue" displayName="New Value" type="string">
+          <HelpText>The value of the property after the configuration change</HelpText>
+        </Attribute>
+        <Attribute inFilterExpr="true" maxLength="255" name="ProviderType" displayName="Provider Type" type="string">
+          <HelpText>The type of the provider (examples: sp, idp, sp idp)</HelpText>
+        </Attribute>
+      </CommonAttributes>
+      <Event displayName="Change Federation" name="ChangeCOT" unusedAttributes="ProtocolVersion PropertyName PropertyType PeerProviderID PropertyContext Description OldValue NewValue ProviderType">
+        <HelpText>Change in the trusted providers configuration file (Success only)</HelpText>
+        <Attribute displayName="Federation Before" maxLength="0" name="COTBefore" type="string">
+          <HelpText>The contents of the federations configuration file before the change</HelpText>
+        </Attribute>
+        <Attribute displayName="Federation After" maxLength="0" name="COTAfter" type="string">
+          <HelpText>The contents of the federations configuration file after the change</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Change Server Property" name="ChangeServerProperty" unusedAttributes="ProtocolVersion PropertyName PropertyType PeerProviderID PropertyContext Description OldValue NewValue ProviderType">
+        <HelpText>Modification of a server configuration property (Success only)</HelpText>
+        <Attribute maxLength="0" name="ServerConfigBefore" displayName="Server Config Before" type="string">
+          <HelpText>The server configuration before the change</HelpText>
+        </Attribute>
+        <Attribute maxLength="0" name="ServerConfigAfter" displayName="Server Config After" type="string">
+          <HelpText>The server configuration after the change</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Change Data Store" name="ChangeDataStore" unusedAttributes="ProtocolVersion PropertyName PropertyType PeerProviderID PropertyContext Description OldValue NewValue ProviderType">
+        <HelpText>Modification of the data stores configuration (Success only)</HelpText>
+        <Attribute maxLength="0" name="DataStoreBefore" displayName="Data Store Before" type="string">
+          <HelpText>The data stores configuration before the change</HelpText>
+        </Attribute>
+        <Attribute maxLength="0" name="DataStoreAfter" displayName="Data Store After" type="string">
+          <HelpText>The data stores configuration after the change</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Create Config Property" name="CreateConfigProperty" unusedAttributes="ProtocolVersion Description OldValue ProviderType">
+        <HelpText>Creation of a new configuration property (Success only)</HelpText>
+      </Event>
+      <Event displayName="Change Config Property" name="ChangeConfigProperty" unusedAttributes="ProtocolVersion Description ProviderType">
+        <HelpText>Modification of the value of an existing configuration property (Success only)</HelpText>
+      </Event>
+      <Event displayName="Delete Config Property" name="DeleteConfigProperty" unusedAttributes="NewValue ProviderType">
+        <HelpText>Deletion of a configuration property (Success only)</HelpText>
+      </Event>
+      <Event displayName="Create Peer Provider" name="CreatePeerProvider" unusedAttributes="PropertyName PropertyType PropertyContext OldValue NewValue">
+        <HelpText>Creation of a new provider to the list of trusted providers (Success only)</HelpText>
+      </Event>
+      <Event displayName="Update Peer Provider" name="UpdatePeerProvider" unusedAttributes="PropertyName PropertyType PropertyContext OldValue NewValue">
+        <HelpText>Modification of the information on an existing provider in the list of trusted providers (Success only)</HelpText>
+      </Event>
+      <Event displayName="Delete Peer Provider" name="DeletePeerProvider" unusedAttributes="PropertyName PropertyType PropertyContext OldValue NewValue">
+        <HelpText>Deletion of a provider from the list of trusted providers (Success only)</HelpText>
+      </Event>
+      <Event displayName="Load Metadata" name="LoadMetadata" unusedAttributes="ProtocolVersion PropertyName PropertyType PeerProviderID PropertyContext OldValue NewValue ProviderType">
+        <HelpText>Loading of trusted provider metadata (Success only)</HelpText>
+        <Attribute maxLength="255" name="Metadata" displayName="Metadata" type="string">
+          <HelpText>The provider metadata loaded</HelpText>
+        </Attribute>
+      </Event>
+      <Event displayName="Set Data Store Type" name="SetDataStoreType" unusedAttributes="ProtocolVersion PropertyName PropertyType PeerProviderID PropertyContext Description NewValue ProviderType">
+        <HelpText>Modification of the type of a data store (Success only)</HelpText>
+        <Attribute inFilterExpr="true" maxLength="255" name="NewDataStoreType" displayName="New Data Store Type" type="string">
+          <HelpText>The new type of the data store</HelpText>
+        </Attribute>
+        <Attribute inFilterExpr="true" maxLength="255" name="DataStoreName" displayName="Data Store Name" type="string">
+          <HelpText>The name of the data store being modified (examples: user data store, federation datastore)</HelpText>
+        </Attribute>
+      </Event>
+    </Category>
+  </Events>
+  <Levels>
+    <Level name="ExceptionsOnly">
+      <FilterEvent enabled="true" eventName="AssertionCreation"/>
+      <FilterEvent enabled="true" eventName="IncomingMessage"/>
+      <FilterEvent enabled="true" eventName="AssertionConsumption"/>
+    </Level>
+    <Level name="Basic">
+      <FilterEvent enabled="false" eventName="AssertionConsumption"/>
+      <FilterEvent enabled="false" eventName="IncomingMessage"/>
+      <FilterEvent enabled="false" eventName="AssertionCreation"/>
+    </Level>
+    <Level name="Enhanced">
+      <FilterEvent enabled="true" eventName="OutgoingMessage"/>
+    </Level>
+  </Levels>
+  <FilterPresetDefinitions>
+    <FilterPresetDefinition helpText=" Low level" name="Low">CreateConfigProperty,ChangeConfigProperty,DeleteConfigProperty,CreatePeerProvider,UpdatePeerProvider,DeletePeerProvider,LoadMetadata,SetDataStoreType,ChangeCOT,ChangeServerProperty,ChangeDataStore
+    
+    
+    
+    </FilterPresetDefinition>
+    <FilterPresetDefinition helpText="Medium level" name="Medium">CreateConfigProperty,ChangeConfigProperty,DeleteConfigProperty,CreatePeerProvider,UpdatePeerProvider,DeletePeerProvider,LoadMetadata,SetDataStoreType,ChangeCOT,ChangeServerProperty,ChangeDataStore,LocalAuthentication.FAILURESONLY,LocalLogout.FAILURESONLY,CreateUserSession.FAILURESONLY,DeleteUserSession.FAILURESONLY,CreateUserFederation.FAILURESONLY,UpdateUserFederation.FAILURESONLY,CreateActiveUserFederation.FAILURESONLY,DeleteActiveUserFederation.FAILURESONLY,DeleteUserFederation.FAILURESONLY,IncomingMessage.FAILURESONLY,OutgoingMessage.FAILURESONLY,AssertionCreation.FAILURESONLY,AssertionConsumption.FAILURESONLY,CreateSignature.FAILURESONLY,VerifySignature.FAILURESONLY,EncryptData.FAILURESONLY,DecryptData.FAILURESONLY
+    
+    
+    
+    </FilterPresetDefinition>
+  </FilterPresetDefinitions>
+</AuditConfig>

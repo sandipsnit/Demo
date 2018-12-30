@@ -1,0 +1,1905 @@
+<?xml version='1.0'?>
+<!-- $Header: jboss_j2eeserver.xml 11-jan-2008.00:59:04 spandita Exp $ -->
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+
+<TargetMetadata META_VER='2.0' TYPE='jboss_j2eeserver' CATEGORY_PROPERTIES="VersionCategory">
+    <Display>
+        <Label NLSID='jboss_label'>JBoss Application Server</Label>
+        <ShortName NLSID='jboss_name'>JBoss Server</ShortName>
+        <Description NLSID='jboss_desc'>JBoss Server Description</Description>
+    </Display>
+
+    <!-- Response -->
+    <Metric NAME="Response" TYPE="TABLE">
+        <Display>
+            <Label NLSID="jboss_response">Response</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="jbossstatus">UpDown Status</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <ExecutionDescriptor>
+            <!-- Find the rows in the opmn_process table that belong to this OC4J -->
+            <GetTable NAME="jboss_server" METRIC_NAME="jboss_server_runtime"/>
+            <GetView  NAME="up_process" FROM_TABLE="jboss_server">
+                <Filter COLUMN_NAME="Started" OPERATOR="EQ">true</Filter>
+            </GetView>
+
+            <!-- If we find a row, this OC4J is up.  Otherwise, it is down -->
+            <GroupBy NAME="result" FROM_TABLE="up_process">
+                <AggregateColumn  NAME="rows"
+                    COLUMN_NAME ="Started"
+                    OPERATOR="COUNT" />
+                <ComputeColumn    NAME="Status"
+                    EXPR="(rows > 0) ? 1 : 0"/>
+            </GroupBy>
+        </ExecutionDescriptor>
+    </Metric>
+
+
+
+    <!-- Resource Usage -->
+    <Metric NAME="ResourceUsage" TYPE="TABLE">
+        <Display>
+            <Label NLSID="jboss_rusage">Resource Usage</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="HeapMemoryMB" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="svr_heap_memorymb">Memory Usage (MB)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="FreeHeapMemoryPercentage" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="free_heap_memory_percentage">Free Memory (%)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalHeapMemoryMB" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="svr_ttlheap_mb">Maximum Memory Size (MB)</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <ExecutionDescriptor>
+            <GetTable NAME="jboss_rusage" METRIC_NAME="server_info"/>
+            <GetView NAME="jvm_data" FROM_TABLE="jboss_rusage">
+                <Column NAME="HeapMemoryMB"/>
+                <Column NAME="FreeHeapMemoryPercentage"/>
+                <Column NAME="TotalHeapMemoryMB"/>
+            </GetView>
+        </ExecutionDescriptor>
+    </Metric>
+
+
+    <!-- JVM Information -->
+    <Metric NAME="jvm_info" TYPE="TABLE">
+        <Display>
+            <Label NLSID="jvm_info">JBoss JVM Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="jvm_name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jvm_name">JVM Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="jvm_vendor_name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jvm_vendor_name">Vendor</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="jvm_version" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jvm_version">JVM Version</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HeapMemoryMB" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="heap_size">JVM - Heap Size (MB)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="free_heap_percentage" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="free_heap_percentage">JVM - Free Heap (%)</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <ExecutionDescriptor>
+            <GetTable NAME="server_info"/>
+            <GetView NAME="jvm_data" FROM_TABLE="server_info">
+                <Column NAME="jvm_name" COLUMN_NAME="JavaVMName"/>
+                <Column NAME="jvm_vendor_name" COLUMN_NAME="JavaVMVendor"/>
+                <Column NAME="jvm_version" COLUMN_NAME="JavaVersion"/>
+                <Column NAME="HeapMemoryMB" COLUMN_NAME="HeapMemoryMB"/>
+                <Column NAME="free_heap_percentage" COLUMN_NAME="FreeHeapMemoryPercentage"/>
+            </GetView>
+        </ExecutionDescriptor>
+    </Metric>
+
+    <!-- JNDI Information -->
+    <Metric NAME="jboss_jndi_view" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP='NO_HELP'>
+        <Display>
+            <Label NLSID="jboss_jndi_view">JBoss JNDI Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="jndi_class_name">JNDI Class Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="State" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jndi_state">JNDI state</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Status" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jndi_status">JNDI status</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss:service=JNDIView</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">Name,State,StateString</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- Naming service information -->
+    <Metric NAME="naming_service_info" TYPE="TABLE">
+        <Display>
+            <Label NLSID="naming_service_info">JBoss Naming Service Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="service_name">Service Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StateString" TYPE="STRING">
+                <Display>
+                    <Label NLSID="service_state">Service State</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ListenPort" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="service_listen_port">Listen Port</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RmiPort" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="rmi_port">RMI Port</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss:service=Naming</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">Name,StateString,Port,RmiPort</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- Mail Service -->
+    <Metric NAME="jboss_mail_service" TYPE="TABLE">
+        <Display>
+            <Label NLSID="jboss_mail_service">JBoss Mail Service Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="jbm_name">Service - Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="State" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jbm_state">Service - State</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StateString" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbm_StateString">Service - State (text)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TransportProtocol" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbm_tpro">Service - Transport Protocol</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StoreProtocol" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbm_StoreProtocol">Service - Store Protocol</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="SMTPServerHost" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbm_SMTPServerHost">Service - SMTP Server Host</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="POP3ServerHost" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbm_POP3ServerHost">Service - POP3 Server Host</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="JNDIName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbm_JNDIName">Service - JNDI Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="DefaultSender" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbm_DefaultSender">Service - Default Sender</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss:service=Mail,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">Name,State,StateString,TransportProtocol,StoreProtocol,SMTPServerHost,POP3ServerHost,JNDIName,DefaultSender</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- WebService JBOSS Service -->
+    <Metric NAME="jboss_ws_service" TYPE="TABLE">
+        <Display>
+            <Label NLSID="jboss_ws_service">JBoss WebService Service Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="jbws_name">Service - Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="State" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jbws_state">Service - State</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StateString" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbws_StateString">Service - State (text)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Host" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbws_host">Service - Host</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="BindAddress" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbws_BindAddress">Service - Bind Address</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Port" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jbws_Port">Service - Port</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss:service=WebService,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">Name,State,StateString,Host,BindAddress,Port</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- HAJNDI JBOSS Service -->
+    <Metric NAME="jboss_hajndi_service" TYPE="TABLE">
+        <Display>
+            <Label NLSID="jboss_hajndi_service">JBoss Clustering Service Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="jbcs_name">Service - Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="State" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jbcs_state">Service - State</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StateString" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbcs_StateString">Service - State (text)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="PartitionName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbcs_PartitionName">Partition Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RmiPort" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jbcs_RmiPort">Service - Rmi Port</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Port" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jbcs_Port">Service - Port</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="BindAddress" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jbcs_BindAddress">Service - Bind Address</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss:service=HAJNDI,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">Name,State,StateString,PartitionName,RmiPort,Port,BindAddress</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- Server Details -->
+    <Metric NAME="server_details" TYPE="TABLE">
+        <Display>
+            <Label NLSID="server_details">JBoss Server Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="host_address" TYPE="STRING">
+                <Display>
+                    <Label NLSID="host_address">Host Address</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="host_name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="host_name">Host Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="host_os" TYPE="STRING">
+                <Display>
+                    <Label NLSID="host_OS">Host Operating System</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Version" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jboss_server_version">JBoss - Version</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="VersionName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="JBoss_version_name">JBoss - Version Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="BuildID" TYPE="STRING">
+                <Display>
+                    <Label NLSID="svr_buildid">JBoss - Build ID</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="BuildDate" TYPE="STRING">
+                <Display>
+                    <Label NLSID="svr_build_date">JBoss - Build Date</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="start_time" TYPE="STRING">
+                <Display>
+                    <Label NLSID="server_stime">JBoss - Start Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="listen_port" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="listen_port">JBoss - Listen Port</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <ExecutionDescriptor>
+            <GetTable NAME="server_info"/>
+            <GetTable NAME="jboss_server_runtime"/>
+            <GetTable NAME="naming_service_info"/>
+            <JoinTables NAME="server_data">
+                <Table NAME="server_info"/>
+                <Table NAME="jboss_server_runtime"/>
+                <Table NAME="naming_service_info"/>
+                <Column NAME="host_address" COLUMN_NAME="HostAddress" TABLE_NAME="server_info"/>
+                <Column NAME="host_name" COLUMN_NAME="HostName" TABLE_NAME="server_info"/>
+                <Column NAME="host_os" COLUMN_NAME="OSName" TABLE_NAME="server_info"/>
+                <Column NAME="Version" COLUMN_NAME="Version" TABLE_NAME="jboss_server_runtime"/>
+                <Column NAME="VersionName" COLUMN_NAME="VersionName" TABLE_NAME="jboss_server_runtime"/>
+                <Column NAME="BuildID" COLUMN_NAME="BuildID" TABLE_NAME="jboss_server_runtime"/>
+                <Column NAME="BuildDate" COLUMN_NAME="BuildDate" TABLE_NAME="jboss_server_runtime"/>
+                <Column NAME="start_time" COLUMN_NAME="StartDate" TABLE_NAME="jboss_server_runtime"/>
+                <Column NAME="listen_port" COLUMN_NAME="ListenPort" TABLE_NAME="naming_service_info"/>
+            </JoinTables>
+        </ExecutionDescriptor>
+    </Metric>
+
+
+    <!-- Server Configuration Information -->
+    <Metric NAME="server_config_info" TYPE="TABLE">
+        <Display>
+            <Label NLSID="server_config_info">JBoss Server Configuration Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="ConfigName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="config_name">JBoss - Configuration Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HomeDir" TYPE="STRING">
+                <Display>
+                    <Label NLSID="home_dir">JBoss - Home Directory</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ServerBaseDir" TYPE="STRING">
+                <Display>
+                    <Label NLSID="server_base_dir">JBoss - Base Directory</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ServerHomeDir" TYPE="STRING">
+                <Display>
+                    <Label NLSID="server_home_dir">JBoss - Server Home Directory</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RootDeploymentFilename" TYPE="STRING">
+                <Display>
+                    <Label NLSID="deployment_filename">JBoss - Deployment Filename</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss.system:type=ServerConfig</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">ServerName,HomeDir,ServerBaseDir,ServerHomeDir,RootDeploymentFilename</Property>
+        </QueryDescriptor>
+    </Metric>
+
+
+    <!-- J2EE Module -->
+    <Metric NAME="j2ee_applications" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP='NO_HELP'>
+        <Display>
+            <Label NLSID="j2ee_applications">JBoss J2EE Module Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="app_obj_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="j2ee_appname">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="j2ee_apps_prv">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=J2EEApplication,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- Total Web Modules -->
+    <Metric NAME="web_modules" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP='NO_HELP'>
+        <Display>
+            <Label NLSID="web_modules">JBoss Web Modules Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="wm_stats_provider">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=WebModule,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider</Property>
+        </QueryDescriptor>
+    </Metric>
+
+
+    <!-- Total EJB Modules -->
+    <Metric NAME="ejb_modules" TYPE="TABLE">
+        <Display>
+            <Label NLSID="ejb_modules">JBoss Ejb Modules Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="ejbstats_provider">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:J2EEApplication=null,j2eeType=EJBModule,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider</Property>
+        </QueryDescriptor>
+    </Metric>
+
+
+    <!-- Service modules Stats -->
+    <Metric NAME="service_modules" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP='NO_HELP'>
+        <Display>
+            <Label NLSID="service_modules">JBoss Service Modules Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="service_stats_prv">Statistics Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=ServiceModule,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- MBeans Stats -->
+    <Metric NAME="mbeans" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP='NO_HELP'>
+        <Display>
+            <Label NLSID="mbeans">JBoss Mbeans Modules Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StartTime" TYPE="STRING">
+                <Display>
+                    <Label NLSID="start_time">Start Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="State" TYPE="STRING">
+                <Display>
+                    <Label NLSID="state">State</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="mbean_stats_prv">Statistics Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=MBean,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,StartTime,StateString,statisticsProvider</Property>
+        </QueryDescriptor>
+    </Metric>
+
+
+    <!-- Total Servlets -->
+    <Metric NAME="servlets" TYPE="TABLE">
+        <Display>
+            <Label NLSID="servlets">JBoss Servlets Raw Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="servlet_name">Servlet Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="servlet_stprovider">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="parent" TYPE="STRING">
+                <Display>
+                    <Label NLSID="parent">Parent</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StatName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="stat_name">Statistic Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="StatDescription" TYPE="STRING">
+                <Display>
+                    <Label NLSID="stat_description">Statistic Description</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Count" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="serlvet_tcount">Servlet - Total Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="MinTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="min_time">Servlet - Minimum Response Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="MaxTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="max_time">Servlet - Maximum Response Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="total_time">Servlet - Total Response Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Unit" TYPE="STRING">
+                <Display>
+                    <Label NLSID="unit">Servlet - Response Time Unit</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ActCount" TYPE="NUMBER" COMPUTE_EXPR="(Count - _Count)">
+                <Display>
+                    <Label NLSID="servlet_acnt">Servlet - Active Requests since last Upload</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RespTime" TYPE="NUMBER" COMPUTE_EXPR="((TotalTime - _TotalTime)/1000)">
+                <Display>
+                    <Label NLSID="sv_resp_tm">Servlet - Active Requests, Response Time (Sec)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ReqRate" TYPE="NUMBER" COMPUTE_EXPR="(ActCount/RespTime)">
+                <Display>
+                    <Label NLSID="servlet_reqrate">Servlet - Active Requests / Sec</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=Servlet,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider,parent</Property>
+            <Property NAME="statsAttributes" SCOPE="GLOBAL">ServiceTime:Name,Description,Count,MinTime,MaxTime,TotalTime,Unit</Property>
+        </QueryDescriptor>
+    </Metric>
+
+
+    <!-- Application Metrics -->
+    <Metric NAME="ApplicationData" TYPE="TABLE">
+        <Display>
+            <Label NLSID="ApplicationData">JBoss Web Applications Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="parent" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="APPS_PRT">War File Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="PCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="APPS_REQCOUNT">Web Apps - Total Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalMinTime" TYPE="NUMBER" TRANSIENT="TRUE" HELP='NO_HELP'>
+                <Display>
+                    <Label NLSID="APPS_TMIN_TIME">Total minimum time for all active requests.</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalMaxTime" TYPE="NUMBER" TRANSIENT="TRUE" HELP='NO_HELP'>
+                <Display>
+                    <Label NLSID="APPS_TMAX_TIME">Total maximum time for all active requests.</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="APPS_TTIME">Web Apps - Total Response Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="AvgExecTime" TYPE="NUMBER" COMPUTE_EXPR="(TotalTime / PCount)">
+                <Display>
+                    <Label NLSID="APPS_AVGREQS">Web Apps - Average Response Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ActiveReqs" TYPE="NUMBER" COMPUTE_EXPR="(PCount - _PCount)">
+                <Display>
+                    <Label NLSID="APPS_AREQS">Web Apps - Active requests since last agent upload</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalMinTimeIntv" TYPE="NUMBER" COMPUTE_EXPR="(TotalMinTime - _TotalMinTime)" TRANSIENT="TRUE" HELP='NO_HELP'>
+                <Display>
+                    <Label NLSID="APPS_TRTMINV">Minimum response time since the last agent upload</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalMaxTimeIntv" TYPE="NUMBER" COMPUTE_EXPR="(TotalMaxTime - _TotalMaxTime)" TRANSIENT="TRUE" HELP='NO_HELP'>
+                <Display>
+                    <Label NLSID="APPS_TRTM_INV">Maximum response time since the last agent upload</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalRespTm" TYPE="NUMBER" COMPUTE_EXPR="(TotalTime - _TotalTime)">
+                <Display>
+                    <Label NLSID="APPS_TRTM">Web Apps - Total Response time for Active Requests</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="AvgMinRespTm" TYPE="NUMBER" COMPUTE_EXPR="((TotalMinTimeIntv > 0) ? (TotalMinTimeIntv / ActiveReqs) : 0)">
+                <Display>
+                    <Label NLSID="APPS_AV_MINTM">Web Apps - Average minimum response time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="AvgMaxRespTm" TYPE="NUMBER" COMPUTE_EXPR="((TotalMaxTimeIntv > 0) ? (TotalMaxTimeIntv / ActiveReqs) : 0)">
+                <Display>
+                    <Label NLSID="APPS_AV_MAXTM">Web Apps - Average maximum response time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CurrentReqRate" TYPE="NUMBER" COMPUTE_EXPR="((ActiveReqs > 0) ? (ActiveReqs / TotalRespTm) : 0)">
+                <Display>
+                    <Label NLSID="APPS_CR_RT">Web Apps - Requests rate per second</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+            <ExecutionDescriptor>
+                <GetTable NAME="servlets"/>
+                <GroupBy NAME="grp_rst" FROM_TABLE="servlets">
+                    <By NAME="parent"/>
+                <AggregateColumn  NAME="PCount"
+                        COLUMN_NAME = "Count"
+                        OPERATOR="SUM" />
+                <AggregateColumn  NAME="TotalMinTime"
+                        COLUMN_NAME = "MinTime"
+                        OPERATOR="SUM" />
+                <AggregateColumn  NAME="TotalMaxTime"
+                        COLUMN_NAME = "MaxTime"
+                        OPERATOR="SUM" />
+                <AggregateColumn  NAME="TotalTime"
+                        COLUMN_NAME = "TotalTime"
+                        OPERATOR="SUM" />
+                </GroupBy>
+            </ExecutionDescriptor>
+    </Metric>
+
+
+
+    <!-- Stateless Session EJBs -->
+    <Metric NAME="stateless_session_beans_stats" TYPE="TABLE">
+        <Display>
+            <Label NLSID="stateless_session_beans_stats">JBoss Stateless Session Ejb Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="stateless_ejbname">Stateless Ejb - Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="stats_provider">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="parent" TYPE="STRING">
+                <Display>
+                    <Label NLSID="sejb_parent">Stateless Ejb - Parent</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CreateCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="sejb_crte_count">Stateless Ejb - Instances Created Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RemoveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="remove_count">Stateless Ejb - Instances Removed Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CurrentMethodReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="current_method_ready_count">Stateless Ejb - Current Method Ready Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HighMethodReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="high_method_ready_count">Stateless Ejb - Maxinum Method Ready Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="LowMethodReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="low_method_ready_count">Stateless Ejb - Minimum Method Ready Count</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=StatelessSessionBean,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider,parent</Property>
+            <Property NAME="statsAttributes" SCOPE="GLOBAL">CreateCount:Count|RemoveCount:Count|MethodReadyCount:Current,HighWaterMark,LowWaterMark</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- Stateful Session EJBs -->
+    <Metric NAME="stateful_session_beans_stats" TYPE="TABLE">
+        <Display>
+            <Label NLSID="stateful_session_beans_stats">JBoss Stateful Session Ejb Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="stateful_ejbname">Stateful Ejb - Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="stejb_stats_prv">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="parent" TYPE="STRING">
+                <Display>
+                    <Label NLSID="stejb_parent">Stateful Ejb - Parent</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CreateCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_create_count">Stateful Ejb - Instances Created Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RemoveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_remove_count">Stateful Ejb - Instances Removed Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CurrentMethodReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_cmeth_rdcnt">Stateful Ejb - Current Method Ready Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HighMethodReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_hgmth_red">Stateful Ejb - Maximum Method Ready Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="LowMethodReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_lwmth_rdcnt">Stateful Ejb - Minimum Method Ready Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CurrentPassiveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_cpve_cnt">Stateful Ejb - Current Passive Instances Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HighPassiveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_hh_psv_cnt">Stateful Ejb - Maximum Passive Instances Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="LowPassiveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="stejb_lw_psv_cnt">Stateful Ejb - Minimum Passive Instances Count</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=StatefulSessionBean,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider,parent</Property>
+            <Property NAME="statsAttributes" SCOPE="GLOBAL">CreateCount:Count|RemoveCount:Count|MethodReadyCount:Current,HighWaterMark,LowWaterMark|PassiveCount:Current,HighWaterMark,LowWaterMark</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- message driven bean stats -->
+    <Metric NAME="message_driven_beans_stats" TYPE="TABLE">
+        <Display>
+            <Label NLSID="message_driven_beans_stats">JBoss Message Driven Ejb Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="mdb_name">MDB - Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="mdb_stats_prv">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="parent" TYPE="STRING">
+                <Display>
+                    <Label NLSID="mdb_parent">MDB - Parent</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CreateCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="mdb_create_count">MDB - Instances Created Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RemoveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="mdb_remove_count">MDB - Instances Removed Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="MessageCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="mdb_msg_cnt">MDB - Messages Count</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=MessageDrivenBean,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider,parent</Property>
+            <Property NAME="statsAttributes" SCOPE="GLOBAL">CreateCount:Count|RemoveCount:Count|MessageCount:Count</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <!-- Entity Bean Stats -->
+    <Metric NAME="entity_beans_stats" TYPE="TABLE">
+        <Display>
+            <Label NLSID="entity_beans_stats">JBoss Entity Ejb Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="eejb_name">Entity EJB - Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="eejb_stats_prv">Statistic Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="parent" TYPE="STRING">
+                <Display>
+                    <Label NLSID="eejb_parent">Entity EJB - Parent</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CreateCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_create_count">Entity EJB - Instances Created Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="RemoveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_remove_count">Entity EJB - Instances Removed Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CurrentPooledCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_crt_pl_cnt">Entity EJB - Current Instances Pooled Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HighPooledCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_hg_pl_cnt">Entity EJB - Maximum Instances in the Pool</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="LowPooledCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_lwpl_cnt">Entity EJB - Minimum Instances in the Pool</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="CurrentReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_crtrdy_cnt">Entity EJB - Current Ready Instances Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HighPassiveCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_hgrd_cnt">Entity EJB - Maximum Ready Instances Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="LowReadyCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="eejb_lwrd_cnt">Entity EJB - Minimum Ready Instances Count</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=EntityBean,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider,parent</Property>
+            <Property NAME="statsAttributes" SCOPE="GLOBAL">CreateCount:Count|RemoveCount:Count|PooledCount:Current,HighWaterMark,LowWaterMark|ReadyCount:Current,HighWaterMark,LowWaterMark</Property>
+        </QueryDescriptor>
+    </Metric>
+
+ <!--  Metric TransactionRuntime  -->
+   <Metric NAME="TransactionRuntime" TYPE="TABLE">
+      <Display>
+         <Label NLSID="ETR_LABEL">JBoss Transactions Metrics</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+             <Display>
+                 <Label NLSID="name">Name</Label>
+             </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="CommitCount" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="TRS_CCNT">JBoss - Transactions Committed Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="RollbackCount" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="FALSE">
+            <Display>
+               <Label NLSID="TRS_RBCNT">JBoss - Transactions RolledBack Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TransactionCount" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="FALSE">
+            <Display>
+               <Label NLSID="TRS_TCNT">JBoss - Active Transactions Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TransactionTimeout" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="FALSE">
+            <Display>
+               <Label NLSID="TRS_TOUT">JBoss - Transactions Timeout (Secs)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="CommitCountIntv" TYPE="NUMBER" IS_KEY="FALSE"  COMPUTE_EXPR="( CommitCount > _CommitCount ) ? CommitCount - _CommitCount : 0">
+            <Display>
+               <Label NLSID="TRS_CCNTINTV">Committed last interval</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="RollbackCountIntv" TYPE="NUMBER" IS_KEY="FALSE"  COMPUTE_EXPR="( RollbackCount > _RollbackCount ) ? RollbackCount - _RollbackCount : 0">
+            <Display>
+               <Label NLSID="TRS_RCNT_INTV">Rolledback last interval</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TransactionCountIntv" TYPE="NUMBER" IS_KEY="FALSE"  COMPUTE_EXPR="( TransactionCount > _TransactionCount ) ? TransactionCount - _TransactionCount : 0">
+            <Display>
+               <Label NLSID="TRS_TCNT_INTV">Trans last interval</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="interval" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE" COMPUTE_EXPR="__interval" HELP='NO_HELP'/>
+         <ColumnDescriptor NAME="txncommittedpersecond" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="( CommitCountIntv > 0) ? CommitCountIntv/(interval*60) : 0">
+            <Display>
+               <Label NLSID="TRS_CM_RT">JBoss - Transactions Committed / Sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="txnrollbackpersec" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="( RollbackCountIntv > 0) ? RollbackCountIntv/(interval*60) : 0">
+            <Display>
+               <Label NLSID="TRS_RB_RT">JBoss - Transactions Rolled Back / Sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="txnactivepersec" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="( TransactionCountIntv > 0) ? TransactionCountIntv/(interval*60) : 0">
+            <Display>
+               <Label NLSID="TRS_ACT_RT">JBoss - Transactions / Sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+         <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+			<Property NAME="query" SCOPE="GLOBAL">jboss:service=TransactionManager,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">Name,CommitCount,RollbackCount,TransactionCount,TransactionTimeout</Property>
+      </QueryDescriptor>
+   </Metric>
+
+
+    <!-- JCA Resource Stats -->
+    <Metric NAME="jca_resources" TYPE="TABLE">>
+        <Display>
+            <Label NLSID="jca_resources">JBoss JCA Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING">
+                <Display>
+                    <Label NLSID="name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="statsProvider" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jca_stats_provider">Statistics Provider</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="parent" TYPE="STRING">
+                <Display>
+                    <Label NLSID="parent">Parent</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="currentFreePoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="current_free_pool_size">JCA - Current Free Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="highFreePoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="high_free_pool_size">JCA - Maximum Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="lowFreePoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="low_free_pool_size">JCA - Minimum Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="upperBoundFreePoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="upper_bound_free_pool_size">JCA - Upper Bound Free Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="lowerBoundFreePoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="lower_bound_free_pool_size">JCA - Lower Bound Free Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="currentPoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="current_pool_size">JCA - Current Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="highPoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="high_pool_size">JCA - High Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="lowPoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="low_pool_size">JCA - Low Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="upperBoundPoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="upper_bound_pool_size">JCA - Upper Bound Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="lowerBoundPoolSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="lower_bound_pool_size">JCA - Lower Bound Pool Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="createCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="create_count">JCA - Instances Created Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="closeCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="close_count">JCA - Instances Close Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="currentWaitingThreadCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="current_waiting_thread_count">JCA - Current Waiting Thread Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="highWaitingThreadCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="high_waiting_thread_count">JCA - Maximum Waiting Thread Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="lowWaitingThreadCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="low_waiting_thread_count">JCA - Minimum Waiting Thread Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="countUseTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="count_use_time">JCA - Count Use Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="minUseTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="min_use_time">JCA - Minimum Used Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="maxUseTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="max_use_time">JCA - Maximum Use Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="totalUseTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="total_use_time">JCA - Total Used Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="countWaitTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="count_wait_time">JCA - Count Wait Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="minWaitTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="min_wait_time">JCA - Min Wait Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="maxWaitTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="max_wait_time">JCA - Max Wait Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="totalWaitTime" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="total_wait_time">JCA - Total Wait Time</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="countUseTimeSec" TYPE="NUMBER" COMPUTE_EXPR="(countUseTime/1000)">
+                <Display>
+                    <Label NLSID="count_use_times">JCA - Count Use Time (Sec)</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.management.local:j2eeType=JCAResource,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,Name,statisticsProvider,parent</Property>
+            <Property NAME="statsAttributes" SCOPE="GLOBAL">FreePoolSize:Current,HighWaterMark,LowWaterMark,UpperBound,LowerBound|PoolSize:Current,HighWaterMark,LowWaterMark,UpperBound,LowerBound|CreateCount:Count|CloseCount:Count|WaitingThreadCount:Current,HighWaterMark,LowWaterMark|UseTime:Count,MinTime,MaxTime,TotalTime|WaitTime:Count,MinTime,MaxTime,TotalTime</Property>
+        </QueryDescriptor>
+    </Metric>
+
+
+<Metric NAME="TOP_EJBS" TYPE="TABLE">
+	<Display>
+        <Label NLSID="TOP_EJBS_LABEL">JBoss Top Ejbs Metrics</Label>
+    </Display>
+    <TableDescriptor>
+    <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+          <Display>
+               <Label NLSID="tejb_object_name">JBoss - EJb Object Name</Label>
+          </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="FALSE" >
+        <Display>
+            <Label NLSID="TEJB_TYPE_LABEL">JBoss - Ejb Type</Label>
+        </Display>
+    </ColumnDescriptor>
+		<ColumnDescriptor NAME="CreateCountTotal" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+		      <Display>
+              <Label NLSID="TEJB_EJBMETHODEXECPERSEC_LABEL">JBoss - Ejb Create Count</Label>
+          </Display>
+    </ColumnDescriptor>
+      <ColumnDescriptor NAME="RemoveCount" TYPE="NUMBER" IS_KEY="FALSE">
+             <Display>
+                 <Label NLSID="TEJB_CURRENTAVGTIME_LABEL">JBoss - Ejb Remove Count</Label>
+  			</Display>
+      	</ColumnDescriptor>
+			<ColumnDescriptor NAME="CreateCount" TYPE="NUMBER" IS_KEY="FALSE" COMPUTE_EXPR="(CreateCountTotal - _CreateCountTotal) > 0 ? (CreateCountTotal - _CreateCountTotal) : 0">
+		      <Display>
+              <Label NLSID="TEJB_CreateCount_LABEL">JBoss - Ejb Create Count Interval</Label>
+          </Display>
+    </ColumnDescriptor>	
+    </TableDescriptor>
+    <ExecutionDescriptor>
+        <GetTable NAME="stateless_session_beans_stats" USE_CACHE="TRUE_IF_COLLECT"/>
+        <GetView NAME="result" FROM_TABLE="stateless_session_beans_stats">
+            <Column NAME="objectName"/>
+            <Column NAME="Name"/>
+            <Column NAME="parent"/>
+            <Column NAME="CreateCount"/>
+            <Column NAME="RemoveCount"/>
+        </GetView>
+        <GetTable NAME="stateful_session_beans_stats" USE_CACHE="TRUE_IF_COLLECT"/>
+        <GetView NAME="result1" FROM_TABLE="stateful_session_beans_stats">
+           <Column NAME="objectName"/>
+            <Column NAME="Name"/>
+            <Column NAME="parent"/>
+            <Column NAME="CreateCount"/>
+            <Column NAME="RemoveCount"/>
+        </GetView>
+       <GetTable NAME="entity_beans_stats" USE_CACHE="TRUE_IF_COLLECT"/>
+        <GetView NAME="result2" FROM_TABLE="entity_beans_stats">
+           <Column NAME="objectName"/>
+            <Column NAME="Name"/>
+            <Column NAME="parent"/>
+            <Column NAME="CreateCount"/>
+            <Column NAME="RemoveCount"/>
+        </GetView>
+        <GetTable NAME="message_driven_beans_stats" USE_CACHE="TRUE_IF_COLLECT"/>
+        <GetView NAME="result3" FROM_TABLE="message_driven_beans_stats">
+           <Column NAME="objectName"/>
+            <Column NAME="Name"/>
+            <Column NAME="parent"/>
+            <Column NAME="CreateCount"/>
+            <Column NAME="RemoveCount"/>
+        </GetView>
+        <Union NAME="result4">
+            <Table NAME="result" />
+            <Table NAME="result1" />
+            <Table NAME="result2" />
+            <Table NAME="result3" />
+        </Union>
+        <GetView NAME="result5" FROM_TABLE="result4">
+            <Filter COLUMN_NAME="CreateCount" OPERATOR="GT">0</Filter>
+        </GetView>
+				<GetView NAME="finalresult" FROM_TABLE="result5">
+						<Column NAME="objectName"/>
+            <Column NAME="Name"/>
+            <Column NAME="parent"/>
+            <Column NAME="CreateCountTotal" COLUMN_NAME="CreateCount"/>
+            <Column NAME="RemoveCount"/>
+        </GetView>
+    </ExecutionDescriptor>
+</Metric>
+
+
+<!-- TOP SERVLETS -->
+<Metric NAME="TOP_SERVLETS" TYPE="TABLE">
+	<Display>
+        <Label NLSID="TOP_SERVLETS_LABEL">JBoss Top Servlets Metrics</Label>
+    </Display>
+    <TableDescriptor>
+    <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+          <Display>
+               <Label NLSID="ts_object_name">JBoss - Servlet Object Name</Label>
+          </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="FALSE" >
+        <Display>
+            <Label NLSID="TS_nm">JBoss - Web Component Type</Label>
+        </Display>
+    </ColumnDescriptor>
+    <ColumnDescriptor NAME="parent" TYPE="NUMBER" IS_KEY="FALSE">
+          <Display>
+              <Label NLSID="TS_sparent">JBoss - Servlet WAR Name</Label>
+          </Display>
+      </ColumnDescriptor>
+		<ColumnDescriptor NAME="ActCount" TYPE="NUMBER">
+			<Display>
+				<Label NLSID="ts_acount">Servlet - Active Requests since last Upload</Label>
+			</Display>
+		</ColumnDescriptor>
+		<ColumnDescriptor NAME="RespTime" TYPE="NUMBER">
+			<Display>
+				<Label NLSID="ts_cnt">Servlet - Active Requests, Response Time (Sec)</Label>
+			</Display>
+		</ColumnDescriptor>
+		<ColumnDescriptor NAME="ReqRate" TYPE="NUMBER">
+			<Display>
+				<Label NLSID="ts_req_rate">Servlet - Active Requests / Sec</Label>
+			</Display>
+		</ColumnDescriptor>
+    </TableDescriptor>
+    <ExecutionDescriptor>
+        <GetTable NAME="servlets" USE_CACHE="TRUE_IF_COLLECT"/>
+        <GetView NAME="sresult" FROM_TABLE="servlets">
+            <Column NAME="objectName"/>
+            <Column NAME="Name"/>
+            <Column NAME="parent"/>
+            <Column NAME="ActCount"/>
+            <Column NAME="RespTime"/>
+            <Column NAME="ReqRate"/>
+            <Filter COLUMN_NAME="ActCount" OPERATOR="GT">0</Filter>
+        </GetView>
+    </ExecutionDescriptor>
+</Metric>
+
+<!-- Web Modules Config -->
+    <Metric NAME="web_module_config" TYPE="TABLE" USAGE_TYPE="HIDDEN" HELP='NO_HELP'>
+        <Display>
+            <Label NLSID="web_module_config">JBoss Web Modules Config Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="objectName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="object_name">Object Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="docBase" TYPE="STRING">
+                <Display>
+                    <Label NLSID="web_module_docBase">Web Module - Document Root</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="javaVMs" TYPE="STRING">
+                <Display>
+                    <Label NLSID="web_module_javaVMs">Web Module - Java VM</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="path" TYPE="STRING">
+                <Display>
+                    <Label NLSID="web_module_path">Web Module - Path</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="servlets" TYPE="STRING">
+                <Display>
+                    <Label NLSID="web_module_servlets">Web Module - Servlets</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="welcomeFiles" TYPE="STRING">
+                <Display>
+                    <Label NLSID="web_module_welcomeFiles">Web Module - Welcome Files</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="workDir" TYPE="STRING">
+                <Display>
+                    <Label NLSID="web_module_workDir">Web Module - Work Directory</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.web:j2eeType=WebModule,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">objectName,docBase,javaVMs,path,servlets,welcomeFiles,workDir</Property>
+         </QueryDescriptor>
+    </Metric>
+  <Metric NAME="datasource_config" TYPE="TABLE">
+        <Display>
+            <Label NLSID="datasource_config">JBoss DataSource Bind Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="BindName" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="bind_name">Bind Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="JndiName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="datasource_JndiName">JNDI Name</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.jca:service=DataSourceBinding,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">BindName,JndiName</Property>
+        </QueryDescriptor>
+    </Metric>
+
+    <Metric NAME="conn_pool_config" TYPE="TABLE">
+        <Display>
+            <Label NLSID="conn_pool_config">JBoss Connection Pools Metrics</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="name">Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="MinSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="MinSize">Minimum Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="MaxSize" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="MaxSize">Maximum Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Criteria" TYPE="STRING">
+                <Display>
+                    <Label NLSID="Criteria">Criteria</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">jboss.jca:service=ManagedConnectionPool,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">ManagedConnectionFactoryName,MinSize,MaxSize,Criteria</Property>
+        </QueryDescriptor>
+    </Metric>
+
+<Metric NAME="jboss_proto_conn" TYPE="TABLE">
+        <Display>
+            <Label NLSID="jboss_proto_conn">JBoss Protocols Ports</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="protocol" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jboss_proto">JBoss - Protocol</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="Port" TYPE="NUMBER" IS_KEY="TRUE">
+                <Display>
+                    <Label NLSID="jboss_port">JBoss - Port</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="redirectPort" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jboss_rport">JBoss - Redirect Port</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="scheme" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jboss_scheme">JBoss - Redirect Port Protocol</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="connectionTimeout" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jboss_conn_tmout">JBoss - Connection Timeout</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="connectionLinger" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="jboss_conn_tmlng">JBoss - Connection Linger Value</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="keystoreFile" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jboss_ksfile">JBoss - KeyStore File</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="keystoreType" TYPE="STRING">
+                <Display>
+                    <Label NLSID="jboss_kstype">JBoss - KeyStore Type</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="query" SCOPE="GLOBAL">*:type=Connector,*</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">protocol,port,redirectPort,scheme,connectionTimeout,connectionLinger,keystoreFile,keystoreType</Property>
+        </QueryDescriptor>
+    </Metric>
+ <!-- General Config -->
+   <Metric NAME="GeneralConfig" TYPE="RAW" CONFIG="TRUE" HELP='NO_HELP'>
+  	  <TableDescriptor TABLE_NAME="MGMT_JBOSS_GENERALCONFIG">
+  	      <ColumnDescriptor NAME="ConfigName" COLUMN_NAME="CONFIGNAME" TYPE="STRING"/>
+  		  <ColumnDescriptor NAME="HomeDir" COLUMN_NAME="HOMEDIR" TYPE="STRING" />
+  		  <ColumnDescriptor NAME="ServerBaseDir" COLUMN_NAME="SERVERBASEDIR" TYPE="STRING"/>
+ 	  </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss.system:type=ServerConfig</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">ServerName,HomeDir,ServerBaseDir</Property>
+        </QueryDescriptor>
+   </Metric>
+
+  <!-- Metric ResourceConfig -->
+  <Metric NAME="ResourceConfig" TYPE="RAW" CONFIG="TRUE" HELP='NO_HELP'>
+   <TableDescriptor TABLE_NAME="MGMT_JBOSS_RESOURCECONFIG">
+      <ColumnDescriptor NAME="JVMName" COLUMN_NAME="JVMNAME" TYPE="STRING"/>
+      <ColumnDescriptor NAME="JVMVendor" COLUMN_NAME="JVMVENDOR" TYPE="STRING" />
+      <ColumnDescriptor NAME="JVMVersion" COLUMN_NAME="JVMVERSION" TYPE="STRING" />
+      <ColumnDescriptor NAME="MaxHeap" COLUMN_NAME="MAXHEAP" TYPE="NUMBER"/>
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+        <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+        <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+        <Property NAME="metric" SCOPE="GLOBAL">ServerInfoConfig</Property>
+        <Property NAME="attributes" SCOPE="GLOBAL">JavaVMName,JavaVMVendor,JavaVersion,TotalMemory</Property>
+    </QueryDescriptor>    
+  </Metric>
+
+    <!-- Metric ProtocolConfig -->
+    <Metric NAME="ProtocolConfig" TYPE="RAW" CONFIG="TRUE" HELP='NO_HELP'>
+     <TableDescriptor TABLE_NAME="MGMT_JBOSS_PROTOCONFIG">
+        <ColumnDescriptor NAME="protocol" COLUMN_NAME="PROTOCOL" TYPE="STRING"/>
+        <ColumnDescriptor NAME="Port" COLUMN_NAME="PORT" TYPE="NUMBER"/>
+     </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+        <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+        <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+        <Property NAME="query" SCOPE="GLOBAL">*:type=Connector,*</Property>
+        <Property NAME="attributes" SCOPE="GLOBAL">protocol,port</Property>
+      </QueryDescriptor>    
+      <!-- <ExecutionDescriptor>
+          <GetTable NAME="jboss_proto_conn"/>
+          <GetView NAME="proto1" FROM_TABLE="jboss_proto_conn">
+             <Column NAME="protocol" COLUMN_NAME="protocol"/>
+             <Column NAME="Port" COLUMN_NAME="Port"/>
+         </GetView>
+         <GetTable NAME="naming_service_info"/>
+           <GetView NAME="proto2" FROM_TABLE="naming_service_info">
+               <ComputeColumn NAME="protocol" EXPR="(1 > 0 ) ? 'RMI' : 'RMI'" DEFAULT_VALUE="RMI"/>
+             <Column NAME="Port" COLUMN_NAME="RmiPort"/>
+         </GetView>
+         <GetTable NAME="jboss_ws_service"/>
+           <GetView NAME="proto3" FROM_TABLE="jboss_ws_service">
+               <ComputeColumn NAME="protocol" EXPR="(1 > 0 ) ? 'SOAP' : 'SOAP'" DEFAULT_VALUE="SOAP"/>
+             <Column NAME="Port" COLUMN_NAME="Port"/>
+         </GetView>
+         <Union NAME="netproto">
+             <Table NAME="proto1"/>
+             <Table NAME="proto2"/>
+             <Table NAME="proto3"/>
+         </Union>
+       </ExecutionDescriptor> -->
+  </Metric>
+
+  <!-- Metric WAppsConfig -->
+  <Metric NAME="WAppsConfig" TYPE="RAW" CONFIG="TRUE" HELP='NO_HELP'>
+   <TableDescriptor TABLE_NAME="MGMT_JBOSS_APPSCONFIG">
+      <ColumnDescriptor NAME="Name" COLUMN_NAME="NAME" TYPE="STRING"/>
+      <ColumnDescriptor NAME="docBase" COLUMN_NAME="DOCBASE" TYPE="STRING" />
+      <ColumnDescriptor NAME="path" COLUMN_NAME="PATH" TYPE="STRING" />
+      <ColumnDescriptor NAME="workDir" COLUMN_NAME="WORKDIR" TYPE="STRING" />
+   </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+          <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+          <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+          <Property NAME="query" SCOPE="GLOBAL">jboss.web:j2eeType=WebModule,*</Property>
+          <Property NAME="attributes" SCOPE="GLOBAL">objectName,docBase,path,workDir</Property>
+       </QueryDescriptor>       
+  </Metric>
+
+  <!-- Metric DSConfig -->
+  <Metric NAME="DSConfig" TYPE="RAW" CONFIG="TRUE" HELP='NO_HELP'>
+   <TableDescriptor TABLE_NAME="MGMT_JBOSS_DSCONFIG">
+      <ColumnDescriptor NAME="DSName" COLUMN_NAME="DSNAME" TYPE="STRING"/>
+      <ColumnDescriptor NAME="JndiName" COLUMN_NAME="JNDINAME" TYPE="STRING" />
+   </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+        <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+        <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+        <Property NAME="query" SCOPE="GLOBAL">jboss.jca:service=DataSourceBinding,*</Property>
+        <Property NAME="attributes" SCOPE="GLOBAL">BindName,JndiName</Property>
+    </QueryDescriptor>   
+  </Metric>
+
+  <!-- Metric PoolConfig -->
+  <Metric NAME="PoolConfig" TYPE="RAW" CONFIG="TRUE" HELP='NO_HELP'>
+   <TableDescriptor TABLE_NAME="MGMT_JBOSS_POOLCONFIG">
+      <ColumnDescriptor NAME="Name" COLUMN_NAME="NAME" TYPE="STRING"/>
+      <ColumnDescriptor NAME="MinSize" COLUMN_NAME="MINSIZE" TYPE="NUMBER" />
+      <ColumnDescriptor NAME="MaxSize" COLUMN_NAME="MAXSIZE" TYPE="NUMBER" />
+      <ColumnDescriptor NAME="Criteria" COLUMN_NAME="CRITERIA" TYPE="STRING" />
+    </TableDescriptor>
+    <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+        <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+        <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+        <Property NAME="query" SCOPE="GLOBAL">jboss.jca:service=ManagedConnectionPool,*</Property>
+        <Property NAME="attributes" SCOPE="GLOBAL">ManagedConnectionFactoryName,MinSize,MaxSize,Criteria</Property>
+    </QueryDescriptor>    
+  </Metric>
+
+  <!-- HIDDEN METRICS -->
+      <!-- JBoss server information -->
+      <Metric NAME="jboss_server_runtime" TYPE="TABLE" USAGE_TYPE="HIDDEN_COLLECT" HELP='NO_HELP'>
+          <Display>
+              <Label NLSID="jboss_server_runtime">JBoss Version and Status</Label>
+          </Display>
+          <TableDescriptor>
+              <ColumnDescriptor NAME="Version" TYPE="STRING">
+                  <Display>
+                      <Label NLSID="svr_version">Version</Label>
+                  </Display>
+              </ColumnDescriptor>
+              <ColumnDescriptor NAME="StartDate" TYPE="STRING">
+                  <Display>
+                      <Label NLSID="jboss_start_date">Start Date</Label>
+                  </Display>
+              </ColumnDescriptor>
+              <ColumnDescriptor NAME="Started" TYPE="STRING">
+                  <Display>
+                      <Label NLSID="JBoss_started">JBoss Started</Label>
+                  </Display>
+              </ColumnDescriptor>
+              <ColumnDescriptor NAME="VersionName" TYPE="STRING">
+                  <Display>
+                      <Label NLSID="svr_version_name">JBoss Version Name</Label>
+                  </Display>
+              </ColumnDescriptor>
+              <ColumnDescriptor NAME="BuildID" TYPE="STRING">
+                  <Display>
+                      <Label NLSID="buildid">Build ID</Label>
+                  </Display>
+              </ColumnDescriptor>
+              <ColumnDescriptor NAME="BuildDate" TYPE="STRING">
+                  <Display>
+                      <Label NLSID="Build_Date">Build Date</Label>
+                  </Display>
+              </ColumnDescriptor>
+          </TableDescriptor>
+          <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+              <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+              <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+              <Property NAME="metric" SCOPE="GLOBAL">jboss.system:type=Server</Property>
+              <Property NAME="attributes" SCOPE="GLOBAL">Version,StartDate,Started,VersionName,BuildID,BuildDate</Property>
+          </QueryDescriptor>
+      </Metric>
+<!-- HIDDEN END -->
+
+    <!-- Server Information, includes OS, Memory, JVM details -->
+    <Metric NAME="server_info" TYPE="TABLE" >
+        <Display>
+            <Label NLSID="server_info">JBoss Server Details</Label>
+        </Display>
+        <TableDescriptor>
+            <ColumnDescriptor NAME="HostAddress" TYPE="STRING" IS_KEY="FALSE">
+                <Display>
+                    <Label NLSID="svr_hs_addr">Host IP Address</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HostName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="host_name">Host Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="AvailableProcessors" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="avl_processors">Available No. Of Processors</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalHeapMemory" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="total_heap_size">Total Heap Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="FreeHeapMemory" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="free_heap_memory">Free Heap Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="MaxMemory" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="max_memory">Maximum Memory</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OSArch" TYPE="STRING">
+                <Display>
+                    <Label NLSID="os_arch">OS Architecture</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OSVersion" TYPE="STRING">
+                <Display>
+                    <Label NLSID="os_version">OS Version</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="OSName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="os_name">OS Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="JavaVendor" TYPE="STRING">
+                <Display>
+                    <Label NLSID="java_vendor">Java Vendor Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="JavaVersion" TYPE="STRING">
+                <Display>
+                    <Label NLSID="java_version">Java Version</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="JavaVMName" TYPE="STRING">
+                <Display>
+                    <Label NLSID="java_vm_name">Java VM Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="JavaVMVendor" TYPE="STRING">
+                <Display>
+                    <Label NLSID="java_vm_vendor">Java VM Vendor Name</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="JavaVMVersion" TYPE="STRING">
+                <Display>
+                    <Label NLSID="java_vm_version">Java VM Version</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ActiveThreadGroupCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="active_thread_group_count">Active Thread Group Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="ActiveThreadCount" TYPE="NUMBER">
+                <Display>
+                    <Label NLSID="active_thread_count">Active Thread Count</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HeapMemory" TYPE="NUMBER" COMPUTE_EXPR="(TotalHeapMemory - FreeHeapMemory)">
+                <Display>
+                    <Label NLSID="heap_memory">Heap Size</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="FreeHeapMemoryPercentage" TYPE="NUMBER" COMPUTE_EXPR="((FreeHeapMemory / TotalHeapMemory) * 100)">
+                <Display>
+                    <Label NLSID="svr_free_hpperc">Free Heap Size % </Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="TotalHeapMemoryMB" TYPE="NUMBER" COMPUTE_EXPR="(TotalHeapMemory/(1024*1024))">
+                <Display>
+                    <Label NLSID="total_heap_sizemb">Total Heap Size(MB)</Label>
+                </Display>
+            </ColumnDescriptor>
+            <ColumnDescriptor NAME="HeapMemoryMB" TYPE="NUMBER" COMPUTE_EXPR="(HeapMemory/(1024*1024))">
+                <Display>
+                    <Label NLSID="heap_memoryMB">Heap Size (MB)</Label>
+                </Display>
+            </ColumnDescriptor>
+        </TableDescriptor>
+        <QueryDescriptor FETCHLET_ID="JBossFetchlet">
+            <Property NAME="Hostname" SCOPE="INSTANCE">Hostname</Property>
+            <Property NAME="Port" SCOPE="INSTANCE">Port</Property>
+            <Property NAME="metric" SCOPE="GLOBAL">jboss.system:type=ServerInfo</Property>
+            <Property NAME="attributes" SCOPE="GLOBAL">HostAddress,HostName,AvailableProcessors,TotalMemory,FreeMemory,MaxMemory,OSArch,OSVersion,OSName,JavaVendor,JavaVersion,JavaVMName,JavaVMVendor,JavaVMVersion,ActiveThreadGroupCount,ActiveThreadCount</Property>
+        </QueryDescriptor>
+    </Metric>
+
+
+<InstanceProperties>
+        <InstanceProperty NAME='Hostname'>
+            <Display>
+                <Label NLSID='jboss_machine_name'>Machine name</Label>
+                <ShortName NLSID='jboss_machine_name'>Machine name</ShortName>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME='Port'>
+            <Display>
+                <Label NLSID='port'>Port</Label>
+                <ShortName NLSID='port'>Port</ShortName>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME='JBossHome' OPTIONAL="TRUE">
+            <Display>
+                <Label NLSID='jboss_home'>JBoss home path</Label>
+                <ShortName NLSID='jboss_home'>JBoss home path</ShortName>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="UserName" OPTIONAL="TRUE">
+            <Display>
+                <Label NLSID="USERNAME_LABEL">Username</Label>
+                <ShortName NLSID="USERNAME_NAME">Username</ShortName>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="password" CREDENTIAL="TRUE" OPTIONAL="TRUE">
+            <Display>
+                <Label NLSID="PASSWORD_LABEL">Password</Label>
+                <ShortName NLSID="PASSWORD_NAME">Password</ShortName>
+            </Display>
+        </InstanceProperty>
+        <InstanceProperty NAME="KeyStoreFile" OPTIONAL="TRUE">
+            <Display>
+                <Label NLSID="KEYSTOREFILE">Keystore Filename</Label>
+            </Display>
+        </InstanceProperty>
+        <DynamicProperties NAME="Config" FORMAT="ROW"
+                           PROP_LIST="version">
+            <ExecutionDescriptor>
+                <GetTable NAME="jboss_server_runtime"/>
+                <GetView NAME="result" FROM_TABLE="jboss_server_runtime">
+                    <Column NAME="version" COLUMN_NAME="Version"/>
+                </GetView>
+            </ExecutionDescriptor>
+        </DynamicProperties>
+    </InstanceProperties>
+</TargetMetadata>

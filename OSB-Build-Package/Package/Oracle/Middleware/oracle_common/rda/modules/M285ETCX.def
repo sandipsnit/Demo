@@ -1,0 +1,141 @@
+# M285ETCX.def: Collects Extended etc Information
+# $Id: M285ETCX.def,v 1.11 2012/03/29 08:29:21 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M285ETCX.def,v 1.11 2012/03/29 08:29:21 mschenke Exp $
+#
+# Change History
+# 20120329  MSC  Improve the documentation.
+
+=head1 NAME
+
+M285ETCX - Collects Extended etc Information
+
+=head1 DESCRIPTION
+
+This module collects extended etc information.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('etcextended')
+
+#------------------------------------------------------------------------------
+# XPLR_etcx section
+#------------------------------------------------------------------------------
+
+section XPLR_etcx
+
+call log_run('Processing ETCX sections ...')
+
+=head2 etcx - /etc/security Files
+
+Collects the files from the F</etc/security> directory structure, except
+from the F</etc/security/audit> and F</etc/security/dev> subdirectories, from
+both global and other running zones.
+
+By default, it collects the global zone only.
+
+=cut
+
+macro do_collect
+{var ($pre,$top) = @arg
+ loop $nam (undef,findDir([$top],'^\.+$','drv'))
+ {if ?$nam
+  {next match($nam,'^(audit|dev)(/|\z)')
+   var $dir = catDir($top,$nam)
+  }
+  else
+   var $dir = $top
+  loop $fil (grepDir($dir,'^\.+$','nv'))
+  {if testDir('f',$pth = catFile($dir,$fil))
+   {if collectFile(join('/',$pre,$nam,$fil),$pth)
+     write '|[[',last,'][_blank][',$pth,']] | ',getSize($pth),'|',\
+           getLastModify($pth,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+    else
+     write '|',$pth,' | ',getSize($pth),'|',\
+           getLastModify($pth,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+  }
+ }
+}
+
+report etcx
+title '---+!! /etc/security Files'
+title $TOC
+title '   * ``audit`` and ``dev`` directories are skipped.'
+title '   * Links point to files that have been collected in their original \
+            format. Opening them directly in your browser can present \
+            risks. To prevent them, access the file outside the browser or \
+            use the link to save them and use an adequate viewer.'
+
+# Collect files from the global zone
+if ${XPLR_GLOBAL}
+{debug ' Inside ETCX collection, collecting global files'
+ prefix
+ {if ${OS.solaris}
+   write '---+ From the Global Zone'
+  write '|*File Path*| *Size*|*Last Modified Date*|'
+ }
+ call do_collect('etc/security','/etc/security')
+ if hasOutput(true)
+  write $TOP
+}
+
+# Collect files from non-global zones
+if and(${OS.solaris},${XPLR_LOCAL:false})
+{var $ver = uname('r')
+ if expr('>=',field('\.',1,$ver),'10')
+ {loop $lin (grepCommand('/usr/sbin/zoneadm list -p','^[^:]*:global:','v'))
+  {var (undef,$nam,$sta,$top) = split(':',$lin)
+   next !compare('eq',$sta,'running')
+   debug ' Inside ETCX collection, collecting files from zone ',$nam
+   prefix
+   {write '---+ From the Zone ',$nam
+    write '|*File Path*| *Size*|*Last Modified Date*|'
+   }
+   call do_collect(concat('zones/',$nam,'/etc/security'),\
+                   catDir($top,'root/etc/security'))
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+}
+
+# Add the report to the table of content
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][/etc/security Files]]'
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.25: Chris Beal.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

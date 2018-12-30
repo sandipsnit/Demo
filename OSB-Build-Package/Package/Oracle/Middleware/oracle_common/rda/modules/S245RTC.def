@@ -1,0 +1,248 @@
+# S245RTC.def: Collects Real Time Communication Information
+# $Id: S245RTC.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S245RTC.def,v 2.5 2012/01/03 13:34:45 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S245RTC - Collects Real Time Communication Information
+
+=head1 DESCRIPTION
+
+The following reports can be generated and are regrouped under C<Real Time
+Communication>:
+
+=cut
+
+echo tput('bold'),'Processing Real Time Communication module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $AGE         = getSetting('OCS_AGE',    15)
+var $TAIL        = getSetting('OCS_TAIL1',  5000)
+var $RTC_HOME    = catDir($ORACLE_HOME,'imeeting')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '^1:Oracle Collaboration Suite'
+pretoc '1+:Real Time Communication'
+
+# Load the common macros
+run library()
+run OCS()
+
+# Collect Real Time Collaboration information
+if testDir('dr',$RTC_HOME)
+{var $pgm = catCommand($RTC_HOME,'bin','rtcctl')
+
+=head2 properties - Properties
+
+Collects the Real Time Collaboration properties.
+
+=cut
+
+ debug ' Inside RTC module, get RTC properties'
+ report properties
+ var $cmd = concat($pgm,' getproperties -maxlevel all')
+ prefix
+ {write '---+ Real Time Collaboration Properties'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Properties]]'
+
+=head2 version - Version
+
+Collects the Real Time Collaboration version.
+
+=cut
+
+ debug ' Inside RTC module, get RTC version'
+ report version
+ var $cmd = concat($pgm,' versions')
+ prefix
+ {write '---+ Real Time Collaboration Version'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Version]]'
+
+=head2 instances - Instances
+
+Lists the Real Time Collaboration instances.
+
+=cut
+
+ debug ' Inside RTC module, list RTC instances'
+ report instances
+ var $cmd = concat($pgm,' listinstances')
+ prefix
+ {write '---+ Real Time Collaboration Instances'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Instances]]'
+
+=head2 state - State
+
+Collects the Real Time Collaboration state.
+
+=cut
+
+ debug ' Inside RTC module, get RTC state'
+ report state
+ var $cmd = concat($pgm,' getstate')
+ prefix
+ {write '---+ Real Time Collaboration State'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][State]]'
+
+=head2 components - Components
+
+Lists the Real Time Collaboration components.
+
+=cut
+
+ debug ' Inside RTC module, list RTC components'
+ report components
+ var $cmd = concat($pgm,' listcomponents')
+ prefix
+ {write '---+ Real Time Collaboration Components'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Components]]'
+
+=head2 pids - Pids
+
+Collects the Real Time Collaboration pids.
+
+=cut
+
+ debug ' Inside RTC module, get RTC pids'
+ report pids
+ var $cmd = concat($pgm,' getpids')
+ prefix
+ {write '---+ Real Time Collaboration Pids'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Pids]]'
+
+=head2 Configuration Files
+
+Collects all .conf files.
+
+=cut
+
+ debug ' Inside RTC module, get configuration files'
+ pretoc '2:Configuration Files'
+ call sort_files(3,0,grepDir(catDir($RTC_HOME,'conf'),'\.conf$','dir'))
+ unpretoc
+
+=head2 Log Files
+
+Collect the log files.
+
+=cut
+
+ debug ' Inside RTC module, get log files'
+ pretoc '2:Log Files'
+ var $dir = catDir($RTC_HOME,'logs')
+ var $opt = concat('dirm',$AGE)
+ call sort_files(3,$TAIL,\
+                 grepDir(catDir($dir,'connmgr'),'\.log$',$opt),\
+                 grepDir(catDir($dir,'imHaProcess'),'\.xml$',$opt),\
+                 grepDir(catDir($dir,'imrtr'),'\.[rs]log$',$opt),\
+                 grepDir(catDir($dir,'mx'),'\.log$',$opt),\
+                 grepDir(catDir($dir,'rdtr'),'\.log$',$opt),\
+                 grepDir(catDir($dir,'rtcctl'),'\.(err|out|xml)$',$opt),\
+                 grepDir(catDir($dir,'voiceProxy'),'\.log$',$opt))
+ var $pre = concat('^',quote($ORACLE_HOME),'\b')
+ var %rpt = ('app_site',    catDir($dir,'application','site_logs'),\
+             'app_sessions',catDir($dir,'application','app_sessions'),\
+             'servers',     catDir($dir,'servers'))
+ loop $rpt (keys(%rpt))
+ {report $rpt
+  var $dir = $rpt{$rpt}
+  var $dsc = replace($dir,$pre,'$OH')
+  debug ' Inside RTC module, get ',$dir,' log files'
+
+  # Get the directory list
+  var @dir = grepDir($dir,'^\d{2}\.\d{2}\.\d{4}$',concat('ptm',$AGE))
+  next !@dir
+  write '---+!! ',encode($dsc)
+  write $TOC
+  write '---+ Most Recent Directories'
+  write 'In ',encode($dir),'%BR%Limited to ',$age,' last days'
+  call statFile('b',@dir)
+  write $TOP
+
+  # Get the last directory content
+  var $dir = $dir[0]
+  write '---+ Last Directory Content'
+  call statDir('n',$dir)
+  write $TOP
+
+  # Get the most recent log file
+  var ($nam) = grepDir($dir,'\.xml$','fit')
+  call get_log($dir,$nam,$TAIL)
+
+  # Add it in the table of content
+  toc '3:[[',getFile(),'][rda_report][',$dsc,']]'
+ }
+ unpretoc
+}
+
+=head2 not_found - Not found
+
+Used as a warning when none of the Real Time Communication files are found.
+
+=cut
+
+if !isTocCreated()
+{debug ' Inside RTC module, no file found'
+ report not_found
+ write 'No Real Time Communication log files were found and all files were \
+        optional. This does not mean there was necessarily a problem with RDA, \
+        but it should be investigated.'
+ toc '2:[[',getFile(),'][rda_report][Not found]]'
+}
+
+# Disable the group title in next index
+toc '-:Oracle Collaboration Suite'
+
+=head1 SEE ALSO
+
+L<S240OCS.def|modules::S240OCS>, L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.2:  Frederic Daurelle.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

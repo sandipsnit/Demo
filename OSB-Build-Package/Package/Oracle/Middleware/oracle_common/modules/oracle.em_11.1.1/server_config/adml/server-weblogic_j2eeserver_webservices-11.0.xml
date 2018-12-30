@@ -1,0 +1,1492 @@
+<?xml version="1.0"?>
+<!--  $Header: emas/sysman/admin/adml/server-weblogic_j2eeserver_webservices-11.0.xml /st_emasgc_11.1as/13 2010/07/02 16:28:16 jiarwu Exp $ -->
+<!-- 
+ Copyright (c) 2007, 2010, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     server-weblogic_j2eeserver_webservices-11.0.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     Define tables for web services metrics
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   jiarwu      06/30/10 - remove empty records in table
+   jiarwu      08/12/09 - XbranchMerge jiarwu_wsm_as090810 from
+                          st_emasgc_11.1as
+   jiarwu      04/29/09 - XbranchMerge jiarwu_wsm_as090423a from
+                          st_emasgc_11.1as
+   jiarwu      04/28/09 - Add delta metrics
+   klmichae    12/11/08 - fix application names
+   jiarwu      10/05/08 - Creation
+
+-->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" TableSpace="weblogic_j2eeserver">
+    
+<!-- webservices_policy_fault_no_rate_helper is for including serverName -->
+ <Table Name="webservices_policy_fault_no_rate_helper">
+        <ColumnDef Name="appRuntimeName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="wsType" Type="String" Key="true"/>
+        <ColumnDef Name="authentication_faults" Type="Integer"/>
+        <ColumnDef Name="authentication_successes" Type="Integer"/>
+        <ColumnDef Name="authorization_faults" Type="Integer"/>
+        <ColumnDef Name="authorization_successes" Type="Integer"/>
+        <ColumnDef Name="confidentiality_faults" Type="Integer"/>
+        <ColumnDef Name="confidentiality_successes" Type="Integer"/>
+        <ColumnDef Name="integrity_faults" Type="Integer"/>
+        <ColumnDef Name="integrity_successes" Type="Integer"/>
+        <ColumnDef Name="total_policy_faults" Type="Integer"/>
+        <Select Name="webservices_policy_fault_no_rate_result_0">
+            <TableFrom Name="interceptor_policy_version"/>
+            <Column Name="appRuntimeName" Type="String">
+                <ColumnFrom Name="wls_ear"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="wls_webservice"/>
+            </Column>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="wls_webservice_port"/>
+            </Column>
+            <Column Name="policyCategory" Type="String">
+                <ColumnFrom Name="interceptor"/>
+            </Column>
+            <Column Name="policyName" Type="String">
+                <ColumnFrom Name="interceptor_policy"/>
+            </Column>
+            <Column Name="wsType" Type="String">
+                <ColumnFrom Name="wls_webservices"/>
+            </Column>
+
+            <Column Name="AuthenticationFailures.count" Type="Integer">
+                <ColumnFrom Name="AuthenticationFailures.count"/>
+            </Column>
+            <Column Name="AuthorizationFailures.count" Type="Integer">
+                <ColumnFrom Name="AuthorizationFailures.count"/>
+            </Column>
+            <Column Name="ConfidentialityFailures.count" Type="Integer">
+                <ColumnFrom Name="ConfidentialityFailures.count"/>
+            </Column>
+            <Column Name="IntegrityFailures.count" Type="Integer">
+                <ColumnFrom Name="IntegrityFailures.count"/>
+            </Column>
+            <Column Name="TotalViolations.count" Type="Integer">
+                <ColumnFrom Name="TotalViolations.count"/>
+            </Column>
+            <Column Name="AuthenticationSuccesses.count" Type="Integer">
+                <ColumnFrom Name="AuthenticationSuccesses.count"/>
+            </Column>
+            <Column Name="AuthorizationSuccesses.count" Type="Integer">
+                <ColumnFrom Name="AuthorizationSuccesses.count"/>
+            </Column>
+            <Column Name="ConfidentialitySuccesses.count" Type="Integer">
+                <ColumnFrom Name="ConfidentialitySuccesses.count"/>
+            </Column>
+            <Column Name="IntegritySuccesses.count" Type="Integer">
+                <ColumnFrom Name="IntegritySuccesses.count"/>
+            </Column>
+             <Where>
+               <Or>
+                <Condition Type="String" Operator="EQ">
+                    <ColumnFrom Name="wls_webservices"/>
+                    <Value>WEBSERVICEs</Value>
+                </Condition>
+                <Condition Type="String" Operator="EQ">
+                    <ColumnFrom Name="wls_webservices"/>
+                    <Value>WLSWEBSERVICEs</Value>
+                </Condition>
+               </Or>
+             </Where>
+        </Select>
+        <Select Name="webservices_policy_fault_no_rate_result_1">
+            <TableFrom Name="webservices_policy_fault_no_rate_result_0"/>
+            <Column Name="appRuntimeName" Type="String"/>
+            <Column Name="webserviceName" Type="String"/>
+            <Column Name="portName" Type="String"/>
+            <Column Name="policyCategory" Type="String"/>
+            <Column Name="policyName" Type="String"/>
+            <Column Name="wsType" Type="String"/>
+
+            <Column Name="authentication_faults" Type="Integer">
+                <Aggregation Name="AuthenticationFailures.count" Operator="Sum"/>
+                <Default>0</Default>    
+            </Column>
+            <Column Name="authorization_faults" Type="Integer">
+                <Aggregation Name="AuthorizationFailures.count" Operator="Sum"/>
+                <Default>0</Default>            
+            </Column>
+            <Column Name="confidentiality_faults" Type="Integer">
+                <Aggregation Name="ConfidentialityFailures.count" Operator="Sum"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="integrity_faults" Type="Integer">
+                <Aggregation Name="IntegrityFailures.count" Operator="Sum"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="total_policy_faults" Type="Integer">
+                <Aggregation Name="TotalViolations.count" Operator="Sum"/>
+                <Default>0</Default>    
+            </Column>
+            <Column Name="authentication_successes" Type="Integer">
+                <Aggregation Name="AuthenticationSuccesses.count" Operator="Sum"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="authorization_successes" Type="Integer">
+                <Aggregation Name="AuthorizationSuccesses.count" Operator="Sum"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="confidentiality_successes" Type="Integer">
+                <Aggregation Name="ConfidentialitySuccesses.count" Operator="Sum"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="integrity_successes" Type="Integer">
+                <Aggregation Name="IntegritySuccesses.count" Operator="Sum"/>
+                <Default>0</Default>
+            </Column>
+
+            <GroupBy Name="appRuntimeName"/>
+            <GroupBy Name="webserviceName"/>
+            <GroupBy Name="portName"/>
+            <GroupBy Name="policyName"/>
+            <GroupBy Name="policyCategory"/>
+            <GroupBy Name="wsType"/>
+        </Select> 
+    </Table> 
+
+
+    <!-- webservices_policy_fault_no_rate -->
+    <Table Name="webservices_policy_fault_no_rate">
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="policyCategory" Type="String"/>
+        <ColumnDef Name="policyName" Type="String" Key="true"/>
+        <ColumnDef Name="wsType" Type="String" Key="true"/>
+        <ColumnDef Name="authentication_faults" Type="Integer"/>
+        <ColumnDef Name="authentication_successes" Type="Integer"/>
+        <ColumnDef Name="authorization_faults" Type="Integer"/>
+        <ColumnDef Name="authorization_successes" Type="Integer"/>
+        <ColumnDef Name="confidentiality_faults" Type="Integer"/>
+        <ColumnDef Name="confidentiality_successes" Type="Integer"/>
+        <ColumnDef Name="integrity_faults" Type="Integer"/>
+        <ColumnDef Name="integrity_successes" Type="Integer"/>
+        <ColumnDef Name="total_policy_faults" Type="Integer"/>
+        <Select Name="webservices_policy_fault_no_rate_result_1">
+            <TableFrom Name="weblogic_j2eeserver:application_names"/>
+            <TableFrom Name="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            <Column Name="appRuntimeName" Type="String">
+                <ColumnFrom Name="appRuntimeName"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="webserviceName"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="portName"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="policyCategory" Type="String">
+                <ColumnFrom Name="policyCategory"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="policyName" Type="String">
+                <ColumnFrom Name="policyName"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="wsType" Type="String">
+                <ColumnFrom Name="wsType"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="authentication_faults" Type="Integer">
+                <ColumnFrom Name="authentication_faults"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="authorization_faults" Type="Integer">
+                <ColumnFrom Name="authorization_faults"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="confidentiality_faults" Type="Integer">
+                <ColumnFrom Name="confidentiality_faults"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="integrity_faults" Type="Integer">
+                <ColumnFrom Name="integrity_faults"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="total_policy_faults" Type="Integer">
+                <ColumnFrom Name="total_policy_faults"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="authentication_successes" Type="Integer">
+                <ColumnFrom Name="authentication_successes"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="authorization_successes" Type="Integer">
+                <ColumnFrom Name="authorization_successes"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="confidentiality_successes" Type="Integer">
+                <ColumnFrom Name="confidentiality_successes"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="integrity_successes" Type="Integer">
+                <ColumnFrom Name="integrity_successes"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+            </Column>
+            <Column Name="appName" Type="String">
+              <ColumnFrom Name="displayAppName"
+                          Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+            <Column Name="serverName" Type="String">
+                <ColumnFrom Name="serverName"
+                            Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+
+           <Where>
+              <And>
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="appRuntimeName"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+                <ColumnFrom Name="runtimeAppName"
+                            Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="ServerName"
+                            Table="weblogic_j2eeserver:webservices_policy_fault_no_rate_helper"/>
+                <ColumnFrom Name="serverName"
+                            Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+              </And>
+            </Where>
+        </Select>
+        <Select Name="webservices_policy_fault_no_rate_result_2">
+            <TableFrom Name="webservices_policy_fault_no_rate_result_1"/>
+            <Where>
+                <And>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="portName"/>
+                   <Value Name="portName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="portName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="webserviceName"/>
+                   <Value Name="webserviceName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="webserviceName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="appName"/>
+                   <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="appName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="serverName"/>
+                   <Value Name="serverName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="serverName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                </And>
+           </Where>
+        </Select>
+    </Table> 
+
+
+    <!--1 port metric -->
+    <Table Name="webservices_port_rollup_no_rate">
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="ServerName" Type="String" Key="false"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="startTime" Type="Long"/>
+        <ColumnDef Name="Requests" Type="Integer"/>
+        <ColumnDef Name="Requests.averageTime" Type="Double"/>
+        <ColumnDef Name="Requests.totalTime" Type="Double"/>
+        <ColumnDef Name="Faults" Type="Integer"/>
+        <ColumnDef Name="processRequest.active" Type="Integer"/>
+
+        <Select Name="wls_webservices_rollup_no_rate_result">
+            <TableFrom Name="wls_webservice_port"/>
+            <TableFrom Name="weblogic_j2eeserver:application_names"/>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="Name" Table="wls_webservice_port"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="wls_webservice" Table="wls_webservice_port"/>
+            </Column>
+            <Column Name="appName" Type="String">
+              <ColumnFrom Name="displayAppName" 
+                          Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+            <Column Name="ServerName" Type="String">
+                <ColumnFrom Name="ServerName" Table="wls_webservice_port"/>
+            </Column>
+            <Column Name="serverName" Type="String">
+                <ColumnFrom Name="serverName" Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+            <Column Name="startTime" Type="Long">
+                <ColumnFrom Name="StartTime.value" Table="wls_webservice_port"/>
+            </Column>
+            <Column Name="Requests" Type="Integer">
+                <ColumnFrom Name="POSTs.completed" Table="wls_webservice_port"/>
+            </Column>
+            <Column Name="Requests.totalTime" Type="Double">
+                <Expression Operator="Div">
+                   <ColumnFrom Name="POSTs.time" Table="wls_webservice_port"/>
+                   <Value>1000</Value>
+                </Expression>
+            </Column>
+
+            <Column Name="Requests.averageTime" Type="Double">
+                <Expression Operator="Div">
+                    <ColumnFrom Name="Requests.totalTime"/>
+                    <ColumnFrom Name="POSTs.completed" Table="wls_webservice_port"/> 
+                </Expression>
+                <Default>0</Default>
+            </Column>
+
+            <Column Name="Faults" Type="Integer">
+                <ColumnFrom Name="TotalFault.count" Table="wls_webservice_port"/>
+            </Column>
+            <Column Name="processRequest.active" Type="Integer">
+                <ColumnFrom Name="POSTs.active" Table="wls_webservice_port"/>
+            </Column>
+
+           <Where>
+              <And> 
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="wls_ear" Table="wls_webservice_port"/>
+                <ColumnFrom Name="runtimeAppName" Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+			  <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="wls_webservices" Table="wls_webservice_port"/>
+                <Value>WEBSERVICEs</Value>
+              </Condition>
+			  </And> 	
+            </Where>
+        </Select>
+        <!--<Select Name="wls_webservices_rollup_no_rate_result_2">
+            <TableFrom Name="wls_webservices_rollup_no_rate_result"/>
+            <Where>
+                <And>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="portName"/>
+                   <Value Name="portName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="portName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="webserviceName"/>
+                   <Value Name="webserviceName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="webserviceName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="appName"/>
+                   <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="appName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="serverName"/>
+                   <Value Name="serverName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="serverName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                </And>
+           </Where>
+        </Select>-->
+    </Table> 
+
+    <!-- port metric -->
+ <Table Name="webservices_port_rollup">
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="ServerName" Type="String" Key="true"/>
+        <ColumnDef Name="startTime" Type="Long"/>
+        <ColumnDef Name="Requests" Type="Integer"/>
+        <ColumnDef Name="Requests.averageTime" Type="Double"/>
+        <ColumnDef Name="Requests.totalTime" Type="Double"/>
+        <ColumnDef Name="Faults" Type="Integer"/>
+        <ColumnDef Name="processRequest.active" Type="Integer"/>
+        <ColumnDef Name="service.time" Type="Double"/>
+        <ColumnDef Name="service.throughput" Type="Double"/>
+        <Select Name="webservices_service_rollup_result">
+            <TableFrom Name="weblogic_j2eeserver:webservices_port_rollup_no_rate"/>
+            <Column Name="portName" Type="String"/>
+            <Column Name="webserviceName" Type="String"/>
+            <Column Name="appName" Type="String"/>
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="startTime" Type="Long"/>
+            <Column Name="Requests" Type="Integer"/>
+            <Column Name="Requests.averageTime" Type="Double"/>
+            <Column Name="Requests.totalTime" Type="Double"/>
+            <Column Name="Faults" Type="Integer"/>
+            <Column Name="processRequest.active" Type="Integer"/>
+            <Column Name="service.throughput" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="Requests"/>
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+            <Column Name="service.time" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="Requests.totalTime"/>
+                    <ColumnFrom Name="Requests"/>
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+        </Select>
+    </Table>
+    
+
+    <!-- operation metric -->
+    <Table Name="webservices_operation_no_rate">
+        <ColumnDef Name="operationName" Type="String" Key="true"/>
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="ServerName" Type="String" Key="false"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="Invoke.completed" Type="Double"/>
+        <ColumnDef Name="Invoke.active" Type="Double"/>
+        <ColumnDef Name="Invoke.time" Type="Double"/>
+        <ColumnDef Name="RequestSize.count" Type="Double"/>
+        <ColumnDef Name="RequestSize.value" Type="Double"/>
+        <ColumnDef Name="ResponseSize.count" Type="Double"/>
+        <ColumnDef Name="ResponseSize.value" Type="Double"/>
+        <ColumnDef Name="Faults" Type="Double"/>
+        <Select Name="webservices_operation_no_rate_result">
+            <TableFrom Name="wls_webservice_operation"/>
+            <TableFrom Name="weblogic_j2eeserver:application_names"/>
+            <Column Name="operationName" Type="String">
+                <ColumnFrom Name="Name" Table="wls_webservice_operation"/>
+            </Column>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="wls_webservice_port" Table="wls_webservice_operation"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="wls_webservice" Table="wls_webservice_operation"/>
+            </Column>
+            <Column Name="appName" Type="String">
+              <ColumnFrom Name="displayAppName" 
+                          Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+            <Column Name="ServerName" Type="String">
+                <ColumnFrom Name="ServerName" Table="wls_webservice_operation"/>
+            </Column>
+            <Column Name="serverName" Type="String">
+                <ColumnFrom Name="serverName" Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+            <Column Name="Invoke.completed" Type="Double">
+                <ColumnFrom Name="Invoke.completed" Table="wls_webservice_operation"/>
+            </Column>
+            <Column Name="Invoke.active" Type="Double">
+                <ColumnFrom Name="Invoke.active" Table="wls_webservice_operation"/>
+            </Column>
+            <!-- <Column Name="Invoke.time" Type="Double">
+                <Expression Operator="Div">
+                    <ColumnFrom Name="Invoke.time" Table="wls_webservice_operation"/>
+                    <Value>1000</Value>
+                </Expression>
+                <Default>0</Default>
+            </Column> -->
+            <Column Name="Invoke.time" Type="Double">
+                    <ColumnFrom Name="Invoke.time" Table="wls_webservice_operation"/>
+            </Column>  
+            <Column Name="RequestSize.count" Type="Double">
+                <ColumnFrom Name="RequestSize.count" Table="wls_webservice_operation"/>
+            </Column>
+             <Column Name="RequestSize.value" Type="Double">
+                <ColumnFrom Name="RequestSize.value" Table="wls_webservice_operation"/>
+            </Column>
+            <Column Name="ResponseSize.count" Type="Double">
+                <ColumnFrom Name="ResponseSize.count" Table="wls_webservice_operation"/>
+            </Column>
+            <Column Name="ResponseSize.value" Type="Double">
+                <ColumnFrom Name="ResponseSize.value" Table="wls_webservice_operation"/>
+            </Column>
+
+            <Column Name="Faults" Type="Double">
+                <ColumnFrom Name="FaultCount.count" Table="wls_webservice_operation"/>
+            </Column>
+
+           <Where>
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="wls_ear" Table="wls_webservice_operation"/>
+                <ColumnFrom Name="runtimeAppName"
+                            Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+            </Where>
+         </Select>
+    </Table>
+
+
+ <Table Name="webservices_operation_rollup_no_rate">
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="ServerName" Type="String" Key="false"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="Invoke.completed" Type="Double"/>
+        <ColumnDef Name="Invoke.active" Type="Double"/>
+        <ColumnDef Name="Invoke.time" Type="Double"/>
+        <ColumnDef Name="RequestSize.count" Type="Double"/>
+        <ColumnDef Name="RequestSize.value" Type="Double"/>
+        <ColumnDef Name="ResponseSize.value" Type="Double"/>
+        <ColumnDef Name="ResponseSize.count" Type="Double"/>
+        <ColumnDef Name="Faults" Type="Double"/>
+        <Select Name="webservices_operation_rollup_no_rate_result">
+            <TableFrom Name="weblogic_j2eeserver:webservices_operation_no_rate"/>
+            <Column Name="portName" Type="String"/>
+            <Column Name="webserviceName" Type="String"/>
+            <Column Name="appName" Type="String"/>
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="serverName" Type="String"/>
+
+            <Column Name="Invoke.completed" Type="Double">
+                <Aggregation Operator="Sum" Name="Invoke.completed"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="Invoke.active" Type="Double">
+                <Aggregation Operator="Sum" Name="Invoke.active"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="Invoke.time" Type="Double">
+                <Aggregation Operator="Sum" Name="Invoke.time"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="RequestSize.count" Type="Double">
+                <Aggregation Operator="Sum" Name="RequestSize.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="RequestSize.value" Type="Double">
+                <Aggregation Operator="Sum" Name="RequestSize.value"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="ResponseSize.count" Type="Double">
+                <Aggregation Operator="Sum" Name="ResponseSize.count"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="ResponseSize.value" Type="Double">
+                <Aggregation Operator="Sum" Name="ResponseSize.value"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="Faults" Type="Double">
+                <Aggregation Operator="Sum" Name="Faults"/>
+                <Default>0</Default>
+            </Column>
+
+            <GroupBy Name="portName"/>
+            <GroupBy Name="webserviceName"/>
+            <GroupBy Name="appName"/>
+            <GroupBy Name="serverName"/>
+            <GroupBy Name="ServerName"/>
+         </Select>
+        <Select Name="webservices_operation_rollup_no_rate_result_1">
+            <TableFrom Name="webservices_operation_rollup_no_rate_result"/>
+            <Where>
+              <Condition Operator="NE" Type="String">
+                <ColumnFrom Name="appName"/>
+                <Null/>
+              </Condition>
+            </Where>
+          <!--  <Where>
+                <And>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="portName"/>
+                   <Value Name="portName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="portName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="webserviceName"/>
+                   <Value Name="webserviceName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="webserviceName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="appName"/>
+                   <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="appName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="serverName"/>
+                   <Value Name="serverName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="serverName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                </And>
+           </Where> -->
+        </Select>
+   </Table>
+
+
+
+
+
+    <Table Name="webservices_operation_rate">
+        <ColumnDef Name="operationName" Type="String" Key="true"/>
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="ServerName" Type="String" Key="false"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="Invoke.throughput" Type="Double"/>    
+        <ColumnDef Name="Invoke.completed" Type="Double"/>
+        <ColumnDef Name="Invoke.active" Type="Double"/>
+        <ColumnDef Name="Invoke.time.avg" Type="Double"/>
+        <ColumnDef Name="Invoke.time" Type="Double"/>
+        <ColumnDef Name="RequestSize.count" Type="Double"/>
+        <ColumnDef Name="RequestSize.value" Type="Double"/>
+        <ColumnDef Name="ResponseSize.count" Type="Double"/>
+        <ColumnDef Name="ResponseSize.value" Type="Double"/>
+        <ColumnDef Name="Faults" Type="Double"/>
+        <ColumnDef Name="Faults.rate" Type="Double"/>
+        <Select Name="webservices_operation_rate_result">
+           <TableFrom Name="weblogic_j2eeserver:webservices_operation_no_rate"/>
+            <Column Name="operationName" Type="String"/>
+            <Column Name="portName" Type="String"/>
+            <Column Name="webserviceName" Type="String"/>
+            <Column Name="appName" Type="String"/>
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="serverName" Type="String"/>
+            <Column Name="Invoke.active" Type="Double"/>
+            <Column Name="Invoke.completed" Type="Double"/>
+            <Column Name="Invoke.time" Type="Double"/>
+            <Column Name="Faults" Type="Double"/>
+            <Column Name="RequestSize.count" Type="Double"/>
+            <Column Name="ResponseSize.count" Type="Double"/>
+            <Column Name="RequestSize.value" Type="Double"/>
+            <Column Name="ResponseSize.value" Type="Double"/>
+            <Column Name="Invoke.throughput" Type="Double">
+              <Expression Operator="Mult">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="Invoke.completed"/>
+                    <Default>0</Default>
+                </Rate>
+                <Value>60.0</Value> 
+              </Expression>  
+            </Column> 
+            <Column Name="Invoke.time.avg" Type="Double">
+              <Rate Interval="300000">
+                 <ColumnFrom Name="Invoke.time"/>
+                 <ColumnFrom Name="Invoke.completed"/>
+                 <Default>0</Default>
+              </Rate>
+            </Column>
+             <Column Name="Faults.rate" Type="Double">
+              <Rate Interval="300000">
+                 <ColumnFrom Name="Faults"/>
+                 <ColumnFrom Name="RequestSize.count"/>
+                 <Default>0</Default>
+              </Rate>
+            </Column>  
+       </Select>
+       <Select Name="webservices_operation_rate_result_1">
+            <TableFrom Name="webservices_operation_rate_result"/>
+            <Where>
+                <And>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="operationName"/>
+                   <Value Name="operation.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="operation.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                  </Or>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="portName"/>
+                   <Value Name="portName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="portName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                  <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="webserviceName"/>
+                   <Value Name="webserviceName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="webserviceName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="appName"/>
+                   <Value Name="appName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="appName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                 <Or>
+                  <Condition Type="String" Operator="EQ">
+                   <ColumnFrom Name="serverName"/>
+                   <Value Name="serverName.parameter"/>
+                  </Condition>
+                  <Condition Type="String" Operator="EQ">
+                   <Value Name="serverName.parameter"
+                          xsi:nil="true"/>
+                   <Null/>
+                  </Condition>
+                 </Or>
+                </And>
+           </Where>
+        </Select>
+    </Table>
+
+
+    <Table Name="webservices_operation_rollup_rate">
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="ServerName" Type="String" Key="false"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="Invoke.throughput" Type="Double"/>    
+        <ColumnDef Name="Invoke.completed" Type="Double"/>
+        <ColumnDef Name="Invoke.active" Type="Double"/>
+        <ColumnDef Name="Invoke.time.avg" Type="Double"/>
+        <ColumnDef Name="Invoke.time" Type="Double"/>
+        <ColumnDef Name="RequestSize.count" Type="Double"/>
+        <ColumnDef Name="RequestSize.value" Type="Double"/>
+        <ColumnDef Name="ResponseSize.count" Type="Double"/>
+        <ColumnDef Name="ResponseSize.value" Type="Double"/>
+        <ColumnDef Name="Faults" Type="Double"/>
+        <ColumnDef Name="Faults.rate" Type="Double"/>
+        <Select Name="webservices_operation_rollup_rate_result">
+           <TableFrom Name="weblogic_j2eeserver:webservices_operation_rollup_no_rate"/>
+            <Column Name="portName" Type="String"/>
+            <Column Name="webserviceName" Type="String"/>
+            <Column Name="appName" Type="String"/>
+            <Column Name="ServerName" Type="String"/>
+            <Column Name="serverName" Type="String"/>
+            <Column Name="Invoke.active" Type="Double"/>
+            <Column Name="Invoke.completed" Type="Double"/>
+            <Column Name="Invoke.time" Type="Double"/>
+            <Column Name="Faults" Type="Double"/>
+            <Column Name="RequestSize.count" Type="Double"/>
+            <Column Name="RequestSize.value" Type="Double"/>
+            <Column Name="ResponseSize.count" Type="Double"/>
+            <Column Name="ResponseSize.value" Type="Double"/>
+            <Column Name="Invoke.throughput" Type="Double">
+              <Expression Operator="Mult">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="Invoke.completed"/>
+                    <Default>0</Default>
+                </Rate>
+                <Value>60.0</Value> 
+              </Expression>  
+            </Column> 
+            <Column Name="Invoke.time.avg" Type="Double">
+              <Rate Interval="300000">
+                 <ColumnFrom Name="Invoke.time"/>
+                 <ColumnFrom Name="Invoke.completed"/>
+                 <Default>0</Default>
+              </Rate>
+            </Column>
+             <Column Name="Faults.rate" Type="Double">
+              <Rate Interval="300000">
+                 <ColumnFrom Name="Faults"/>
+                 <ColumnFrom Name="RequestSize.count"/>
+                 <Default>0</Default>
+              </Rate>
+            </Column>  
+       </Select>
+    </Table>
+
+
+    <!-- jee servcies port metric -->
+    <Table Name="weblogic_webservices_port_rollup">
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="InvocationCount" Type="Long"/>
+        <ColumnDef Name="ResponseCount" Type="Long"/>
+        <ColumnDef Name="ResponseErrorCount" Type="Long"/>
+        <ColumnDef Name="ExecutionTimeTotal" Type="Long"/>
+        <ColumnDef Name="DispatchTimeTotal" Type="Long"/>
+        <ColumnDef Name="ResponseTimeTotal" Type="Long"/>
+        <ColumnDef Name="ApplicationRuntime" Type="String" />
+        <Select Name="weblogic_webservices_port_rollup_result">
+            <TableFrom Name="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="WseePortRuntime"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="WseeRuntime"/>
+            </Column>
+            <Column Name="ApplicationRuntime" Type="String">
+                <ColumnFrom Name="ApplicationRuntime"/>
+            </Column>
+            <Column Name="ServerRuntime" Type="String">
+                <ColumnFrom Name="ServerRuntime"/>
+            </Column>
+            <Column Name="InvocationCount" Type="Long">
+                <Aggregation Operator="Sum" Name="InvocationCount"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="ResponseCount" Type="Long">
+                <Aggregation Operator="Sum" Name="ResponseCount"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="ResponseErrorCount" Type="Long">
+                <Aggregation Operator="Sum" Name="ResponseErrorCount"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="ExecutionTimeTotal" Type="Long">
+                <Aggregation Operator="Sum" Name="ExecutionTimeTotal"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="DispatchTimeTotal" Type="Long">
+                <Aggregation Operator="Sum" Name="DispatchTimeTotal"/>
+                <Default>0</Default>
+            </Column>
+            <Column Name="ResponseTimeTotal" Type="Long">
+                <Aggregation Operator="Sum" Name="ResponseTimeTotal"/>
+                <Default>0</Default>
+            </Column>
+            <GroupBy Name="portName"/>
+            <GroupBy Name="webserviceName"/>
+            <GroupBy Name="ApplicationRuntime"/>
+            <GroupBy Name="ServerRuntime"/>
+            <Where>
+                  <Condition Operator="NE" Type="String">
+                      <ColumnFrom Name="WseeRuntime"
+                                  Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+                      <Null/>
+                  </Condition>
+            </Where>
+        </Select>
+        <Select Name="weblogic_webservices_port_rollup_result_1">
+            <TableFrom Name="weblogic_webservices_port_rollup_result"/>
+            <TableFrom Name="weblogic_j2eeserver:application_names"/>
+
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="portName"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="webserviceName"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="ApplicationRuntime" Type="String">
+                <ColumnFrom Name="ApplicationRuntime"
+                 Table="weblogic_webservices_port_rollup_result"/> 
+            </Column>
+            <Column Name="ServerRuntime" Type="String">
+                <ColumnFrom Name="ServerRuntime"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="InvocationCount" Type="Long">
+                <ColumnFrom Name="InvocationCount"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="ResponseCount" Type="Long">
+                <ColumnFrom Name="ResponseCount"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="ResponseErrorCount" Type="Long">
+                <ColumnFrom Name="ResponseErrorCount"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="ExecutionTimeTotal" Type="Long">
+                <ColumnFrom Name="ExecutionTimeTotal"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="DispatchTimeTotal" Type="Long">
+                <ColumnFrom Name="DispatchTimeTotal"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+            <Column Name="ResponseTimeTotal" Type="Long">
+                <ColumnFrom Name="ResponseTimeTotal"
+                 Table="weblogic_webservices_port_rollup_result"/>
+            </Column>
+
+            <Column Name="appName" Type="String">
+              <ColumnFrom Name="displayAppName" 
+                 Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+
+            <Column Name="serverName" Type="String">
+                <ColumnFrom Name="serverName"
+                            Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+
+            <Where>
+              <And>
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="ApplicationRuntime" 
+                            Table="weblogic_webservices_port_rollup_result"/>
+                <ColumnFrom Name="runtimeAppName"
+                            Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="ServerRuntime" 
+                            Table="weblogic_webservices_port_rollup_result"/>
+                <ColumnFrom Name="serverName"
+                            Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+              </And>
+           </Where>
+        </Select>
+    </Table>
+
+
+    <Table Name="weblogic_webservices_port_rate">
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="ExecutionTimeTotal" Type="Long"/>
+        <ColumnDef Name="InvocationCount" Type="Long"/>
+        <ColumnDef Name="invocations.throughput" Type="Double"/>
+        <ColumnDef Name="execution.time" Type="Double"/>
+        <ColumnDef Name="ResponseCount" Type="Long"/>
+        <ColumnDef Name="responses.throughput" Type="Double"/>
+        <ColumnDef Name="ResponseTimeTotal" Type="Long"/>
+        <ColumnDef Name="responses.time" Type="Double"/>
+        <ColumnDef Name="ResponseErrorCount" Type="Long"/>
+        <ColumnDef Name="responseErrors.throughput" Type="Double"/>
+        <ColumnDef Name="DispatchTimeTotal" Type="Long"/>
+        <ColumnDef Name="dispatch.time" Type="Double"/>
+        <Select Name="weblogic_webservices_port_result_int">
+            <TableFrom Name="weblogic_j2eeserver:weblogic_webservices_port_rollup"/>
+            <Column Name="portName" Type="String" Key="true"/>
+            <Column Name="webserviceName" Type="String" Key="true"/>
+            <Column Name="appName" Type="String" Key="true"/>
+            <Column Name="serverName" Type="String" Key="true"/>
+            <Column Name="ExecutionTimeTotal" Type="Long"/>
+            <Column Name="InvocationCount" Type="Long"/>
+            <Column Name="execution.time" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="ExecutionTimeTotal" />
+                    <ColumnFrom Name="InvocationCount" />
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+            <Column Name="invocations.throughput" Type="Double">
+                <Expression Operator="Mult">
+                    <Rate Interval="300000">
+                        <ColumnFrom Name="InvocationCount"/>
+                        <Default>0</Default>
+                    </Rate>
+                    <Value>60.0</Value>
+                </Expression>
+            </Column>
+            <Column Name="ResponseCount" Type="Long"/> 
+            <Column Name="responses.throughput" Type="Double">
+                <Expression Operator="Mult">
+                    <Rate Interval="300000">
+                        <ColumnFrom Name="ResponseCount"/>
+                        <Default>0</Default>
+                    </Rate>
+                    <Value>60.0</Value>
+                </Expression>
+            </Column>
+            <Column Name="ResponseTimeTotal" Type="Long"/>
+            <Column Name="responses.time" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="ResponseTimeTotal" />
+                    <ColumnFrom Name="ResponseCount" />
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+            <Column Name="ResponseErrorCount" Type="Long"/>
+            <Column Name="responseErrors.throughput" Type="Double">
+                <Expression Operator="Mult">
+                    <Rate Interval="300000">
+                        <ColumnFrom Name="ResponseErrorCount"/>
+                        <Default>0</Default>
+                    </Rate>
+                    <Value>60.0</Value>
+                </Expression>
+            </Column>
+            <Column Name="DispatchTimeTotal" Type="Long"/>
+            <Column Name="dispatch.time" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="DispatchTimeTotal" />
+                    <ColumnFrom Name="InvocationCount" />
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+
+            <Where>
+                <And>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="appName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="appName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="portName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="portName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="webserviceName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="webserviceName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="serverName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="serverName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                </And>
+             </Where>
+         </Select>
+     </Table>
+
+     <Table Name="weblogic_webservices_operation_no_rate">
+        <ColumnDef Name="operationName" Type="String" Key="true"/>
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="InvocationCount" Type="Long"/>
+        <ColumnDef Name="ResponseCount" Type="Long"/>
+        <ColumnDef Name="ResponseErrorCount" Type="Long"/>
+        <ColumnDef Name="ExecutionTimeTotal" Type="Long"/>
+        <ColumnDef Name="DispatchTimeTotal" Type="Long"/>
+        <ColumnDef Name="ResponseTimeTotal" Type="Long"/>
+        <Select Name="weblogic_webservices_operation_no_rate_1">
+            <TableFrom Name="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            <TableFrom Name="weblogic_j2eeserver:application_names"/>
+            <Column Name="operationName" Type="String">
+                <ColumnFrom Name="OperationName"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="WseePortRuntime"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="WseeRuntime"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="appName" Type="String">
+                <ColumnFrom Name="displayAppName"
+                            Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+            <Column Name="InvocationCount" Type="Long">
+                <ColumnFrom Name="InvocationCount"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="ResponseCount" Type="Long">
+                <ColumnFrom Name="ResponseCount"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="ResponseErrorCount" Type="Long">
+                <ColumnFrom Name="ResponseErrorCount"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="ExecutionTimeTotal" Type="Long">
+                <ColumnFrom Name="ExecutionTimeTotal"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="DispatchTimeTotal" Type="Long">
+                <ColumnFrom Name="DispatchTimeTotal"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="ResponseTimeTotal" Type="Long">
+                <ColumnFrom Name="ResponseTimeTotal"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+            </Column>
+            <Column Name="serverName" Type="String">
+                <ColumnFrom Name="serverName"
+                            Table="weblogic_j2eeserver:application_names"/>
+            </Column>
+            <Where>
+              <And>
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="ApplicationRuntime" 
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+                <ColumnFrom Name="runtimeAppName"
+                            Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+              <Condition Operator="EQ" Type="String">
+                <ColumnFrom Name="ServerRuntime" 
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+                <ColumnFrom Name="serverName"
+                            Table="weblogic_j2eeserver:application_names"/>
+              </Condition>
+              <Condition Operator="NE" Type="String">
+                <ColumnFrom Name="WseeRuntime"
+                            Table="weblogic.management.runtime.WseeOperationRuntimeMBean"/>
+                <Null/>
+              </Condition>
+              </And>
+           </Where>
+          </Select>
+       <!-- <Select Name="weblogic_webservices_operation_no_rate_2">
+            <TableFrom Name="weblogic_webservices_operation_no_rate_1"/>
+            <Column Name="operationName" Type="String"/>
+            <Column Name="portName" Type="String"/>
+            <Column Name="webserviceName" Type="String"/>
+            <Column Name="appName" Type="String"/>
+            <Column Name="serverName" Type="String"/>
+            <Column Name="InvocationCount" Type="Long"/>
+            <Column Name="ResponseCount" Type="Long"/>
+            <Column Name="ResponseErrorCount" Type="Long"/>
+            <Column Name="ExecutionTimeTotal" Type="Long"/>
+            <Column Name="DispatchTimeTotal" Type="Long"/>
+            <Column Name="ResponseTimeTotal" Type="Long"/>
+            <Where>
+                <And>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="operationName"/>
+                            <Value Name="operationName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="operationName.parameter"
+                                 xsi:nil="true"/>
+                            <Null/>
+                        </Condition>
+                    </Or>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="appName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="appName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="portName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="portName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="webserviceName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="webserviceName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                    <Or>
+                        <Condition Type="String" Operator="EQ">
+                            <ColumnFrom Name="name"/>
+                            <Value Name="serverName.parameter"/>
+                        </Condition>
+                        <Condition Type="String" Operator="EQ">
+                            <Value Name="serverName.parameter"
+                                xsi:nil="true"/>
+                            <Null/>
+                       </Condition>
+                    </Or>
+                </And>
+             </Where>
+         </Select> -->
+    </Table>
+
+    <Table Name="weblogic_webservices_operation_rate">
+        <ColumnDef Name="operationName" Type="String" Key="true"/>
+        <ColumnDef Name="portName" Type="String" Key="true"/>
+        <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+        <ColumnDef Name="appName" Type="String" Key="true"/>
+        <ColumnDef Name="serverName" Type="String" Key="true"/>
+        <ColumnDef Name="InvocationCount" Type="Long"/>
+        <ColumnDef Name="ResponseCount" Type="Long"/>
+        <ColumnDef Name="ResponseErrorCount" Type="Long"/>
+        <ColumnDef Name="ExecutionTimeTotal" Type="Long"/>
+        <ColumnDef Name="DispatchTimeTotal" Type="Long"/>
+        <ColumnDef Name="ResponseTimeTotal" Type="Long"/>
+        <ColumnDef Name="execution.time" Type="Double"/>
+        <ColumnDef Name="invocations.throughput" Type="Double"/>
+        <ColumnDef Name="responses.throughput" Type="Double"/>
+        <ColumnDef Name="responses.time" Type="Double"/>
+        <ColumnDef Name="responseErrors.throughput" Type="Double"/>
+        <ColumnDef Name="dispatch.time" Type="Double"/>
+        <Select Name="weblogic_webservices_operation_rate_1">
+            <TableFrom Name="weblogic_j2eeserver:weblogic_webservices_operation_no_rate"/>
+            <Column Name="operationName" Type="String"/>
+            <Column Name="portName" Type="String"/>
+            <Column Name="webserviceName" Type="String"/>
+            <Column Name="appName" Type="String"/>
+            <Column Name="serverName" Type="String"/>
+            <Column Name="InvocationCount" Type="Long"/>
+            <Column Name="ResponseCount" Type="Long"/>
+            <Column Name="ResponseErrorCount" Type="Long"/>
+            <Column Name="ExecutionTimeTotal" Type="Long"/>
+            <Column Name="DispatchTimeTotal" Type="Long"/>
+            <Column Name="ResponseTimeTotal" Type="Long"/>
+            <Column Name="execution.time" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="ExecutionTimeTotal" />
+                    <ColumnFrom Name="InvocationCount" />
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+            <Column Name="invocations.throughput" Type="Double">
+                <Expression Operator="Mult">
+                    <Rate Interval="300000">
+                        <ColumnFrom Name="InvocationCount"/>
+                        <Default>0</Default>
+                    </Rate>
+                    <Value>60.0</Value>
+                </Expression>
+            </Column>
+            <Column Name="responses.throughput" Type="Double">
+                <Expression Operator="Mult">
+                    <Rate Interval="300000">
+                        <ColumnFrom Name="ResponseCount"/>
+                        <Default>0</Default>
+                    </Rate>
+                    <Value>60.0</Value>
+                </Expression>
+            </Column>
+            <Column Name="responses.time" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="ResponseTimeTotal" />
+                    <ColumnFrom Name="ResponseCount" />
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+            <Column Name="responseErrors.throughput" Type="Double">
+                <Expression Operator="Mult">
+                    <Rate Interval="300000">
+                        <ColumnFrom Name="ResponseErrorCount"/>
+                        <Default>0</Default>
+                    </Rate>
+                    <Value>60.0</Value>
+                </Expression>
+            </Column>
+            <Column Name="dispatch.time" Type="Double">
+                <Rate Interval="300000">
+                    <ColumnFrom Name="DispatchTimeTotal" />
+                    <ColumnFrom Name="InvocationCount" />
+                    <Default>0</Default>
+                </Rate>
+            </Column>
+         </Select>
+    </Table> 
+
+
+
+<Table Name="webservice_jrf_endpoint_no_rate_internal">
+  <ColumnDef Name="portName" Type="String" Key="true"/>
+  <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+  <ColumnDef Name="appName" Type="String" Key="true"/>
+  <ColumnDef Name="serverName" Type="String" Key="true"/>
+  <ColumnDef Name="InvocationCount" Type="Long"/>  
+  <ColumnDef Name="FaultCount" Type="Long"/>  
+  <ColumnDef Name="TotalInvocationTime" Type="Long"/>  
+  <Select Name="jrf_ws_endpoint_no_rate_internal_result">
+            <TableFrom Name="weblogic_j2eeserver:webservices_operation_rollup_no_rate"/>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="portName"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="webserviceName"/>
+            </Column>
+            <Column Name="appName" Type="String">
+              <ColumnFrom Name="appName"/> 
+            </Column>
+            <Column Name="serverName" Type="String">
+                <ColumnFrom Name="serverName"/>
+            </Column>
+            <Column Name="InvocationCount" Type="Long">
+                <ColumnFrom Name="Invoke.completed"/>
+            </Column>
+            <Column Name="FaultCount" Type="Long">
+                <ColumnFrom Name="Faults"/>
+            </Column>
+            <Column Name="TotalInvocationTime" Type="Long">
+                    <ColumnFrom Name="Invoke.time"/>
+            </Column>
+        </Select>  
+</Table>
+
+
+<Table Name="webservice_jee_endpoint_no_rate_internal">
+ <ColumnDef Name="portName" Type="String" Key="true"/>
+  <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+  <ColumnDef Name="appName" Type="String" Key="true"/>
+  <ColumnDef Name="serverName" Type="String" Key="true"/>
+  <ColumnDef Name="InvocationCount" Type="Long"/>  
+  <ColumnDef Name="FaultCount" Type="Long"/> 
+  <ColumnDef Name="TotalInvocationTime" Type="Long"/>  
+  <Select Name="jrf_ws_endpoint_no_rate_internal_result">
+            <TableFrom Name="weblogic_j2eeserver:weblogic_webservices_port_rollup"/>
+            <Column Name="portName" Type="String">
+                <ColumnFrom Name="portName"/>
+            </Column>
+            <Column Name="webserviceName" Type="String">
+                <ColumnFrom Name="webserviceName"/>
+            </Column>
+            <Column Name="appName" Type="String">
+              <ColumnFrom Name="appName"/> 
+            </Column>
+            <Column Name="serverName" Type="String">
+                <ColumnFrom Name="serverName"/>
+            </Column>
+            <Column Name="InvocationCount" Type="Long">
+                <ColumnFrom Name="InvocationCount"/>
+            </Column>
+            <Column Name="FaultCount" Type="Long">
+                <ColumnFrom Name="ResponseErrorCount"/>
+            </Column>
+            <Column Name="TotalInvocationTime" Type="Long">
+                 <Expression Operator="Plus">
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="ExecutionTimeTotal" />
+                          <ColumnFrom Name="DispatchTimeTotal" />
+                      </Expression>
+                      <Expression Operator="Plus">
+                          <ColumnFrom Name="ResponseTimeTotal" />
+                          <Value>0</Value>
+                          <Default>0</Default>             
+                      </Expression>
+                 </Expression>
+                 <Default>0</Default>
+            </Column>            
+        </Select>  
+</Table>
+
+<Table Name="webservice_all_endpoint_no_rate">
+  <ColumnDef Name="portName" Type="String" Key="true"/>
+  <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+  <ColumnDef Name="appName" Type="String" Key="true"/>
+  <ColumnDef Name="serverName" Type="String" Key="true"/>
+  <ColumnDef Name="InvocationCount" Type="Long"/>  
+  <ColumnDef Name="FaultCount" Type="Long"/>
+  <ColumnDef Name="TotalInvocationTime" Type="Long"/>  
+  <Union Name="unified_webservices_endpoint_no_rate_result">
+    <TableFrom Name="weblogic_j2eeserver:webservice_jrf_endpoint_no_rate_internal"/>
+    <TableFrom Name="weblogic_j2eeserver:webservice_jee_endpoint_no_rate_internal"/>
+    <Column Name="portName" Type="String" Key="true"/>
+    <Column Name="webserviceName" Type="String" Key="true"/>
+    <Column Name="appName" Type="String" Key="true"/>
+    <Column Name="serverName" Type="String" Key="true"/>
+    <Column Name="InvocationCount" Type="Long"/>  
+    <Column Name="FaultCount" Type="Long"/> 
+    <Column Name="TotalInvocationTime" Type="Long"/>  
+  </Union>
+</Table>  
+
+</Adml>
+
+

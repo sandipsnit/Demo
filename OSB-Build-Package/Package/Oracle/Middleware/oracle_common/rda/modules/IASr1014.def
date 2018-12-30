@@ -1,0 +1,866 @@
+# IASr1014.def: Collects OAS 10g R4 Information (10.1.4)
+# $Id: IASr1014.def,v 2.9 2012/01/03 13:34:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/IASr1014.def,v 2.9 2012/01/03 13:34:42 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+IASr1014 - Collects OAS 10g R4 Information (10.1.4)
+
+=head1 DESCRIPTION
+
+This module collects Oracle Application Server 10g R4 (10.1.4)-related
+information (such as DCM, HTTP Server, JAVACACHE, ODL, OPMN, LDAP, and SYSMAN).
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing OAS 10g R4 (10.1.4) module ...',tput('off')
+
+# Initialization
+import $APACHE_TOP,$ORACLE_HOME
+var $IAS_VERSION  = $arg[0]
+var $DCM_TAIL     = getSetting('DCM_TAIL',20000)
+var $FORCE_DCMCTL = getSetting('FORCE_DCMCTL')
+var $RUN_DCMCTL   = getSetting('RUN_DCMCTL')
+var $TAIL         = getSetting('RDA_TAIL',1000)
+var $J2EE_TOP     = getSetting('J2EE_TOP','')
+var $ODL_SIZE     = getSetting('ODL_TAIL',65536)
+
+var $ASSISTANTS_HOME  = catDir($ORACLE_HOME,'assistants')
+var $CLONE_HOME       = catDir($ORACLE_HOME,'clone')
+var $CFGTOOLLOGS_HOME = catDir($ORACLE_HOME,'cfgtoollogs')
+var $DCM_HOME         = catDir($ORACLE_HOME,'dcm')
+var $DCM_LOGS         = catDir($ORACLE_HOME,'dcm','logs')
+var $IAS_CONFIG       = catDir($ORACLE_HOME,'config')
+var $IAS_INSTALL      = catDir($ORACLE_HOME,'install')
+var $JAVACACHE_HOME   = catDir($ORACLE_HOME,'javacache')
+var $LDAP_HOME        = catDir($ORACLE_HOME,'ldap')
+var $OPMN_HOME        = catDir($ORACLE_HOME,'opmn')
+var $SYSMAN_HOME      = catDir($ORACLE_HOME,'sysman')
+
+var $OH  = quote($ORACLE_HOME)
+var $OH1 = concat('^',$OH,'[\\\/]')
+var $OH2 = concat('^',$OH,'\b')
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+set $NOT_OWNER_STATEMENT
+{**Please note:**
+"
+"The RDA was executed with an operating system user which is different from
+"the operating system user who installed the Oracle AS 10g.
+"
+"Therefore, no information are available in this section.
+"
+}
+
+# Load the common macros
+var %HTTPDCONF
+run library()
+run IAS()
+
+=head2 Oracle AS 10g
+
+Gathers all general Oracle Application Server 10g information.
+
+=cut
+
+echo tput('bold'),'Gathering Oracle AS 10g Information ...',\
+     tput('off')
+toc '1:Oracle AS 10g (',$IAS_VERSION,')'
+debug ' Inside IASr1014 module, gathering install and configuration information'
+var @tbl = (grepDir($IAS_INSTALL,'\.(ini|log)','dir'),\
+            grepDir($IAS_CONFIG,'\.(properties|xml)','dir'),\
+            grepDir($ASSISTANTS_HOME,'\.log$','dir'),\
+            grepDir($CFGTOOLLOGS_HOME,'\.(ini|log|properties|xml)','dir'),\
+            grepDir($CLONE_HOME,'\.log','dir'))
+pretoc '2:Install and Configuration'
+call sort_files(3,$TAIL,@tbl)
+unpretoc
+
+debug ' Inside IASr1014 module, gathering AS 10g information'
+var @IAS_DIR = ('chgip','diagnostics')
+var @IAS_SUF = ('\.conf$','\.ini$','\.xml$','\.properties$','\.err$','\.log',\
+                '\~')
+var @tbl = ()
+loop $dir (@IAS_DIR)
+{var $dir = catDir($ORACLE_HOME,$dir)
+ if testDir('d',$dir)
+ {loop $suf (@IAS_SUF)
+   var @tbl = (@tbl,grepDir($dir,$suf,'dir'))
+ }
+}
+pretoc '2:AS Information'
+call sort_files(3,$TAIL,@tbl)
+unpretoc
+
+# Check the user
+var $uid= getOwner(getToc(true))
+var ($pgm) = (grepDir(catDir($ORACLE_HOME,'opmn','bin'),\
+                      '^opmnctl(\.exe)?$','fip'))
+var $own= getOwner($pgm)
+if compare('eq',$uid,$own)
+ var $NOT_OWNER = false
+else
+{var $NOT_OWNER = true
+ echo tput('reverse'),'Warning:'
+ echo '========'
+ echo 'The RDA is started as userid: ',$uid
+ echo 'The Oracle AS 10g (',$IAS_VERSION,') was installed on your system \
+       using userid: ',nvl($own,'[not found]')
+ echo 'The RDA script will continue, but it will skip some AS 10g RDA steps.',\
+       tput('off')
+}
+
+=head2 DCM
+
+Collects the last DCM error, the cluster and standalone instance information,
+the DCM dump, and the log files of the DCM repository. RDA performs these
+collections only when the F<ias.properties> file is available.
+
+Unless forced, collections are skipped if the DCM daemon is not running.
+
+=cut
+
+if and(testFile('r',catFile($ORACLE_HOME,'config','ias.properties')),\
+       or($FORCE_DCMCTL,\
+          grepCommand(concat(catCommand($OPMN_HOME,'bin','opmnctl'),\
+                             ' status process-type=dcm-daemon'),\
+                      'alive','if')))
+{echo tput('bold'),'Gathering DCM Information ...',tput('off')
+ toc '%SPLIT%'
+ toc '1+:DCM'
+ var $pgm = catCommand($ORACLE_HOME,'dcm','bin','dcmctl')
+ if $NOT_OWNER
+ {report no_dcm
+  write '---+ DCM Repository'
+  write $NOT_OWNER_STATEMENT
+  toc '2:[[',getFile(),'][rda_report][DCM Repository]]'
+ }
+ else
+ {debug ' Inside IASr1014 module, gathering DCM information'
+  if $RUN_DCMCTL
+  {echo ' A complete analysis of the DCM repository using the dcmctl command \
+         was selected.'
+   echo ' This may take a few minutes. Please be patient...'
+  }
+
+  macro exec_dcmctl
+  {var ($cmd) = @arg
+   var $err = getTemp('ias')
+   write '---## Using: ',encode($cmd)
+   call writeCommand(concat($cmd," 2>",quote($err,'x')))
+   if testFile('s',$err)
+   {write '**Exception from "',encode($cmd),'"**%BR%'
+    call writeFile($err)
+   }
+   call unlinkTemp('ias')
+  }
+
+  macro get_dcmctl
+  {var ($cmd,$msg,$re) = @arg
+   var $err = getTemp('ias')
+   write
+   write '---## Using: ',encode($cmd)
+   call loadCommand(concat($cmd," 2>",quote($err,'x')))
+   if $re
+    var @tbl = grepLastFile($re,'i')
+   else
+    var @tbl = getLines()
+   if @tbl
+    call writeLastFile()
+   elsif $msg
+    write $msg
+   if testFile('s',$err)
+   {write '**Exception from "',encode($cmd),'"**%BR%'
+    call writeFile($err)
+   }
+   call unlinkTemp('ias')
+   return @tbl
+  }
+
+  macro get_dcmshell
+  {var ($cmd,$cod,$msg) = @arg
+   var $err = getTemp('ias')
+   var $in  = createTemp('in')
+   call writeTemp('in',$cod)
+   call writeTemp('in','exit')
+   call closeTemp('in')
+   write
+   write '---## Using in dcmctl shell: ',encode($cod)
+   call loadCommand(concat($cmd," shell <",quote($in,'x'),\
+                           " 2>",quote($err,'x')))
+   var @tbl = getLines()
+   if @tbl
+   {write '<verbatim>'
+    loop $lin (@tbl)
+     write replace($lin,'dcmctl>\s*')
+    write '</verbatim>'
+   }
+   elsif $msg
+    write $msg
+   if testFile('s',$err)
+   {write '**Exception from "',encode($cmd),'"**%BR%'
+    call writeFile($err)
+   }
+   call unlinkTemp('in')
+   call unlinkTemp('ias')
+   return @tbl
+  }
+
+  macro write_dcmctl
+  {var ($cmd) = @arg
+   write
+   write '---## Using: ',encode($cmd)
+   call writeCommand($cmd)
+  }
+
+=head2 dcm_error - dcmctl getError
+
+Retrieves the last DCM error before RDA started.
+
+=cut
+
+  debug ' Inside IASr1014 module, retrieving the last DCM error'
+  report dcm_error
+  write '---+ Oracle AS 10g (',$IAS_VERSION,') Last Error from dcmctl \
+         before RDA was started'
+  call write_dcmctl(concat($pgm,' getError -d 2>&1'))
+  toc '2:[[',getFile(),'][rda_report][dcmctl getError]]'
+
+=head2 dcm_cluster - DCM Cluster
+
+Collects DCM cluster information. For each instance on which clusters are
+found, RDA gathers information about the components and applications.
+
+=cut
+
+  debug ' Inside IASr1014 module, gathering DCM cluster information'
+  report dcm_cluster
+  write '---+!! Oracle AS 10g (',$IAS_VERSION,') Cluster \
+         Configuration Information'
+
+  write $TOC
+
+  # Check whether there are cluster defined in iAS infrastructure
+  write '---+ List of Clusters'
+  var @DCM_CLUSTERS = get_dcmctl(concat($pgm,' listClusters -d'),\
+                                 'No cluster found.%BR%')
+  write $TOP
+
+  if $RUN_DCMCTL
+  {# Collect complete dcmctl information about each cluster
+   loop $clu (@DCM_CLUSTERS)
+   {var $clu = field('\s+',1,$clu)
+    write '---+ Configuration of Cluster: ',$clu
+    write '---++ State of the Cluster'
+    call exec_dcmctl(concat($pgm,' getstate -cl ',$clu,' -d -v'))
+    write $TOP
+
+    write '---++ Instances found in the Cluster'
+    var @DCM_INSTANCES = get_dcmctl(concat($pgm,\
+                                           ' listInstances -cl ',$clu,' -d'),\
+                                    'No instance found.%BR%',\
+                                    'Instance name:')
+    write $TOP
+
+    loop $ins (@DCM_INSTANCES)
+    {# Get the list of components per instance
+     var $ins = field('\:\s+',1,$ins)
+     write '---++ Components of Cluster Instance: ',$ins
+     var @DCM_COMPONENTS = get_dcmctl(concat($pgm,' getstate -i ',$ins,\
+                                             ' -cl ',$clu,' -d -v'),\
+                                      'No component found.%BR%',\
+                                      '^\d+\s')
+     write $TOP
+
+     # Get the list of applications per instance component
+     loop $cmp (@DCM_COMPONENTS)
+     {var (undef,$nam,$typ) = split('\s+',$cmp,4)
+      if match($typ,'OC4J',true)
+      {write '---+++ List of Applications for Component: ',$nam
+       call get_dcmshell($pgm,concat('listApplications -cl ',$clu,' -i ',$ins,\
+                                     ' -co ',$nam,' -d -v'),\
+                         'No application found.%BR%')
+       write $TOP
+      }
+     }
+    }
+   }
+  }
+  toc '2:[[',getFile(),'][rda_report][DCM Cluster]]'
+
+=head2 dcm_standalone - Standalone Instances
+
+Collects F<dcmctl> information for instances that are not part of a
+cluster. RDA gathers information that includes the components and applications.
+
+=cut
+
+  debug ' Inside IASr1014 module, gathering standalone instance configuration'
+  report dcm_standalone
+  write '---+!! Oracle AS 10g (',$IAS_VERSION,') Standalone Instance \
+         Configuration Information'
+  write $TOC
+
+  write '---+ List of Standalone Instances'
+  var @DCM_INSTANCES = get_dcmctl(concat($pgm,' listInstances -d'),\
+                                  'No instance found.%BR%',\
+                                  'Instance name\:')
+  write $TOP
+
+  if $RUN_DCMCTL
+  {# Collect the complete dcmctl information about each instance
+   loop $ins (@DCM_INSTANCES)
+   {# Get the instance state
+    var $ins = field('\:\s+',1,$ins)
+    write '---+ Instance: ',$ins
+    var @DCM_COMPONENTS = get_dcmctl(concat($pgm,' getstate -i ',$ins,\
+                                            ' -d -v'),\
+                                     'No component found.%BR%',\
+                                     '^\d+\s')
+    write $TOP
+
+    # Get the list of applications per instance component
+    loop $cmp (@DCM_COMPONENTS)
+    {var (undef,$nam,$typ) = split('\s+',$cmp,4)
+     if match($typ,'OC4J',true)
+     {write '---++ List of Applications for Component: ',$nam
+      call get_dcmshell($pgm,concat('listApplications -i ',$ins,\
+                                    ' -co ',$nam,' -d -v'),\
+                        'No application found.%BR%')
+      write $TOP
+     }
+    }
+   }
+  }
+  toc '2:[[',getFile(),'][rda_report][Standalone Instances]]'
+
+=head2 dcm_dump - dcmctl dump
+
+Collects DCM dump information from the infrastructure.
+
+=cut
+
+  debug ' Inside IASr1014 module, gathering DCM dump information'
+  report dcm_dump
+  write '---+ Oracle AS 10g (',$IAS_VERSION,') dcmctl dump'
+  call exec_dcmctl(concat($pgm,' dump -d -v'))
+  toc '2:[[',getFile(),'][rda_report][dcmctl dump]]'
+ }
+
+ debug ' Inside IASr1014 module, gathering DCM log files'
+ pretoc '2:DCM Log Files'
+ call sort_files(3,$DCM_TAIL,grepDir($DCM_LOGS,'\.(log|xml)','ir'))
+ unpretoc
+
+ debug ' Inside IASr1014 module, gathering DCM configuration files'
+ pretoc '2:DCM Configuration Files'
+ call sort_files(3,$TAIL,grepDir($DCM_HOME,'\.conf','ir'))
+ unpretoc
+}
+
+=head2 DMS
+
+Collects a F<dmstool> dump and provides a starting point for analyzing
+performance issues.
+
+=cut
+
+echo tput('bold'),'Gathering DMS Information ...',tput('off')
+toc '%SPLIT%'
+toc '1+:DMS'
+
+report dmstool_dump
+write '---+ dmstool Dump'
+if $NOT_OWNER
+ write $NOT_OWNER_STATEMENT
+else
+{var $pgm = catCommand($ORACLE_HOME,'bin','dmstool')
+ call writeCommand(concat($pgm,' -dump'))
+}
+toc '2:[[',getFile(),'][rda_report][dmstool Dump]]'
+
+=head2 HTTP Server
+
+Gathers HTTP server information.
+
+Collects performance-related information using the following commands:
+
+=over 4
+
+=item o C<dmstool -table ohs_server -c 1>
+
+=item o C<dmstool -table ohs_responses -c 1>
+
+=item o C<dmstool -table ohs_module -c 1>
+
+=item o C<dmstool -table ohs_virtualHost -c 1>
+
+=item o C<dmstool -table ohs_child -c 1>
+
+=back
+
+=cut
+
+echo tput('bold'),'Gathering HTTP Server Information ...',tput('off')
+toc '%SPLIT%'
+toc '1+:HTTP Server'
+
+report apache_bin
+var $dir = catDir($APACHE_TOP,'bin')
+prefix
+ write '---+ List of Files in ',encode($dir)
+call statDir('an',$dir)
+if isCreated(true)
+{toc '2:Generic'
+ toc '3:[[',getFile(),'][rda_report][',replace($dir,$OH2,'$OH'),']]'
+}
+
+debug ' Inside IASr1014 module, getting Apache configuration'
+call httpServer_getListenerConf()
+debug ' Inside IASr1014 module, getting Apache log files'
+call httpServer_getListenerLogs()
+debug ' Inside IASr1014 module, getting start scripts'
+call httpServer_getStartScripts()
+debug ' Inside IASr1014 module, getting mod_plsql configuration'
+call httpServer_getModplsqlConf()
+debug ' Inside IASr1014 module, getting JServ configuration'
+call httpServer_getJServConf()
+debug ' Inside IASr1014 module, getting JServ log files'
+call httpServer_getJServLogs()
+debug ' Inside IASr1014 module, getting JServ Java version'
+call httpServer_getJServJavaVersions()
+
+# Collect Oracle HTTP server performance metrics
+if !$NOT_OWNER
+{var $pgm = catCommand($ORACLE_HOME,'bin','dmstool')
+
+ debug ' Inside IASr1014 module, gathering HTTP server metrics'
+ report dmstool_ohs_server
+ var $cmd = concat($pgm,' -table ohs_server -c 1')
+ prefix
+ {write '---+ HTTP Server Metrics Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][HTTP Server Metrics]]'
+
+ debug ' Inside IASr1014 module, gathering response metrics'
+ report dmstool_ohs_responses
+ var $cmd = concat($pgm,' -table ohs_responses -c 1')
+ prefix
+ {write '---+ HTTP Server Response Metrics Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Response Metrics]]'
+
+ debug ' Inside IASr1014 module, gathering activity per module'
+ report dmstool_ohs_module
+ var $cmd = concat($pgm,' -table ohs_module -c 1')
+ prefix
+ {write '---+ HTTP Server Activity per Module Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Activity per Module]]'
+
+ debug ' Inside IASr1014 module, gathering activity per virtual host'
+ report dmstool_ohs_virtualhost
+ var $cmd = concat($pgm,' -table ohs_virtualHost -c 1')
+ prefix
+ {write '---+ HTTP Server Activity per Virtual Host Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Activity per Virtual Host]]'
+
+ debug ' Inside IASr1014 module, gathering activity per child server'
+ report dmstool_ohs_child
+ var $cmd = concat($pgm,' -table ohs_child -c 1')
+ prefix
+ {write '---+ HTTP Server Activity per Child Server Information'
+  write '---## Using: ',encode($cmd)
+ }
+ call writeCommand($cmd)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Activity per Child Server]]'
+}
+
+=head2 JAVACACHE
+
+Gathers Java Object Cache information.
+
+=cut
+
+if testDir('d',$JAVACACHE_HOME)
+{echo tput('bold'),'Gathering JAVACACHE Information ...',tput('off')
+ pretoc '%SPLIT%'
+ pretoc '1+:JAVACACHE'
+ debug ' Inside IASr1014 module, gathering javacache information'
+ call sort_files(2,$TAIL,grepDir($JAVACACHE_HOME,'\.log$','inr'),\
+                         grepDir($JAVACACHE_HOME,'\.xml$','inr'))
+
+=head2 javacache - Java Cache
+
+Gathers Java Cache command information.
+
+=cut
+
+ var $fil = catFile($JAVACACHE_HOME,'lib','cache.jar')
+ if testFile('f',$fil)
+ {debug ' Inside IASr1014 module, gathering JAVACACHE command information'
+  var $tmp = createTemp('javacache')
+  call writeTemp('javacache','lc')
+  call writeTemp('javacache','lo')
+  call closeTemp('javacache')
+  var $cmd = concat(catCommand($ORACLE_HOME,'jdk','bin','java'),\
+                    ' -jar ',quote($fil,'x'),' watch <',quote($tmp,'x'))
+  report javacache
+  prefix
+  {write '---+!! Java Cache Command Execution'
+   write '---## Using: cache.jar lc and lo commands'
+  }
+  call writeCommand($cmd)
+  if isCreated(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][Java Cache]]'
+  }
+  call unlinkTemp('javacache')
+ }
+
+=head2 diskcache - Java DiskCache
+
+Gathers Java DiskCache information.
+
+=cut
+
+ var $dir = catDir($JAVACACHE_HOME,'DiskCache')
+ if testDir('d',$dir)
+ {debug ' Inside IASr1014 module, gathering Java DiskCache information'
+  report diskcache
+  prefix
+  {write '---+!! Java DiskCache Information'
+   write '---+ List of Files in ',encode($dir)
+  }
+  call statDir('an',$dir)
+  if isCreated(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][Java DiskCache]]'
+  }
+ }
+ unpretoc 2
+}
+
+=head2 LDAP
+
+Gathers LDAP information.
+
+=cut
+
+if testDir('d',$LDAP_HOME)
+{echo tput('bold'),'Gathering LDAP Information ...',tput('off')
+ pretoc '%SPLIT%'
+ pretoc '1+:LDAP'
+ debug ' Inside IASr1014 module, gathering LDAP information'
+
+ var $dir = catDir($LDAP_HOME,'bin')
+ if testDir('d',$dir)
+ {report ldap_bin
+  prefix
+   write '---+ List of Files in ',encode($dir)
+  call statDir('an',$dir)
+  if isCreated(true)
+  {toc '2:Generic'
+   toc '3:[[',getFile(),'][rda_report][',replace($dir,$OH2,'$OH'),']]'
+  }
+ }
+
+ if grepDir($LDAP_HOME,'\.log','ir')
+ {var (@fil,%dir) = (last)
+  loop $fil (@fil)
+   var $dir{dirname($fil)} = true
+  report ldap_log
+  write '---+!! List of LDAP Log Files'
+  write $TOC
+  loop $dir (keys(%dir))
+  {write '---++ List of Files in ',encode($dir)
+   call statDir('at',$dir)
+   write $TOP
+  }
+  toc '2:[[',getFile(),'][rda_report][LDAP Log Files]]'
+  call sort_files(3,$TAIL,@fil)
+ }
+ unpretoc 2
+}
+
+=head2 ODL
+
+Gathers Oracle Diagnostics Logging (ODL) information. It collects utilization
+over the last 24 hours, with warnings and errors from components that are
+enabled for ODL.
+
+=cut
+
+if !$NOT_OWNER
+{echo tput('bold'),'Gathering ODL Information ...',tput('off')
+ toc '%SPLIT%'
+ toc '1+:ODL Diagnostics'
+ var $pgm = catCommand($ORACLE_HOME,'diagnostics','bin','printlogs')
+
+ # Get utilization over last 24 hours
+ debug ' Inside IASr1014 module, getting activities over last 24 hours'
+ report odl_24h
+ prefix
+  write '---+!! Activities over last 24 Hours'
+ call writeCommand(concat($pgm,\
+        ' -last 1d -count COMPONENT_ID MODULE_ID MSG_TYPE 2>&1'))
+ call writeCommand(concat($pgm,\
+        ' -last 1d -count TSTZ_ORIGINATING 2>&1'))
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Activities over last 24 Hours]]'
+
+ # Get warnings and errors from components which are enabled for ODL
+ loop $cmp (command(concat($pgm,' -last 1d -count COMPONENT_ID')))
+ {var $cmp = field(',',0,$cmp)
+  debug ' Inside IASr1014 module, getting last warnings and errors from ',$cmp
+  report concat('odl_comp_',$cmp)
+  prefix
+   write '---+ Last Warnings and Errors from ',$cmp
+  if isUnix()
+   call writeCommand(concat($pgm,' -query \( COMPONENT_ID -eq ',$cmp,\
+    ' \) -and \( MSG_TYPE -eq ERROR -or MSG_TYPE -eq WARNING \) -text_full \
+     -tail ',$TAIL,' -notailopt 2>&1'))
+  else
+   call writeCommand(concat($pgm,' -query ( COMPONENT_ID -eq ',$cmp,\
+    ' ) -and ( MSG_TYPE -eq ERROR -or MSG_TYPE -eq WARNING ) -text_full \
+     -tail ',$TAIL,' -notailopt 2>&1'))
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Last Warnings and Errors from ',$cmp,']]'
+ }
+
+=head2 odl_log - HTTP Server Log File
+
+Gathers HTTP Server Oracle Diagnostics Logging (ODL) information. This new
+method for reporting diagnostic messages presents a common format for
+diagnostic messages and log files, and a mechanism for correlating all
+diagnostic messages from various components across Oracle Application Server.
+
+=cut
+
+ debug ' Inside IASr1014 module, gathering HTTP Server ODL logging'
+ call httpServer_getOdlLog(false)
+
+=head2 J2EE ODL Log Files
+
+Gathers J2EE ODL diagnostics information.
+
+=cut
+
+ if testDir('dr',$J2EE_TOP)
+ {# Define a macro to gather the directory list for odl logs
+  macro get_odl_logdir
+  {var ($flg,$pth) = @arg
+   import $ins,$bas,%dir
+   if isAbsolute($pth)
+    var $dir{$pth} = true
+   else
+   {var @fil = grepDir(cond($flg,$bas,catDir($ins,'log')),'^log\d*\.xml$','irt')
+    loop $fil (@fil)
+     var $dir{dirname($fil)} = true
+   }
+  }
+
+  # Defeine a macro to gather the log file path for OC4J instance
+  macro get_oc4j_logdir
+  {var ($flg,@cfg) = @arg
+   loop $fil (@cfg)
+   {if testFile('r',$fil)
+    {var $obj = xmlLoadFile($fil,xmlDisable(xmlParser(),'R'))
+     if xmlFind($obj,'.../log/odl')
+      call get_odl_logdir($flg,xmlValue(last,'path'))
+    }
+   }
+  }
+
+  # Extract the oc4j log directories from each instance
+  var (%dir,%log) = ()
+  debug ' Inside IASr1014 module, gathering J2EE ODL logging'
+  loop $nam (grepDir($J2EE_TOP,'^[\.]+$','v'))
+  {next !testDir('d',catDir($J2EE_TOP,$nam))
+   var $ins = catDir($J2EE_TOP,$nam)
+   if testFile('r',catFile($ins,'config','j2ee-logging.xml'))
+   {var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'R'))
+    loop $xml (xmlFind($obj,'.../log_handler name="oc4j-handler"'))
+    {next !xmlFind($xml,'property name="rotationFrequency"')
+     var $pth = xmlValue(xmlFind($xml,'property name="path"'),'value')
+     call get_odl_logdir(false,$pth)
+    }
+   }
+   var $bas = catDir($ins,'application-deployments')
+   call get_oc4j_logdir(true,grepDir($bas,'^orion\-application\.xml$','ir',2))
+   call get_oc4j_logdir(false,\
+                        catFile($ins,'config','application.xml'),\
+                        catFile($ins,'config','default-web-site.xml'),\
+                        catFile($ins,'config','server.xml'),\
+                        catFile($ins,'config','jms.xml'),\
+                        catFile($ins,'config','rmi.xml'))
+  }
+
+  # Collect the 2 most recent log files from each log directory
+  pretoc '2:J2EE ODL Log Files'
+  loop $dir (keys(%dir))
+  {var $cnt = 2
+   loop $fil (grepDir($dir,'^log\d*\.xml$','ipt'))
+   {next $log{$fil}
+    var $log{$fil} = true
+    decr $cnt
+    break !$cnt
+   }
+  }
+  call sort_files(3,0,keys(%log))
+  unpretoc
+ }
+}
+
+=head2 OPMN
+
+Gathers OPMN information. It finds all C<*.log>, C<*.conf>, and C<*.xml> files.
+
+=cut
+
+echo tput('bold'),'Gathering OPMN Information ...',tput('off')
+toc '%SPLIT%'
+toc '1+:OPMN'
+debug ' Inside IASr1014 module, getting OPMN information'
+
+report opmn_bin
+var $dir = catDir($OPMN_HOME,'bin')
+prefix
+ write '---+ List of Files in ',encode($dir)
+call statDir('an',$dir)
+if isCreated(true)
+{toc '2:Generic'
+ toc '3:[[',getFile(),'][rda_report][',replace($dir,$OH2,'$OH'),']]'
+}
+
+if $NOT_OWNER
+{report no_opmnctl
+ write '---+ opmnctl'
+ write $NOT_OWNER_STATEMENT
+ toc '2:[[',getFile(),'][rda_report][opmnctl]]'
+}
+else
+{toc '2:opmnctl'
+ var $pgm = catCommand($dir,'opmnctl')
+
+ report opmnctl_status
+ write '---+ opmnctl status'
+ var $fmt = '%cmp18%prt18%pid7R%sta8%utm9R%mem8R%por'
+ var $cmd = concat($pgm,' status -fmt ',$fmt,' 2>&1')
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ toc '3:[[',getFile(),'][rda_report][opmnctl status]]'
+
+ report opmnctl_debug_pm
+ write '---+ opmnctl debug comp=pn'
+ var $cmd = concat($pgm,' debug comp=pm 2>&1')
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ toc '3:[[',getFile(),'][rda_report][opmnctl debug comp=pn]]'
+
+ report opmnctl_debug_ons
+ write '---+ opmnctl debug comp=ons'
+ var $cmd = concat($pgm,' debug comp=ons 2>&1')
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ toc '3:[[',getFile(),'][rda_report][opmnctl debug comp=ons]]'
+}
+
+# Identify the custom locations for OC4J instances
+var @tbl = ()
+if testFile('r',catFile($OPMN_HOME,'conf','opmn.xml'))
+{var ($top,%pth) = (xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'DR')))
+ loop $xml (xmlFind($top,\
+   'opmn/process-manager/ias-instance/ias-component/process-type \
+    module-id="OC4J"/module-data/category id="start-parameters"/data \
+    id="^(java|oc4j)-options$"'))
+ {var $str = xmlValue($xml,'value')
+  if match($str,'(\A|\s)-out\s+(\S+)')
+   var $pth{catFile(last->[1])} = 1
+  if match($str,'(\A|\s)-err\s+(\S+)')
+   var $pth{catFile(last->[1])} = 2
+ }
+ loop $pth (keys(%pth))
+ {var ($dir,$nam) = parseFile($pth)
+  call push(@tbl,grepDir($dir,concat('^',quote($nam),'$'),'ir',1))
+ }
+}
+
+# Collect the files
+pretoc '2:OPMN'
+call sort_files(3,$TAIL,grepDir($OPMN_HOME,'\.conf$','ir'),\
+                        grepDir($OPMN_HOME,'\.xml','ir'),\
+                        grepDir(catDir($OPMN_HOME,'logs'),'.','ir'),\
+                        @tbl)
+unpretoc
+
+=head2 SYSMAN
+
+Gathers SYSMAN information.
+
+=cut
+
+echo tput('bold'),'Gathering SYSMAN Information ...',tput('off')
+toc '%SPLIT%'
+toc '1+:SYSMAN'
+
+debug ' Inside IASr1014 module, gathering SYSMAN information'
+call sort_files(2,$TAIL,grepDir($SYSMAN_HOME,'\.(log|properties|xml)','inr'),\
+                        grepDir(catDir($SYSMAN_HOME,'log'),'^[^\.]','pn'))
+
+=head1 SEE ALSO
+
+L<IAS.def|modules::IAS>, L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.5:  Ari Kermaier, Damien Carru, Greg Cook, Marty Grinstead.
+
+=item RDA 4.6:  Takayuki Hamaguchi, Ian Reid.
+
+=item RDA 4.7:  Bill Loi, Pedro Nunes, Wes Root.
+
+=item RDA 4.8:  Prag Padmaraj, Sudip Roy.
+
+=item RDA 4.9:  Marcus Lachmanez.
+
+=item RDA 4.10: Daniel Mortimer.
+
+=item RDA 4.22: Miguel Hernandez, Daniel Mortimer, Albert Girona Puig.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

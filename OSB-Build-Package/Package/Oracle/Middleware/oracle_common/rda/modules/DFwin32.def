@@ -1,0 +1,65 @@
+# DFwin32.def: Collects Windows-specific Comparison Information
+# $Id: DFwin32.def,v 1.4 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/DFwin32.def,v 1.4 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+DFwin32 - Collects Windows-specific Comparison Information
+
+=head1 DESCRIPTION
+
+This module collects Windows-specific information for comparing systems.
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = (\
+'collect_os'\
+)
+
+# Collect the operating system information
+macro collect_os
+{var ($ind) = @arg
+ import $TOP
+
+ write '---+ CHAPTER:100:Operating System'
+
+ # Collect the Windows release information
+ var $reg = 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+ write '---++ SECTION:010:System Information'
+ write '|*Name*|*Value #*|'
+ write '|Name|',getRegValue($reg,'ProductName'),' |'
+ write '|Version|',getRegValue($reg,'CurrentVersion'),' |'
+ write '|Service Pack|',getRegValue($reg,'CSDVersion',\
+                                    'No Service Packs installed'),' |'
+ write $TOP
+}
+
+=head1 SEE ALSO
+
+L<TLdiff.def|modules::TLdiff>,
+L<DIFFcmp.def|modules::DIFFcmp>,
+L<DIFFget.def|modules::DIFFget>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.10:  Michel Villette.
+
+=back
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

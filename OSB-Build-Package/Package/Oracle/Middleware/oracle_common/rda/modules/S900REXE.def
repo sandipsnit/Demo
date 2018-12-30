@@ -1,0 +1,290 @@
+# S900REXE.def: Performs the Remote Data Collections
+# $Id: S900REXE.def,v 2.7 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S900REXE.def,v 2.7 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S900REXE - Performs the Remote Data Collections
+
+=head1 DESCRIPTION
+
+This module performs the remote data collection. For each node:
+
+=over 4
+
+=item *
+
+It determines the storage type (that is, LOCAL, SHARED, SPLIT, or REMOTE), by
+transferring the remote setup file.
+
+=item *
+
+It installs the RDA software if it is not installed already. The installation
+is checked.
+
+=item *
+
+It runs RDA on the remote node and packages the reports.
+
+=item *
+
+It transfers the resulting report package back.
+
+=back
+
+=cut
+
+echo tput('bold'),'Processing REXE module ...',tput('off')
+
+# Initialization
+if !getSetting('REMOTE_NODES')
+ return
+var @nod = split(',',last)
+
+#------------------------------------------------------------------------------
+# Define macros
+#------------------------------------------------------------------------------
+
+# Check a remote installation
+macro check_install
+{var ($nod,$flg) = @arg
+
+ # Check the remote RDA installation
+ if rda($nod,'-c',true)
+ {if !$flg
+   return 1
+ }
+
+ # Check for any shell or RDA error
+ loop $lin (getRemoteLines())
+ {if match($lin,'(^RDA-00014:|^\s+File .* altered$)')
+  {next $flg
+   return -1
+  }
+  return 1
+ }
+
+ # Indicate a successfull RDA installation
+ return 0
+}
+
+# Get a remote setting
+macro get_node
+ return getSetting(concat('REMOTE_',$arg[0],$arg[1]),$arg[2])
+
+# Define the storage detection macro
+macro get_storage
+{var ($nod,$loc,$rem) = @arg
+
+ var $dst = getRemoteSetup($nod)
+ var $src = getRemoteSetup($nod,true)
+
+ # Detect a local node
+ if !isRemote($nod)
+ {if transfer($loc,$src,$rem,$dst,true)
+   return ('R','_STORAGE=LOCAL')
+  else
+   return ('n')
+ }
+
+ # When needed, create the remote directory
+ call rexec($nod,concat('mkdir -p ',$rem))
+
+ # Test the transfer of the setup file
+ if put($nod,$loc,$src,$rem,$dst)
+  return ('n')
+
+ # Detect if RDA software and data collection are separated
+ if get_node($nod,'_SPLIT')
+  return ('I','_STORAGE=SPLIT')
+
+ # Detect the current install is shared with the remote node
+ if testFile('r',catFile($rem,$dst))
+  return ('I','_STORAGE=SHARED')
+
+ # Otherwise assume a remote storage
+ return ('I','_STORAGE=REMOTE')
+}
+
+# Define the software installation macro
+macro do_install
+{var ($nod,$top) = @arg
+
+ # Determine if software alterations are allowed
+ var $flg = or(getSetting('REMOTE_ALTER_ALLOWED'),get_node($nod,'_SPLIT'))
+
+ # When not yet done, install the software
+ if check_install($nod,$flg)
+ {# When needed, create or modify the remote directory
+  if expr('>',last,0)
+   call rexec($nod,concat('mkdir -p ',$top))
+  else
+   call rexec($nod,concat("chmod -R u+w ",$top))
+
+  # Transfer RDA software
+  if mput($nod,true,\
+           '.','(^rda[\.\_]|\.txt$|^I?RDA$|^dfw|^engine$|^modules$)',$top)
+   return 'i'
+
+  # Check the remote software allowing only altered modules
+  if check_install($nod,$flg)
+   return 'c'
+ }
+
+ # Indicate a successful completion
+ return 'R'
+}
+
+# Define the RDA run macro
+macro do_run
+{var ($nod,$wrk,$set,$nxt) = @arg
+
+ var $grp = ${CUR.GROUP}
+ if get_node($nod,$set)
+  var $opt = last
+ else
+  var $opt = getSetting(concat('REMOTE',$set),'-vSCRPy -p Remote')
+ if rda($nod,concat(' -s ',catFile($wrk,getRemoteSetup($nod)),\
+   ' -e RPT_DIRECTORY=',catFile($wrk,$nod),\
+   ',RPT_GROUP=',$grp,\
+   ',RPT_TRANSFER=',${CUR.GROUP},'_',$nod,\
+   ',DOMAIN_NAME=',getSetting('REMOTE_DOMAIN',${RDA.DOMAIN}),\
+   ' ',$opt))
+  return 'r'
+
+ # Indicate a successful completion
+ return $nxt
+}
+
+# Define the package transfer macro
+macro do_transfer
+{var ($nod,$rem) = @arg
+
+ var $grp = ${CUR.GROUP}
+ var $loc = ${OUT.P}
+
+ if match(get_node($nod,'_STORAGE'),'^(LOCAL|SHARED)$')
+ {var $dir = catDir($rem,$nod,'transfer')
+  loop $fil (grepDir($dir,concat('^',$grp,'\_',$nod),'i'))
+  {if !transfer($dir,$fil,$loc)
+    return 't'
+  }
+ }
+ elsif mget($nod,false,\
+            catDir($rem,$nod,'transfer'),concat($grp,'_',$nod,'.*'),\
+            $loc)
+  return 't'
+
+ # Indicate a successful completion
+ return '-'
+}
+
+#------------------------------------------------------------------------------
+# Perform the remote data collection
+#------------------------------------------------------------------------------
+
+# Check if there are pending remote requests
+call initSteps()
+loop $nod (@nod)
+{if and(isRemote($nod),match(getStep($nod,'N'),'[A-Z]'))
+ {call initRemote()
+  break
+ }
+}
+
+# Check if a post treatment must be performed
+var $pst = getSetting('REMOTE_POST_OPTIONS')
+if $pst
+ var $nxt = 'P'
+else
+ var $nxt = 'T'
+
+# Perform the data collection in separate threads
+loop $nod (@nod)
+{thread
+ {import $nod,$nxt
+  var $cwd = ${GRP.D_CWD}
+  var $stp = getStep($nod,'N')
+  var $pre = get_node($nod,'_PREFIX',$nod)
+  var $top = get_node($nod,'_HOME','.')
+  var $wrk = get_node($nod,'_WORK',$cwd)
+
+  # Detect the storage type of the remote node
+  if compare('eq',$stp,'N')
+  {debug $pre,': Detecting storage type'
+   var $stp = setStep($nod,get_storage($nod,$cwd,$wrk))
+  }
+
+  # Install the software on the remote node
+  if compare('eq',$stp,'I')
+  {debug $pre,': Installing RDA software'
+   var $stp = setStep($nod,do_install($nod,$top))
+  }
+
+  # Execute remotely RDA command
+  if compare('eq',$stp,'R')
+  {debug $pre,': Running RDA command'
+   var $stp = setStep($nod,do_run($nod,$wrk,'_RDA_OPTIONS',$nxt))
+  }
+
+  # Transfert the report package
+  if compare('eq',$stp,'T')
+  {debug $pre,': Transfering report package'
+   var $stp = setStep($nod,do_transfer($nod,$wrk))
+  }
+ }
+}
+wait
+call endSteps()
+
+# Perform the post treatment in separate threads
+if $pst
+{call initSteps()
+ loop $nod (@nod)
+ {thread
+  {var $stp = getStep($nod,'N')
+   var $pre = get_node($nod,'_PREFIX',$nod)
+   var $wrk = get_node($nod,'_WORK',${GRP.D_CWD})
+
+   # Execute remotely RDA command
+   if compare('eq',$stp,'P')
+   {debug $pre,': Performing RDA post treatment'
+    var $stp = setStep($nod,do_run($nod,$wrk,'_POST_OPTIONS','T'))
+   }
+
+   # Transfert the report package
+   if compare('eq',$stp,'T')
+   {debug $pre,': Transfering report package'
+    var $stp = setStep($nod,do_transfer($nod,$wrk))
+   }
+  }
+ }
+ wait
+ call endSteps()
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.2:  Roger Snowden.
+
+=item RDA 4.5:  Bob Caldwell.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

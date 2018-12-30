@@ -1,0 +1,518 @@
+# WSPrun.def: Collects IBM WebSphere Application Server Runtime Information
+# $Id: WSPrun.def,v 1.10 2012/05/09 07:21:23 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/WSPrun.def,v 1.10 2012/05/09 07:21:23 mschenke Exp $
+#
+# Change History
+# 20120508  KRA  Improve the credential management.
+
+=head1 NAME
+
+WSPrun - Collects IBM WebSphere Application Server Runtime Information
+
+=head1 DESCRIPTION
+
+This module collects IBM WebSphere Application Server runtime-related
+information.
+
+The following reports can be generated and are regrouped under C<WSADMIN
+Collections>:
+
+=head1 REPORTS
+
+=cut
+
+use Buffer
+
+var ($ctx_s,$ctx_n,$top,$c_itm,$usr,$pwd) = @arg
+var ($pro,$cel) = split(':',$c_itm)
+var @nod = keys($ctx_n)
+var @srv = keys($ctx_s)
+
+# Initialization
+import $AUTO,$MAX,$TAIL,$TOP,$TYPE,$WSADMIN_DIR
+keep $AUTO,$MAX,$TAIL,$TOP,$TYPE
+
+var $PLUGIN = {}
+
+# Load the common macros
+run WSPlib()
+
+pretoc '%SPLIT%'
+pretoc '1++:WSADMIN Collections'
+
+# Check the connection to the WAS
+var $wsp = false
+if $AUTO
+ var $usr = $pwd = ''
+if compare('ne',$TYPE,'OFF')
+{debug '  - Inside WSPrun module, checking connection to IBM WebSphere'
+
+ # Get the host and port
+ var $dir = catDir($top,'config','cells',$cel,'nodes')
+ loop $nod (grepDir($dir,'^[^\.]','n'))
+ {next !testFile('fr',catFile($dir,$nod,'serverindex.xml'))
+  var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'BCDEPR'))
+  loop $par (xmlFind($obj,'serverindex:ServerIndex/serverEntries'))
+  {var $typ = xmlValue($par,'serverType')
+   var $srv = xmlValue($par,'serverName')
+   if xmlFind($par,\
+       'specialEndpoints endPointName="SOAP_CONNECTOR_ADDRESS"/endPoint')
+   {var ($xml) = last
+    var $hst = xmlValue($xml,'host')
+    if !length($hst)
+    {echo "  - Missing host for a IBM WebSphere connection under '",$c_itm,\
+          "' profile:cell"
+     next
+    }
+    if !match($hst,'^[\w\-\.]+$')
+    {echo "  - Invalid IBM WebSphere host under '",$c_itm,"' profile:cell"
+     next
+    }
+    var $prt = xmlValue($xml,'port')
+    if !match($prt,'^\d+$')
+    {echo "  - Invalid IBM WebSphere port under '",$c_itm,"' profile:cell"
+     next
+    }
+    next !match($typ,'^DEPLOYMENT_MANAGER$')
+    var $out = newTemp('out')
+    var $err = newTemp('err')
+    call sharePassword('wsp',$c_itm,'wsp',concat($hst,':',$prt))
+    if setWasLogin($usr,$pwd,$hst,$prt)
+    {write '**Missing access to WSADMIN**'
+     break 
+    }
+    call requestWas(undef,undef,$out,$err)
+    if grepFile($out,'Connected to process','f')
+     var $wsp = true
+    else
+    {report concat('p_',$pro,'_c_',$cel,'_wsp_error')
+     write "**Error encountered when connecting to the IBM WebSphere \
+            from the '",$c_itm,"' profile:cell using: ",$hst,':',$prt,'**'
+     write
+     if testFile('s',$err)
+      call writeFile($err,['C','wsadmin (stderr)'])
+     else
+      call writeFile($out,['C','wsadmin (stdout)'])
+    }
+    call unlinkTemp('out')
+    call unlinkTemp('err')
+    var $det = true
+    break $wsp
+   }
+  }
+  break $wsp
+ }
+ if !$det
+  write '**No connection URLs identified**'
+ if !$wsp
+ {echo "  - Error encountered when connecting to the IBM WebSphere from the '",\
+            $c_itm,"' profile:cell"
+  toc '2:[[',getFile(),\
+      '][rda_report][IBM WebSphere Connection Error]]'
+ }
+}
+else
+ call setWasLogin()
+
+# Load the plugin information
+loop $fil (grepDir(${GRP.D_RDA_CODE},'^FMW\w+\.def$'))
+ run &{concat(substr($fil,0,-4),'-Init')}($PLUGIN)
+
+=head2 Clusters
+
+Collects profile/cell-wide cluster management objects information (such as the
+list of C<Servers> managed under the cluster).
+
+=cut
+
+if $wsp
+{debug '  - Inside WSPrun module, gathering cluster information'
+ set $cod
+ {import java.lang.System as sys
+ "sep = sys.getProperty('line.separator')
+ "pwd = '/Cell:'+cel+'/'
+ "clus = AdminControl.queryNames('type=Cluster,cell='+cel+',*').split(sep)
+ "print '---# RDA:BEGIN SECTION:2:Clusters'
+ "for clu in clus:
+ " nam = AdminControl.getAttribute(clu,'name')
+ " sta = AdminControl.getAttribute(clu,'state')
+ " print '---# RDA:BEGIN'
+ " print "State: "+sta
+ " print "\nMembers:"
+ " mems = AdminConfig.list('Server',clu).split(sep)
+ " for mem in mems:
+ "  print AdminConfig.showAttribute(mem,'name')
+ " print "---# RDA:END REPORT:3|'"+nam+"' Cluster|Cluster Information ("+cel+\
+         ')|'+pwd+'|p_'+pro+'_c_'+cel+'_cl_'+nam+'_info'
+ "print '---# RDA:END SECTION'
+ "
+ }
+ call writeWas($cod,{cel => $cel,\
+                     pro => $pro})
+
+=head2 Cell Configuration
+
+Collects profile/cell-wide configuration management objects information (such
+as C<Nodes>, C<Servers>, and Version information).
+
+=cut
+
+ debug '  - Inside WSPrun module, gathering cell configuration information'
+ set $cod
+ {def get_attributes(oid,all):
+ " if all == 1:
+ "  attr = AdminConfig.showall(oid)
+ " else:
+ "  attr = AdminConfig.show(oid)
+ " print attr
+ "
+ "s_mbn = ''
+ "pwd = '/Cell:'+cel+'/'
+ "cid = AdminConfig.getid(pwd)
+ "print '---# RDA:BEGIN'
+ "get_attributes(cid,1)
+ "print '---# RDA:END MACRO wsp_show:2|Cell Configuration|Cell top level \
+        attributes configured ('+cel+')|'+pwd+'|p_'+pro+'_c_'+cel+'_attributes'
+ "for nod in nodes:
+ " (n_pro,n_cel,n_nod) = nod.split(':')
+ " pwd = '/Cell:'+n_cel+'/Node:'+n_nod+'/'
+ " nid = AdminConfig.getid(pwd)
+ " print '---# RDA:BEGIN'
+ " get_attributes(nid,1)
+ " print "---# RDA:END MACRO wsp_show:3|'"+n_nod+"' Node|Node top level \
+         attributes configured ("+n_cel+')|'+pwd+'|p_'+pro+'_c_'+n_cel+\
+         '_n_'+n_nod+'_attributes'
+ " print '---# RDA:BEGIN SECTION:4:Server Configuration'
+ " for itm in items:
+ "  (i_pro,i_cel,i_nod,i_srv) = itm.split(':')
+ "  if i_nod != n_nod:
+ "   continue
+ "  pwd = '/Cell:'+i_cel+'/Node:'+i_nod+'/Server:'+i_srv+'/'
+ "  sid = AdminConfig.getid(pwd)
+ "  s_mbn = AdminConfig.getObjectName(sid)
+ "  print '---# RDA:BEGIN'
+ "  get_attributes(sid,1)
+ "  print "---# RDA:END MACRO wsp_show:5|'"+i_srv+"' Server|'"+i_srv+\
+          "' Server level attributes configured ("+n_cel+')|'+pwd+'|p_'+pro+\
+          '_c_'+n_cel+'_n_'+n_nod+'_i_'+i_srv+'_attributes'
+ " print '---# RDA:END SECTION'
+ "if len(s_mbn):
+ " print '---# RDA:BEGIN'
+ " print AdminControl.invoke(s_mbn,'getServerVersion')
+ " print '---# RDA:END REPORT:3|Version Information|Server Version \
+         Information ('+cel+')|/Cell:'+cel+'/|p_'+pro+'_c_'+cel+'_version'
+ "
+ }
+ loop $prd (keys($PLUGIN->{'WSP','dom'}))
+  var $cod = join("\012",$cod,'',$PLUGIN->{'WSP','dom',$prd})
+ call writeWas($cod,{cel   => $cel,\
+                     items => [@srv],\
+                     nodes => [@nod],\
+                     pro   => $pro})
+
+=head2 Cell Runtime
+
+Collects profile/cell-wide runtime management objects information (such as
+Oracle diagnostic logging and Oracle Metrics information).
+
+=cut
+
+ debug '  - Inside WSPrun module, gathering cell runtime information'
+ var $AS11 = false
+ if grepDir(catDir($WSADMIN_DIR,'wsadmin'),\
+            '^(oracledms|oracle-logging)\.py$','if')
+  var $AS11 = true
+
+ if $AS11
+ {set $cod
+  {pwd = '/Cell:'+cel+'/'
+  "print '---# RDA:BEGIN SECTION:2:Cell Runtime'
+  "print '---# RDA:BEGIN SECTION:3:Log Queries'
+  "print '---# RDA:BEGIN'
+  "OracleODL.displayLogs(last=1440,\
+    groupBy=['COMPONENT_ID','MODULE_ID','MSG_TYPE'])
+  "print '---# RDA:END REPORT:4|Activities over last 24 Hours|Cell \
+         Activities over last 24 Hours ('+cel+')|'+pwd+'|p_'+pro+'_c_'+cel+\
+         '_cell_odl_24h'
+  "tb_cid = OracleODL.displayLogs(last=1440,groupBy="COMPONENT_ID",returnData=1)
+  "for ocid in tb_cid.keySet():
+  " try:
+  "  qry = 'COMPONENT_ID equals '+ocid+\
+           ' and MSG_TYPE equals ERROR or MSG_TYPE equals WARNING'
+  "  print '---# RDA:BEGIN'
+  "  OracleODL.displayLogs(tail=TAIL,query=qry)
+  "  print '---# RDA:END REPORT:4|Last Warnings and Errors for '+ocid+'|Cell \
+           Last Warnings and Errors for '+ocid+' ('+cel+')|'+pwd+'|p_'+pro+\
+           '_c_'+cel+'_cell_odl_com_'+ocid
+  " except:
+  "  pass
+  "print '---# RDA:END SECTION'
+  "print '---# RDA:BEGIN'
+  "OracleDMS.dumpMetrics(format="raw")
+  "print '---# RDA:END REPORT:3|dumpMetrics|Cell DMS Dump Metrics ('+cel+\
+         ')|'+pwd+'|p_'+pro+'_c_'+cel+'_cell_dump_metrics'
+  "print '---# RDA:BEGIN SECTION:3:Server Runtime'
+  "for itm in items:
+  " (i_pro,i_cel,i_nod,i_srv) = itm.split(':')
+  " print "---# RDA:BEGIN SECTION:4:'" + i_srv + "' Server"
+  " sob = AdminControl.queryNames('type=Server,cell='+i_cel+',node='+i_nod+\
+                                  ',process='+i_srv+',*')
+  " pwd = '/Cell:'+i_cel+'/Node:'+i_nod+'/Server:'+i_srv+'/'
+  " print '---# RDA:BEGIN'
+  " print AdminControl.getAttribute(sob,'state')
+  " print "---# RDA:END REPORT:5|Status|'"+i_srv+"' Status Information \
+          ("+i_cel+')|'+pwd+'|p_'+pro+'_c_'+i_cel+'_i_'+i_srv+'_ins_status'
+  " if AdminControl.getAttribute(sob,'processType') != "NodeAgent":
+  "  print '---# RDA:BEGIN SECTION:5:Log Queries'
+  "  print '---# RDA:BEGIN'
+  "  OracleODL.displayLogs(target=i_srv,last=1440,\
+      groupBy=['COMPONENT_ID','MODULE_ID','MSG_TYPE'])
+  "  print "---# RDA:END REPORT:6|Activities over last 24 Hours|'"+i_srv+\
+           "' Activities over last 24 Hours ("+i_cel+')|'+pwd+'|p_'+pro+\
+           '_c_'+i_cel+'_i_'+i_srv+'_odl_24h'
+  "  tb_cid = OracleODL.displayLogs(target=i_srv,last=1440,\
+               groupBy="COMPONENT_ID",returnData=1)
+  "  for ocid in tb_cid.keySet():
+  "   try:
+  "    qry = 'COMPONENT_ID equals '+ocid+\
+             ' and MSG_TYPE equals ERROR or MSG_TYPE equals WARNING'
+  "    print '---# RDA:BEGIN'
+  "    OracleODL.displayLogs(tail=TAIL,query=qry)
+  "    print '---# RDA:END REPORT:6|Last Warnings and Errors for '+ocid+"|'"+\
+             i_srv+"' Last Warnings and Errors for "+ocid+' ('+i_cel+')|'+pwd+\
+             '|p_'+pro+'_c_'+i_cel+'_i_'+i_srv+'_odl_com_'+ocid
+  "   except:
+  "    pass
+  "  print '---# RDA:END SECTION'
+  "  print '---# RDA:BEGIN'
+  "  OracleDMS.dumpMetrics(format="raw",servers=(i_srv))
+  "  print "---# RDA:END REPORT:5|dumpMetrics|'"+i_srv+"' DMS Dump Metrics ("+\
+           i_cel+')|'+pwd+'|p_'+pro+'_c_'+i_cel+'_i_'+i_srv+'_srv_dump_metrics'
+  " print '---# RDA:END SECTION'
+  "print '---# RDA:END SECTION'
+  "print '---# RDA:END SECTION'
+  "
+  }
+  loop $prd (keys($PLUGIN->{'WSP','domrun'}))
+   var $cod = join("\012",$cod,'',$PLUGIN->{'WSP','domrun',$prd})
+  call writeWas($cod,{'+TAIL', $TAIL,\
+                      cel   => $cel,\
+                      items => [@srv],\
+                      pro   => $pro})
+
+=head2 Diagnostic Repository
+
+Automatic Diagnostic Repository (ADR) is a file-based repository for
+Application Server diagnostic data.
+
+The WSADMIN is a command-line tool that you use to view diagnostic data within
+the Automatic Diagnostic Repository.
+
+Diagnostic data includes incident and problem descriptions.
+
+=cut
+
+=head3 Problem Overview
+
+Gathers diagnostic problems. A problem is a critical error in the Application
+Server. Critical errors manifest as internal errors. Problems are tracked in
+the ADR.
+
+It requires the availability of the WSADMIN.
+
+=cut
+
+  debug '  - Inside WSPrun module, collecting diagnostic repository \
+             (can take time)'
+  var (@ADR_I,@ADR_P,@INC) = ()
+
+  macro DFWdetail
+  {var ($buf,$dat) = @arg
+   import $TOP,@ADR_I
+   keep $TOP
+
+   var ($inc,$ttl,$loc,$rep) = split('\|',$dat,4)
+   var ($key) = match($ttl,"^'(.*?)'\s")
+   report replace($rep,'[\/\\]','r',true)
+   prefix
+   {write '---+!! ',$ttl
+    if $loc
+     write '---## Location:&nbsp;',encode($loc)
+   }
+   call writeLines($buf)
+   if isCreated(true)
+   {write $TOP
+    call push(@ADR_I,[$key,$inc,getFile()])
+   }
+  }
+
+  macro DFWincident
+  {var ($buf,$dat) = @arg
+   import @INC
+
+   var $flg = false
+   while ?$lin = $buf->get_line
+   {if $flg
+    {if match($lin,'^\s*(\d+)\s+')
+     {var ($inc) = last
+      call push(@INC,[$dat,$inc])
+     }
+    }
+    elsif match($lin,'^Incident Id\s+')
+     var $flg = true
+   }
+  }
+
+  macro DFWproblem
+  {var ($buf,$dat) = @arg
+   import $TOP,@ADR_P
+   keep $TOP
+
+   var ($det,$lnk,$ttl,$loc,$rep) = split('\|',$dat,5)
+   var ($key) = match($ttl,"^'(.*?)'\s")
+
+   var $hdr = undef
+   report nvl(replace($rep,'[\/\\]','r',true),$lnk)
+   prefix
+   {write '---+ ',$ttl
+    if $loc
+     write '---## Location:&nbsp;',encode($loc)
+    if $hdr
+     write $hdr
+   }
+   while ?$lin = $buf->get_line
+   {if $hdr
+    {if match($lin,'^\s*(\d+)\s+(.*)$')
+      write '| ',join('|',last),' |'
+    }
+    elsif match($lin,'^(Problem Id)\s+(Problem Key)$')
+     var $hdr = concat('| *',join('*|*',last),'*|')
+   }
+   if isCreated(true)
+   {write $TOP
+    call push(@ADR_P,[$key,$det,getFile(),$lnk])
+   }
+  }
+
+  set $cod
+  {import os
+  "for itm in items:
+  " (i_pro,i_cel,i_nod,i_srv) = itm.split(':')
+  " sob = AdminControl.queryNames('type=Server,cell='+i_cel+',node='+i_nod+\
+                                  ',process='+i_srv+',*')
+  " pwd = '/Cell:'+i_cel+'/Node:'+i_nod+'/Server:'+i_srv+'/'
+  " if AdminControl.getAttribute(sob,'processType') != "NodeAgent":
+  "  hom = os.path.join('diag','ofm',i_cel,i_srv)
+  "  print '---# RDA:BEGIN'
+  "  OracleDFW.listProblems(adrHome=hom,server=i_srv)
+  "  print "---# RDA:END MACRO DFWproblem:4|Problem Overview|'"+i_srv+\
+           "' List of Diagnostic Problems ("+i_cel+')|'+pwd+'|p_'+pro+\
+           '_c_'+i_cel+'_i_'+i_srv+'_diag_problems'
+  "  print '---# RDA:BEGIN'
+  "  OracleDFW.listIncidents(adrHome=hom,server=i_srv)
+  "  print '---# RDA:END MACRO DFWincident:'+i_srv
+  "
+  }
+  call writeWas($cod,{cel   => $cel,\
+                      items => [@srv],\
+                      pro   => $pro})
+
+=head3 Most Recent Incidents
+
+Gathers diagnostic incidents. An incident is a single occurrence of a problem.
+When a problem (critical error) occurs repeatedly, an incident is created
+for each occurrence. Incidents are time stamped and tracked in the ADR.
+
+By default, RDA collects the last 10 incidents.
+
+It requires the availability of the WSADMIN.
+
+=cut
+
+  var $max = $MAX
+  if $max
+  {var $str = ''
+   loop $itm (@INC)
+   {var ($srv,$inc) = @{$itm}
+    var $str = concat($str,'("',$srv,'","',$inc,'"),')
+   }
+   set $cod
+   {import os
+   "for row in tup:
+   " srv = row[0]
+   " inc = row[1]
+   " for itm in items:
+   "  (i_pro,i_cel,i_nod,i_srv) = itm.split(':')
+   "  if i_srv != srv:
+   "   continue
+   "  sob = AdminControl.queryNames('type=Server,cell='+i_cel+',node='+i_nod+\
+                                    ',process='+i_srv+',*')
+   "  pwd = '/Cell:'+i_cel+'/Node:'+i_nod+'/Server:'+i_srv+'/'
+   "  if AdminControl.getAttribute(sob,'processType') != "NodeAgent":
+   "   hom = os.path.join('diag','ofm',i_cel,i_srv)
+   "   print '---# RDA:BEGIN'
+   "   OracleDFW.showIncident(id=inc,adrHome=hom,server=i_srv)
+   "   print '---# RDA:END MACRO DFWdetail:'+inc+"|'"+i_srv+\
+             "' Display of Incident "+inc+' ('+i_cel+')|'+pwd+'|p_'+pro+\
+             '_c_'+i_cel+'_i_'+i_srv+'_incident_'+inc
+   " max = max - 1
+   " if not max:
+   "  break
+   "
+   }
+   call writeWas($cod,{'+max',  $max,\
+                       '+tup',  concat('(',$str,')'),\
+                       cel   => $cel,\
+                       items => [@srv],\
+                       pro   => $pro})
+  }
+  pretoc '2:Diagnostic Repository'
+  loop $itm (@ADR_P)
+  {var ($srv,$det,$fil,$lnk) = @{$itm}
+   pretoc "3:'",$srv,"' Server"
+   toc $det,':[[',$fil,'][rda_report][',$lnk,']]'
+   report concat('p_',$pro,'_c_',$cel,'_i_',$srv,'_diag_incidents')
+   prefix
+   {write "---+ '",$srv,"' Display of Last ",$MAX,' Incidents'
+    write '| *Incident Id*|'
+   }
+   loop $ref (@ADR_I)
+   {var ($i_srv,$i_txt,$i_fil) = @{$ref}
+    if compare('eq',$i_srv,$srv)
+     write '| [[',$i_fil,'][_blank][',$i_txt,']]|'
+   }
+   if isCreated(true)
+    toc '4:[[',getFile(),'][rda_report][Most Recent Incidents]]'
+   unpretoc
+  }
+  unpretoc
+ }
+
+=head2 Product Specific Information
+
+Collects product-specific information.
+
+=cut
+
+ loop $prd (keys($PLUGIN->{'WSP','col'}))
+  run &{$PLUGIN->{'WSP','col',$prd}}()
+}
+
+unpretoc 2
+
+=head1 SEE ALSO
+
+L<FMWdft.def|modules::FMWdft>,
+L<FMWecm.def|modules::FMWecm>,
+L<WSPlib.def|modules::WSPlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

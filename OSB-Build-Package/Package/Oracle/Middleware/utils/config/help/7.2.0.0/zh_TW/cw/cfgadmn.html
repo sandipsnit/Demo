@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>「組態精靈」說明：設定管理伺服器</title>
+<link rel="StyleSheet" href="blaf.css" type="text/css" media="screen">
+</head>
+<body>
+<h1>設定管理伺服器</h1>
+<p>「管理伺服器」是您管理網域的中心點。您可以使用 URL <span class="code">通訊協定：//listen-address:listen-port</span> 來存取「管理伺服器」。通訊協定可以是下列其中任一：<span class="code">t3</span>、<span class="code">t3s</span>、<span class="code">http</span> 或 <span class="code">https</span>。</p>
+<p>使用此畫面來設定或變更下列的「管理伺服器」設定。星號 (*) 表示必要欄位。</p>
+<table>
+ <tr>
+ <th>欄位</th>
+    <th>描述</th>
+  </tr>
+ <tr>
+ <td><strong>*Name</strong></td>
+    <td>預設名稱為 AdminServer。有效的伺服器名稱是字元 (字母和數字) 字串。
+<p class="list_para">生產環境中的每個伺服器執行處理都必須具有唯一的名稱，與它所在的網域或叢集，以及它是管理伺服器還是受管理伺服器無關。另外，管理伺服器的名稱在網域的所有元件名稱中必須是唯一的。</p>
+      <p class="list_para"><strong>注意</strong>：此值的指定僅供識別之用，並不是作為伺服器上建置之應用程式 URL 的一部分。伺服器名稱會顯示在 WebLogic Server 管理主控台中。另外，如果使用 WebLogic Server 命令行公用程式或 API，則必須指定此名稱以識別伺服器。 </p></td>
+  </tr>
+ <tr>
+ <td><strong>*Listen address </strong></td>
+    <td>從下拉清單選取該監聽地址的值。<p class="list_para">如果您選取 <strong>localhost</strong> 作為伺服器執行處理的監聽地址，則遠端流程無法連線至該伺服器執行處理。只有承載伺服器執行處理之機器上的流程才可以連線到伺服器執行處理。如果伺服器執行處理必須以本機主機的方式存取 (例如，如果您是建立連線到本機主機的管理命令碼)，同時必須能夠讓遠端流程存取，請選取「All Local Addresses」。<strong></strong>伺服器執行處理會確定機器的地址並監聽該地址。</p>
+<p class="list_para">請參閱<a href="#listen_address">指定監聽位址</a>，以取得詳細資訊。</p>
+</td>
+  </tr>
+ <tr>
+ <td><strong>Listen port </strong></td>
+    <td>輸入要用於一般非安全請求之監聽連接埠的有效值 (透過 HTTP 和 T3 這類的通訊協定)。
+      <p class="list_para">管理伺服器的預設值為 7001。如果您將此欄位空白，則會使用預設值。 </p>
+      <p class="list_para">有效的監聽連接埠範圍介於 1 至 65534 之間。</p>
+<p class="list_para">請參閱<a href="#listen_port">指定監聽連接埠</a>，以取得詳細資訊。</p>
+</td>
+  </tr>
+ <tr>
+ <td><strong>SSL enabled</strong></td>
+    <td>選取此核取方塊以啟用 SSL 監聽連接埠。所有新的伺服器預設都會停用 SSL。</td>
+  </tr>
+ <tr>
+ <td><strong>SSL listen port</strong> </td>
+    <td>只有在選取「SSL enabled」核取方塊時，才會啟用此欄位。<strong></strong><p class="list_para">輸入要用於安全請求的有效值 (透過 HTTPS 和 T3S 這類的通訊協定)。預設值為 7002。如果您將此欄位空白，則會使用預設值。</p>
+      <p class="list_para">有效的監聽連接埠範圍介於 1 與 65535 之間。</p>
+    <p class="list_para"><strong>注意</strong>：伺服器執行處理預設會使用展示憑證對安全連接埠的請求進行認證。在生產環境中，必須設定 SSL 以使用憑證授權機構的憑證。</p></td>
+  </tr>
+</table>
+<p>進行必要的選取和輸入之後，請按一下「下一步」。<strong></strong></p>
+<p class="body">有關詳細資訊，請參閱 <a href="http://www.oracle.com/technology/documentation/index.html" target="_blank">Oracle 技術網路</a>上的 Oracle Fusion Middleware 文件庫。</p>
+
+
+<hr />
+<h2><a name="listen_address">指定監聽位址</a></h2>
+<p>本節提供指定「管理伺服器」之監聽位址的準則。這些準則也適用於所有「受管理伺服器」。</p>
+<table>
+ <tr>
+ <th>監聽位址類型</th>
+    <th>行為</th>
+  </tr>
+ <tr>
+ <td><strong>全部的本機位址或 DNS 名稱</strong></td>
+    <td>在多重本位目錄的 Windows 機器，伺服器執行處理會連結到所有可用的 IP 位址。</td>
+  </tr>
+ <tr>
+ <td><strong>IP 位址或 DNS 名稱</strong></td>
+    <td><ul>
+<li>若要連線至伺服器執行處理，程序可以指定 IP 位址或相對應的 DNS 名稱。</li>
+<li>指定本機主機的程式連線失敗。</li>
+<li>您必須更新現有程序 (使用本機主機來連線至伺服器執行處理)。</li>
+<li>對於指定 IP 位址為監聽位址與安全連接埠為監聽連接埠的連線，必須停用主機名稱驗證。</li>
+</ul>
+<p><strong>注意：</strong>若要將 DNS 名稱解析為 IP 位址，WebLogic Server 必須能夠聯絡適當的 DNS 伺服器或在本機取得 IP 位址對應。因此，如果您指定了監聽位址的 DNS 名稱，則必須讓連接埠開啟足夠長的時間，以便 WebLogic Server 執行處理可以連接到 DNS 伺服器並快取其對應，否則您必須在本機檔案中指定 IP 位址對應。如果您指定 ListenAddress 的 IP 位址，然後從屬端的要求指定 DNS 名稱，則 WebLogic Server 會嘗試解析 DNS 名稱。如果其無法存取 DNS 名稱對應，要求就會失敗。</p>
+</td>
+</tr>
+<tr>
+<td><strong>Localhost</strong></td>
+<td><ul>
+<li>程序必須指定本機主機以連線至伺服器執行處理。</li>
+<li>只有承載伺服器執行處理 (本機程序) 之機器上的程序，才可以連線至伺服器執行處理。</li>
+</ul></td>
+  </tr>
+
+</table>
+<hr />
+
+
+<h2><a name="listen_port">指定監聽位址</h2>
+<p>指定「管理伺服器」的監聽位址時，請注意以下準則。這些準則也適用於「受管理伺服器」。</p>
+<ul>
+<li>雖然您可以指定任何有效的連接埠號碼，但如果您指定連接埠 80，對於透過 HTTP 來存取資源之 HTTP 要求，您可以忽略連接埠號碼。例如，如果您定義連接埠 80 為監聽連接埠，您可以使用 URL <span class="code>http://hostname/myfile.html</span> instead of <span class=" code="code">http://hostname:portnumber/myfile.html</span>。</li>
+<li>在某些作業系統上，只有由授權使用者或群組 ID 執行的程序才能存取連接埠 80。在此情況下，您可以指派伺服器執行處理到已定義 post-bind UID 或 GID 的 UNIX 機器。</li>
+
+</ul>
+<p></p>
+
+<p class="copyright">版權所有 &copy; 2009，2010，Oracle 和 (或) 其關係機構。保留一切權利。
+</p></body>
+</html>

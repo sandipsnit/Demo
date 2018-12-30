@@ -1,0 +1,1308 @@
+# S400RAC.def: Collects Cluster Information
+# $Id: S400RAC.def,v 2.32 2012/02/17 12:14:25 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S400RAC.def,v 2.32 2012/02/17 12:14:25 mschenke Exp $
+#
+# Change History
+# 20120217  KRA  Improve 'Last Gasp Files' collection.
+
+=head1 NAME
+
+S400RAC - Collects Cluster Information
+
+=head1 DESCRIPTION
+
+This module collects data that is related to the operation of the Oracle
+Cluster and its configuration.
+
+The following reports can be generated and are regrouped under C<Cluster
+Information> in C<Cluster>:
+
+=cut
+
+use Mrc
+
+echo tput('bold'),'Processing Cluster module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME     = getSetting('ORACLE_HOME','')
+var $DATABASE_LOCAL  = getSetting('DATABASE_LOCAL')
+var $AGE             = getSetting('CLUSTER_FILE_AGE',15)
+var $CLUSTER_OCRDUMP = getSetting('CLUSTER_OCRDUMP')
+var $CLUSTER_TAIL    = getSetting('CLUSTER_TAIL',100)
+var $LOG_TAIL        = getSetting('CLUSTER_LOG_TAIL',2000)
+var $ORA_CRS_HOME    = getSetting('CLUSTER_CRS_HOME')
+
+var $CORE = '(^core\.\d+$|core$)'
+var $OSN  = getOsName()
+var $PAT1 = concat('itm',$AGE)
+var $PAT2 = concat('dirm',$AGE)
+var $PAT3 = concat('drm',$AGE)
+var $R112 = false
+var $R9   = false
+
+var $MOD = cond(isUnix(),'fx','fr')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '^1:Cluster'
+toc '1+:Cluster Information'
+
+var $WARN = '   * Links point to files that have been collected in their \
+                  original format. Opening them directly in your browser can \
+                  present risks. To prevent them, access the file outside the \
+                  browser or use the link to save them and use an adequate \
+                  viewer.'
+# Load the common macros
+run DBinfo()
+run library()
+run INSTinfo()
+
+=pod
+
+Reports the details of the operating system-specific aspects (platform-specific
+code)
+
+=cut
+
+if !?$ORA_CRS_HOME
+ run CRSinit(\$ORA_CRS_HOME)
+
+var @CFG = ()
+var @LOG = ()
+var @INITD = ()
+if match($OSN,'solaris')
+ run OSsunos('RAC',\@INITD,\@CFG,\@LOG)
+elsif match($OSN,'hpux')
+ run OShpux('RAC',\@INITD,\@CFG,\@LOG)
+elsif match($OSN,'aix')
+ run OSaix('RAC',\@INITD,\@CFG,\@LOG)
+elsif match($OSN,'dec_osf')
+ run OSosf('RAC',\@INITD,\@CFG,\@LOG)
+elsif match($OSN,'linux')
+ run OSlinux('RAC',\@INITD,\@CFG,\@LOG)
+elsif or(isWindows(),isCygwin())
+ run OSwin32('RAC')
+elsif !isVms()
+ echo 'Platform ',$OSN,' not supported'
+
+=head2 racOnOff - RAC on/off Linked
+
+Verifies that the RAC option is currently linked into the F<oracle> executable.
+This check is performed for supported UNIX platforms only.
+
+=cut
+
+if match($OSN,'aix|dec_osf|hpux|linux|solaris')
+{debug ' Inside RAC module, checking ORACLE binaries to see if RAC is linked'
+ report racOnOff
+ write '---+ Verify RAC Linked'
+ var $cmd = concat('nm -r ',cond(match($OSN,'aix'),'-X 64 ',''),\
+                    catCommand($ORACLE_HOME,'rdbms','lib','libknlopt.a'))
+ write '---## Checking ORACLE binaries to see if RAC is linked'
+ write '---### Using command: ',encode($cmd),' | grep kcsm.o'
+ if grepCommand(concat($cmd,' 2>/dev/null'),'kcsm\.o','f')
+  write 'RAC option IS installed and linked into the Oracle binary.'
+ else
+  write 'RAC NOT correctly linked or installed into the Oracle binary'
+ toc '2:[[',getFile(),'][rda_report][RAC on/off Linked]]'
+}
+
+=head2 init - Init Files
+
+For UNIX, the report collects the F</etc/inittab> and the init files. Additional
+platform-specific files can be present.
+
+=cut
+
+if isUnix()
+{debug ' Inside RAC module, gathering init files'
+ report init
+ prefix
+ {write '---+!! Init Files'
+  write $TOC
+ }
+ loop $fil (@INITD)
+ {if testFile('f',$fil)
+  {var $nam = basename($fil)
+   write '---+ Display of ',encode($nam),' File'
+   write '---## Information Taken from ',encode($fil)
+   if !writeFile($fil)
+   {write '**',encode($nam),' not readable.**%BR%\
+          May be file permission problems.%BR%\
+          Permissions are:%BR%'
+    call statFile('b',$fil)
+    write 'User: ',id(),'%BR%'
+   }
+   write $TOP
+  }
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Init Files]]'
+
+=head2 core - Core Dumps
+
+When a debugger is found for UNIX, RDA tries to extract the stack trace from
+the core dumps present in the cluster directories.
+
+=cut
+
+ if $ORA_CRS_HOME
+ {debug ' Inside RAC module, detecting core dumps'
+
+  report core
+  var $log = catDir($ORA_CRS_HOME,'log',${RDA.NODE})
+  var @dmp = (grepDir(catDir($ORA_CRS_HOME,'crs','init'),$CORE,$PAT3),\
+              grepDir(catDir($ORA_CRS_HOME,'css','init'),$CORE,$PAT3),\
+              grepDir(catDir($ORA_CRS_HOME,'evm','init'),$CORE,$PAT3),\
+              grepDir(catDir($log,'crsd'),$CORE,$PAT3),\
+              grepDir(catDir($log,'cssd'),$CORE,$PAT3),\
+              grepDir(catDir($log,'evmd'),$CORE,$PAT3))
+  var $flg = true
+  if @dmp
+  {# Include the core analyzer
+   run COREinfo()
+   var $flg = false
+
+   # When a debugger is found, analyze the core dumps
+   if can_analyze_core()
+   {var $dbg = last
+
+    write '---+!! Core Dump Stack Trace Extraction'
+    write '---## Using: ',encode($dbg)
+    write $TOC
+    call analyze_core(@dmp)
+   }
+  }
+  if match(getOsName(),'solaris')
+  {if $flg
+    run COREinfo()
+   call run_coreadm(('crsd|evmd|evmlogger|init\.cssd|ocssd|ons|oprocd|\
+                      racgmain|racgimon'))
+  }
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Core Dumps]]'
+ }
+}
+
+=head2 crs_status - CRS Status
+
+Sets up and populates CRS_status if Cluster Ready Services is installed.
+
+=cut
+
+debug ' Inside RAC module, checking Cluster Ready Services status'
+report crs_status
+write '---+!! Cluster Ready Services Status'
+write $TOC
+
+prefix
+ write 'Cluster Ready Services detected.'
+if $ORA_CRS_HOME
+{if testFile('f',catFile($ORA_CRS_HOME,'bin',${AS.EXE:'olsnodes'}))
+ {write '---+ Nodes Found'
+  write '---## Using: olsnodes -n -i'
+  if !isVms()
+  {call writeCommand(concat(lastCommand(),' -n -i 2>&1'))
+   write $TOP
+  }
+  elsif testFile('f',catFile($ORACLE_HOME,'bin','olsnodes.exe'))
+  {call writeCommand('olsnodes -n -i')
+   write $TOP
+  }
+  else
+   write '---## Only available for CRS code trees'
+ }
+ if testFile('f',catFile($ORA_CRS_HOME,'bin',${AS.EXE:'crsctl'}))
+  var $CRSCTL = cond(isVms(),undef,lastCommand())
+}
+
+if !?$CRSCTL
+{if testFile('f',catFile($ORACLE_HOME,'bin',${AS.EXE:'crsctl'}))
+  var $CRSCTL = cond(isVms(),'crsctl',lastCommand())
+}
+if !hasOutput(true)
+{write
+ write '**Cluster Ready Services NOT detected.**%BR%'
+}
+
+if $CRSCTL
+{prefix
+ {write '---+ Cluster Synchronization Services Daemon Status'
+  write '---## Using: crsctl check css'
+ }
+ call writeCommand(concat($CRSCTL,' check css'))
+ if hasOutput(true)
+  write $TOP
+
+ if grepCommand(concat($CRSCTL,' query crs softwareversion'),\
+                '11\.2(\.\d+){3}','f')
+ {# Perform 11.2 crsctl collections
+  var $R112 = true
+  prefix
+  {write '---+ List of Users with Oracle Clusterware Administrative Privileges'
+   write '---## Using: crsctl query crs administrator'
+  }
+  call writeCommand(concat($CRSCTL,' query crs administrator'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ Intelligent Platform Management Interface (IPMI) Driver \
+               Information'
+   write '---## Using: crsctl query css ipmidevice'
+  }
+  call writeCommand(concat($CRSCTL,' query css ipmidevice'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ Address of Local Intelligent Platform Management Interface \
+              (IPMI) Device'
+   write '---## Using: crsctl get css ipmiaddr'
+  }
+  call writeCommand(concat($CRSCTL,' get css ipmiaddr'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ Status of Cluster Time Synchronization Services'
+   write '---## Using: crsctl check ctss'
+  }
+  call writeCommand(concat($CRSCTL,' check ctss'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ ora.crsd Resource Status and Configuration'
+   write '---## Using: crsctl status resource ora.crsd -init'
+  }
+  call writeCommand(concat($CRSCTL,' status resource ora.crsd -init'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ ora.crsd Resource Log Level'
+   write '---## Using: crsctl get log res ora.crsd -init'
+  }
+  call writeCommand(concat($CRSCTL,' get log res ora.crsd -init'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ High Availability Services and Clusterware Stack Status'
+   write '---## Using: crsctl check crs'
+  }
+  call writeCommand(concat($CRSCTL,' check crs'))
+  if hasOutput(true)
+   write $TOP
+ }
+ else
+ {# Perform pre 11.2 crsctl collections
+  prefix
+  {write '---+ Cluster Ready Services Status'
+   write '---## Using: crsctl check crs status'
+  }
+  call writeCommand(concat($CRSCTL,' check crs status'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ Cluster Ready Services Viability'
+   write '---## Using: crsctl check crsd status'
+  }
+  call writeCommand(concat($CRSCTL,' check crsd status'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ Cluster Synchronization Services Viability'
+   write '---## Using: crsctl check cssd status'
+  }
+  call writeCommand(concat($CRSCTL,' check cssd status'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {write '---+ Event Manager Viability'
+   write '---## Using: crsctl check evmd status'
+  }
+  call writeCommand(concat($CRSCTL,' check evmd status'))
+  if hasOutput(true)
+   write $TOP
+ }
+ prefix
+ {write '---+ Location of the Vote Disks'
+  write '---## Using: crsctl query css votedisk'
+ }
+ call writeCommand(concat($CRSCTL,' query css votedisk'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ CSS Daemon Priority'
+  write '---## Using: crsctl get css priority'
+ }
+ call writeCommand(concat($CRSCTL,' get css priority'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ CSS Diagwait Status'
+  write '---## Using: crsctl get css diagwait'
+ }
+ call writeCommand(concat($CRSCTL,' get css diagwait'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Cluster Disk Latencies'
+  write '---## Using: crsctl get css disktimeout'
+ }
+ call writeCommand(concat($CRSCTL,' get css disktimeout'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Cluster Network Latencies'
+  write '---## Using: crsctl get css misscount'
+ }
+ call writeCommand(concat($CRSCTL,' get css misscount'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Cluster Reboot Time'
+  write '---## Using: crsctl get css reboottime'
+ }
+ call writeCommand(concat($CRSCTL,' get css reboottime'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Cluster Ready Services Software Version'
+  write '---## Using: crsctl query crs softwareversion'
+ }
+ call writeCommand(concat($CRSCTL,' query crs softwareversion'))
+ if hasOutput(true)
+  write $TOP
+
+ prefix
+ {write '---+ Cluster Ready Services Active Version'
+  write '---## Using: crsctl query crs activeversion'
+ }
+ call writeCommand(concat($CRSCTL,' query crs activeversion'))
+ if hasOutput(true)
+  write $TOP
+
+}
+
+# Get ocr.loc
+if or(isWindows(),isCygwin())
+{write '---+ OCR Configuration Registry Contents'
+ if !writeRegistry('HKLM\SOFTWARE\Oracle\Ocr')
+  write '**There are no OCR registry entries.**%BR%'
+}
+else
+{write '---+ OCR Configuration File Contents'
+ if testFile('f','/var/opt/oracle/ocr.loc')
+  call writeFile('/var/opt/oracle/ocr.loc')
+ elsif testFile('f','/etc/oracle/ocr.loc')
+  call writeFile('/etc/oracle/ocr.loc')
+ elsif isVms()
+ {var $hom = getEnv('SYS$LOGIN')
+  var ($nod) = command(concat('write sys$output f$getsyi("NODENAME")'))
+  loop $dir (catDir($hom,$nod,'oracle'))
+  {if testFile('r',catFile($dir,'ocr.loc'))
+   {call writeFile(lastFile())
+    break
+   }
+  }
+ }
+ else
+  write '**ocr.loc file not found.**%BR%'
+}
+write $TOP
+toc '2:[[',getFile(),'][rda_report][CRS Status]]'
+
+=head2 cluvfy - Cluster Verify Information
+
+Collects Cluster Verify information.
+
+=cut
+
+if isVms()
+ var $pgm = undef
+elsif testFile($MOD,catFile($ORA_CRS_HOME,'bin',${AS.BATCH:'cluvfy'}))
+ var $pgm = lastCommand()
+elsif findCommand('cluvfy')
+ var $pgm = last
+else
+ var $pgm = undef
+if ?$pgm
+{debug ' Inside RAC module, getting Cluster Verify information'
+ report cluvfy
+ write '---+!! Cluster Verify Information'
+ write $TOC
+ var $cmd = concat($pgm,' comp sys -n ',${RDA.NODE},' -p crs -verbose')
+ write '---+ Oracle Clusterware Information Check'
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+ var $cmd = concat($pgm,' comp sys -n ',${RDA.NODE},' -p database -verbose')
+ write '---+ Oracle Real Application Cluster Check'
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+ var $cmd = concat($pgm,' stage -post crsinst -n ',${RDA.NODE},' -verbose')
+ write '---+ Oracle Clusterware Post Installation Check'
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+ var $cmd = concat($pgm,' comp software -verbose -n all')
+ write '---+ Oracle Clusterware Software Distribution Check'
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Cluster Verify Information]]'
+}
+
+=head2 product_info - Product Information
+
+Provides the inventory of the Cluster Ready Services home if inventory
+information is still available. It includes the content of the home directory.
+
+=head2 crs_stat - CRS Stat Details
+
+If Cluster Ready Services is installed, the report provides the detailed output
+of the C<crs_stat -u> command.
+
+=cut
+
+if $ORA_CRS_HOME
+{debug ' Inside RAC module, providing the crs inventory (can take time)'
+ report product_info
+ title '---+!! Cluster Ready Services Product Information'
+ title $TOC
+ call inventory_details(catDir($ORA_CRS_HOME,'inventory'),\
+                        getSetting('CLUSTER_INTERIM'))
+ prefix
+  write '---+ Content of the Cluster Ready Services Home'
+ call statDir('n',$ORA_CRS_HOME)
+ if hasOutput(true)
+  write $TOP
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Product Information]]'
+
+ report crs_stat
+ if $R112
+ {# Use crsctl on 11.2
+  debug ' Inside RAC module, providing resource status and configuration'
+  var $ttl = '---+!! Status and Configuation Information of Resources'
+
+  prefix
+  {if !isCreated()
+   {write $ttl
+    write $TOC
+   }
+   write '---+ Status Information of Resources'
+   write '---## Using: crsctl status resource -t'
+  }
+  call writeCommand(concat($CRSCTL,' status resource -t'))
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+  {if !isCreated()
+   {write $ttl
+    write $TOC
+   }
+   write '---+ Configuration Information of Resources'
+   write '---## Using: crsctl status resource -f'
+  }
+  call writeCommand(concat($CRSCTL,' status resource -f'))
+  if hasOutput(true)
+   write $TOP
+ }
+ if !isCreated(true)
+ {debug ' Inside RAC module, providing the crs_stat detailed output'
+  var $ttl = '---+!! Cluster Ready Services crs_stat'
+  if isVms()
+   var $pgm = cond(testFile('f',catFile($ORACLE_HOME,'bin','crs_stat.exe')),\
+                   'crs_stat','$!')
+  else
+   var $pgm = catCommand($ORA_CRS_HOME,'bin','crs_stat')
+
+  prefix
+  {if !isCreated()
+   {write $ttl
+    write $TOC
+   }
+   write '---+ Using: crs_stat -u'
+  }
+  call writeCommand(concat($pgm,' -u'))
+  if hasOutput()
+   write $TOP
+
+  prefix
+  {if !isCreated()
+   {write $ttl
+    write $TOC
+   }
+   write '---+ Using: crs_stat -p'
+  }
+  call writeCommand(concat($pgm,' -p'))
+  if hasOutput(true)
+   write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][CRS Stat Details]]'
+}
+
+=head2 Grid Plug and Play
+
+Collects the Grid Plug and Play (GPNP) configuration information.
+
+=cut
+
+pretoc '2:Grid Plug and Play'
+debug ' Inside RAC module, gathering GPNP configuration files'
+call cat_report(catDir(\
+ $ORA_CRS_HOME,'gpnp',${RDA.NODE},'profiles','peer'),'profile.xml','gpnp_')
+unpretoc
+
+=head2 alert_log - Alert Log
+
+Collects the last lines of
+F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/alertE<lt>nodeE<gt>.log> (Oracle Database
+10g R2 and later).
+
+=head2 crs_log - CRS Log
+
+Handles the log files in F<$ORA_CRS_HOME/crs/log> (Oracle Database 10g R1) or
+in F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/crsd> (Oracle Database 10g R2 and later).
+
+=head2 css_log - CSS Log
+
+Handles the log files in F<$ORA_CRS_HOME/css/log> (Oracle Database 10g R1) or
+in F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/cssd> (Oracle Database 10g R2 and later).
+
+=head2 racg_dump - RACG Dump
+
+Gets dump files from F<$CRS_HOME/racg/dump> (Oracle Database 10g R1) or from
+F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/racg> and
+F<$ORACLE_HOME/log/E<lt>nodeE<gt>/racg> (Oracle Database 10g R2 and later).
+
+=head2 evm_log - CRS EVM Log
+
+Handles the log files in F<$ORA_CRS_HOME/evm/log> (Oracle Database 10g R1) or
+in F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/evmd> (Oracle Database 10g R2 and later).
+
+=head2 client_log - Client Log
+
+Handles the log files in F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/client> and
+F<$ORACLE_HOME/log/E<lt>nodeE<gt>/client> (Oracle Database 10g R2 and later).
+
+=head2 admin_log - Admin Log
+
+Handles the log files in F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/admin> (Oracle
+Database 10g R2 and later).
+
+=head2 ohasd_log - Oracle High Availability Service Daemon Logs
+
+Collects the Oracle high availability service deamon log
+F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/ohasd/ohasd.log>.
+It also handles the Agent Log in
+F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/agent/ohasd> and
+F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/agent/crsd> directories
+
+=head2 gpnpd_log - Grid Plug and Play Daemon Log
+
+Collects the Grid Plug and Play (GPNP) deamon log
+F<$ORA_CRS_HOME/log/E<lt>nodeE<gt>/gpnpd/gpnpd.log>.
+
+=head2 lastgasp - Last Gasp Files
+
+Collects the last gasp files from F</etc/oracle/lastgasp>,
+F</var/opt/oracle/lastgasp>, F</etc/oracle/oprocd>, and
+F</var/opt/oracle/oprocd> directories.
+
+=cut
+
+if $ORA_CRS_HOME
+{toc '2:CRS Log Files'
+ var $log = catDir($ORA_CRS_HOME,'log',${RDA.NODE})
+
+ debug ' Inside RAC module, gathering alert log file'
+ report alert_log
+ call tail_file($log,concat('alert',${RDA.NODE},'.log'),$LOG_TAIL)
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][Alert Log]]'
+
+ debug ' Inside RAC module, gathering CRS log files'
+ report crs_log
+ prefix
+ {write '---+!! CRS Log Files'
+  write $TOC
+ }
+ var $dir = catDir($ORA_CRS_HOME,'crs','log')
+ loop $nam (grepDir($dir,'\.log$',$PAT1))
+  call tail_file($dir,$nam,$LOG_TAIL,$TOP)
+ loop $fil (grepDir(catDir($log,'crsd'),'.',$PAT2))
+ {if testFile('f',$fil)
+  {var $nam = basename($fil)
+   next match($nam,$CORE)
+   call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+  }
+ }
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][CRS Log]]'
+
+ debug ' Inside RAC module, gathering CSS log files'
+ report css_log
+ prefix
+ {write '---+!! CSS Log Files'
+  write $TOC
+ }
+ var $dir = catDir($ORA_CRS_HOME,'css','log')
+ loop $nam (grepDir($dir,'\.log$',$PAT1))
+  call tail_file($dir,$nam,$LOG_TAIL,$TOP)
+ var $dir = catDir($ORA_CRS_HOME,'css','init')
+ loop $nam (grepDir($dir,'\.log$',$PAT1))
+  call tail_file($dir,$nam,$LOG_TAIL,$TOP)
+ loop $fil (grepDir(catDir($log,'cssd'),'.',$PAT2))
+ {if testFile('f',$fil)
+  {var $nam = basename($fil)
+   next match($nam,$CORE)
+   call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+  }
+ }
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][CSS Log]]'
+
+ debug ' Inside RAC module, gathering RACG dump files'
+ report racg_dump
+ prefix
+ {write '---+!! RACG dump Files'
+  write $TOC
+ }
+ var $dir = catDir($ORA_CRS_HOME,'racg','dump')
+ loop $nam (grepDir($dir,'.*',$PAT1))
+  call tail_file($dir,$nam,$CLUSTER_TAIL,$TOP)
+ var $alt = catDir($ORACLE_HOME,'racg','dump')
+ if !sameDir($alt,$dir)
+ {loop $nam (grepDir($alt,'.*',$PAT1))
+  {next match($nam,$CORE)
+   call tail_file($alt,$nam,$CLUSTER_TAIL,$TOP)
+  }
+ }
+ var $dir = catDir($log,'racg')
+ loop $fil (grepDir($dir,'.',$PAT2))
+ {if testFile('f',$fil)
+  {var $nam = basename($fil)
+   next match($nam,$CORE)
+   call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+  }
+ }
+ var $alt = catDir($ORACLE_HOME,'log',${RDA.NODE},'racg')
+ if !sameDir($alt,$dir)
+ {loop $fil (grepDir($alt,'.',$PAT2))
+  {if testFile('f',$fil)
+   {var $nam = basename($fil)
+    next match($nam,$CORE)
+    call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+   }
+  }
+ }
+ if isCreated()
+  toc '3:[[',getFile(),'][rda_report][RACG Dump]]'
+
+ debug ' Inside RAC module, gathering CRS EVM Log'
+ report evm_log
+ prefix
+ {write '---+!! CRS EVM Files'
+  write $TOC
+ }
+ var $dir = catDir($ORA_CRS_HOME,'evm','log')
+ loop $nam (grepDir($dir,'\.log$',$PAT1))
+  call tail_file($dir,$nam,$LOG_TAIL,$TOP)
+ var $dir = catDir($ORA_CRS_HOME,'evm','init')
+ loop $nam (grepDir($dir,'\.log$',$PAT1))
+  call tail_file($dir,$nam,$LOG_TAIL,$TOP)
+ loop $fil (grepDir(catDir($log,'evmd'),'.',$PAT2))
+ {if testFile('f',$fil)
+  {var $nam = basename($fil)
+   next match($nam,$CORE)
+   call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][CRS EVM Log]]'
+
+ debug ' Inside RAC module, gathering Client Log'
+ report client_log
+ prefix
+ {write '---+!! Client Log Files'
+  write $TOC
+ }
+ var $dir = catDir($log,'client')
+ loop $fil (grepDir($dir,'.',$PAT2))
+ {if testFile('f',$fil)
+  {var $nam = basename($fil)
+   next match($nam,$CORE)
+   call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+  }
+ }
+ var $alt = catDir($ORACLE_HOME,'log',${RDA.NODE},'client')
+ if !sameDir($alt,$dir)
+ {loop $fil (grepDir($alt,'.',$PAT2))
+  {if testFile('f',$fil)
+   {var $nam = basename($fil)
+    next match($nam,$CORE)
+    call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+   }
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Client Log]]'
+
+ debug ' Inside RAC module, gathering Admin Log'
+ report admin_log
+ prefix
+ {write '---+!! Admin Log Files'
+  write $TOC
+ }
+ loop $fil (grepDir(catDir($log,'admin'),'.',$PAT2))
+ {if testFile('f',$fil)
+  {var $nam = basename($fil)
+   next match($nam,$CORE)
+   call tail_file(dirname($fil),$nam,$LOG_TAIL,$TOP)
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Admin Log]]'
+
+ debug ' Inside RAC module, gathering OHASD logs'
+ report ohasd_log
+ var $ttl = '---+!! Oracle High Availability Service Daemon Logs'
+ var $fil = catFile($log,'ohasd','ohasd.log')
+ if testFile('f',$fil)
+ {var $siz = getSize($fil)
+  var $lnk = encode($fil)
+  if $siz
+  {output d,'ohasd.log'
+   if ${CUR.LAST}->write_data($fil)
+    var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+   call $[OUT]->end_report(${CUR.LAST})
+  }
+  write $ttl
+  write $TOC
+  write $WARN
+  write '---++ OHASD Log'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+  write '|',$lnk,' | ',$siz,'|',\
+        getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  write $TOP
+ }
+ prefix
+ {if !isCreated()
+  {write $ttl
+   write $TOC
+   write $WARN
+  }
+  write '---++ Agent Logs'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ loop $dir (grepDir(catDir($log,'agent'),'^(ohasd|crsd)$','ip'))
+ {loop $sub (grepDir($dir,'^\.+$','nv'))
+  {var $fil = catFile($dir,$sub,concat($sub,'.log'))
+   if testFile('f',$fil)
+   {var $siz = getSize($fil)
+    var $lnk = encode($fil)
+    if $siz
+    {output d,concat(basename($fil),'.log')
+     if ${CUR.LAST}->write_data($fil)
+      var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+     call $[OUT]->end_report(${CUR.LAST})
+    }
+    write '|',$lnk,' | ',$siz,'|',\
+          getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),\
+      '][rda_report][Oracle High Availability Service Daemon Logs]]'
+
+ if testFile('f',$fil = catFile($log,'gpnpd','gpnpd.log'))
+ {debug ' Inside RAC module, gathering GPNPD log'
+  report gpnpd_log
+  var $siz = getSize($fil)
+  var $lnk = encode($fil)
+  if $siz
+  {output d,'gpnpd.log'
+   if ${CUR.LAST}->write_data($fil)
+    var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+   call $[OUT]->end_report(${CUR.LAST})
+  }
+  write '---+ GPNPD Log'
+  write $WARN
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+  write '|',$lnk,' | ',$siz,'|',\
+        getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  toc '3:[[',getFile(),'][rda_report][Grid Plug and Play Daemon Log]]'
+ }
+
+ debug ' Inside RAC module, gathering last gasp files'
+ report lastgasp
+ prefix
+ {write '---+!! Last Gasp Files'
+  write $WARN
+  write '   * Last Gasp Files (lgl) files are collected for the last 30 days \
+              and when their size exceeds 4096 bytes.'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ loop $dir ('/etc/oracle/oprocd','/var/opt/oracle/oprocd')
+ {loop $fil (grepDir($dir,'\.oprocd\.log$','inp'))
+  {var $siz = getSize($fil)
+   var $lnk = encode($fil)
+   if $siz
+   {output d,basename($fil)
+    if ${CUR.LAST}->write_data($fil)
+     var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+    call $[OUT]->end_report(${CUR.LAST})
+   }
+   write '|',$lnk,' | ',$siz,'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+ }
+ loop $dir ('/etc/oracle/lastgasp','/var/opt/oracle/lastgasp')
+ {loop $fil (grepDir($dir,'^(css)?(mo|ag).*\.lgl$','inp'))
+  {var $siz = getSize($fil)
+   var $lnk = encode($fil)
+   if and(not(isFiltered()),expr('>',$siz,4096),isNewer($fil,30))
+   {output b,basename($fil)
+    if ${CUR.LAST}->write_data($fil)
+     var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+    call $[OUT]->end_report(${CUR.LAST})
+   }
+   write '|',$lnk,' | ',$siz,'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][Last Gasp Files]]'
+
+=head2 ocrdump - ocrdump
+
+You can request an OCR dump by assigning a true (nonzero) value to the
+C<CLUSTER_OCRDUMP> setting.
+
+=cut
+
+ if $CLUSTER_OCRDUMP
+  collect M100OS|RAC($ORA_CRS_HOME)
+
+=head2 ocrcheck - ocrcheck
+
+Executes C<ocrcheck> (Oracle Database 10g R2 and later).
+
+=cut
+
+ debug ' Inside RAC module, requesting an OCR check'
+ report ocrcheck
+ if isVms()
+  var $pgm = 'ocrcheck'
+ else
+ {var $pgm = catCommand($ORA_CRS_HOME,'bin','ocrcheck')
+  var $env = setEnv('ORACLE_HOME',$ORA_CRS_HOME)
+ }
+ prefix
+ {write '---+ OCR Check'
+  write '---## Using: ',encode($pgm)
+ }
+ call writeCommand($pgm)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][ocrcheck]]'
+ if !isVms()
+  call setEnv('ORACLE_HOME',$env)
+
+=head2 ocrconfig - ocrconfig -showbackup
+
+Executes C<ocrconfig -showbackup> (Oracle Database 10g R2 and later).
+
+=cut
+
+ debug ' Inside RAC module, requesting an OCR config'
+ report ocrconfig
+ if isVms()
+  var $pgm = 'ocrconfig -showbackup'
+ else
+  var $pgm = concat(catCommand($ORA_CRS_HOME,'bin','ocrconfig'),' -showbackup')
+ prefix
+ {write '---+ OCR Config'
+  write '---## Using: ',encode($pgm)
+ }
+ call writeCommand($pgm)
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][ocrconfig -showbackup]]'
+}
+
+=head2 srvctl - SRVM
+
+Runs F<srvctl> commands and reports the configuration information (Oracle
+Database 9i).
+
+=cut
+
+=head2 srvctl - SRVCTL
+
+Runs F<srvctl> commands and reports the configuration information (Oracle
+Database 10g and later).
+
+=cut
+
+debug ' Inside RAC module, running srvctl commands'
+report srvctl
+write '---+!! SRVCTL Information'
+write $TOC
+
+var $R9 = testDir('d',catDir($ORACLE_HOME,'oracm'))
+if $R9
+{write '---+ Location and Contents of srvConfig.loc'
+ if testFile('f','/var/opt/oracle/srvConfig.loc')
+  var $loc = '/var/opt/oracle/srvConfig.loc'
+ elsif testFile('f','/etc/srvConfig.loc')
+  var $loc = '/etc/srvConfig.loc'
+ else
+ {var $loc = undef
+  write '**srvConfig.loc not found.**'
+ }
+
+ if $loc
+ {write '---++ Location'
+  call statFile('p',$loc)
+  write $TOP
+
+  write '---++ Contents of ',encode($loc)
+  call writeFile($loc)
+  write $TOP
+
+  write '---++ srvConfig File Permissions'
+  loop $fil (grepFile($loc,'srvconfig_loc'))
+  {var @fld = split('=',trim($fil))
+   call statFile('p',$fld[-1])
+  }
+  write $TOP
+ }
+}
+
+if or(and($ORA_CRS_HOME,\
+          testFile($MOD,catFile($ORA_CRS_HOME,'bin',${AS.BATCH:'srvctl'}))),\
+      testFile($MOD,catFile($ORACLE_HOME,'bin',${AS.BATCH:'srvctl'})))
+{var $pgm = cond(isVms(),'srvctl',lastCommand())
+ if grepCommand(concat($pgm,' -V'),'11\.2','f')
+ {write '---+ Nodeapps Configuration Information'
+  write '---## Using: srvctl config nodeapps'
+  if isVms()
+   call writeCommand('srvctl config nodeapps')
+  else
+   call writeCommand(concat($pgm,' config nodeapps'))
+  write $TOP
+
+  write '---+ Database Configuration Information'
+  if isVms()
+   call loadCommand('srvctl config')
+  else
+   call loadCommand(concat($pgm,' config'))
+  loop $db (getLines())
+  {break match($db,'^PRKH-\d+\s*:')
+   if length($db)
+   {write '---++ ',$db,' Database'
+    write '---### Using: srvctl config database -d ',$db,' -a'
+    if isVms()
+     call writeCommand(concat('srvctl config database "-d" ',$db,' "-a"'))
+    else
+     call writeCommand(concat($pgm,' config database -d ',$db,' -a'))
+   }
+  }
+  write $TOP
+
+  write '---+ Configuration Information for Scan Listener'
+  write '---## Using: srvctl config scan_listener'
+  call writeCommand(concat($pgm,' config scan_listener'))
+  write $TOP
+
+  write '---+ Current State for Scan Listener'
+  write '---## Using: srvctl status scan_listener'
+  call writeCommand(concat($pgm,' status scan_listener'))
+  write $TOP
+
+  write '---+ Configuration for Scan VIP'
+  write '---## Using: srvctl config scan'
+  call writeCommand(concat($pgm,' config scan'))
+  write $TOP
+
+  write '---+ Current State for Scan VIP'
+  write '---## Using: srvctl status scan'
+  call writeCommand(concat($pgm,' status scan'))
+  write $TOP
+
+  write '---+ Configuration for Server Pool'
+  write '---## Using: srvctl config srvpool'
+  call writeCommand(concat($pgm,' config srvpool'))
+  write $TOP
+
+  write '---+ Current State for Server Pool'
+  write '---## Using: srvctl status srvpool -a'
+  if isVms()
+   call writeCommand('srvctl status srvpool "-a"')
+  else
+   call writeCommand(concat($pgm,' status srvpool -a'))
+  write $TOP
+
+  write '---+ Configured Listeners Registered with Oracle Clusterware'
+  write '---## Using: srvctl config listener'
+  call writeCommand(concat($pgm,' config listener'))
+  write $TOP
+
+  write '---+ Status of Listener Resources'
+  write '---## Using: srvctl status listener'
+  call writeCommand(concat($pgm,' status listener'))
+  write $TOP
+ }
+ else
+ {write '---+ Nodeapps Configuration Information'
+  write '---## Using: srvctl config nodeapps -n ',${RDA.NODE},' -a -g -s -l'
+  if isVms()
+   call writeCommand(concat('srvctl config nodeapps "-n" ',${RDA.NODE},\
+                            ' "-a" "-g" "-s" "-l"'))
+  else
+   call writeCommand(concat($pgm,' config nodeapps -n ',${RDA.NODE},\
+                            ' -a -g -s -l'))
+  write $TOP
+
+  write '---+ Database Configuration Information'
+  if isVms()
+   call loadCommand('srvctl config')
+  else
+   call loadCommand(concat($pgm,' config'))
+  if $R9
+  {write '---## Using: srvctl config'
+   call writeLastFile()
+  }
+  else
+  {loop $db (getLines())
+   {break match($db,'^PRKH-\d+\s*:')
+    if length($db)
+    {write '---++ ',$db,' Database'
+     write '---### Using: srvctl config database -d ',$db,' -a'
+     if isVms()
+      call writeCommand(concat('srvctl config database "-d" ',$db,' "-a"'))
+     else
+      call writeCommand(concat($pgm,' config database -d ',$db,' -a'))
+    }
+   }
+  }
+  write $TOP
+
+  write '---+ Configured Listeners Registered with Oracle Clusterware'
+  write '---## Using: srvctl config listener -n ',${RDA.NODE}
+  if isVms()
+   call writeCommand(concat('srvctl config listener "-n" "',${RDA.NODE},'"'))
+  else
+   call writeCommand(concat($pgm,' config listener -n ',${RDA.NODE}))
+  write $TOP
+ }
+}
+if $R9
+ toc '2:[[',getFile(),'][rda_report][SRVM]]'
+else
+ toc '2:[[',getFile(),'][rda_report][SRVCTL]]'
+
+=head2 oifcfg - Interfaces
+
+Collects interface information using C<oifcfg>.
+
+=cut
+
+debug ' Inside RAC module, gathering interface information'
+report oifcfg
+var $TTL = '---+!! Interface Information'
+
+prefix
+{write '---+ Available Interfaces'
+ write '---## Using: oifcfg iflist'
+}
+if isVms()
+ call writeCommand('oifcfg_ifls')
+else
+ call writeCommand(concat(catCommand($ORA_CRS_HOME,'bin','oifcfg'),' iflist'))
+if hasOutput(true)
+ write $TOP
+
+prefix
+{write '---+ Defined Interfaces'
+ write '---## Using: oifcfg getif'
+}
+if isVms()
+ call writeCommand('oifcfg getif')
+else
+ call writeCommand(concat(catCommand($ORA_CRS_HOME,'bin','oifcfg'),' getif'))
+if hasOutput(true)
+ write $TOP
+
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Interfaces]]'
+
+=head2 interconnect - Interconnect
+
+Collects interconnect information from the database. It requires SYSDBA
+privileges.
+
+=cut
+
+debug ' Inside RAC module, gathering interconnect information'
+report interconnect
+var $TTL = '---+!! Interconnect Information'
+var @TTL = ('',\
+            '---+ x$ksxpia Information',\
+            '---+ x$sksxpia Information')
+var @HDR = ()
+var ($HDR[1],$col1) = getSqlColumns('RDA','','X$KSXPIA')
+call clearSqlColumns('RDA')
+var ($HDR[2],$col2) = getSqlColumns('RDA','','X$SKGXPIA')
+call clearSqlColumns('RDA')
+set $sql
+{SELECT :1
+" FROM x$ksxpia;
+"PROMPT ___Macro_separator(2)___
+"SELECT :2
+" FROM x$skgxpia;
+}
+call separator(1)
+call writeSql(bindSql($sql,$col1,$col2))
+call separator(0,'Interconnect')
+
+=head2 ipc - IPC
+
+Runs C<oradebug> commands to generate a trace file, and then displays the IPC
+trace file. It is performed for databases associated with the current Oracle
+home only. RDA does not execute the command for Windows.
+
+=cut
+
+if !or(isWindows(),isCygwin())
+{debug ' Inside RAC module, gathering IPC trace file'
+ report ipc
+
+ prefix
+  write '---+ IPC Trace File'
+ if $DATABASE_LOCAL
+ {set $sql
+  {oradebug setmypid
+  "oradebug ipc
+  "oradebug tracefile_name
+  }
+  call loadSql($sql)
+  var ($fil) = grepLastSql('\.trc')
+  if $fil
+   call writeFile(catFile($fil))
+  else
+ {write '<verbatim>'
+   call writeLastSql()
+   if getSqlMessage()
+    write last
+   write '</verbatim>'
+  }
+ }
+ else
+  write 'Database was not chosen as an option for this execution.%BR%\
+         oradebug ipc information not gathered.'
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][IPC]]'
+}
+
+=head2 logs - Cluster Configuration/Logs
+
+Looks for the cluster configuration and log files on the operating system. The
+file list is platform-specific (Oracle Database 9i).
+
+=cut
+
+if $R9
+{debug ' Inside RAC module, looking for cluster configuration and logs'
+ report logs
+ prefix
+ {write '---+!! Cluster Configuration and Logs'
+  write $TOC
+ }
+ loop $fil (@CFG)
+ {if testFile('f',$fil)
+   call cat_file(dirname($fil),basename($fil),100)
+  else
+   write '---## ',encode($fil),' not present on this server'
+  write $TOP
+ }
+ loop $fil (@LOG)
+ {if testFile('f',$fil)
+   call tail_file(dirname($fil),basename($fil),100)
+  else
+   write '---## ',encode($fil),' not present on this server'
+  write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Cluster Configuration/Logs]]'
+}
+
+# Disable the group title in next index
+toc '-:Cluster'
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>, L<COREinfo.def|modules::COREinfo>,
+L<CRSinit.def|modules::CRSinit>, L<DBinfo.def|modules::DBinfo>,
+L<INSTinfo.def|modules::INSTinfo>, L<M100OS|modules::M100OS>,
+L<OSaix|modules::OSaix>, L<OShpux|modules::OShpux>,
+L<OSlinux|modules::OSlinux>, L<OSosf|modules::OSosf>,
+L<OSsunos|modules::OSsunos>, L<OSwin32|modules::OSwin32>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.0:  Bernhard Cock Buning.
+
+=item RDA 4.2:  Roger Snowden.
+
+=item RDA 4.6:  Bob Caldwell.
+
+=item RDA 4.15: Jaime Alcoreza, Grant Hayden, Hagen Herbst, Scott Jesse.
+
+=item RDA 4.18: Jaime Alcoreza.
+
+=item RDA 4.19: Jaime Alcoreza.
+
+=item RDA 4.20: Grant Hayden, Takeyoshi Sasaki.
+
+=item RDA 4.21: Jaime Alcoreza.
+
+=item RDA 4.22: Jaime Alcoreza, Grant Hayden.
+
+=item RDA 4.24: Jaime Alcoreza, Hagen Herbst.
+
+=item RDA 4.27: Ericka Washington.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

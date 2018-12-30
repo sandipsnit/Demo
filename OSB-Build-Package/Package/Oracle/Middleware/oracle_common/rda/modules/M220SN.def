@@ -1,0 +1,73 @@
+# M220SN.def: Collects Chassis Serial Number
+# $Id: M220SN.def,v 1.2 2012/08/09 13:45:19 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M220SN.def,v 1.2 2012/08/09 13:45:19 mschenke Exp $
+#
+# Change History
+# 20120809  JGS  Use the get_bin_tool macro to fin serial_finder.
+
+=head1 NAME
+
+M220SN - Collects Chassis Serial Number
+
+=head1 DESCRIPTION
+
+This module collects the system chassis serial number.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('platform_serial')
+
+#------------------------------------------------------------------------------
+# XPLR_platform_serial section
+#------------------------------------------------------------------------------
+
+section XPLR_platform_serial
+
+# Validate the execution context
+call log_run('Processing SN sections ...')
+if !?get_bin_tool('serial_finder')
+ return log_info('No Explorer software found')
+var $cmd = last
+
+=head2 sn_chassis - Chassis Serial Number
+
+Gathers system chassis serial number using the F<serial_finder> command from
+the Explorer distribution.
+
+=cut
+
+debug ' Inside SN collection, gathering chassis serial number'
+report sn_chassis
+call do_exec(['sysconfig/chassis_serial',\
+              $cmd,undef,\
+              '---+ Chassis Serial Number'])
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Chassis Serial Number]]'
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

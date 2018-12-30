@@ -1,0 +1,449 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+
+<!--
+This is the configuration file for the Metric Service metrics for MDS.
+
+   MODIFIED    (MM/DD/YY)
+   jhsi         06/22/10 - Fixed validation warnings
+   jhsi         08/18/08 - Modified for weblogic
+   jhsi         01/11/08 - Add cache performance metrics
+   jhsi         12/19/06 - Creation
+
+-->
+
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="mds">
+
+ <Table Name="mds_server_rollup_no_rate">
+  <!-- ColumnDef Name="ServerName" Type="String" Key="true"/ -->
+  <ColumnDef Name="appName" Type="String" Key="true"/>
+  <ColumnDef Name="getMetadataObject.totalTime" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.averageTime" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.completed" Type="Integer"/>
+  <ColumnDef Name="flushChanges.totalTime" Type="Double"/>
+  <ColumnDef Name="flushChanges.averageTime" Type="Double"/>
+  <ColumnDef Name="flushChanges.completed" Type="Integer"/>
+  <ColumnDef Name="getDocument.count" Type="Integer"/>
+  <ColumnDef Name="getDocument.completed" Type="Integer"/>
+  <ColumnDef Name="readDocument.completed" Type="Integer"/>
+  <ColumnDef Name="checkDocuments.completed" Type="Integer"/>
+  <ColumnDef Name="getMutableMO.completed" Type="Integer"/>
+  <ColumnDef Name="getBeanMOContent.completed" Type="Integer"/>
+  <ColumnDef Name="getMElementMOContent.completed" Type="Integer"/>
+  <ColumnDef Name="getDocumentMOContent.completed" Type="Integer"/>
+  <ColumnDef Name="PhysicalIOs.count" Type="Integer"/>  
+  <ColumnDef Name="MOGets.count" Type="Integer"/>  
+  <ColumnDef Name="MOContentGets.count" Type="Integer"/>  
+
+  <Select Name="aggregated_mds_core">
+   <TableFrom Name="MDS_Core"/>
+
+   <!-- Column Name="ServerName" Type="String">
+    <ColumnFrom Name="ServerName"/>
+   </Column -->
+
+   <Column Name="appName" Type="String">
+    <ColumnFrom Name="MDS_Application"/>
+   </Column>
+
+   <Column Name="getMetadataObject.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="getMetadataObject.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="getMetadataObject.totalTime" Type="Double">
+    <Expression Operator="Div">
+      <Aggregation Operator="Sum" Name="getMetadataObject.time"/>
+      <Value>1000</Value> <!-- milli to second -->
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="getMetadataObject.averageTime" Type="Double">
+    <Expression Operator="Div">    
+      <Expression Operator="Div">
+        <Aggregation Operator="Sum" Name="getMetadataObject.time"/>
+        <Value>1000</Value>  <!-- milli to second -->
+      </Expression>
+      <Aggregation Operator="Sum" Name="getMetadataObject.completed"/>      
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="flushChanges.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="flushChanges.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="flushChanges.totalTime" Type="Double">
+    <Expression Operator="Div">
+      <Aggregation Operator="Sum" Name="flushChanges.time"/>
+      <Value>1000</Value> <!-- milli to second -->
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="flushChanges.averageTime" Type="Double">
+    <Expression Operator="Div">    
+      <Expression Operator="Div">
+        <Aggregation Operator="Sum" Name="flushChanges.time"/>
+        <Value>1000</Value>  <!-- milli to second -->
+      </Expression>
+      <Aggregation Operator="Sum" Name="flushChanges.completed"/>      
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="getMutableMO.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="getMutableMO.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="getBeanMOContent.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="getBeanMOContent.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="getMElementMOContent.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="getMElementMOContent.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="getDocumentMOContent.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="getDocumentMOContent.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <!-- GroupBy Name="ServerName"/ -->
+   <GroupBy Name="appName"/>
+
+  </Select>
+
+  <Select Name="aggregated_mds_metadata_store">
+   <TableFrom Name="MDS_MetadataStore"/>
+
+   <!-- Column Name="ServerName" Type="String">
+    <ColumnFrom Name="ServerName"/>
+   </Column -->
+
+   <Column Name="appName" Type="String">
+    <ColumnFrom Name="MDS_Application"/>
+   </Column>
+
+   <Column Name="getDocument.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="getDocument.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="readDocument.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="readDocument.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="checkDocuments.completed" Type="Integer">
+    <Aggregation Operator="Sum" Name="checkDocuments.completed"/>
+    <Default>0</Default>
+   </Column>
+
+   <!-- GroupBy Name="ServerName"/ -->
+   <GroupBy Name="appName"/>
+
+  </Select>
+
+  <Select Name="aggregated_mds_persistence">
+   <TableFrom Name="MDS_Persistence"/>
+
+   <!-- Column Name="ServerName" Type="String">
+    <ColumnFrom Name="ServerName"/>
+   </Column -->
+
+   <Column Name="appName" Type="String">
+    <ColumnFrom Name="MDS_Application"/>
+   </Column>
+
+   <Column Name="getDocument.count" Type="Integer">
+    <Aggregation Operator="Sum" Name="getDocument_counter.count"/>
+    <Default>0</Default>
+   </Column>
+
+   <!-- GroupBy Name="ServerName"/ -->
+   <GroupBy Name="appName"/>
+
+  </Select>
+
+  <Select Name="joined_mds_core_and_store">
+   <TableFrom Name="aggregated_mds_core"/>
+   <TableFrom Name="aggregated_mds_metadata_store"/>
+
+   <Where>
+    <!-- And>
+     <Condition Operator="EQ" Type="String">
+      <ColumnFrom Name="ServerName" Table="aggregated_mds_core"/>
+      <ColumnFrom Name="ServerName" Table="aggregated_mds_metadata_store"/>
+     </Condition -->
+     <Condition Operator="EQ" Type="String">
+      <ColumnFrom Name="appName" Table="aggregated_mds_core"/>
+      <ColumnFrom Name="appName" Table="aggregated_mds_metadata_store"/>
+     </Condition>
+    <!-- /And -->
+   </Where>
+
+  </Select>
+
+  <Select Name="joined_mds_core_and_store_and_persistence">
+   <TableFrom Name="joined_mds_core_and_store"/>
+   <TableFrom Name="aggregated_mds_persistence"/>
+
+   <Where>
+    <!-- And>
+     <Condition Operator="EQ" Type="String">
+      <ColumnFrom Name="ServerName" Table="joined_mds_core_and_store"/>
+      <ColumnFrom Name="ServerName" Table="aggregated_mds_persistence"/>
+     </Condition -->
+     <Condition Operator="EQ" Type="String">
+      <ColumnFrom Name="appName" Table="joined_mds_core_and_store"/>
+      <ColumnFrom Name="appName" Table="aggregated_mds_persistence"/>
+     </Condition>
+    <!-- /And -->
+   </Where>
+
+  </Select>
+
+  <Select Name="mds_server_rollup_no_rate_result">
+   <TableFrom Name="joined_mds_core_and_store_and_persistence"/>
+
+   <!-- Column Name="ServerName" Type="String"/ -->
+
+   <Column Name="appName" Type="String"/>
+
+   <Column Name="getMetadataObject.completed" Type="Integer"/>
+
+   <Column Name="getMetadataObject.totalTime" Type="Double"/>
+
+   <Column Name="getMetadataObject.averageTime" Type="Double"/>
+
+   <Column Name="flushChanges.completed" Type="Integer"/>
+
+   <Column Name="flushChanges.totalTime" Type="Double"/>
+
+   <Column Name="flushChanges.averageTime" Type="Double"/>
+
+   <Column Name="getDocument.count" Type="Integer"/>
+
+   <Column Name="getDocument.completed" Type="Integer"/>
+
+   <Column Name="readDocument.completed" Type="Integer"/>
+
+   <Column Name="checkDocuments.completed" Type="Integer"/>
+
+   <Column Name="getMutableMO.completed" Type="Integer"/>
+
+   <Column Name="getBeanMOContent.completed" Type="Integer"/>
+
+   <Column Name="getMElementMOContent.completed" Type="Integer"/>
+
+   <Column Name="getDocumentMOContent.completed" Type="Integer"/>
+
+   <Column Name="PhysicalIOs.count" Type="Integer">
+    <Expression Operator="Plus">    
+     <ColumnFrom Name="getDocument.completed"/>
+     <ColumnFrom Name="checkDocuments.completed"/>
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="MOGets.count" Type="Integer">
+    <Expression Operator="Plus">    
+     <ColumnFrom Name="getMetadataObject.completed"/>
+     <ColumnFrom Name="getMutableMO.completed"/>
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="MOContentGets.count" Type="Integer">
+    <Expression Operator="Plus">    
+      <Expression Operator="Plus">
+        <ColumnFrom Name="getBeanMOContent.completed"/>
+        <ColumnFrom Name="getMElementMOContent.completed"/>
+      </Expression>
+      <ColumnFrom Name="getDocumentMOContent.completed"/>      
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+  </Select>
+
+ </Table> <!-- mds_server_rollup_no_rate -->
+
+ <Table Name="mds_server_rollup">
+
+  <!-- ColumnDef Name="ServerName" Type="String" Key="true"/ -->
+  <ColumnDef Name="appName" Type="String" Key="true"/>
+  <ColumnDef Name="getMetadataObject.throughput" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.time" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.totalTime" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.averageTime" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.completed" Type="Integer"/>
+  <ColumnDef Name="MetadataUpdate.throughput" Type="Double"/>
+  <ColumnDef Name="MetadataUpdate.time" Type="Double"/>
+  <ColumnDef Name="getDocument.count" Type="Integer"/>  
+  <ColumnDef Name="PhysicalIOs.count" Type="Integer"/>  
+  <ColumnDef Name="readDocument.completed" Type="Integer"/>
+  <ColumnDef Name="MOGets.count" Type="Integer"/>  
+  <ColumnDef Name="MOContentGets.count" Type="Integer"/>  
+  <ColumnDef Name="IOsPerMOGet.rate" Type="Double"/>
+  <ColumnDef Name="IOsPerDocumentGet.rate" Type="Double"/>
+  <ColumnDef Name="IOsPerMOContentGet.rate" Type="Double"/>
+  
+  <Select Name="mds_server_rollup_result">
+   <TableFrom Name="mds:mds_server_rollup_no_rate"/>
+   
+   <!-- Column Name="ServerName" Type="String"/ -->
+   <Column Name="appName" Type="String"/>
+   <Column Name="getMetadataObject.completed" Type="Integer"/>
+   <Column Name="getMetadataObject.totalTime" Type="Double"/>
+   <Column Name="getMetadataObject.averageTime" Type="Double"/>
+
+   <Column Name="getMetadataObject.throughput" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="getMetadataObject.completed"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+   <Column Name="getMetadataObject.time" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="getMetadataObject.totalTime"/>
+     <ColumnFrom Name="getMetadataObject.completed"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+   <Column Name="MetadataUpdate.throughput" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="flushChanges.completed"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+   <Column Name="MetadataUpdate.time" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="flushChanges.totalTime"/>
+     <ColumnFrom Name="flushChanges.completed"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+   <Column Name="getDocument.count" Type="Integer"/>
+
+   <Column Name="PhysicalIOs.count" Type="Integer"/>
+   <Column Name="readDocument.completed" Type="Integer"/>
+   <Column Name="MOGets.count" Type="Integer"/>
+   <Column Name="MOContentGets.count" Type="Integer"/>
+
+   <Column Name="IOsPerMOGet.rate" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="PhysicalIOs.count"/>
+     <ColumnFrom Name="MOGets.count"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+   <Column Name="IOsPerDocumentGet.rate" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="PhysicalIOs.count"/>
+     <ColumnFrom Name="getDocument.count"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+   <Column Name="IOsPerMOContentGet.rate" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="readDocument.completed"/>
+     <ColumnFrom Name="MOContentGets.count"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+   <!-- GroupBy Name="ServerName"/ -->
+
+   <!-- Where>
+     <Or>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="ServerName"/>
+       <Value Name="ServerName.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <Value Name="ServerName.parameter"
+              xsi:nil="true"/>
+       <Null/>
+      </Condition>
+     </Or>
+   </Where -->
+
+  </Select>
+
+ </Table> <!-- mds_server_rollup -->
+
+
+ <Table Name="mds_j2ee_application_rollup">
+
+  <!-- ColumnDef Name="ServerName" Type="String" Key="true"/ -->
+  <ColumnDef Name="appName" Type="String" Key="true"/>
+  <ColumnDef Name="getMetadataObject.throughput" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.time" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.totalTime" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.averageTime" Type="Double"/>
+  <ColumnDef Name="getMetadataObject.completed" Type="Integer"/>
+  <ColumnDef Name="MetadataUpdate.throughput" Type="Double"/>
+  <ColumnDef Name="MetadataUpdate.time" Type="Double"/>
+  <ColumnDef Name="getDocument.count" Type="Integer"/>  
+  <ColumnDef Name="PhysicalIOs.count" Type="Integer"/>  
+  <ColumnDef Name="MOGets.count" Type="Integer"/>  
+  <ColumnDef Name="MOContentGets.count" Type="Integer"/>  
+  <ColumnDef Name="IOsPerMOGet.rate" Type="Double"/>
+  <ColumnDef Name="IOsPerDocumentGet.rate" Type="Double"/>
+  <ColumnDef Name="IOsPerMOContentGet.rate" Type="Double"/>
+  
+  <Select Name="mds_j2ee_application_rollup_result">
+   <TableFrom Name="mds:mds_server_rollup"/>
+   
+   <Column Name="appName" Type="String"/>
+   <!-- Column Name="ServerName" Type="String"/ -->
+   <Column Name="getMetadataObject.completed" Type="Integer"/>
+   <Column Name="getMetadataObject.totalTime" Type="Double"/>
+   <Column Name="getMetadataObject.averageTime" Type="Double"/>
+   <Column Name="getMetadataObject.throughput" Type="Double"/>
+   <Column Name="getMetadataObject.time" Type="Double"/>
+   <Column Name="MetadataUpdate.throughput" Type="Double"/>
+   <Column Name="MetadataUpdate.time" Type="Double"/>
+   <Column Name="getDocument.count" Type="Integer"/>
+   <Column Name="PhysicalIOs.count" Type="Integer"/>
+   <Column Name="MOGets.count" Type="Integer"/>
+   <Column Name="MOContentGets.count" Type="Integer"/>
+   <Column Name="IOsPerMOGet.rate" Type="Double"/>
+   <Column Name="IOsPerDocumentGet.rate" Type="Double"/>
+   <Column Name="IOsPerMOContentGet.rate" Type="Double"/>
+
+   <!-- GroupBy Name="appName"/ -->
+
+   <Where>
+    <Or>
+    <Condition Type="String" Operator="EQ">
+     <ColumnFrom Name="appName"/>
+     <Value Name="appName.parameter"/>
+    </Condition>
+    <Condition Type="String" Operator="EQ">
+     <Value Name="appName.parameter"
+            xsi:nil="true"/>
+     <Null/>
+    </Condition>
+   </Or>
+   </Where>
+
+  </Select>
+
+ </Table> <!-- mds_j2ee_application_rollup -->
+
+</Adml>

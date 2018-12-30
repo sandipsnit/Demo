@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+   <extension-point id="wsdlTypeSystemFactories" name="WSDL Type System Factories" schema="ext-schema/wsdlTypeSystemFactory.exsd"/>
+
+	 <extension
+         point="com.bea.alsb.bpel.typesystem.core.wsdlTypeSystemFactories">
+      <factory
+            class="com.bea.alsb.bpel.typesystem.core.internal.wsdl.WSDLTypeSystemFactory">
+	    <enablement>
+		  <with variable="affectedProjects">
+			<iterate operator="or">
+				<instanceof value="org.eclipse.core.resources.IProject"/>
+				<test property="org.eclipse.wst.common.project.facet.core.projectFacet" value="workshop.xmlbeans:2.2"/>
+			</iterate>
+		  </with>
+	    </enablement>
+      </factory>
+      </extension>
+      
+     <extension
+         point="org.eclipse.core.expressions.propertyTesters">
+      <propertyTester
+            class="com.bea.alsb.bpel.typesystem.core.internal.wsdl.ProjectPropertyTester"
+            id="com.bea.alsb.bpel.typesystem.core.projectProperties"
+            namespace="com.bea.alsb.bpel.typesystem.core"
+            properties="contributesExtension"
+            type="org.eclipse.core.runtime.IAdaptable"/>
+   </extension>
+</plugin>

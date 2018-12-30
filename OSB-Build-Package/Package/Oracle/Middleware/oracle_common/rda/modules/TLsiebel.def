@@ -1,0 +1,1080 @@
+# TLsiebel.def: Collects Siebel Crash Information
+# $Id: TLsiebel.def,v 1.25 2012/04/25 17:04:52 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TLsiebel.def,v 1.25 2012/04/25 17:04:52 mschenke Exp $
+#
+# Change History
+# 20120425  KRA  Display the size of core dump file in the overview.
+
+=head1 NAME
+
+TLsiebel - Collects Siebel Crash Information
+
+=head1 DESCRIPTION
+
+This tool collects information about a specific Siebel crash. It may include
+the Enterprise log file, a core dump analysis, crash files, component log
+files, and Flight Data Recorder files.
+
+See the following Knowledge Articles for more details on the collection
+approach:
+
+=over 2
+
+=item o
+
+477520.1 I<How To Troubleshoot Siebel Server Component Crashes on UNIX>
+
+=item o
+
+477511.1 I<How to troubleshoot Siebel component crashes on Microsoft Windows>
+
+=back
+
+=head1 USAGE
+
+This tool can be used in two ways:
+
+=over 3
+
+=item a)
+
+Runs interactively. It requests the user to enter the required information.
+
+<rda> -vT siebel
+
+=item b)
+
+Runs from the command line. The input can be given in the command line using
+the following syntax:
+
+<rda> -vT siebel:<home>|<enterprise>|<server>|<advanced>|<pid>|<core>
+
+Where:
+
+  <home> is the full path of Siebel Server home
+
+  <enterprise> is the Application Enterprise name
+
+  <server> is the Application Server name
+
+  <advanced> is the advanced mode (accepts boolean value) for detailed report
+             collection
+
+  <pid> is the process identifier of the crashed application
+
+  <core> is the core file on AIX, HP-UX, Linux, Solaris and
+         the dump file on Windows
+
+=back
+
+The reports can be viewed in the C<External Data Collections> submenu of the
+final RDA output package also. If it is not disabled, you can refresh that
+section by the following command:
+
+<rda> -vdCRP LOAD
+
+=cut
+
+echo tput('bold'),'Collecting Siebel crash data ...',tput('off')
+
+# Initialisation
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+# Get the arguments
+if ${TST_ARGS}
+{var ($dir,$ent,$srv,$ALL,$pid,$dmp) = split('\|',last)
+ if testDir('d',catDir($dir,'siebsrvr'))
+ {var $HOM = $dir
+  if testDir('d',catDir($HOM,'siebsrvr','enterprises',$ent,$srv))
+   var ($ENT,$SRV) = ($ent,$srv)
+  elsif isUnix()
+   echo "The directory '",lastDir(),"' does not exist.\n\
+         Information will not be collected fully.\n"
+  else
+   var ($ENT,$SRV) = ($ent,$srv)
+ }
+ else
+  echo "The directory '",$dir,"' does not exist or does not have a \
+        'siebsrvr' subdirectory.\n\
+        Information will not be collected fully.\n"
+
+ if match($pid,'^\d+$')
+  var $PID = $pid
+ if testFile('fr',$dmp)
+ {var $DMP = $dmp
+  if and(${OS.hpux},not(defined($PID)))
+   var ($PID) = match($DMP,'\.(\d+)$')
+ }
+ elsif match(${RDA.OS},'(aix|hpux|linux|solaris)')
+  echo 'Missing core dump'
+ if !?$PID
+  echo 'Missing process identifier'
+}
+else
+{call requestSetting('TLsiebel')
+ var $ENT = ${SIEBEL_ENTERPRISE}
+ var $DMP = ${SIEBEL_CORE}
+ var $HOM = ${SIEBEL_HOME}
+ var $PID = ${SIEBEL_PID}
+ var $SRV = ${SIEBEL_SERVER}
+ var $ALL = ${SIEBEL_ADVANCED:0}
+}
+var $ARC = cond(isUnix(),\
+                catDir($HOM,'siebsrvr','enterprises',$ENT,$SRV,'logarchive'),\
+                catDir($HOM,'siebsrvr','logarchive'))
+var $BIN = catDir($HOM,'siebsrvr','bin')
+var $LOG = cond(isUnix(),\
+                catDir($HOM,'siebsrvr','enterprises',$ENT,$SRV,'log'),\
+                catDir($HOM,'siebsrvr','log'))
+var $RPT = $[OUT]->add_report('c','exec_log',0)
+
+# Purge old reports
+call purge('C','.',15,0)
+
+# Set the abbreviation
+var $cnt = 0
+loop $fil (grepDir(${OUT.C},concat(${CUR.GROUP},'_SIEBEL\d+_crash\.txt')))
+{if match($fil,'SIEBEL(\d+)_crash\.txt$')
+  var $cnt = max($cnt,last)
+}
+call setAbbr(sprintf('SIEBEL%02d',incr($cnt)))
+
+# Collect the Enterprise log file
+var $dmp = cond(defined($DMP),encode($dmp),'')
+report crash
+title '<!-- CRASH:|',encode($HOM),'|',$ENT,'|',$SRV,'|',$PID,'|',\
+      cond(defined($DMP),encode($DMP)),'| -->'
+title '---+!! Siebel Crash Data Collection'
+title $TOC
+title '---+ Input Parameters'
+title '|*Name*|*Value*|'
+
+if $HOM
+ title '|*Siebel Server Home*|',encode($HOM),' |'
+if $ENT
+ title '|*Application Enterprise Name*|',$ENT,' |'
+if $SRV
+ title '|*Application Server Name*|',$SRV,' |'
+if $PID
+ title '|*Process Identifier*|',$PID,' |'
+if $DMP
+ title '|*Core Dump File (Last Modified Date and Size)*|',encode($DMP),' (',\
+       getLastModify($DMP,'%d-%b-%Y&nbsp;%H:%M:%S'),'&nbsp;',getSize($DMP),') |'
+title '|*Advanced collection enabled?*|',cond($ALL,'Yes','No'),' |'
+title $TOP
+
+write {$RPT} '---+!! Siebel Crash Data Collection (Execution Log)'
+write {$RPT} $TOC
+if $ALL
+{# Collect the EVT report
+ if testFile('x',catFile($BIN,${AS.EXE:'evt'}))
+ {var $pgm = concat(lastCommand(),' -r ',$HOM,' -e ',$ENT,' -s ',$SRV,\
+                    ' -d SHOWERRORS -o TEXT -f ',catCommand($BIN,'evt.ini'))
+  if isUnix()
+   call source(catFile($HOM,'siebsrvr','siebenv.sh'),true)
+  var $out = newTemp('EVT')
+  call command(concat($pgm,' >',quote($out,'x')))
+  var $rpt = $[OUT]->add_report('c','evt_summary',0)
+  write {$RPT} '---+ Environment Verification Summary'
+  write {$RPT} '---## Using: ',encode($pgm)
+  prefix $rpt
+  {write {$rpt} '---+ Environment Verification Summary'
+   write {$rpt} '---## Using: ',encode($pgm)
+  }
+  call $rpt->write_file($out)
+  if $rpt->is_created(true)
+  {write {$rpt} $TOP
+   call $rpt->render
+   write {$RPT} '   * Successfully collected EVT summary'
+  }
+  else
+   write {$RPT} '   * Unable to collect EVT summary'
+  write {$RPT} $TOP
+  write '---+ EVT Summary Report'
+  write '|*Summary*|[[',$rpt->get_html(true),'][_blank][Report]] |'
+  write $TOP
+  call unlinkTemp('EVT')
+  end $rpt
+ }
+
+ # Collect the Siebel server log files
+ write {$RPT} '---+ Siebel Server Logs'
+ write {$RPT} '---## Information Taken from ',encode($LOG)
+ prefix
+ {write '---+ Siebel Server Logs'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              risks. To prevent them, access the file outside the browser or \
+              use the link to save them and use an adequate viewer.'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ if grepDir($LOG,'\.log$','inp')
+ {loop $fil (last)
+  {next compare('eq',basename($fil),concat($ENT,'.',$SRV,'.log'))
+   write {$RPT} '   * Searching for ',$PID,' inside ',encode($fil)
+   if grepFile($fil,concat('\s+',$PID,'\s+'),'f',0,1,1)
+   {write {$RPT} '      * Found'
+    var $lnk = encode($fil)
+    var $nam = basename($fil)
+    var $rpt = $[OUT]->add_report('d',concat('log_',$nam),0,'.log')
+    if $rpt->write_data($fil)
+     var $lnk = concat('[[',$rpt->get_raw(true),'][_blank][',$lnk,']]')
+    end $rpt
+    write '|',$lnk,' | ',getSize($fil),'|',\
+          getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+   else
+    write {$RPT} '      * Not Found'
+  }
+ }
+ else
+  write {$RPT} '   * No *.log files found'
+ if hasOutput(true)
+  write $TOP
+ write {$RPT} $TOP
+}
+
+# Collect the Enterprise log file
+prefix
+{write '---+ Enterprise Log File'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present \
+             risks. To prevent them, access the file outside the browser or \
+             use the link to save them and use an adequate viewer.'
+ write '|*File Name*| *Size*|*Last Modified Date*|'
+}
+var $fil = catFile($LOG,concat($ENT,'.',$SRV,'.log'))
+write {$RPT} '---+ Enterprise Log File'
+write {$RPT} '---## Information Taken from ',encode($fil)
+if testFile('fr',$fil)
+{var $siz = getSize($fil)
+ var $lnk = encode($fil)
+ if $siz
+ {output d,"log.log"
+  if ${CUR.LAST}->write_file($fil)
+   var $lnk = concat('[[',${CUR.LAST}->get_raw(true),'][_blank][',$lnk,']]')
+  call $[OUT]->end_report(${CUR.LAST})
+ }
+ write '|',$lnk,' | ',$siz,'|',\
+       getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+}
+if hasOutput(true)
+{write $TOP
+ write {$RPT} '   * Successfully collected the file'
+}
+else
+ write {$RPT} '   * Unable to collect the file'
+write {$RPT} $TOP
+
+# Collect the core dump file
+if $ALL
+{write {$RPT} '---+ Core / Dump Files'
+ write {$RPT} '---## Information Taken from ',encode($DMP)
+ if testFile('fr',$DMP)
+ {prefix
+  {write '---+ Core / Dump Files'
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser or \
+               use the link to save them and use an adequate viewer.'
+   write '|*File Name*| *Size*|*Last Modified Date*|'
+  }
+  var $nam = basename($DMP)
+  var $siz = getSize($DMP)
+  var $lnk = encode($DMP)
+  if $siz
+  {var $rpt = $[OUT]->add_report('d',concat('c_',$nam),0,'.dmp')
+   if $rpt->write_data($DMP)
+    var $lnk = concat('[[',$rpt->get_raw(true),'][_blank][',$lnk,']]')
+   end $rpt
+  }
+  write '|',$lnk,' | ',$siz,'|',\
+         getLastModify($DMP,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  var $pat = cond(or(isWindows(),isCygwin()),'\.dmp$',\
+                                    isUnix(),'^core.*')
+  loop $fil (grepDir(dirname($DMP),$pat,'inp'))
+  {next sameFile($fil,$DMP)
+   write '|',encode($fil),' | ',getSize($fil),'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+  if hasOutput(true)
+  {write $TOP
+   write {$RPT} '   * Successfully collected the file'
+  }
+  else
+   write {$RPT} '   * Unable to collect the file'
+  write {$RPT} $TOP
+
+  # Check for FDR data in dump file
+  write {$RPT} '---++ FDR Data Extracted from Core / Dump File'
+  write {$RPT} '---### Information Extracted from ',encode($DMP)
+  prefix
+  {write '---++ FDR Data Extracted from Core / Dump File'
+   write '---### Information Extracted from ',encode($DMP)
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser or \
+               use the link to save them and use an adequate viewer.'
+   write '|*FDR File*|*Converted CSV File*|'
+  }
+  var $fdr = $[OUT]->add_report('b',$nam,0,'.log')
+  if $fdr->write_extract($DMP,'(FDR  SV)',5000028)
+  {var $lnk = concat('[[',$fdr->get_raw(true),'][_blank][FDR File]]')
+   var $src = $fdr->get_file(true)
+   end $fdr
+   write {$RPT} '   * Successfully extracted FDR data'
+   var $csv = 'CSV File'
+   var $out = newTemp('FDR')
+   call command(concat(catCommand($BIN,${AS.EXE:'sarmanalyzer'}),\
+                       ' -o ',quote($out,'x'),' -x -f ',quote($src,'x')))
+   var $rpt = $[OUT]->add_report('d',$nam,0,'.csv')
+   if $rpt->write_data($out)
+   {var $csv = concat('[[',$rpt->get_raw(true),'][_blank][',$csv,']]')
+    write {$RPT} '   * Successfully converted FDR data into CSV'
+   }
+   else
+    write {$RPT} '   * Unable to convert the FDR data into CSV'
+   end $rpt
+   call unlinkTemp('FDR')
+   write '|',$lnk,' |',$csv,' |'
+  }
+  else
+  {end $fdr
+   write {$RPT} '   * No FDR data found'
+  }
+  if hasOutput(true)
+   write $TOP
+ }
+ else
+  write {$RPT} '   * Unable to read the file'
+ write {$RPT} $TOP
+}
+
+# Analyze the core dump
+if or(${OS.aix},${OS.hpux},${OS.linux},${OS.solaris})
+{if testFile('fr',$DMP)
+ {# Try to extract the program name that produced the core
+  var $pgm = field(cond(${OS.aix},",\s*","'"),1,\
+                   command(concat('file ',quote($DMP,'x'))))
+
+  # Extract the stack trace and the threat identifier
+  write {$RPT} '---+ Stack Trace Extraction'
+  write '---+ Stack Trace Extraction'
+  write '|*Core file*|',encode($DMP),'|'
+  write '|*Program*|',encode($pgm),'|'
+  if ${OS.aix}
+  {write {$RPT} '---++ dbx Output'
+   if findCommand('dbx',true)
+   {var $dbg = last
+    write '|*Debugger*|',$dbg,'|'
+    if isAbsolute($pgm)
+     var $pgm = catCommand($pgm)
+    else
+     var $pgm = catCommand($BIN,$pgm)
+    if createBuffer('DMP','R',$DMP)
+    {if unpack('N',getBytes('DMP',4,0xdc))
+     {var ($PID) = last
+      write '|*Process Identifier from Core Dump*| ',$PID,'|'
+     }
+     deleteBuffer('DMP')
+    }
+    prefix
+     write '---++ dbx Output'
+    var $inp = createTemp('debug')
+    call writeTemp('debug','th')
+    call writeTemp('debug','quit')
+    call closeTemp('debug')
+    loop $lin (grepCommand(concat(quote($dbg,'x'),' ',$pgm,' ',quote($DMP,'x'),\
+                                  ' <',quote($inp,'x')),'^>\$t\d+'))
+    {if match($lin,'^>\$t(\d+)')
+      call push(@thr,last)
+    }
+    call unlinkTemp('debug')
+    var $inp = createTemp('debug')
+    write {$RPT} '---### Using: ',encode($dbg),' ',encode($pgm),' ',encode($DMP)
+    if @thr
+    {loop $thr (last)
+     {write {$RPT} '---### Thread Info ',$thr
+      write {$RPT} '   * Executing ``th info ',$thr,'``'
+      call writeTemp('debug','print "</verbatim>"')
+      call writeTemp('debug','print "---### Thread Info ',$thr,'"')
+      call writeTemp('debug','print "<verbatim>"')
+      call writeTemp('debug','th info ',$thr)
+     }
+    }
+    else
+     write {$RPT} '   * No thread information'
+    call writeTemp('debug','print "</verbatim>"')
+    write {$RPT} '---### Registers'
+    write {$RPT} '   * Executing ``registers``'
+    call writeTemp('debug','print "---### Registers"')
+    call writeTemp('debug','print "<verbatim>"')
+    call writeTemp('debug','registers')
+    call writeTemp('debug','print "</verbatim>"')
+    write {$RPT} '---### Stack'
+    write {$RPT} '   * Executing ``where``'
+    call writeTemp('debug','print "---### Stack"')
+    call writeTemp('debug','print "<verbatim>"')
+    call writeTemp('debug','where')
+    call writeTemp('debug','quit')
+    call closeTemp('debug')
+    call loadCommand(concat(quote($dbg,'x'),' ',$pgm,' ',quote($DMP,'x'),\
+                     ' <',quote($inp,'x')))
+    loop $lin (grepLastFile('^\s+pthread_t\s+=\s'))
+     call push(@tid,hex2int(value($lin)))
+    call writeLastFile()
+    if hasOutput(true)
+     write $TOP
+    call unlinkTemp('debug')
+   }
+   else
+    write {$RPT} '   * No dbx found'
+   write {$RPT} $TOP
+
+   # Bundle the core file along with its related libraries
+   if $ALL
+   {write {$RPT} '---+ Core Package'
+    if findCommand('snapcore')
+    {var $cmd = last
+     var $box = cleanBox()
+     write {$RPT} '---## Using: ',encode($cmd),' -d ',encode($box),\
+                  ' ',encode($DMP)
+     call command(concat($cmd,' -d ',quote($box,'x'),' ',quote($DMP,'x')))
+     if grepDir($box,'^snapcore[_\.]\d+\.pax\.Z$','ft')
+     {var ($src) = last
+      if $siz = getSize($fil = catFile($box,$src))
+      {var $rpt = $[OUT]->add_report('b',basename($src,'.Z'),0,'.Z')
+       if $rpt->write_data($fil)
+       {write {$RPT} '   * Core package gathered'
+        write '---+ Core Package'
+        write '   * Links point to files that have been collected in their \
+                    original format. Opening them directly in your browser \
+                    can present risks. To prevent them, access the file \
+                    outside the browser or use the link to save them and use \
+                    an adequate viewer.'
+        write '|*File Name*| *Size*|*Last Modified Date*|'
+        write '|[[',$rpt->get_raw(true),'][_blank][',$src,']] | ',$siz,'|',\
+              getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+        write $TOP
+       }
+       else
+        write {$RPT} '   * Unable to get the core package'
+       end $rpt
+      }
+      else
+       write {$RPT} '   * Unable to read the core package'
+     }
+     else
+      write {$RPT} '   * Core package not found'
+    }
+    else
+     write {$RPT} '   * No snapcore found'
+    write {$RPT} $TOP
+   }
+  }
+  elsif ${OS.hpux}
+  {write {$RPT} '---++ gdb Output'
+   if findCommand('gdb',true)
+   {var $dbg = last
+    write '|*Debugger*|',$dbg,'|'
+    if isAbsolute($pgm)
+     var $pgm = catCommand($pgm)
+    else
+     var $pgm = catCommand($BIN,$pgm)
+    prefix
+     write '---++ gdb Output'
+    var $inp = createTemp('debug')
+    write {$RPT} '---## Using: ',encode($dbg),' ',encode($pgm),' ',encode($DMP)
+    write {$RPT} '---### Thread'
+    write {$RPT} '   * Executing ``x $mpsfu_high + 0x9c``'
+    call writeTemp('debug','echo \n</verbatim>\n---### Thread\n<verbatim>\n')
+    call writeTemp('debug','x $mpsfu_high + 0x9c')
+    write {$RPT} '---### Stack'
+    write {$RPT} '   * Executing ``where``'
+    call writeTemp('debug','echo \n</verbatim>\n---### Stack\n<verbatim>\n')
+    call writeTemp('debug','where')
+    write {$RPT} '---### Registers'
+    write {$RPT} '   * Executing ``info all-registers``'
+    call writeTemp('debug','echo \n</verbatim>\n---### Registers\n<verbatim>\n')
+    call writeTemp('debug','info all-registers')
+    call writeTemp('debug','q')
+    call closeTemp('debug')
+    call loadCommand(concat(quote($dbg,'x'),' ',$pgm,' ',quote($DMP,'x'),\
+                            ' <',quote($inp,'x')))
+    var $flg = false
+    loop $lin (grepLastFile('---###|0x'))
+    {if match($lin,'^---###\sThread')
+      var $flg = true
+     elsif match($lin,'^---###\s')
+      break
+     elsif $flg
+     {call push(@tid,hex2int(field(':\s+',1,$lin)))
+      break
+     }
+    }
+    call writeLastFile()
+    if hasOutput(true)
+     write $TOP
+    call unlinkTemp('debug')
+    write {$RPT} $TOP
+
+    # Bundle the core file along with its related libraries
+    if $ALL
+    {write {$RPT} '---+ Core Package'
+     write {$RPT} '---## Using: ',encode($dbg),' ',encode($pgm),' ',encode($DMP)
+     write {$RPT} '   * Executing ``packcore``'
+     var $inp = createTemp('debug')
+     call writeTemp('debug','packcore')
+     call writeTemp('debug','q')
+     call closeTemp('debug')
+     call command(concat(quote($dbg,'x'),' ',$pgm,' ',quote($DMP,'x'),\
+                         ' <',quote($inp,'x')))
+     if grepDir(${GRP.D_RDA},'^.*\.tar\.Z$','ft')
+     {var ($src) = last
+      if $siz = getSize($fil = catFile(${GRP.D_RDA},$src))
+      {var $rpt = $[OUT]->add_report('b',basename($src,'.Z'),0,'.Z')
+       if $rpt->write_data($fil)
+       {write {$RPT} '   * Core package gathered'
+        write '---+ Core Package'
+        write '   * Links point to files that have been collected in their \
+                    original format. Opening them directly in your browser \
+                    can present risks. To prevent them, access the file \
+                    outside the browser or use the link to save them and use \
+                    an adequate viewer.'
+        write '|*File Name*| *Size*|*Last Modified Date*|'
+        write '|[[',$rpt->get_raw(true),'][_blank][',$src,']] | ',$siz,'|',\
+              getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+        write $TOP
+       }
+       else
+        write {$RPT} '   * Unable to get the core package'
+       end $rpt
+      }
+      else
+       write {$RPT} '   * Unable to read the core package'
+     }
+     else
+      write {$RPT} '   * Core package not found'
+     call unlinkTemp('debug')
+     write {$RPT} $TOP
+    }
+   }
+   else
+   {write {$RPT} '   * No gdb found'
+    write {$RPT} $TOP
+   }
+  }
+  elsif and(${OS.linux},$ALL)
+  {# Bundle the core file along with its related libraries
+   var $fil = catFile($BIN,'lingrabcore.sh')
+   write {$RPT} '---+ Core Package'
+   write {$RPT} '---## Using: ',encode($fil),' ',encode($DMP)
+   if testFile('x',$fil)
+   {var $job = createTemp('CORE','.sh',true)
+    call writeTemp('CORE','cd "',$BIN,'"')
+    call writeTemp('CORE','./lingrabcore.sh ',quote($DMP,'x'))
+    call closeTemp('CORE')
+    call command(quote($job,'x'))
+    call unlinkTemp('CORE')
+    if grepDir($BIN,'^core_diag_?\d{14}\.tar\.gz$','ft')
+    {var ($src) = last
+     if $siz = getSize($fil = catFile($BIN,$src))
+     {var $rpt = $[OUT]->add_report('b',basename($src,'.gz'),0,'.gz')
+      if $rpt->write_data($fil)
+      {write {$RPT} '   * Core package gathered'
+       write '---+ Core Package'
+       write '   * Links point to files that have been collected in their \
+                   original format. Opening them directly in your browser can \
+                   present risks. To prevent them, access the file outside the \
+                   browser or use the link to save them and use an adequate \
+                   viewer.'
+       write '|*File Name*| *Size*|*Last Modified Date*|'
+       write '|[[',$rpt->get_raw(true),'][_blank][',$src,']] | ',$siz,'|',\
+             getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+       write $TOP
+      }
+      else
+       write {$RPT} '   * Unable to get the core package'
+      end $rpt
+     }
+     else
+      write {$RPT} '   * Unable to read the core package'
+    }
+    else
+     write {$RPT} '   * Core package not found'
+   }
+   else
+    write {$RPT} '   * ',encode($fil),' is not with execute permission'
+   write {$RPT} $TOP
+  }
+  elsif ${OS.solaris}
+  {# When we find pstack, use it to extract information from the core file
+   write {$RPT} '---++ pstack Output'
+   if findCommand('pstack',true)
+   {var $dbg = last
+    write '|*Debugger*|',$dbg,'|'
+    write {$RPT} '---### Using: ',encode($dbg),' ',encode($DMP)
+    call loadCommand(concat(quote($dbg,'x'),' ',quote($DMP,'x')))
+    var ($lin) = grepLastFile('^core.* of \d+:','f')
+    if match($lin,'^core.* of (\d+):')
+    {var ($PID) = last
+     write '|*Process Identifier from Core Dump*| ',$PID,'|'
+    }
+    loop $lin (grepLastFile('(thread|signal)'))
+    {if match ($lin,'---.*thread\#\s+(\d+)\s+----')
+     {var ($tid) = last
+      call push(@tid,$tid)
+     }
+    }
+    prefix
+     write '---++ pstack Output'
+    call writeLastFile()
+    if hasOutput(true)
+    {write $TOP
+     write {$RPT} '   * Command successful'
+    }
+    else
+     write {$RPT} '   * Command failed'
+   }
+   else
+    write {$RPT} '   * No pstack found'
+   write {$RPT} $TOP
+
+   # When we find pmap, run it
+   write {$RPT} '---++ pmap Output'
+   if findCommand('pmap')
+   {var $cmd = last
+    prefix
+     write '---++ pmap Output'
+    write {$RPT} '---### Using: ',encode($cmd),' ',encode($DMP)
+    call writeCommand(concat($cmd,' ',quote($DMP,'x')))
+    if hasOutput(true)
+    {write $TOP
+     write {$RPT} '   * Command successful'
+    }
+    else
+     write {$RPT} '   * Command failed'
+   }
+   else
+    write {$RPT} '   * No pmap found'
+   write {$RPT} $TOP
+
+   # When we find pflags, run it
+   write {$RPT} '---++ pflags Output'
+   if findCommand('pflags')
+   {var $cmd = last
+    prefix
+     write '---++ pflags Output'
+    write {$RPT} '---### Using: ',encode($cmd),' -r ',encode($DMP)
+    call writeCommand(concat($cmd,' -r ',quote($DMP,'x')))
+    if hasOutput(true)
+    {write $TOP
+     write {$RPT} '   * Command successful'
+    }
+    else
+     write {$RPT} '   * Command failed'
+   }
+   else
+    write {$RPT} '   * No pflags found'
+   write {$RPT} $TOP
+
+   # When we find pldd, run it
+   write {$RPT} '---++ pldd Output'
+   if findCommand('pldd')
+   {var $cmd = last
+    prefix
+     write '---++ pldd Output'
+    write {$RPT} '---### Using: ',encode($cmd),' ',encode($DMP)
+    call writeCommand(concat($cmd,' ',quote($DMP,'x')))
+    if hasOutput(true)
+    {write $TOP
+     write {$RPT} '   * Command successful'
+    }
+    else
+     write {$RPT} '   * Command failed'
+   }
+   else
+    write {$RPT} '   * No pldd found'
+   write {$RPT} $TOP
+
+   # Bundle the core file along with its related libraries
+   if $ALL
+   {var $fil = catFile($BIN,'solgrabcore.sh')
+    write {$RPT} '---+ Core Package'
+    write {$RPT} '---## Using: ',encode($fil),' ',encode($DMP)
+    if testFile('x',$fil)
+    {var $job = createTemp('CORE','.sh',true)
+     call writeTemp('CORE','cd "',$BIN,'"')
+     call writeTemp('CORE','./solgrabcore.sh ',quote($DMP,'x'))
+     call closeTemp('CORE')
+     call command(quote($job,'x'))
+     call unlinkTemp('CORE')
+     if grepDir($BIN,'^core_diag_\d{14}\.tar\.Z$','ft')
+     {var ($src) = last
+      if $siz = getSize($fil = catFile($BIN,$src))
+      {var $rpt = $[OUT]->add_report('b',basename($src,'.Z'),0,'.Z')
+       if $rpt->write_data($fil)
+       {write {$RPT} '   * Core package gathered'
+        write '---+ Core Package'
+        write '   * Links point to files that have been collected in their \
+                    original format. Opening them directly in your browser \
+                    can present risks. To prevent them, access the file \
+                    outside the browser or use the link to save them and use \
+                    an adequate viewer.'
+        write '|*File Name*| *Size*|*Last Modified Date*|'
+        write '|[[',$rpt->get_raw(true),'][_blank][',$src,']] | ',$siz,'|',\
+              getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+        write $TOP
+       }
+       else
+        write {$RPT} '   * Unable to get the core package'
+       end $rpt
+      }
+      else
+       write {$RPT} '   * Unable to read the core package'
+     }
+     else
+      write {$RPT} '   * Core package not found'
+    }
+    else
+     write {$RPT} '   * ',encode($fil),' is not with execute permission'
+    write {$RPT} $TOP
+   }
+  }
+ }
+}
+
+# Collect the process identifier-related information
+if ?$PID
+{# Collect the crash files
+ if ${OS.hpux}
+ {var $pat = '^Process\s+(\d+)\,\s+thread\s+(.*)$'
+  code set_ids
+  {var ($pid,$tid) = last
+   return ($pid,hex2int($tid))
+  }
+ }
+ elsif isUnix()
+ {var $pat = '^PROCESS\s+(\d+)\s+CRASHED.*THREAD\s+(\d+)'
+  code set_ids
+   return last
+ }
+ else
+ {var $pat = '^Thread\:\s+(.*)\,\s+Process\s+(.*)$'
+  code set_ids
+  {var ($tid,$pid) = last
+   return (hex2int($pid),hex2int($tid))
+  }
+ }
+ write {$RPT} '---+ Crash Files'
+ write {$RPT} '---## Information Taken from ',encode($BIN)
+ prefix
+ {write '---+ Crash Files'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              risks. To prevent them, access the file outside the browser or \
+              use the link to save them and use an adequate viewer.'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ if grepDir($BIN,'^crash.*\.txt$','inp')
+ {loop $fil (last)
+  {write {$RPT} '   * Found file ',encode($fil)
+   if $ALL
+   {loop $lin (grepFile($fil,$pat))
+    {var ($pid,$tid) = eval(&set_ids(match($lin,$pat)))
+     if expr('==',$pid,$PID)
+      call push(@tid,$tid)
+    }
+    var $siz = getSize($fil)
+    var $lnk = encode($fil)
+    if $siz
+    {var $rpt = $[OUT]->add_report('d',basename($fil),0,'.log')
+     if $rpt->write_data($fil)
+     {var $lnk = concat('[[',$rpt->get_file,'][_blank][',$lnk,']]')
+      write {$RPT} '      * Successfully gathered the file'
+     }
+     else
+      write {$RPT} '      * Unable to get the file'
+     end $rpt
+    }
+    else
+     write {$RPT} '      * Unable to read the file'
+    write '|',$lnk,' | ',$siz,'|',\
+          getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+   else
+   {if grepFile($fil,$pat)
+    {loop $lin (last)
+     {write {$RPT} '   * Found pattern ',$pat,' inside file ',encode($fil)
+      var ($pid,$tid) = eval(&set_ids(match($lin,$pat)))
+      if expr('==',$pid,$PID)
+      {call push(@tid,$tid)
+       var $siz = getSize($fil)
+       var $lnk = encode($fil)
+       if $siz
+       {output d,"crash.log"
+        if ${CUR.LAST}->write_file($fil)
+        {var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+         write {$RPT} '      * Successfully gathered the file'
+        }
+        else
+         write {$RPT} '      * Unable to get the file'
+        call $[OUT]->end_report(${CUR.LAST})
+       }
+       else
+        write {$RPT} '      * Unable to read the file'
+       write '|',$lnk,' | ',$siz,'|',\
+             getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+      }
+      else
+       write {$RPT} '   * PID ',$pid,\
+                    ' found inside file does not match the setup PID ',$PID
+     }
+    }
+    else
+     write {$RPT} '   * Pattern ',$pat,' inside file ',encode($fil),' not found'
+   }
+  }
+  if ${OS.solaris}
+  {var $fil = catFile($BIN,concat('callstack_',$PID))
+   var $siz = getSize($fil)
+   var $lnk = encode($fil)
+   if $siz
+   {output d,"callstack.log"
+    if ${CUR.LAST}->write_file($fil)
+     var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+    call $[OUT]->end_report(${CUR.LAST})
+   }
+   write '|',$lnk,' | ',$siz,'|',\
+         getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+  if hasOutput(true)
+   write $TOP
+ }
+ else
+  write {$RPT} '   * No crash*.txt files found'
+ write {$RPT} $TOP
+
+ # Collect the component log files
+ write {$RPT} '---+ Component Log Files'
+ if @tid
+ {prefix
+  {write '---+ Component Log Files'
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser or \
+               use the link to save them and use an adequate viewer.'
+   write '|*File Name*| *Size*|*Last Modified Date*|'
+  }
+  var $pat = concat('\b',$PID,'\s+(',join('|',@tid),')\b')
+  loop $fil (grepDir($LOG,'\.log$','inp'),grepDir($ARC,'\.log$','dir'))
+  {if grepFile($fil,$pat,'f',0,1,1)
+   {write {$RPT} '   * Found pattern ',$pat,' inside file ',encode($fil)
+    var $siz = getSize($fil)
+    var $lnk = encode($fil)
+    if $siz
+    {output d,"component.log"
+     if ${CUR.LAST}->write_file($fil)
+     {var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+      write {$RPT} '      * Successfully gathered the file'
+     }
+     else
+      write {$RPT} '      * Unable to get the file'
+     call $[OUT]->end_report(${CUR.LAST})
+    }
+    else
+     write {$RPT} '      * Unable to read the file'
+    write '|',$lnk,' | ',$siz,'|',\
+          getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+   else
+    write {$RPT} '   * Pattern ',$pat,' inside file ',encode($fil),' not found'
+  }
+  if hasOutput(true)
+   write $TOP
+  else
+   write {$RPT} '   * No *.log files found from ',encode($LOG),' and ',\
+                encode($ARC)
+ }
+ else
+  write {$RPT} '   * No thread ids found'
+ write {$RPT} $TOP
+}
+
+# Collect the assert files
+if $ALL
+{write {$RPT} '---+ Assert Files'
+ write {$RPT} '---## Information Taken from ',encode($BIN)
+ prefix
+ {write '---+ Assert Files'
+  write '   * Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present \
+              risks. To prevent them, access the file outside the browser or \
+              use the link to save them and use an adequate viewer.'
+  write '|*File Name*| *Size*|*Last Modified Date*|'
+ }
+ loop $fil (grepDir($BIN,'assert.*\.txt$','inp'))
+ {var $siz = getSize($fil)
+  var $lnk = encode($fil)
+  write {$RPT} '   * Found ',encode($fil),' file'
+  if $siz
+  {var $rpt = $[OUT]->add_report('d',basename($fil),0,'.log')
+   if $rpt->write_data($fil)
+   {var $lnk = concat('[[',$rpt->get_file,'][_blank][',$lnk,']]')
+    write {$RPT} '      * Successfully gathered the file'
+   }
+   else
+    write {$RPT} '      * Unable to get the file'
+   end $rpt
+  }
+  else
+   write {$RPT} '      * Unable to read the file'
+  write '|',$lnk,' | ',$siz,'|',\
+        getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+ if hasOutput(true)
+  write $TOP
+ else
+  write {$RPT} '   * No assert*.txt files found'
+ write {$RPT} $TOP
+}
+
+# Collect the FDR files
+if !isFiltered()
+{write {$RPT} '---+ Siebel Flight Data Recorder (FDR) Files'
+ write {$RPT} '---## Information Taken from ',encode($BIN)
+ title '---+ Siebel Flight Data Recorder (FDR) Files'
+ title '   * The system log files are binary files and are captured only when \
+             RDA is able to read the files. Use the link to save it and use \
+             an adequate viewer.'
+ if $ALL
+ {var $pgm = catCommand($BIN,${AS.EXE:'sarmanalyzer'})
+  prefix
+   write '|*File Name*| *Size*|*Last Modified Date*|*Converted CSV File*|'
+  if grepDir($BIN,concat('P0*',$PID,'\.fdr$'),'inp')
+  {loop $fil (last)
+   {write {$RPT} '   * Found file ',encode($fil)
+    if testFile('f',$fil)
+    {var $lnk = encode($fil)
+     var $siz = getSize($fil)
+     if and($siz,testFile('fr',$fil))
+     {var $nam = basename($fil)
+      var $fdr = $[OUT]->add_report('b',$nam,0,'.log')
+      if $fdr->write_data($fil)
+      {var $lnk = concat('[[',$fdr->get_raw(true),'][_blank][',$lnk,']]')
+       end $fdr
+       write {$RPT} '      * Successfully gathered FDR data'
+       var $csv = 'CSV File'
+       var $out = newTemp('FDR')
+       call command(concat($pgm,' -o ',quote($out,'x'),' -x -f ',\
+                           quote($fil,'x')))
+       var $rpt = $[OUT]->add_report('d',$nam,0,'.csv')
+       if $rpt->write_data($out)
+       {var $csv = concat('[[',$rpt->get_raw(true),'][_blank][',$csv,']]')
+        write {$RPT} '      * Successfully converted FDR data into CSV'
+       }
+       else
+        write {$RPT} '      * Unable to convert the FDR data into CSV'
+       call unlinkTemp('FDR')
+       end $rpt
+      }
+      else
+      {end $fdr
+       write {$RPT} '      * Unable to get the FDR data'
+      }
+     }
+     else
+      write {$RPT} '      * Unable to read the file'
+     write '|',$lnk,' | ',$siz,'|',\
+           getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |',$csv,' |'
+    }
+    else
+     write {$RPT} '      * Not a plain file'
+   }
+  }
+  else
+   write {$RPT} '   * No P0*',$PID,'.fdr files found'
+ }
+ else
+ {prefix
+   write '|*File Name*| *Size*|*Last Modified Date*|'
+  if grepDir($BIN,concat('P0*',$PID,'\.fdr$'),'inp')
+  {loop $fil (last)
+   {write {$RPT} '   * Found file ',encode($fil)
+    if testFile('f',$fil)
+    {var $lnk = encode($fil)
+     var $siz = getSize($fil)
+     if and($siz,testFile('fr',$fil))
+     {output b,"fdr.log"
+      if ${CUR.LAST}->write_data($fil)
+      {var $lnk = concat('[[',${CUR.LAST}->get_raw(true),'][_blank][',$lnk,']]')
+       write {$RPT} '      * Successfully gathered FDR data'
+      }
+      else
+       write {$RPT} '      * Unable to get the FDR data'
+      call $[OUT]->end_report(${CUR.LAST})
+     }
+     else
+      write {$RPT} '      * Unable to read the file'
+     write '|',$lnk,' | ',$siz,'|',\
+           getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+    }
+    else
+     write {$RPT} '      * Not a plain file'
+   }
+  }
+  else
+   write {$RPT} '   * No P0*',$PID,'.fdr files found'
+ }
+ if hasOutput(true)
+  write $TOP
+ write {$RPT} $TOP
+}
+
+# Add the RDA execution log
+if $RPT->is_created
+{call $RPT->render
+ write '---+ RDA Execution Log'
+ write '|*RDA Execution Log*|[[',$RPT->get_html(true),'][_blank][Log]] |'
+ write $TOP
+}
+else
+ end $RPT
+
+# Render the report
+if isCreated()
+{call renderFile()
+ echo 'Result file: ',last
+}
+
+=head1 SEE ALSO
+
+L<S919LOAD|modules::S919LOAD>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.22: Dave Henriquez, Taylor Schock.
+
+=item RDA 4.25: Taylor Schock.
+
+=item RDA 4.26: Taylor Schock.
+
+=item RDA 4.28: Taylor Schock.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

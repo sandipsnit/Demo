@@ -1,0 +1,349 @@
+# OCMlib.def: Defines Common OCM Macros
+# $Id: OCMlib.def,v 1.17 2012/01/03 13:34:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OCMlib.def,v 1.17 2012/01/03 13:34:42 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+OCMlib - Defines Common OCM Macros
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to several OCM
+modules.
+
+The following macros are available:
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@RESET_MACROS,@SHARE_MACROS
+var @SHARE_MACROS = ('do_collect','do_status','do_update',\
+                     'dsp_collect','dsp_status',\
+                     'get_all_instances','get_selected_instances',\
+                     'get_ocm_config','get_ocm_home','get_ocm_mode',\
+                     'get_wls_config')
+var @RESET_MACROS = @SHARE_MACROS
+
+=head2 S<do_collect($toc,$rps,$rpc,$cmd,$dir,$not[,$ttl])>
+
+This macro triggers an OCM collection.
+
+=cut
+
+macro do_collect
+{var ($toc,$rps,$rpc,$cmd,$dir,$not,$flg,$ttl) = @arg
+ import $TOC,$TOP
+
+ # Get the OCM status
+ call dsp_status($toc,$rps,$cmd,$ttl)
+
+ # Perform an OCM collection
+ decr $dur,time()
+ call loadCommand(concat($cmd,' -annotation=',$not,' collect'),false,4)
+ incr $dur,time()
+ var $sta = statCommand()
+ call log('OCM','collect',$not,$dur,$sta)
+ if $sta
+  return 0
+
+ # Report collection overview when the collect is successful
+ call dsp_collect($toc,$rpc,$dir,$not,$ttl)
+ return $flg
+}
+
+macro dsp_status
+{var ($toc,$rpt,$cmd,$ttl) = @arg
+ import $TOC
+
+ if $rpt->is_locked
+  var $rpt = $rpt->clone
+ elsif !$rpt->is_created
+  write {$toc} '3:[[',$rpt->get_report,'][rda_report][Initial Status]]'
+ if $ttl
+  write {$rpt} '---+ ',$ttl
+ call writeCommand($rpt,concat($cmd,' status 2>&1'))
+ write {$rpt} '**Note:** Status collected before executing any OCM command'
+ if $rpt->is_cloned
+  call $rpt->render
+}
+
+macro dsp_collect
+{var ($toc,$rpt,$dir,$not,$ttl) = @arg
+ import $TOC,$TOP
+
+ if $rpt->is_locked
+  var $rpt = $rpt->clone
+ elsif !$rpt->is_created
+  write {$toc} '3:[[',$rpt->get_report,\
+               '][rda_report][Configuration Collection]]'
+ if $ttl
+ {write {$rpt} '---+ ',$ttl
+  var $lvl = '---++!! '
+ }
+ else
+  var $lvl = '---+ '
+ 
+ write {$rpt} $lvl,'Collection Identification'
+ write {$rpt} '|*Annotation*|',$not,'|'
+ write {$rpt} $TOP
+ prefix $rpt
+ {write {$rpt} $lvl,'Collection Details'
+  write {$rpt} '|*Name*|*File*|*Time Stamp*|'
+ }
+ var $xml = xmlLoadFile(catFile($dir,'state','review','targetMap.xml'))
+ loop $itm (xmlFind($xml,'.../Collection'))
+  write {$rpt} '|',xmlValue($itm,'name'),' |',xmlValue($itm,'file'),' |',\
+                   xmlValue($itm,'collection_timestamp'),' |'
+ if $rpt->has_output(true)
+  write {$rpt} $TOP
+ if $rpt->is_cloned
+  call $rpt->render
+}
+
+=head2 S<do_status($toc,$rps,$rpc,$cmd[,$dir,$not[,$ttl]])>
+
+This macro gets the OCM status.
+
+=cut
+
+macro do_status
+{var ($toc,$rps,$rpc,$cmd,$dir,$not,$ttl) = @arg
+ import $TOC,$TOP
+
+ # Get the OCM status
+ call dsp_status($toc,$rps,$cmd,$ttl)
+
+ # Report collection overview when an annotation is provided
+ if ?$not
+  call dsp_collect($toc,$rpc,$dir,$not,$ttl)
+}
+
+=head2 S<do_upgrade($cmd,$dir,$not)>
+
+This macro upgrades an OCM installation.
+
+=cut
+
+macro do_upgrade
+{var ($cmd,$ccr) = @arg
+
+ if testDir('d',$top = getGroupDir('D_RDA','ccr'))
+ {# Search for an OCM software kit
+  if getSetting('OCM_DISTRIBUTION')
+   var $kit = cond(testFile('r',catFile($top,last)),last)
+  else
+  {# Look for a distribution kit for the current operating system
+   var %map = ('aix',    'AIX',\
+               'dec_osf','OSF1',\
+               'hpux',   'HP-UX',\
+               'linux',  'Linux',\
+               'solaris','SunOS',\
+               'MSWin32','Windows')
+   var $plt = getOsName()
+   var $plt = nvl($map{$plt},$plt)
+   loop $fil (grepDir($top,concat('^ccr-Production\-\d+(\.\d+){2,}\-',$plt,\
+                                  '(\-.*)?\.zip$'),'i'))
+   {next !testFile('r',catFile($top,$fil))
+    if $kit
+     return log('OCM','upgrade','','?',0,-9008)
+    var $kit = $fil
+   }
+  }
+ }
+ if $kit
+ {var $log = catFile($ccr,'upgrade.rda')
+
+  if or(getSetting('OCM_UPGRADE_RETRY'),\
+        not(grepFile($log,concat('^',quote($kit),'='),'fi')))
+  {# Perform an OCM upgrade
+   debug ' Inside OCM module, trying OCM software upgrade (can take time)'
+   decr $dur,time()
+   call loadCommand(concat($cmd,' update_components -distribution=',\
+                           catCommand($top,$kit)),false,4)
+   incr $dur,time()
+   var $sta = statCommand()
+   call log('OCM','upgrade','',field('-',2,$kit),$dur,$sta)
+
+   # Record the upgrade result
+   call command(concat('echo ',$kit,'=',$sta, '>>',$log))
+  }
+ }
+}
+
+=head2 S<get_all_instances()>
+
+This macro returns the list of all instance homes with an OCM configuration.
+
+=cut
+
+macro get_all_instances
+{var %tbl
+
+ # Select the files from the instance root
+ if testDir('d',$dir = ${INSTANCE_ROOT})
+ {loop $hom (grepDir($dir,'^[^\.]','p'))
+  {next !or(testFile('f',catFile($hom,'bin','opmnctl')),\
+            testFile('f',catFile($hom,'bin','opmnctl.bat')),\
+            testFile('f',catFile($hom,'bin','opmnctl.exe')))
+   if grepFile(catFile($hom,'ccr','config','emCCRenv'),\
+             '^\s*ORACLE_CONFIG_HOME\s*=')
+    var $tbl{$hom} = 1
+  }
+ }
+ if testDir('d',$dir = ${ASIT_INSTANCE_ROOT})
+ {loop $hom (grepDir($dir,'^[^\.]','p'))
+  {next !or(testFile('f',catFile($hom,'bin','opmnctl')),\
+            testFile('f',catFile($hom,'bin','opmnctl.bat')),\
+            testFile('f',catFile($hom,'bin','opmnctl.exe')))
+   if grepFile(catFile($hom,'ccr','config','emCCRenv'),\
+             '^\s*ORACLE_CONFIG_HOME\s*=')
+    var $tbl{$hom} = 2
+  }
+ }
+
+ # Analyze the middleware home
+ if testDir('d',$dir = ${ORACLE_PARENT})
+ {loop $ccr (grepDir($dir,'^ccr$','ir',2))
+  {next !grepFile(catFile($ccr,'config','emCCRenv'),\
+             '^\s*ORACLE_CONFIG_HOME\s*=')
+   var @dir = splitDir($ccr)
+   call pop(@dir)
+   var $sub = pop(@dir)
+   next or(testDir('d',catDir(@dir,'inventory')),\
+           testDir('d',catDir(@dir,'jdk')),\
+           testDir('d',catDir(@dir,'oui')))
+   var $hom = catDir(@dir,$sub)
+   if or(testFile('f',catFile($hom,'bin','opmnctl')),\
+         testFile('f',catFile($hom,'bin','opmnctl.bat')),\
+         testFile('f',catFile($hom,'bin','opmnctl.exe')))
+    var $tbl{$hom} = 3
+  }
+ }
+
+ # Return the instance home list
+ return keys(%tbl)
+}
+
+=head2 S<get_ocm_home($ccr,$ttl)>
+
+This macro finds the OCM configuration home.
+
+=cut
+
+macro get_ocm_config
+{var ($ccr) = @arg
+
+ if !testDir('d',catDir($ccr,'hosts'))
+  return $ccr
+ if getEnv('ORACLE_CONFIG_HOME')
+  return catDir(last,'ccr')
+ if or(testDir('d',catDir($ccr,'hosts',${RDA.HOST})),\
+       testDir('d',catDir($ccr,'hosts',${RDA.NODE})))
+  return lastDir()
+ return undef
+}
+
+=head2 S<get_ocm_home($ccr,$ttl)>
+
+This macro indicates if the current directory is an OCM directory and returns
+the corresponding OCM command and title.
+
+=cut
+
+macro get_ocm_home
+{var ($ccr,$ttl) = @arg
+
+ # Validate the context and determine the command path
+ if !and(testDir('d',$ccr),\
+         testFile(cond(isWindows(),'f',\
+                       isCygwin(), 'f',\
+                                   'fx'),\
+                  catFile($ccr,'bin',${AS.BATCH:'emCCR'})))
+  return undef
+ var $cmd = lastCommand()
+
+ # Try to upgrade the OCM software
+ call do_upgrade($cmd,$ccr)
+
+ # Return the OCM software details
+ return ($ccr,$cmd,$ttl)
+}
+
+=head2 S<get_ocm_mode($cfg)>
+
+This macro determines the OCM connection mode and generates the corresponding
+annotation.
+
+=cut
+
+macro get_ocm_mode
+{var ($cfg,$tgt) = @arg
+
+ var $fil = catFile($cfg,'config','collector.properties')
+ var ($lin) = grepFile($fil,'ccr.disconnected','fi')
+
+ # Determine the annotation (in disconnected mode)
+ if match(value($lin),'true',true)
+ {var $hsh = hash(${RDA.NODE},${RDA.DOMAIN},$cfg)
+  var $not = join('_','D',$hsh,'RDA',getPid(),${RDA.TIMESTAMP})
+  return (true,$not)
+ }
+
+ # Determine the annotation (in connected mode)
+ var ($fil) = grepDir(catDir($cfg,'state','review'),\
+                      concat('-',$tgt,'\.xml'),'i')
+ var ($not) = match($fil,'^([0-9A-Z]+)\-',true)
+ var $not = join('_','C',uc(nvl($not,'OCM')),'RDA',getPid(),${RDA.TIMESTAMP})
+ return (false,$not)
+}
+
+=head2 S<get_selected_instances()>
+
+This macro returns the list of selected instance homes that have an OCM
+configuration.
+
+=cut
+
+macro get_selected_instances
+{var %tbl
+
+ loop $dir (@arg)
+  var $tbl{$dir} = 0
+ loop $key (grepSetting('_REQ_INSTANCE$'))
+  var $tbl{catDir(getSetting($key))} = 1
+ return keys(%tbl)
+}
+
+=head2 S<get_wls_config($top)>
+
+This macro returns the values for the C<BEA_HOME> and C<WL_HOME> environment
+variables.
+
+=cut
+
+macro get_wls_config
+{var ($top) = @arg
+
+ var $wls = undef
+ loop $dir (grepDir($top,'^wlserver_\d+(\.\d+)+','np'))
+ {if testDir('d',$dir)
+   var $wls = $dir
+ }
+ if ?$wls
+  return($top,$wls)
+ return (getEnv('BEA_HOME',$top),getEnv('WL_HOME'))
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,1120 @@
+<?xml version="1.0"?>
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+
+<!--  $Header: emas/sysman/admin/metadata/weblogic_cluster.xml /st_emasgc_11.1as/7 2010/09/03 11:36:43 scgrover Exp $ -->
+
+<!-- 
+ Copyright (c) 2008, 2010, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     weblogic_cluster.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   scgrover    09/02/10 - fix instance params
+   scgrover    01/30/10 - add servlet_jsp metrics
+   jmcclung    01/28/10 - comment out Response metric Validif to workaround bug 9324602
+   scgrover    01/26/10 - add response metric
+   scgrover    01/13/10 - fix cluster name
+   scgrover    12/22/09 - fix app active sessions
+   scgrover    11/18/09 - add cluster metrics
+   ccleavel    08/19/08 - Creation
+
+-->
+
+<TargetMetadata META_VER="11.1" TYPE="weblogic_cluster" CATEGORY_PROPERTIES="VersionCategory">
+   <Display>
+      <Label NLSID="weblogic_cluster_name">Oracle WebLogic Cluster</Label>
+      <ShortName NLSID="weblogic_cluster_name">Oracle WebLogic Cluster</ShortName>
+      <Description NLSID="weblogic_cluster_name">Oracle WebLogic Cluster</Description>
+   </Display>
+
+<Metric NAME="Response" TYPE="TABLE">
+
+<!-- 
+Comment out this ValidIf since it was preventing EM from getting Cluster status values due to 
+due to RepolessTargetManager.isAvailDefined incorrectly looking for "11plus" version category
+see bug 9324602
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="11ps2plus"/>
+  </ValidIf>
+-->
+
+  <Display>
+    <Label NLSID="cluster_response">Response</Label>
+  </Display>
+  <TableDescriptor>
+    <ColumnDescriptor NAME="Status" TYPE="NUMBER" IS_KEY="FALSE">
+      <Display>
+        <Label NLSID="cluster_status">UpDown Status</Label>
+      </Display>
+    </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+    <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+    <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+    <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+    <Property NAME="metric" SCOPE="GLOBAL">weblogic_cluster:response</Property>
+    <Property NAME="ClusterName.parameter" SCOPE="INSTANCE">ClusterName</Property>
+    <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+    <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+    <Property NAME="columnOrder" SCOPE="GLOBAL">Status</Property>
+    <Property NAME="useCache" SCOPE="GLOBAL">false</Property>
+    <Property NAME="admlMap" SCOPE="GLOBAL">
+      <![CDATA[<argument type="java.util.Map"><value><item><key>clusterName.parameter</key><value type="java.lang.String">%ClusterName.parameter%</value></item></value></argument>]]>
+    </Property>
+  </QueryDescriptor>
+</Metric>
+
+<Metric NAME="cluster_overview" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="11ps2plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="cluster_overview">Cluster Overview Metrics</Label>
+  </Display>
+  <TableDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_sessionActive">Active Sessions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.totalTime" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceTotalTime">Request Processing Time (since startup) (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceCompleted">Servlet/JSP Invocations (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceTime">Request Processing Time (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceThroughput">Requests (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="connectionInUse.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_connectionInUseActive">Open JDBC Connections</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="connectionCreated.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_connectionCreatedThroughput">JDBC Connection Creates (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="servers.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_serversActive">JMS Servers</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="messagesStored.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_messagesStoredActive">Current JMS Messages</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="messagesPending.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_messagesPendingActive">Pending JMS Messages</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jtaTransactions.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_jtaTransactionsActive">Active JTA Transactions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jtaTransactionCommit.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_jtaTransactionCommitThroughput">Committed JTA Transactions (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jtaTransactionRollback.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_jtaTransactionRollbackThroughput">JTA Transaction Rollbacks (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheAccessCompleted">Cache Accesses (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheAccessThroughput">Cache Accesses (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheActivationCompleted">Bean Activations (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheActivationThroughput">Bean Activations (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCache.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheActive">Cached Beans</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheMissCompleted">Cache Misses (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheMissThroughput">Cache Misses (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheHit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheHitPercentage">Cache Hits (%) </Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAccessCompleted">Bean Accesses (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAccessThroughput">Bean Accesses (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolUsed.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolUsedActive">Beans in Use</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolDestroyCompleted">Bean Destroys (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolDestroyThroughput">Bean Destroys (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolFailedCompleted">Bean Access Failures (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolFailedThroughput">Bean Access Failures (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccessSuccess.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAccessSuccessPercentage">Bean Successes (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAvailable.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAvailableActive">Free Bean Instances</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionCommitCompleted">Bean Transaction Commits (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionCommitThroughput">Bean Transaction Commits (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionCommitPercentage">Bean Transaction Commits (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionRollbackCompleted">Bean Transaction Rollbacks (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionRollbackThroughput">Bean Transaction Rollbacks (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionTimeoutCompleted">Bean Transaction Timeouts (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionTimeoutThroughput">Bean Transaction Timeouts (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_mdbMessageCompleted">MDB Messages (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_mdbMessageThroughput">MDB Messages (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmProcessed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_wmProcessedThroughput">Work Manager Requests (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmPending.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_wmPendingActive">Work Manager Pending Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+     <Property NAME="serviceURL" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">serviceURL</Property>
+     <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+     <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+     <Property NAME="metric" SCOPE="GLOBAL">weblogic_cluster:cluster_overview</Property>
+     <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+     <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+     <Property NAME="columnOrder" SCOPE="GLOBAL">session.active;service.totalTime;service.completed;service.time;service.throughput;connectionInUse.active;connectionCreated.throughput;servers.active;messagesStored.active;messagesPending.active;jtaTransactions.active;jtaTransactionCommit.throughput;jtaTransactionRollback.throughput;ejbCacheAccess.completed;ejbCacheAccess.throughput;ejbCacheActivation.completed;ejbCacheActivation.throughput;ejbCache.active;ejbCacheMiss.completed;ejbCacheMiss.throughput;ejbCacheHit.percentage;ejbPoolAccess.completed;ejbPoolAccess.throughput;ejbPoolUsed.active;ejbPoolDestroy.completed;ejbPoolDestroy.throughput;ejbPoolFailed.completed;ejbPoolFailed.throughput;ejbPoolAccessSuccess.percentage;ejbPoolAvailable.active;ejbTransactionCommit.completed;ejbTransactionCommit.throughput;ejbTransactionCommit.percentage;ejbTransactionRollback.completed;ejbTransactionRollback.throughput;ejbTransactionTimeout.completed;ejbTransactionTimeout.throughput;mdbMessage.completed;mdbMessage.throughput;wmProcessed.throughput;wmPending.active</Property>
+     <Property NAME="ClusterName.parameter" SCOPE="INSTANCE">ClusterName</Property>
+     <Property NAME="admlMap" SCOPE="GLOBAL">
+       <![CDATA[<argument type="java.util.Map"><value><item><key>clusterName.parameter</key><value type="java.lang.String">%ClusterName.parameter%</value></item></value></argument>]]>
+         </Property>
+  </QueryDescriptor>
+</Metric>
+
+<Metric NAME="cluster_overview_by_server" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="11ps2plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="cluster_overview_by_server">Cluster Overview Metrics By Server</Label>
+  </Display>
+  <TableDescriptor>
+      <ColumnDescriptor NAME="serverName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_server_name">Server Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_sessionActive_by_server">Active Sessions By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.totalTime" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceTotalTime_by_server">Request Processing Time By Server (since startup) (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceCompleted_by_server">Servlet/JSP Invocations By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceTime_by_server">Request Processing Time By Server (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_serviceThroughput_by_server">Requests By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="connectionInUse.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_connectionInUseActive_by_server">Open JDBC Connections By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="connectionCreated.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_connectionCreatedThroughput_by_server">JDBC Connection Creates By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="servers.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_serversActive_by_server">JMS Servers By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="messagesStored.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_messagesStoredActive_by_server">Current JMS Messages By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="messagesPending.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_messagesPendingActive_by_server">Pending JMS Messages By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jtaTransactions.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_jtaTransactionsActive_by_server">Active JTA Transactions By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jtaTransactionCommit.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_jtaTransactionCommitThroughput_by_server">Committed JTA Transactions By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="jtaTransactionRollback.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_jtaTransactionRollbackThroughput_by_server">JTA Transaction Rollbacks By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheAccessCompleted_by_server">Cache Accesses By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheAccessThroughput_by_server">Cache Accesses By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheActivationCompleted_by_server">Bean Activations By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheActivationThroughput_by_server">Bean Activations By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCache.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheActive_by_server">Cached Beans By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheMissCompleted_by_server">Cache Misses By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheMissThroughput_by_server">Cache Misses By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheHit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbCacheHitPercentage_by_server">Cache Hits (%) By Server </Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAccessCompleted_by_server">Bean Accesses By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAccessThroughput_by_server">Bean Accesses By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolUsed.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolUsedActive_by_server">Beans in Use By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolDestroyCompleted_by_server">Bean Destroys By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolDestroyThroughput_by_server">Bean Destroys By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolFailedCompleted_by_server">Bean Access Failures By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolFailedThroughput_by_server">Bean Access Failures By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccessSuccess.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAccessSuccessPercentage_by_server">Bean Successes By Server (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAvailable.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbPoolAvailableActive_by_server">Free Bean Instances By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionCommitCompleted_by_server">Bean Transaction Commits By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionCommitThroughput_by_server">Bean Transaction Commits By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionCommitPercentage_by_server">Bean Transaction Commits (%) By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionRollbackCompleted_by_server">Bean Transaction Rollbacks By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionRollbackThroughput_by_server">Bean Transaction Rollbacks By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionTimeoutCompleted_by_server">Bean Transaction Timeouts By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_ejbTransactionTimeoutThroughput_by_server">Bean Transaction Timeouts By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_overview_mdbMessageCompleted_by_server">MDB Messages By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_mdbMessageThroughput_by_server">MDB Messages By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmProcessed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_wmProcessedThroughput_by_server">Work Manager Requests By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmPending.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_overview_wmPendingActive_by_server">Work Manager Pending Requests By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+     <Property NAME="serviceURL" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">serviceURL</Property>
+     <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+     <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+     <Property NAME="metric" SCOPE="GLOBAL">weblogic_cluster:cluster_overview_by_server</Property>
+     <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+     <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+     <Property NAME="columnOrder" SCOPE="GLOBAL">serverName;session.active;service.totalTime;service.completed;service.time;service.throughput;connectionInUse.active;connectionCreated.throughput;servers.active;messagesStored.active;messagesPending.active;jtaTransactions.active;jtaTransactionCommit.throughput;jtaTransactionRollback.throughput;ejbCacheAccess.completed;ejbCacheAccess.throughput;ejbCacheActivation.completed;ejbCacheActivation.throughput;ejbCache.active;ejbCacheMiss.completed;ejbCacheMiss.throughput;ejbCacheHit.percentage;ejbPoolAccess.completed;ejbPoolAccess.throughput;ejbPoolUsed.active;ejbPoolDestroy.completed;ejbPoolDestroy.throughput;ejbPoolFailed.completed;ejbPoolFailed.throughput;ejbPoolAccessSuccess.percentage;ejbPoolAvailable.active;ejbTransactionCommit.completed;ejbTransactionCommit.throughput;ejbTransactionCommit.percentage;ejbTransactionRollback.completed;ejbTransactionRollback.throughput;ejbTransactionTimeout.completed;ejbTransactionTimeout.throughput;mdbMessage.completed;mdbMessage.throughput;wmProcessed.throughput;wmPending.active</Property>
+     <Property NAME="ClusterName.parameter" SCOPE="INSTANCE">ClusterName</Property>
+     <Property NAME="serverName.parameter" SCOPE="USER" OPTIONAL="TRUE">serverName.parameter</Property>
+     <Property NAME="admlMap" SCOPE="GLOBAL">
+       <![CDATA[<argument type="java.util.Map"><value><item><key>serverName.parameter</key><value type="java.lang.String">%serverName.parameter%</value></item><item><key>clusterName.parameter</key><value type="java.lang.String">%ClusterName.parameter%</value></item></value></argument>]]>
+         </Property>
+  </QueryDescriptor>
+</Metric>
+
+<Metric NAME="cluster_app_overview" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="11ps2plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="cluster_app_overview">Cluster Application Overview Metrics</Label>
+  </Display>
+  <TableDescriptor>
+      <ColumnDescriptor NAME="appName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_app_name">Application Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_sessionActive">Active Sessions</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.totalTime" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceTotalTime">Application Request Processing Time (since startup) (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceCompleted">Application Servlet/JSP Invocations (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceTime">Application Request Processing Time (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceThroughput">Application Requests (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheAccessCompleted">Application Cache Accesses (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheAccessThroughput">Application Cache Accesses (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheActivationCompleted">Application Bean Activations (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheActivationThroughput">Application Bean Activations (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCache.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheActive">Application Cached Beans</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheMissCompleted">Application Cache Misses (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheMissThroughput">Application Cache Misses (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheHit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheHitPercentage">Application Cache Hits (%) </Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAccessCompleted">Application Bean Accesses (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAccessThroughput">Application Bean Accesses (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolUsed.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolUsedActive">Application Beans in Use</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolDestroyCompleted">Application Bean Destroys (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolDestroyThroughput">Application Bean Destroys (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolFailedCompleted">Application Bean Access Failures (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolFailedThroughput">Application Bean Access Failures (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccessSuccess.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAccessSuccessPercentage">Application Bean Successes (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAvailable.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAvailableActive">Application Free Bean Instances</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionCommitCompleted">Application Bean Transaction Commits (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionCommitThroughput">Application Bean Transaction Commits (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionCommitPercentage">Application Bean Transaction Commits (%)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionRollbackCompleted">Application Bean Transaction Rollbacks (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionRollbackThroughput">Application Bean Transaction Rollbacks (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionTimeoutCompleted">Application Bean Transaction Timeouts (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionTimeoutThroughput">Application Bean Transaction Timeouts (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_mdbMessageCompleted">Application MDB Messages (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_mdbMessageThroughput">Application MDB Messages (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmProcessed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_wmProcessedThroughput">Application Work Manager Requests (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmPending.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_wmPendingActive">Application Work Manager Pending Requests</Label>
+        </Display>
+      </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+     <Property NAME="serviceURL" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">serviceURL</Property>
+     <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+     <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+     <Property NAME="metric" SCOPE="GLOBAL">weblogic_cluster:cluster_app_overview</Property>
+     <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+     <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+     <Property NAME="columnOrder" SCOPE="GLOBAL">appName;session.active;service.totalTime;service.completed;service.time;service.throughput;ejbCacheAccess.completed;ejbCacheAccess.throughput;ejbCacheActivation.completed;ejbCacheActivation.throughput;ejbCache.active;ejbCacheMiss.completed;ejbCacheMiss.throughput;ejbCacheHit.percentage;ejbPoolAccess.completed;ejbPoolAccess.throughput;ejbPoolUsed.active;ejbPoolDestroy.completed;ejbPoolDestroy.throughput;ejbPoolFailed.completed;ejbPoolFailed.throughput;ejbPoolAccessSuccess.percentage;ejbPoolAvailable.active;ejbTransactionCommit.completed;ejbTransactionCommit.throughput;ejbTransactionCommit.percentage;ejbTransactionRollback.completed;ejbTransactionRollback.throughput;ejbTransactionTimeout.completed;ejbTransactionTimeout.throughput;mdbMessage.completed;mdbMessage.throughput;wmProcessed.throughput;wmPending.active</Property>
+     <Property NAME="ClusterName.parameter" SCOPE="INSTANCE">ClusterName</Property>
+     <Property NAME="admlMap" SCOPE="GLOBAL">
+       <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item><item><key>clusterName.parameter</key><value type="java.lang.String">%ClusterName.parameter%</value></item></value></argument>]]>
+         </Property>
+  </QueryDescriptor>
+</Metric>
+
+<Metric NAME="cluster_app_overview_by_server" TYPE="TABLE">
+  <ValidIf>
+    <CategoryProp NAME="VersionCategory" CHOICES="11ps2plus"/>
+  </ValidIf>
+  <Display>
+    <Label NLSID="cluster_app_overview_by_server">Cluster Application Overview Metrics By Server</Label>
+  </Display>
+  <TableDescriptor>
+      <ColumnDescriptor NAME="appName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_app_name">Application Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="serverName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_server_name">Server Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="session.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_sessionActive_by_server">Active Sessions By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.totalTime" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceTotalTime_by_server">Application Request Processing Time By Server (since startup)(ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceCompleted_by_server">Application Servlet/JSP Invocations By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceTime_by_server">Application Request Processing Time By Server(ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_serviceThroughput_by_server">Application Requests By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheAccessCompleted_by_server">Application Cache Accesses By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheAccessThroughput_by_server">Application Cache Accesses By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheActivationCompleted_by_server">Application Bean Activations By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheActivation.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheActivationThroughput_by_server">Application Bean Activations By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCache.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheActive_by_server">Application Cached Beans By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheMissCompleted_by_server">Application Cache Misses By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheMiss.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheMissThroughput_by_server">Application Cache Misses By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbCacheHit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbCacheHitPercentage_by_server">Application Cache Hits (%) By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAccessCompleted_by_server">Application Bean Accesses By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccess.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAccessThroughput_by_server">Application Bean Accesses By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolUsed.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolUsedActive_by_server">Application Beans in Use By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolDestroyCompleted_by_server">Application Bean Destroys By Server(since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolDestroy.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolDestroyThroughput_by_server">Application Bean Destroys By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolFailedCompleted_by_server">Application Bean Access Failures By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolFailed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolFailedThroughput_by_server">Application Bean Access Failures By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAccessSuccess.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAccessSuccessPercentage_by_server">Application Bean Successes (%) By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbPoolAvailable.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbPoolAvailableActive_by_server">Application Free Bean Instances By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionCommitCompleted_by_server">Application Bean Transaction Commits By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionCommitThroughput_by_server">Application Bean Transaction Commits By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionCommit.percentage" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionCommitPercentage_by_server">Application Bean Transaction Commits (%) By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionRollbackCompleted_by_server">Application Bean Transaction Rollbacks By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionRollback.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionRollbackThroughput_by_server">Application Bean Transaction Rollbacks By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionTimeoutCompleted_by_server">Application Bean Transaction Timeouts By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="ejbTransactionTimeout.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_ejbTransactionTimeoutThroughput_by_server">Application Bean Transaction Timeouts By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="cluster_app_overview_mdbMessageCompleted_by_server">Application MDB Messages By Server (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="mdbMessage.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_mdbMessageThroughput_by_server">Application MDB Messages By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmProcessed.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_wmProcessedThroughput_by_server">Application Work Manager Requests By Server (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="wmPending.active" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="cluster_app_overview_wmPendingActive_by_server">Application Work Manager Pending Requests By Server</Label>
+        </Display>
+      </ColumnDescriptor>
+  </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+     <Property NAME="serviceURL" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">serviceURL</Property>
+     <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+     <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+     <Property NAME="metric" SCOPE="GLOBAL">weblogic_cluster:cluster_app_overview_by_server</Property>
+     <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+     <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+     <Property NAME="columnOrder" SCOPE="GLOBAL">appName;serverName;session.active;service.totalTime;service.completed;service.time;service.throughput;ejbCacheAccess.completed;ejbCacheAccess.throughput;ejbCacheActivation.completed;ejbCacheActivation.throughput;ejbCache.active;ejbCacheMiss.completed;ejbCacheMiss.throughput;ejbCacheHit.percentage;ejbPoolAccess.completed;ejbPoolAccess.throughput;ejbPoolUsed.active;ejbPoolDestroy.completed;ejbPoolDestroy.throughput;ejbPoolFailed.completed;ejbPoolFailed.throughput;ejbPoolAccessSuccess.percentage;ejbPoolAvailable.active;ejbTransactionCommit.completed;ejbTransactionCommit.throughput;ejbTransactionCommit.percentage;ejbTransactionRollback.completed;ejbTransactionRollback.throughput;ejbTransactionTimeout.completed;ejbTransactionTimeout.throughput;mdbMessage.completed;mdbMessage.throughput;wmProcessed.throughput;wmPending.active</Property>
+     <Property NAME="ClusterName.parameter" SCOPE="INSTANCE">ClusterName</Property>
+     <Property NAME="serverName.parameter" SCOPE="USER" OPTIONAL="TRUE">serverName.parameter</Property>
+     <Property NAME="appName.parameter" SCOPE="USER" OPTIONAL="TRUE">appName.parameter</Property>
+     <Property NAME="admlMap" SCOPE="GLOBAL">
+       <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item><item><key>serverName.parameter</key><value type="java.lang.String">%serverName.parameter%</value></item><item><key>clusterName.parameter</key><value type="java.lang.String">%ClusterName.parameter%</value></item></value></argument>]]>
+         </Property>
+  </QueryDescriptor>
+</Metric>
+
+<Metric NAME="cluster_servlet_jsp" TYPE="TABLE">
+  <Display>
+    <Label NLSID="servlet_jsp">Servlet/JSP Metrics</Label>
+  </Display>
+  <TableDescriptor>
+     <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_name">Servlet/JSP - Name</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="webModuleName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_webModuleName">Servlet/JSP - Web Module Name</Label>
+        </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="appName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_app_name">Application Name</Label>
+        </Display>
+      </ColumnDescriptor>
+     <ColumnDescriptor NAME="service.totalTime" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_serviceTotalTime">Servlet/JSP - Request Processing Time (since startup) (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="servlet_jsp_serviceTime">Servlet/JSP - Request Processing Time (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="servlet_jsp_serviceThroughput">Servlet/JSP - Requests (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_serviceCompleted">Servlet/JSP - Requests (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.avg" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_serviceAvg">Servlet/JSP - Average Request Processing Time (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="reload.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_reloadCompleted">Servlet/JSP - Reloads (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="reload.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="servlet_jsp_reloadThroughput">Servlet/JSP - Reloads (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+ </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">weblogic_cluster:servlet_jsp</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">name;webModuleName;appName;service.totalTime;service.time;service.throughput;service.completed;service.avg;reload.completed;reload.throughput</Property>
+         <Property NAME="ClusterName.parameter" SCOPE="INSTANCE">ClusterName</Property>
+         <Property NAME="appName.parameter" SCOPE="USER" OPTIONAL="TRUE">appName</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+         <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item><item><key>clusterName.parameter</key><value type="java.lang.String">%ClusterName.parameter%</value></item></value></argument>]]>
+         </Property>
+  </QueryDescriptor>
+</Metric>
+
+<Metric NAME="cluster_servlet_jsp_by_server" TYPE="TABLE">
+  <Display>
+    <Label NLSID="servlet_jsp_by_server">Servlet/JSP By Server Metrics</Label>
+  </Display>
+  <TableDescriptor>
+     <ColumnDescriptor NAME="name" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_name">Servlet/JSP By Server - Name</Label>
+        </Display>
+     </ColumnDescriptor>
+     <ColumnDescriptor NAME="webModuleName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_webModuleName">Servlet/JSP By Server - Web Module Name</Label>
+        </Display>
+     </ColumnDescriptor>
+      <ColumnDescriptor NAME="appName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_app_name">Application Name</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="serverName" TYPE="STRING" IS_KEY="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_server_name">Server Name</Label>
+        </Display>
+      </ColumnDescriptor>
+     <ColumnDescriptor NAME="service.totalTime" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_serviceTotalTime">Servlet/JSP By Server - Request Processing Time (since startup) (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.time" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_serviceTime">Servlet/JSP By Server - Request Processing Time (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_serviceThroughput">Servlet/JSP By Server - Requests (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_serviceCompleted">Servlet/JSP By Server - Requests (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="service.avg" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_serviceAvg">Servlet/JSP By Server - Average Request Processing Time (ms)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="reload.completed" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_reloadCompleted">Servlet/JSP By Server - Reloads (since startup)</Label>
+        </Display>
+      </ColumnDescriptor>
+      <ColumnDescriptor NAME="reload.throughput" TYPE="NUMBER" IS_KEY="FALSE">
+        <Display>
+          <Label NLSID="servlet_jsp_by_server_reloadThroughput">Servlet/JSP By Server - Reloads (per minute)</Label>
+        </Display>
+      </ColumnDescriptor>
+ </TableDescriptor>
+  <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">weblogic_cluster:servlet_jsp_by_server</Property>
+         <Property NAME="ServerNames" SCOPE="INSTANCE">ServerNames</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">name;webModuleName;appName;serverName;service.totalTime;service.time;service.throughput;service.completed;service.avg;reload.completed;reload.throughput</Property>
+         <Property NAME="ClusterName.parameter" SCOPE="INSTANCE">ClusterName</Property>
+         <Property NAME="ServerNames.parameter" SCOPE="USER" OPTIONAL="TRUE">ServerNames</Property>
+         <Property NAME="appName.parameter" SCOPE="USER" OPTIONAL="TRUE">appName</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+             <![CDATA[<argument type="java.util.Map"><value><item><key>appName.parameter</key><value type="java.lang.String">%appName.parameter%</value></item><item><key>serverName.parameter</key><value type="java.lang.String">%ServerName.parameter%</value></item><item><key>clusterName.parameter</key><value type="java.lang.String">%ClusterName.parameter%</value></item></value></argument>]]>
+          </Property>
+  </QueryDescriptor>
+</Metric>
+
+  <InstanceProperties>
+
+   <InstanceProperty NAME="version" OPTIONAL="TRUE">
+      <Display>
+         <Label NLSID="VERSION">Version</Label>
+      </Display>
+   </InstanceProperty>
+
+    <InstanceProperty NAME="ServerNames">
+       <Display>
+          <Label NLSID="serverNames">Server Names</Label>
+       </Display>
+    </InstanceProperty> 
+
+    <InstanceProperty NAME="ClusterName">
+       <Display>
+          <Label NLSID="clusterName">Cluster Name</Label>
+       </Display>
+    </InstanceProperty>
+  
+    <!--
+        All clusters with no version or with version from 9 to 10.3.0 will have versionCategory = pre11
+        All clusters with version 10.3.1 versionCategory = 11plus 
+        All clusters with version 10.3.2 or higher will have versionCategory = 11ps2plus
+    -->
+    <DynamicProperties NAME="ComputeVC" FORMAT="ROW" PROP_LIST="VersionCategory">
+        <QueryDescriptor FETCHLET_ID="VersionRangeComputer">
+           <Property NAME="Version" SCOPE="INSTANCE" OPTIONAL="TRUE">version</Property>
+           <Property NAME="DefaultRange" SCOPE="GLOBAL">pre11</Property>
+           <Property NAME="pre11" SCOPE="GLOBAL">9;</Property>
+           <Property NAME="11plus" SCOPE="GLOBAL">10.3.1;</Property>
+           <Property NAME="11ps2plus" SCOPE="GLOBAL">10.3.3;</Property>
+        </QueryDescriptor>
+    </DynamicProperties>
+
+  </InstanceProperties>
+
+</TargetMetadata>

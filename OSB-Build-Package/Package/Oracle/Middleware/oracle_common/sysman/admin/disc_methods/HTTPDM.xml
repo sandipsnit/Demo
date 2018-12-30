@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+
+<!-- 
+ Copyright (c) 2007, Oracle. All rights reserved.  
+-->
+
+<DiscoveryMethod NAME="HTTP" 
+                 VERSION="2.0" 
+                 TYPE="NET" >
+  <Display>
+    <Description NLSID="placeholder">Discover targets by running scripts on remote node</Description>
+  </Display>
+
+  <DiscCode CODE_LOCATION="AGENT">
+    <CodePackage PACKAGE_NAME="HttpDM">
+      <Dependency REQUIREMENT="JAVA" VERSION="1.4.2" />
+    </CodePackage>
+    <JavaImpl IMPLCLASS="oracle.sysman.emd.disc.http.HttpScanDiscoveryMethod" 
+               CLASSPATH="httpdm.jar" />
+  </DiscCode>
+
+  <Signature NAME="URL_PATH">
+    <Display>
+      <Description NLSID="placeholder">the path part of the url to be visited.</Description>
+    </Display>
+    <ValueFormat TYPE="STRING" />
+  </Signature>
+  <Signature NAME="ID_NAME">
+    <Display>
+      <Description NLSID="placeholder">this is the name of the header field which is used to identify the service. Also the predefined name content is valid for identifying. The syntax is &lt;name&gt;:&lt;regex&gt;</Description>
+    </Display>
+    <ValueFormat TYPE="STRING" />
+  </Signature>
+  <Signature NAME="HEADERS">
+    <Display>
+      <Description NLSID="placeholder">a list of named header fields which will be used to form the target name, display name and properties. The syntax is &lt;name&gt;:&lt;header field&gt;</Description>
+    </Display>
+    <ValueFormat TYPE="LIST" />
+  </Signature>
+  <Signature NAME="VALUE_PATTERNS">
+    <Display>
+      <Description NLSID="placeholder">a list of regular expressions to be used to post-process the values retrieved from the URL before inserting them in the NAME_TEMPLATE, DISPLAY_TEMPLATE and properties. The regular expressions are given in the following syntax: &lt;patname&gt;:&lt;name&gt;:&lt;regex&gt; where patname is the symbolic name of the pattern, name is the symbolic name of one of the header fields defined in HEADERS or content and regex is a regular expression as defined in java.util.regex.</Description>
+    </Display>
+    <ValueFormat TYPE="LIST" />
+  </Signature>
+  <Signature NAME="NAME_TEMPLATE">
+    <Display>
+      <Description NLSID="placeholder">a string containing a template definition to build the target instance name. The template consists of static text and placeholders for the HTTP response values. The placeholder syntax is %&lt;name&gt;% where name is either a symbolic name defined in HEADERS or a pattern name defined in VALUE_PATTERNS. There are also special placeholders %hostName% and %httpPort% which will be replaced by the host name the services runs on and the inet port the service listenes on.</Description>
+    </Display>
+    <ValueFormat TYPE="STRING" />
+  </Signature>
+  <Signature NAME="DISPLAY_TEMPLATE">
+    <Display>
+      <Description NLSID="placeholder">a string containing a template definitions to build the target instance display name. (see NAME_TEMPLATE)</Description>
+    </Display>
+    <ValueFormat TYPE="STRING" />
+  </Signature>
+  <Signature NAME="TARGET_PROPERTIES">
+    <Display>
+      <Description NLSID="placeholder">a list of strings of the syntax &lt;property name&gt;:&lt;template&gt; where template is a definition for the property value with the same rules as NAME_TEMPLATE.</Description>
+    </Display>
+    <ValueFormat TYPE="LIST" />
+  </Signature>
+  <Signature NAME="PATTERN_DEFAULTS">
+    <Display>
+      <Description NLSID="placeholder">a list of default values for patterns if the regular expression does not match. The syntax is &lt;pattern_name&gt;:&lt;default value&gt;. A default value is optional.</Description>
+    </Display>
+    <ValueFormat TYPE="LIST" />
+  </Signature>
+  <Signature NAME="VERSION">
+    <Display>
+      <Description NLSID="placeholder">a string containing the plug-in version</Description>
+    </Display>
+    <ValueFormat TYPE="STRING" />
+  </Signature>
+
+  <ConfigParam NAME="HTTP_PORTS">
+    <Display>
+      <Description NLSID="placeholder">a list of HTTP ports to query for. default: 80</Description>
+    </Display>
+    <ValueFormat TYPE="LIST" />
+  </ConfigParam>
+  <ConfigParam NAME="TIMEOUT">
+    <Display>
+      <Description NLSID="placeholder">a number which gives the timeout for http responses. The value is given in milliseconds. default: 2000</Description>
+    </Display>
+    <ValueFormat TYPE="NUMBER" />
+  </ConfigParam>
+  <ConfigParam NAME="PARALLELIZATION_LEVEL">
+    <Display>
+      <Description NLSID="placeholder">the level of parallelization which is the number of threads to query the network. default: 256</Description>
+    </Display>
+    <ValueFormat TYPE="NUMBER" />
+  </ConfigParam>
+</DiscoveryMethod>

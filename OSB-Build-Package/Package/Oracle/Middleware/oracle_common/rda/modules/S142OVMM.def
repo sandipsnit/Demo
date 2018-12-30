@@ -1,0 +1,259 @@
+# S142OVMM.def: Collects Oracle VM Manager Information
+# $Id: S142OVMM.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S142OVMM.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S142OVMM - Collects Oracle VM Manager Information
+
+=head1 DESCRIPTION
+
+This module collects information about Oracle VM Manager.
+
+It asks for the Oracle VM Manager repository user password. For batch/cron
+execution, you can encode the password in the setup file using the pseudo user
+C<OVMM_REPOS_USER>.
+
+The following reports can be generated and are regrouped under C<Oracle VM
+Manager>:
+
+=cut
+
+echo tput('bold'),'Processing Oracle VM Manager module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+var $ORACLE_SID  = getSetting('ORACLE_SID','XE')
+var $OVS_HOME    = getSetting('OVMM_OVS_HOME','')
+var $TAIL        = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Oracle VM Manager'
+
+# Load common macros
+run DBinfo()
+run library()
+
+# Get the connection information
+var $fil = catFile($OVS_HOME,'OVSDataCollector','classes','com','oracle',\
+                   'oardc','ovs','OVSDataCollector.properties')
+var $usr = nvl(value(grepFile($fil,'^database.connection.username\s*=','fi')),\
+               'ovs')
+var $lin = value(grepFile($fil,'^database.connection.string\s*=','fi'))
+var $sid = nvl(replace($lin,'^.*@'),$ORACLE_SID)
+if match($sid,'^//([\w\-\.]+:\d+/{1}.*)$')
+ var $sid = replace(last,'/','::')  # Pattern like //hostname:port/service
+
+# Set the login
+if getSetting('SQL_PASSWORD_OVMM_REPOS_USER')
+ var ($pwd) = unpack('u',last)
+else
+ var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+var $old = setSqlLogin($usr,$pwd,$sid)
+
+=head2 Log Files
+
+Gathers log files from the following directory structure:
+
+=over 4
+
+=item o F</var/log/ovm-manager>
+
+=back
+
+=cut
+
+debug ' Inside OVMM module, collecting the log files'
+pretoc '2:Log Files'
+call sort_files(3,$TAIL,grepDir('/var/log/ovm-manager','^\.+$','vr'))
+unpretoc 2
+
+
+=head2 no_db_access - No Database Access
+
+Reports database access issue.
+
+=cut
+
+if testSql()
+{report no_db_access
+ write 'Cannot connect to the database as ',$usr,'@',$sid,\
+       ' (',getSqlMessage(),')'
+ toc '2:[[',getFile(),'][rda_report][No Database Access]]'
+
+ # Restore the previous context and exit
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+ return
+}
+
+=head2 dbinfo - Database Information
+
+Gets the version and edition of the database
+
+=cut
+
+debug ' Inside OVMM module, getting database version and edition'
+report dbinfo
+prefix
+{write '---+!! Product Versions from V$Version'
+ if match($sid,'^127.0.0.1')
+  write '---## Database is local'
+ write '|*Banner*|'
+}
+set $sql
+{SELECT '|' || v.banner || '|'
+"  FROM v$version v;
+}
+call writeSql($sql)
+if hasOutput(true)
+ toc '2:[[',getFile(),'][rda_report][Database Information]]'
+
+=head2 tableinfo - Table Information
+
+Gathers the Oracle VM Manager table information.
+
+=cut
+
+debug ' Inside OVMM module, gathering table information'
+report tableinfo
+var $TTL = '---+!! Oracle VM Manager Table Information'
+var @TTL = ('',\
+            '---+ OVS_VM_GEN_INFO',\
+            '---+ OVS_ALERT',\
+            '---+ OVS_VM_IMG',\
+            '---+ OVS_USER',\
+            '---+ OVS_VIRTUAL_DISK',\
+            '---+ OVS_VM_NETWORK',\
+            '---+ OVS_AGENT',\
+            '---+ OVS_SERVER',\
+            '---+ OVS_VM_SNAPSHOT',\
+            '---+ OVS_GROUP',\
+            '---+ OVS_PREFERRED_SERVER')
+var ($HDR[1],$col1) = getSqlColumns('RDA','','OVS_VM_GEN_INFO')
+call clearSqlColumns('RDA')
+var ($HDR[2],$col2) = getSqlColumns('RDA','','OVS_ALERT')
+call clearSqlColumns('RDA')
+var $col2 = replace($col2,'operation_details',\
+                    "REPLACE(operation_details,CHR(10),'%BR%')")
+var ($HDR[3],$col3) = getSqlColumns('RDA','','OVS_VM_IMG')
+call clearSqlColumns('RDA')
+var ($HDR[4],$col4) = getSqlColumns('RDA','','OVS_USER')
+call clearSqlColumns('RDA')
+var ($HDR[5],$col5) = getSqlColumns('RDA','','OVS_VIRTUAL_DISK')
+call clearSqlColumns('RDA')
+var ($HDR[6],$col6) = getSqlColumns('RDA','','OVS_VM_NETWORK')
+call clearSqlColumns('RDA')
+var ($HDR[7],$col7) = getSqlColumns('RDA','','OVS_AGENT')
+call clearSqlColumns('RDA')
+var ($HDR[8],$col8) = getSqlColumns('RDA','','OVS_SERVER')
+call clearSqlColumns('RDA')
+var ($HDR[9],$col9) = getSqlColumns('RDA','','OVS_VM_SNAPSHOT')
+call clearSqlColumns('RDA')
+var ($HDR[10],$col10) = getSqlColumns('RDA','','OVS_GROUP')
+call clearSqlColumns('RDA')
+var ($HDR[11],$col11) = getSqlColumns('RDA','','OVS_PREFERRED_SERVER')
+call clearSqlColumns('RDA')
+set $sql
+{SELECT :1
+" FROM ovs_vm_gen_info;
+"PROMPT ___Macro_separator(2)___
+"SELECT :2
+" FROM ovs_alert;
+"PROMPT ___Macro_separator(3)___
+"SELECT :3
+" FROM ovs_vm_img;
+"PROMPT ___Macro_separator(4)___
+"SELECT :4
+" FROM ovs_user;
+"PROMPT ___Macro_separator(5)___
+"SELECT :5
+" FROM ovs_virtual_disk;
+"PROMPT ___Macro_separator(6)___
+"SELECT :6
+" FROM ovs_vm_network;
+"PROMPT ___Macro_separator(7)___
+"SELECT :7
+" FROM ovs_agent;
+"PROMPT ___Macro_separator(8)___
+"SELECT :8
+" FROM ovs_server;
+"PROMPT ___Macro_separator(9)___
+"SELECT :9
+" FROM ovs_vm_snapshot;
+"PROMPT ___Macro_separator(10)___
+"SELECT :10
+" FROM ovs_group;
+}
+if $hdr[11]
+{append $sql
+ {PROMPT ___Macro_separator(11)___
+ "SELECT :11
+ " FROM ovs_preferred_server;
+ }
+}
+call separator(1)
+call writeSql(bindSql($sql,$col1,$col2,$col3,$col4,$col5,$col6,$col7,$col8,\
+                      $col9,$col10,$col11),2)
+call separator(0,'Table Information')
+
+=head2 stat_info - Statistics
+
+Gathers the Oracle VM Manager OVS_STATISTIC table information for the last
+days.
+
+=cut
+
+debug ' Inside OVMM module, gathering statistics (can take time)'
+report stat_info
+var ($hdr,$col) = getSqlColumns('RDA','','OVS_STATISTIC')
+prefix
+{write '---+!! Oracle VM Manager OVS_STATISTIC Table Information'
+ write $hdr
+}
+set $sql
+{SELECT :1
+" FROM ovs_statistic
+" WHERE snap_date > SYSDATE - (:2)
+" ORDER BY snap_date DESC;
+}
+var $day = getSetting('OVMM_STAT_AGE',5)
+call writeSql(bindSql($sql,$col,cond(isNumber($day),$day,5)),2)
+if hasOutput(true)
+ toc '2:[[',getFile(),'][rda_report][Statistics]]'
+
+# Restore the previous context
+call setSqlLogin($old)
+call setSqlFailure($try)
+unpretoc
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>, L<library|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.12: Guido Tijskens.
+
+=item RDA 4.16: Shinya Narahara, Takeshi Watanabe.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

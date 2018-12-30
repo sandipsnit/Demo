@@ -1,0 +1,102 @@
+# M220SVTG.def: Collects Service Tags Information
+# $Id: M220SVTG.def,v 1.3 2012/06/05 13:58:50 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M220SVTG.def,v 1.3 2012/06/05 13:58:50 mschenke Exp $
+#
+# Change History
+# 20120605  JGS  Adapt module to standards.
+
+=head1 NAME
+
+M220SVTG - Collects Service Tags Information
+
+=head1 DESCRIPTION
+
+This module collects Service Tags information.
+
+=cut
+
+use Mrc
+
+# Initialization
+var @COMMON_SECTIONS=('XPLR_all')
+var $VALIDATE = true
+keep $VALIDATE,@COMMON_SECTIONS
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('servicetags')
+
+# -----------------------------------------------------------------------------
+# XPLR_servicetags section
+# -----------------------------------------------------------------------------
+
+section XPLR_servicetags
+
+# Validate the execution context
+if !${OS.solaris}
+ return
+call log_run('Processing SVTG sections ...')
+
+=head2 Service Tags Information
+
+Gathers Service Tags information using the F</usr/bin/stclient> command from
+the global or local zones, as requested.
+
+=cut
+
+pretoc '2:Service Tags'
+
+# Perform the collection
+loop $rec (get_zones(true))
+{if defined($nam = $rec->[0])
+ {var ($ttl,$pre,$exe) = (concat('From Zone ',$nam),\
+                          concat('zones/',$nam),\
+                          concat('/usr/sbin/zlogin ',$nam))
+  call log_info(concat('servicetags: RUNNING: zone ',$nam),\
+                concat(' Inside SVTG collection, collecting from zone ',$nam,\
+                       ' (can take time)'))
+ }
+ else
+  var ($ttl,$pre,$exe) = ('From Global Zone')
+ var $top = $rec->[1]
+
+ if testFile('x',catFile($top,'/usr/bin/stclient'))
+ {report concat('svtg_z_',nvl($nam,'global'))
+  title '---+!! ',$ttl
+  title $TOC
+ 
+  var $flg = grepCommand(join(' ',$exe,'/usr/bin/stclient -E 2>&1'),\
+                         'illegal option','f')
+  call do_remote($pre,$exe,$top,\
+    ['service_tags.xml',\
+     '/usr/bin/stclient',cond($flg,'-x','-Ex'),\
+     cond($flg,'---+ Extracted Service Tags',\
+               '---+ Service Tags with Environmental Information'),\
+     true])
+     
+  # Add the report to the table of content
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][',$ttl,']]'
+ }                       
+}
+unpretoc 2
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

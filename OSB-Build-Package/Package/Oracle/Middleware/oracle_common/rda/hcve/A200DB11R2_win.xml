@@ -1,0 +1,454 @@
+<sdp_diaglet family="Cygwin,Windows" product="DB11R2" set="A200DB11R2_win" title="Oracle Database 11g R2 (11.2.0) Preinstall (Windows)" type="A">
+<sdp_meta id="$Id: A200DB11R2_win.xml,v 1.5 2012/09/14 13:16:55 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve memory and IP checks" date="20120911" type="history"/>
+<sdp_content set="A200DB11R2_win" title="Oracle Database 11g R2 (11.2.0) Preinstall (Windows)" type="check">
+<sdp_group>
+
+<sdp_rule id="A00010" mode="VERIFY" name="OS Certified?">
+<sdp_command type="RDA"><![CDATA[import $OS_PLT,$OS_BIT
+var $BOOK = 'Oracle Database Installation Guide 11g Release 2 (11.2) \
+             for Microsoft Windows'
+call setHcveVariable('@SYS','OSN','$BOOK')
+if !match($OS_PLT,'Windows',true)
+ return setHcveResult('Not Windows')
+if !findCommand('systeminfo')
+ return setHcveResult('Cannot access systeminfo')
+var @SYS = command(last)
+if !field(':',1,grep(@SYS,'OS Name:','f'))
+ return setHcveResult('Windows version not determined')
+var $OSN = last
+if match($OSN,'windows 2000',true)
+{if expr('==',$OS_BIT,32)
+  return setHcveResult('Adequate')
+ return setHcveResult(concat('[',$OSN,'] only 32-bit is certified'))
+}
+if match($OSN,'windows 2003',true)
+ return setHcveResult('Adequate')
+if and(match($OSN,'windows server 2008',true),\
+       match($OSN,'(standard|enterprise|datacenter|web|foundation)',true))
+ return setHcveResult('Adequate')
+if match($OSN,'windows xp profession',true)
+ return setHcveResult('Adequate')
+if and(match($OSN,'windows 7',true),\
+       match($OSN,'(professional|enterprise|ultimate)',true))
+ return setHcveResult('Adequate')
+return setHcveResult(concat('[',$OSN,'] is not certified'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the correct version of Microsoft Windows for installing Oracle Database 11g R2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[A correct version of Microsoft Windows is installed on your server.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[!!SHOWSTOPPER!!%BR%
+|*Return Value*|*Action*|
+|... is not certified|You do not have a correct version of Microsoft Windows installed on your server. For the certified versions of Microsoft Windows, see the ${'BOOK} and My Oracle Support.|
+|... only 32-bit is certified|You do not have a correct version of Microsoft Windows installed on your server. For the certified versions of Microsoft Windows, see the ${'BOOK} and My Oracle Support.|
+|Windows version not determined|Did not find OS name. Verify that the system is using a certified version of Microsoft Windows. For the certified versions of Microsoft Windows, see the ${'BOOK} and My Oracle Support.|
+|Cannot access systeminfo|Was unable to use ``systeminfo``. Ensure that ``systeminfo`` is installed and that the user has privileges to execute it.|
+|Not Windows|The system is not using Microsoft Windows. You must use a ruleset appropriate to the actual operating system.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00050" mode="RECORD" name="Enter ORACLE_HOME">
+<sdp_command default="$ORACLE_HOME" type="PROMPT" variable="$ORACLE_HOME"><![CDATA[Planned ORACLE_HOME location]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the planned Oracle home directory.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00060" mode="VERIFY" name="ORACLE_HOME Valid?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00050" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires rule A00050.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),    'OHNotSpecified',\
+  not(testDir('d',$ORACLE_HOME)),'OHnotvalid',\
+  not(testDir('l',$ORACLE_HOME)),'OHexists',\
+                                 'OHsymlink'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the Oracle home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="OHexists|OHsymlink" result="PASSED"><![CDATA[The Oracle home directory exists. No action required]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[The Oracle home directory is not specified.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[ALERT:
+There is something wrong with the Oracle home. Verify the following:
+|*Return Value*|*Action*|
+|OHnotvalid|Ensure that you provided the correct location or that this directory is created and then run this script again|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00070" mode="VERIFY" name="O_H Permissions OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00050" minimum="PASSED|RECORD" result="FAILED"><![CDATA[Requires rule A00050.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME
+call setHcveResult(cond(\
+  not(defined($ORACLE_HOME)),    'OHNotSpecified',\
+  not(testDir('d',$ORACLE_HOME)),'OHNotExist',\
+  not(testDir('r',$ORACLE_HOME)),'NoReadPerm',\
+  not(testDir('w',$ORACLE_HOME)),'NoWritePerm',\
+  not(testDir('x',$ORACLE_HOME)),'NoExecutePerm',\
+                                 'CorrectPerms'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user has the correct privileges to install Oracle Database 11g R2 in the Oracle home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="CorrectPerms" result="PASSED"><![CDATA[The permissions for the Oracle home directory are correct. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="OHNotSpecified" result="SKIPPED"><![CDATA[The Oracle home directory is not specified.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoReadPerm|Ensure that the install user has read permissions for the Oracle home directory|
+|NoWritePerm|Ensure that the install user has write permissions for the Oracle home directory|
+|NoExecutePerm|Ensure that the install user has execute permissions for the Oracle home directory|
+|OHNotExist|The Oracle home directory does not exist. Create the Oracle home mount point and ensure that the permissions are set correctly.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00230" mode="VERIFY" name="TEMP Space OK?">
+<sdp_command type="RDA"><![CDATA[
+var $dir = nvl(getEnv('TMP'),getEnv('TMPDIR'))
+var $TMP = undef
+call setHcveVariable('$TMP')
+if !testDir('d',$dir)
+ return setHcveResult('Cannot access TEMP directory')
+var $TMP = get_df($dir)
+if expr('>=',$TMP,512000)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult('Need 500MB')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that there is sufficient temporary space available.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[There is adequate space in the temporary directory.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Cannot access TEMP directory|Either no TMP or TMPDIR has been established or they could not be accessed.|
+|Need 500MB|There was not at least 500 MB of disk space available in the TMP or TMPDIR directory.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00240" mode="VERIFY" name="Disk Space OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00060" minimum="PASSED" result="SKIPPED"><![CDATA[Requires a valid Oracle home.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_HOME,$OS_BIT
+var $DSK = get_df($ORACLE_HOME)
+var $DSK = expr('/',$DSK,1024)
+if not(isNumber($OS_BIT))
+ return setHcveResult('OsBitUnknown')
+else
+{if expr('==',$OS_BIT,32)
+ {var $min = 5478.4
+  var $VAL_T = "5.35 GB"
+  var $VAL_D = "1.86 GB"
+ }
+ else
+ {var $min = 5519.36
+  var $VAL_T = "5.39 GB"
+  var $VAL_D = "1.9 GB"
+ }
+}
+if expr('>=',$DSK,$min)
+ call setHcveResult('OHadequate')
+elsif expr('>=',$DSK,3072)
+ call setHcveResult('OHforHomeOnly')
+else
+ call setHcveResult('OHinadequate')
+call setHcveVariable('$DSK','$VAL_T','$VAL_D')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule determines if there is adequate disk space in the Oracle Home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="OHadequate" result="PASSED"><![CDATA[There is sufficient space in the Oracle Home directory. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is insufficient space in the Oracle Home directory for the entire installation. There must be either:%BR%
+   * ${VAL_T} for all files in Oracle Home%BR%
+   * 500 MB in a disk location for TEMP files%BR%
+   * ${VAL_D} for data files in another disk location.
+|*Return Value*|*Action*|
+|OHforHomeOnly|There is adequate space in the Oracle Home to install the database files, but not for data files.|
+|OHinadequate|There is inadequate space in the Oracle Home directory.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+
+<sdp_rule id="A00260" mode="VERIFY" name="RAM OK?">
+<sdp_command type="RDA"><![CDATA[import @SYS,$OSN,$OS_BIT
+var $MEM = undef
+call setHcveVariable('$MEM')
+if !@SYS
+ return setHcveResult('Cannot access systeminfo')
+if !field(':',1,grep(@SYS,'Total Physical Memory:','f'))
+ return setHcveResult('Cannot determine Physical Memory')
+if !match(last,'\s*(.*?)\s*([KGM]B)$')
+ return setHcveResult('Cannot determine Physical Memory')
+var ($MEM,$unt) = (last)
+var $MEM = replace($MEM,'\D','',true)
+if compare('eq',$unt,'KB')
+ var $MEM = expr('/',$MEM,1024)
+elsif compare('eq',$unt,'GB')
+ var $MEM = expr('*',$MEM,1024)
+var $min = \
+  cond(and(match($OSN,'windows 7',true),expr('==',$OS_BIT,64)),2048,1024)
+if expr('>=',$MEM,$min)
+ call setHcveResult(concat($MEM,' MB is adequate'))
+else
+ call setHcveResult(concat($MEM,' MB is inadequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient physical memory installed to install Oracle Database 11g R2.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="is adequate$" result="PASSED"><![CDATA[You have sufficient physical memory installed to install Oracle Database 11g R2. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[ALERT:
+You do not have sufficient physical memory in your system to install Oracle Database 11g R2 or amount of physical memory could not be determined.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00261" mode="RECORD" name="Virtual Memory">
+<sdp_command type="RDA"><![CDATA[import @SYS
+var $SWP = undef
+call setHcveVariable('$SWP')
+if !@SYS
+ return setHcveResult('Cannot access systeminfo')
+if !field(':',2,grep(@SYS,'(Virtual Memory|Page File): Max Size:','f'))
+ return setHcveResult('Cannot determine Virtual Memory')
+if !match(last,'\s*(.*?)\s*([KGM]B)$')
+ return setHcveResult('Cannot determine Virtual Memory')
+var ($SWP,$unt) = (last)
+var $SWP = replace($SWP,'\D','',true)
+if compare('eq',$unt,'KB')
+ var $SWP = expr('/',$SWP,1024)
+elsif compare('eq',$unt,'GB')
+ var $SWP = expr('*',$SWP,1024)
+call setHcveResult(concat($SWP,' MB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the available virtual memory, measured in MB.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00271" mode="VERIFY" name="Virtual Memory OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00260" minimum="PASSED|RECORD" result="SKIPPED"><![CDATA[Requires amount of physical memory.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A00261" minimum="PASSED|RECORD" result="SKIPPED"><![CDATA[Requires amount of virtual memory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM,$SWP
+if !?$SWP
+ return setHcveResult('VirtualNotDetermined')
+elsif !expr('>',$MEM,0)
+ return setHcveResult('MemNotDetermined')
+elsif expr('<',$SWP,expr('*',$MEM,2))
+ return setHcveResult('InsufficientVirtual')
+else
+ call setHcveResult('VirtualToRAMOK')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the total amount of virtual memory is greater than or equal to the amount recommended by the ''Oracle Database Installation Guide 11g Release 2 (11.2) for Windows''.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="VirtualToRAMOK" result="PASSED"><![CDATA[The amount of virtual space meets the minimum requirements for installing Oracle Database 11g R2. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The amount of swap space is less than the amount recommended by the ${'BOOK}. Verify the requirements and adjust your system accordingly.
+|*Return Value*|*Action*|
+|InsufficientVirtual|ALERT- Oracle Database 11g R2 requires that the virtual memory be at least twice the physical memory.|
+|MemNotDetermined|ALERT- A Virtual to Physical Memory ratio cannot be determined because you do not have execute permissions to determine physical memory.|
+|VirtualNotDetermined|ALERT- A Virtual to Physical Memory ratio cannot be determined because virtual memory is not set up or you do not have execute permissions to determine virtual memory.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00274" mode="VERIFY" name="Processor Type OK?">
+<sdp_command type="RDA"><![CDATA[import $OS_BIT
+var $typ = getEnv('PROCESSOR_IDENTIFIER')
+if !$typ
+ return setHcveResult('Processor type not determined')
+if expr('==',$OS_BIT,64)
+{if match($typ,'(AMD64|EM64T)')
+  call setHcveResult('Adequate')
+ else
+  call setHcveResult('Inadequate')
+}
+else
+{if match($typ,'(x86|AMD64|EM64T)')
+  call setHcveResult('Adequate')
+ else
+  call setHcveResult('Inadequate')
+}
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that a correct type of processor is being used. For Windows 32-bit, the processor should be an Intel x86 or EM64T, or AMD64. For Windows 64-bit, the processor should be Intel EM64T or AMD64.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The processor is adequate. No action needed.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Processor type not determined|Unable to confirm processor type. Please verify that you are on a system using an acceptable processor. Refer to the ${'BOOK} for acceptable processors.|
+|Inadequate|Your machine is not using an acceptable processor. Refer to the ${'BOOK} for acceptable processors.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00300" mode="RECORD" name="IP Address">
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('@IP')
+loop $lin (grepCommand('ipconfig','IP(v4)? Address.*:\s*(\S+)','i2'))
+ call push(@IP,$lin)
+if @IP
+ call setHcveResult(join("\012",@IP))
+else
+ call setHcveResult('Not determined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the IP address.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00310" mode="RECORD" name="Host Name">
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('$HST')
+if field('\.',0,command('hostname'))
+ call setHcveResult($HST = last)
+else
+ call setHcveResult('Not determined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the host name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00320" mode="RECORD" name="Domain Name">
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('$DOM')
+if grepCommand('ipconfig /all','DNS Suffix.*:\s*\S','fi')
+ call setHcveResult($DOM = field(':\s*',1,last))
+else
+ call setHcveResult('Not determined')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule finds the domain name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00330" mode="VERIFY" name="DNS Lookup?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00310" minimum="PASSED|RECORD" result="SKIPPED" value="No host"><![CDATA[Requires host name.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A00320" minimum="PASSED|RECORD" result="SKIPPED" value="No domain"><![CDATA[Requires domain name.]]></sdp_dependency>
+<sdp_dependency condition="IS" id="A00300" minimum="PASSED|RECORD" result="SKIPPED" value="No IP"><![CDATA[Requires IP address.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DOM,$HST,@IP
+var $cmd = findCommand('nslookup.exe')
+if !?$cmd
+ return setHcveResult('nslookup.exe not found')
+
+var $hst = cond(defined($DOM),concat($HST,'.',$DOM),$HST)
+var ($ref,@ref) = (quote($hst))
+loop $ip (@IP)
+{if grepCommand(concat($cmd,' ',$ip),$ref,'f')
+  call push(@ref,quote($ip))
+}
+if !@ref
+ call push(@tbl,'Address failure')
+elsif !grepCommand(concat($cmd,' ',$hst),join('|',@ref),'f')
+ call push(@tbl,'host.domain failure')
+
+call setHcveResult(cond(@tbl,join("\012",@tbl),\
+                             'Host correctly registered in DNS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the host is registered correctly in the DNS.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Host correctly registered in DNS" result="PASSED"><![CDATA[The host is registered correctly in the DNS.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|nslookup.exe not found|Could not find nslookup.exe on this machine.|
+|host.domain failure|The DNS server failed to resolve the host.domain or the result is not linked to a local IP address.|
+|Address failure|The DNS server failed to resolve the IP address or the result is not linked to the host name.|
+|Cannot determine IP address|Fix any problem with the host IP address.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00600" mode="VERIFY" name="Monitor OK?">
+<sdp_command type="RDA"><![CDATA[var ($dev,@tbl) = ()
+
+macro get_device
+{var ($dft) = @arg
+ loop $key (grepRegValue('HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\\
+   Hardware Profiles\UnitedVideo\CONTROL\VIDEO','DefaultSettings.BitsPerPel'))
+ {if match($key,'\\0000$')
+   return $key
+ }
+ return $dft
+}
+
+# Get the device key
+var $dft = 'HKLM\SYSTEM\ControlSet001\Hardware Profiles\0001\System\\
+            CurrentControlSet\SERVICES\IALM\DEVICE0'
+if ?getRegValue('HKLM\HARDWARE\DEVICEMAP\VIDEO','\Device\Video0')
+ var $dev = replace(last,'^\\(REGISTRY|Registry)\\Machine\\','HKLM\')
+else
+ var $dev = $dft
+
+# Check the color resolution
+if !?nvl(getRegValue($dev,'DefaultSettings.BitsPerPel'),\
+         getRegValue($dev = get_device($dft),'DefaultSettings.BitsPerPel'))
+ call push(@tbl,'No color resolution')
+elsif expr('<',hex2dec(last),8)
+ call push(@tbl,'Need at least 256 colors')
+
+# Check the monitor resolution
+var $xrs = getRegValue($dev,'DefaultSettings.XResolution')
+var $yrs = getRegValue($dev,'DefaultSettings.YResolution')
+if !and(defined($xrs),defined($yrs))
+ call push(@tbl,'No monitor resolution')
+elsif and(expr('<',hex2dec($xrs),1024),expr('<',hex2dec($yrs),768))
+ call push(@tbl,'Need at least 1024 x 768')
+
+# Indicate the results
+call setHcveResult(cond(@tbl,join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the monitor has sufficient colors and enough resolution for installing Oracle Database 11g Release 2 (11.2).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The monitor has enough colors and resolution.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 256 colors|Use a display with at least 256 colors.|
+|Need at least 1024 x 768|The resolution of the monitor is too low. Adjust the resolution to at least 1024 x 768.|
+|No color resolution|Information not found in the registry. Verify that the monitor is set to display at least 256 colors.|
+|No monitor resolution|Information not found in the registry. Verify that the monitor is set to a resolution of 1024 x 768 or greater.|
+For more information, see the ${'BOOK}.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00610" mode="VERIFY" name="Default Share?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00310" minimum="PASSED|RECORD" result="SKIPPED" value="No host"><![CDATA[Requires host name.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $HST
+var $quo = cond(isWindows(),'',"'")
+var $cmd = concat('net use ',$quo,'\\',$HST,'\c$',$quo)
+if grepCommand($cmd,'command completed successfully','if')
+ call setHcveResult('Configured')
+else
+ call setHcveResult('Not configured')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that default share is configured.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Configured" result="PASSED"><![CDATA[Default share is configured.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Default share needs to be configured for Oracle database 11g R2 installation.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00620" mode="VERIFY" name="Loopback Adapter?">
+<sdp_command type="RDA"><![CDATA[call loadCommand('ipconfig /all')
+if !grepLastFile('Dhcp Enabled.*Yes','if')
+ call setHcveResult('NA')
+elsif grepLastFile('Microsoft loopback adapter','if')
+ call setHcveResult('Detected')
+else
+ call setHcveResult('Not installed')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if a loopback adapter is installed. A loopback adapter is required for DHCP configurations.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED"><![CDATA[DHCP not detected]]></sdp_action>
+<sdp_action condition="==" minimum="Detected" result="PASSED"><![CDATA[A loopback adapter is installed.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[You will must install a loopback adapter if you plan to use Dynamic Host Configuration Protocol (DHCP) on the computer on which the database is being installed.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00630" mode="VERIFY" name="ORACLE_HOSTNAME set?">
+<sdp_command type="RDA"><![CDATA[import @IP
+if expr('<',scalar(@IP),2)
+ call setHcveResult('NA')
+elsif ?getEnv('ORACLE_HOSTNAME')
+ call setHcveResult('Set')
+else
+ call setHcveResult('Not set')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if the ``ORACLE_HOSTNAME`` parameter has been set. This is required when the computer has multiple IP addresses.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="NA" result="SKIPPED" syntax="wiki"><![CDATA[The ``ORACLE_HOSTNAME`` parameter is not required.]]></sdp_action>
+<sdp_action condition="==" minimum="Set" result="PASSED" syntax="wiki"><![CDATA[The ``ORACLE_HOSTNAME`` parameter has been set.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[When the machine has multiple IP addresses, the ``ORACLE_HOSTNAME`` must be set. Refer to the ${'BOOK}.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

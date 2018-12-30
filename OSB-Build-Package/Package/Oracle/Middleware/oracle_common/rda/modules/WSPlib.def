@@ -1,0 +1,97 @@
+# WSPlib.def: Defines Common Macros for IBM WebSphere Application Server
+# $Id: WSPlib.def,v 1.4 2012/01/03 13:34:48 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/WSPlib.def,v 1.4 2012/01/03 13:34:48 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+WSPlib - Defines Common Macros for IBM WebSphere Application Server
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to several IBM
+WebSphere Application Server related-modules.
+
+The following macro is available:
+
+=cut
+
+use Buffer
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('wsp_show')
+
+=head2 S<wsp_show($buf,$dat)>
+
+This macro returns the WSADMIN C<AdminConfig.show> and C<AdminConfig.showall>
+command output in a tabular format aligned based on its data type.
+
+=cut
+
+macro wsp_show
+{var ($buf,$dat) = @arg
+ import $TOP
+ keep $TOP
+
+ macro fmt_show
+ {var ($val) = @arg
+
+  return check(ref($val),'ARRAY',fmt_show_array($val),\
+                         'HASH', fmt_show_hash($val),\
+                                 encode($val))
+ }
+
+ macro fmt_show_array
+ {var ($val) = @arg
+
+  var $buf = '%TBL%'
+  var $pre = '('
+  loop $val (@{$val})
+  {var $buf = concat($buf,$pre,'%NEXT%',fmt_show($val))
+   var $pre = '%BR%'
+  }
+  return concat($buf,$pre,')%ENDTBL%')
+ }
+
+ macro fmt_show_hash
+ {var ($val) = @arg
+
+  var $buf = '%TBL%'
+  var $pre = '{'
+  loop $key (keys($val))
+  {var $buf = concat($buf,$pre,'%NEXT%',$key,'%NEXT%',fmt_show($val->{$key}))
+   var $pre = '%BR%'
+  }
+  return concat($buf,$pre,'}%ENDTBL%')
+ }
+
+ var ($det,$lnk,$ttl,$loc,$rep) = split('\|',$dat,5)
+ report replace($rep,'[\/\\]','r',true)
+ prefix
+ {write '---+!! ',$ttl
+  if $loc
+   write '---## Location:&nbsp;',encode($loc)
+  write '|*Name*|*Value*|'
+ }
+ var $hsh = parseWspShow($buf)
+ loop $key (keys($hsh))
+  write '|',$key,' |',fmt_show($hsh->{$key}),' |'
+ if isCreated(true)
+ {write $TOP
+  toc $det,':[[',getFile(),'][rda_report][',$lnk,']]'
+ }
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,41 @@
+# OCMload.def: Collects Oracle Configuration Manager Reports
+# $Id: OCMload.def,v 2.7 2012/01/03 13:34:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OCMload.def,v 2.7 2012/01/03 13:34:42 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+OCMload - Collects Oracle Configuration Manager Reports
+
+=head1 DESCRIPTION
+
+This module retrieves the Oracle Configuration Manager reports.
+
+=cut
+
+debug ' Inside LOAD module, gathering Oracle Configuration Manager information'
+
+call setAbbr('OCM')
+if getSetting('NO_OCM')
+ call purge('E','.',0)
+else
+{# Purge old reports
+ call purge('E','.',1,600)
+
+ # Insert OCM reports
+ if getSetting('OCM_IN_USE')
+  toc '%INCLUDE("',catFile('extern',concat(${CUR.PREFIX},'index.txt')),'")%'
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

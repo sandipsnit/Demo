@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<helpConfiguration version="2.0" xmlns="http://xmlns.oracle.com/help/web/config">
+
+<!-- Specify the branding information.  You can specify
+     brandingText or brandingImage, if both are specified
+     brandingText will be used -->
+
+  <brandings>
+    <branding locales="it" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="ja" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="ko" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="pt_BR" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="zh_CN" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="zh_TW" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="en_US" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="de" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="es" text="Oracle Enterprise Manager Online Help" />
+    <branding locales="fr" text="Oracle Enterprise Manager Online Help" />
+  </brandings>
+
+<!-- OHW automatically uses the system default Locale and
+     the default encoding for that Locale for Locale
+     sensitive operations.  You can override this behavior
+     by filling out the localeSettings. Note that the encoding
+     for the content HTML files is specified in those files
+     directly.
+     
+     Within each local definition specify the set of books for that locale. 
+     The books element can contain any number of helpBook objects, helpSet 
+     objects or a mixture of both.
+
+ -->
+
+  <locales>
+    <locale language="en" country="US">
+      <books>
+      </books>
+    </locale>
+    <locale language="de">
+      <books>
+      </books>
+    </locale>
+    <locale language="es">
+      <books>
+      </books>
+    </locale>
+    <locale language="fr">
+      <books>
+      </books>
+    </locale>
+    <locale language="ja">
+      <books>
+      </books>
+    </locale>
+    <locale language="ko">
+      <books>
+      </books>
+    </locale>
+    <locale language="pt" country="BR">
+      <books>
+      </books>
+    </locale>
+    <locale language="zh" country="CN">
+      <books>
+      </books>
+    </locale>
+    <locale language="zh" country="TW">
+      <books>
+      </books>
+    </locale>
+    <locale language="it">
+      <books>
+      </books>
+    </locale>
+  </locales>
+
+  <!-- Navigator aliases - to allow for legacy navigator names. -->
+  <!-- disabled for OHW3.0
+    <navigatorAliases>
+      <alias name="oracle.help.navigator.tocNavigator.TOCNavigator" 
+             value="oracle.help.web.navigator.tocNavigator.TOCTreeNavigator" />
+    </navigatorAliases>
+  -->
+
+<!-- The maxSearchThreads parameter determines the maximum
+     number of threads that will be spawned for searching.
+     This will be the maximum number of simultaneous
+     searches that OHW can perform.  This value should be
+     carefully tuned to correspond to the estimated load
+     on the servlet.
+     
+     Specify the merging behavior by providing values for the 
+     combineBooks and useLabelInfo attributes.     
+-->
+
+<!-- errorPage parameter added so "topic not found" errors display a default topic --> 
+
+  <parameters>
+    <combineBooks>true</combineBooks>
+    <useLabelInfo>false</useLabelInfo>
+    <maxSearchThreads>10</maxSearchThreads>
+    <defaultHomeID>myTopicID</defaultHomeID>
+    <errorPage>help_topic_not_found</errorPage>
+  </parameters>
+
+<!-- custom protocol added to convert olink and extURL links in the online help to actual URLs to the 
+books in the internal general review library; these must be changed for production to link to 
+www.oracle.com -->
+
+<customProtocolRegistry>
+   <customProtocol name="olink" class="oracle.help.web.converter.ConfigurableCustomProtocolConverter">
+       <parameters>
+          <prepend>http://www.oracle.com/pls/as1111/lookup?id=</prepend>
+          <targetFrame>_blank</targetFrame>
+          <append></append>
+       </parameters>
+   </customProtocol>
+
+   <customProtocol name="extURL" class="oracle.help.web.converter.ConfigurableCustomProtocolConverter">
+       <parameters>
+          <prepend></prepend>
+          <targetFrame>_blank</targetFrame>
+          <append></append>
+       </parameters>
+   </customProtocol>
+</customProtocolRegistry>
+
+</helpConfiguration>

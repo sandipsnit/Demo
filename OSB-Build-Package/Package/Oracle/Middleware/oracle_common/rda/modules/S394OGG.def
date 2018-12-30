@@ -1,0 +1,726 @@
+# S394OGG.def: Collects Oracle GoldenGate Information
+# $Id: S394OGG.def,v 1.6 2012/01/03 13:34:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S394OGG.def,v 1.6 2012/01/03 13:34:46 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S394OGG - Collects Oracle GoldenGate Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle GoldenGate-related information.
+
+The following reports can be generated and are regrouped under C<Oracle
+GoldenGate>:
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing OGG module ...',tput('off')
+
+# Initialization
+var $OGG_HOME = getSetting('OGG_HOME')
+var $TAIL     = getSetting('OGG_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '1:Oracle GoldenGate'
+
+# Stores Extract and Replicat group name
+var %EXTGRP
+var %REPGRP
+
+# Load the common macros
+run library()
+
+if !testFile(cond(isWindows(),'f',\
+                  isCygwin(), 'f',\
+                              'fx'),\
+             catFile($OGG_HOME,${AS.EXE:'ggsci'}))
+{echo 'Oracle GoldenGate install directory does not have a ggsci command.'
+ echo 'The module is not processed.'
+ return
+}
+var $pgm = concat($GGSCI = lastCommand(),' paramfile ')
+
+=head2 version_info - Version Information
+
+Gathers Oracle GoldenGate version information.
+
+=cut
+
+debug ' Inside OGG module, gathering version information'
+report version_info
+var ($cmd,$ver) = (concat($GGSCI,' -v'))
+prefix
+{write '---+ Oracle GoldenGate Version Information'
+ write '---## Using: ',encode($cmd)
+}
+if loadCommand(concat($cmd,' 2>&1'))
+{if grepLastFile('^Version\s','f')
+  var ($ver) = match(last,'\s(\d+(\.\d+){3,})')
+ call writeLastFile()
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Version Information]]'
+
+=head2 prcdet - Process Details
+
+Collects Oracle GoldenGate process details.
+
+=cut
+
+debug ' Inside OGG module, gathering process details'
+var $tmp = createTemp('job','.prm')
+call writeTemp('job','info all, allprocesses')
+call writeTemp('job','exit')
+report prcdet
+prefix
+{write '---+ Oracle GoldenGate Process Details'
+ write '---## Using in ggsci: info all, allprocesses'
+}
+if loadCommand(concat($pgm,' ',quote($tmp,'x')))
+{loop $lin (grepLastFile('^((MANAGER|Program)\s|\s*$)','v'))
+ {var $grp = field('\s+',2,$lin)
+  if match($lin,'^EXTRACT\s')
+   var $EXTGRP{$grp} = 1
+  elsif match($lin,'^REPLICAT\s')
+   var $REPGRP{$grp} = 1
+ }
+ call writeLastFile()
+}
+call unlinkTemp('job')
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Process Details]]'
+
+=head2 mgrinfo - Manager Process Information
+
+Collects Oracle GoldenGate manager process information.
+
+=cut
+
+debug ' Inside OGG module, gathering manager process information'
+var $tmp = createTemp('job','.prm')
+call writeTemp('job','info mgr')
+call writeTemp('job','exit')
+report mgrinfo
+prefix
+{write '---+ Oracle GoldenGate Manager Process Information'
+ write '---## Using in ggsci: info mgr'
+}
+call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+call unlinkTemp('job')
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Manager Process Information]]'
+
+=head2 port - Port Usage
+
+Collects port usage.
+
+=cut
+
+debug ' Inside OGG module, gathering manager port details'
+var $tmp = createTemp('job','.prm')
+call writeTemp('job','send mgr getportinfo detail')
+call writeTemp('job','exit')
+report port
+prefix
+{write '---+ Port Usage'
+ write '---## Using in ggsci: send mgr getportinfo detail'
+}
+call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+call unlinkTemp('job')
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Port Usage]]'
+
+=head2 io_chkpt - IO Checkpoints Details
+
+Collects IO checkpoints details for each extract group.
+
+=cut
+
+debug ' Inside OGG module, gathering IO checkpoints details'
+report io_chkpt
+title '---+!! IO Checkpoints Details'
+title $TOC
+loop $grp (keys(%EXTGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','info extract ',$grp,' detail, showch')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Extract Group"
+  write '---## Using in ggsci: info extract ',$grp,' detail, showch'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][IO Checkpoints Details]]'
+
+=head2 redo_logsta - Redo Log Statistics
+
+Collects Oracle Redo log statistics details for each extract group (for
+version 11 and later).
+
+=cut
+
+if compare('valid',$ver,'11')
+{debug ' Inside OGG module, gathering redo log statistics details'
+ report redo_logsta
+ title '---+!! Redo Log Statistics Details'
+ title $TOC
+ loop $grp (keys(%EXTGRP))
+ {var $tmp = createTemp('job','.prm')
+  call writeTemp('job','send extract ',$grp,' logstats')
+  call writeTemp('job','exit')
+  prefix
+  {write "---+ '",$grp,"' Extract Group"
+   write '---## Using in ggsci: send extract ',$grp,' logstats'
+  }
+  call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+  call unlinkTemp('job')
+  if hasOutput(true)
+   write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Redo Log Statistics]]'
+}
+
+=head2 trnx_det - Transaction Details
+
+Collects transaction details for each extract group.
+
+=cut
+
+debug ' Inside OGG module, gathering transaction details'
+report trnx_det
+title '---+!! Transaction Details'
+title $TOC
+loop $grp (keys(%EXTGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send extract ',$grp,' showtrans')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Extract Group"
+  write '---## Using in ggsci: send extract ',$grp,' showtrans'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Transaction Details]]'
+
+=head2 tcp_sta - TCP Statistics
+
+Collects TCP statistics for each extract group.
+
+=cut
+
+debug ' Inside OGG module, gathering TCP statistics'
+report trnx_det
+title '---+!! TCP Statistics'
+title $TOC
+loop $grp (keys(%EXTGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send extract ',$grp,' gettcpstats')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Extract Group"
+  write '---## Using in ggsci: send extract ',$grp,' gettcpstats'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][TCP Statistics]]'
+
+=head2 cache_mgrsta - Cache Manager Statistics
+
+Collects cache manager statistics for each extract group.
+
+=cut
+
+debug ' Inside OGG module, gathering cache manager statistics'
+report cache_mgrsta
+title '---+!! Cache Manager Statistics'
+title $TOC
+loop $grp (keys(%EXTGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send extract ',$grp,' cachemgr cachestats')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Extract Group"
+  write '---## Using in ggsci: send extract ',$grp,' cachemgr cachestats'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Cache Manager Statistics]]'
+
+=head2 cache_mgrquesta - Cache Manager Queue Statistics
+
+Collects cache manager queue statistics for each extract group.
+
+=cut
+
+debug ' Inside OGG module, gathering cache manager queue statistics'
+report cache_mgrquesta
+title '---+!! Cache Manager Queue Statistics'
+title $TOC
+loop $grp (keys(%EXTGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send extract ',$grp,' cachemgr cachequeues')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Extract Group"
+  write '---## Using in ggsci: send extract ',$grp,' cachemgr cachequeues'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Cache Manager Queue Statistics]]'
+
+=head2 cache_mgrpoolsta - Cache Manager Pool Statistics
+
+Collects cache manager pool statistics for each extract group.
+
+=cut
+
+debug ' Inside OGG module, gathering cache manager pool statistics'
+report cache_mgrpoolsta
+title '---+!! Cache Manager Pool Statistics'
+title $TOC
+loop $grp (keys(%EXTGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send extract ',$grp,' cachemgr cachepool')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Extract Group"
+  write '---## Using in ggsci: send extract ',$grp,' cachemgr cachepool'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Cache Manager Pool Statistics]]'
+
+=head2 extsta - Extract Status
+
+Collects count of insert, update, deletes and discards per table for each
+extract group.
+
+=cut
+
+debug ' Inside OGG module, gathering extract status'
+report extsta
+title '---+!! Extract Status'
+title $TOC
+loop $grp (keys(%EXTGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send extract ',$grp,' report')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Extract Group"
+  write '---## Using in ggsci: send extract ',$grp,' report'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Extract Status]]'
+
+=head2 repsta - Replicat Status
+
+Collects count of insert, update, deletes and discards per table for each
+replicat group.
+
+=cut
+
+debug ' Inside OGG module, gathering replicat status'
+report repsta
+title '---+!! Replicat Status'
+title $TOC
+loop $grp (keys(%REPGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send replicat ',$grp,' report')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Replicat Group"
+  write '---## Using in ggsci: send replicat ',$grp,' report'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Replicat Status]]'
+
+=head2 repcollsta - Replicat Collision Status
+
+Collects details of which tables handlecollisions is enabled for each replicat
+group.
+
+=cut
+
+debug ' Inside OGG module, gathering replicat collision status'
+report repcollsta
+title '---+!! Replicat Collision Status'
+title $TOC
+loop $grp (keys(%REPGRP))
+{var $tmp = createTemp('job','.prm')
+ call writeTemp('job','send replicat ',$grp,' report, handlecollisions')
+ call writeTemp('job','exit')
+ prefix
+ {write "---+ '",$grp,"' Replicat Group"
+  write '---## Using in ggsci: send replicat ',$grp,' report, handlecollisions'
+ }
+ call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+ call unlinkTemp('job')
+ if hasOutput(true)
+  write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Replicat Collision Status]]'
+
+=head2 envdet - Environment Details
+
+Collects environment details.
+
+=cut
+
+debug ' Inside OGG module, gathering environment details'
+var $tmp = createTemp('job','.prm')
+call writeTemp('job','status er *, detail')
+call writeTemp('job','exit')
+report envdet
+prefix
+{write '---+ Environment Details'
+ write '---## Using in ggsci: status er *, detail'
+}
+call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+call unlinkTemp('job')
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Environment Details]]'
+
+=head2 postrail - Position of Trails
+
+Collects position of trails.
+
+=cut
+
+debug ' Inside OGG module, gathering trail position'
+var $tmp = createTemp('job','.prm')
+call writeTemp('job','info exttrail *')
+call writeTemp('job','exit')
+report postrail
+prefix
+{write '---+ Position of Trails'
+ write '---## Using in ggsci: info exttrail *'
+}
+call writeCommand(concat($pgm,' ',quote($tmp,'x')))
+call unlinkTemp('job')
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Position of Trails]]'
+
+=head2 serproc - Server Process
+
+Collects the running server process on UNIX.
+
+=cut
+
+if isUnix()
+{var $PS_ARG
+ var $PS_EF
+ var $PS_ELF
+
+ debug ' Inside OGG module, collecting server process information'
+
+ # Get the 'ps' command
+ run &{check(getOsName(),'aix',      'OSaix',\
+                         'darwin',   'OSdarwin',\
+                         'dec_osf',  'OSosf',\
+                         'dynixptx', 'OSptx',\
+                         'hpux',     'OShpux',\
+                         'linux',    'OSlinux',\
+                         'solaris',  'OSsunos',\
+                                     'OSunix')}('PS')
+
+ # Produce the report
+ report serproc
+ prefix
+ {write '---+ Server Process'
+  write '---## Using: ',$PS_EF,' | grep server'
+  call beginBlock(true)
+  write getHeader()
+ }
+ loop $lin (grepCommand($PS_EF,'server'))
+  write $lin
+ if isCreated(true)
+ {call endBlock(['C',concat($PS_EF,' | grep server')])
+  toc '2:[[',getFile(),'][rda_report][Server Process]]'
+ }
+}
+
+=head2 globals - globals File Content
+
+Collects the content of the F<globals> file.
+
+=cut
+
+if testFile('f',$fil = catFile($OGG_HOME,'globals'))
+{debug ' Inside OGG module, collecting globals file'
+ report globals
+ prefix
+ {write '---+ Display of globals File'
+  write '---## Information Taken from ',encode($fil)
+ }
+ call writeFile($fil)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][globals File Content]]'
+}
+
+=head2 Directory Files
+
+Collects the files contained in the following subdirectories:
+
+=over 4
+
+=item o F<dirchk>
+
+=item o F<dirdef>
+
+=item o F<dirpcs>
+
+=item o F<dirprm>
+
+=item o F<dirrpt>
+
+=item o F<dirwlt>
+
+=back
+
+Lists the files contained in the following subdirectories:
+
+=over 4
+
+=item o F<dirdat>
+
+=back
+
+=cut
+
+pretoc '2:Directory Files'
+loop $sub ('dirchk','dirdat','dirdef','dirpcs','dirprm','dirrpt','dirwlt')
+{debug ' Inside OGG module, collecting the ',$sub,' directory content'
+ var $loc = catDir($OGG_HOME,$sub)
+ report $sub
+ title '---+ Contents of ',$loc,' Subdirectory'
+ if compare('eq',$sub,'dirdat')
+ {loop $fil ($loc,grepDir($loc,'^[^\.]','nr'))
+  {next !testDir('d',$fil)
+   call statDir('an',$fil)
+  }
+ }
+ else
+ {prefix
+  {write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser or \
+               use the link to save them and use an adequate viewer.'
+   write '|*File Name*| *Size*|*Last Modified Date*|'
+  }
+  loop $fil (grepDir($loc,'^[^\.]','nr'))
+  {if testFile('f',$fil)
+   {var ($dir,$bas) = parseFile($fil)
+    var $lnk = encode(catDir($sub,splitDir($dir,$loc),$bas))
+    var $siz = getSize($fil)
+    if $siz
+    {output d,concat('log_',$bas)
+     if ${CUR.LAST}->write_data($fil)
+      var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+     end ${CUR.LAST}
+    }
+    write '|',$lnk,' | ',$siz,'|',\
+              getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+  }
+ }
+ if isCreated(true)
+ {write $TOP
+  toc '3:[[',getFile(),'][rda_report][',$sub,']]'
+ }
+}
+unpretoc
+
+=head2 other_gg_files - Files Outside GoldenGate Home
+
+Collects the content of the files which are present outside the GoldenGate
+install home directory.
+
+=cut
+
+debug ' Inside OGG module, collecting the files outside goldengate home'
+var %oth = ()
+if testDir('d',catDir($OGG_HOME,'dirprm'))
+{loop $fil (grepDir(lastDir(),'\.(inc|include|prm)$','dir'))
+ {loop $lin (grepFile($fil,'^(ext(file|trail)|include|obey)\s','i'))
+  {var (undef,$str) = match($lin,'^(extfile|exttrail|include|obey)\s+(.*)',true)
+   var $pth = field('\s*,',0,$str)
+   if isAbsolute($pth)
+    var $oth{$pth} = 1
+  }
+ }
+}
+report other_gg_files
+prefix
+{write '---+ Files Outside GoldenGate Home'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present \
+             risks. To prevent them, access the file outside the browser or \
+             use the link to save them and use an adequate viewer.'
+ write '|*File Name*| *Size*|*Last Modified Date*|'
+}
+loop $pth (keys(%oth))
+{var ($dir,$bas) = parseFile($pth)
+ loop $fil (grepDir($dir,concat('^',quote($bas)),'np'))
+ {if testFile('f',$fil)
+  {var $lnk = encode($fil)
+   var $siz = getSize($fil)
+   if $siz
+   {output d,concat('log_',basename($fil))
+    if ${CUR.LAST}->write_data($fil)
+     var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+    end ${CUR.LAST}
+   }
+   write '|',$lnk,' | ',$siz,'|',\
+             getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+  }
+ }
+}
+if isCreated(true)
+{write $TOP
+ toc '2:[[',getFile(),'][rda_report][Files Outside GoldenGate Home]]'
+}
+
+=head2 Other Configuration Files
+
+Collects other configuration files.
+
+=cut
+
+debug ' Inside OGG module, getting other configuration files'
+pretoc '2:Other Configuration Files'
+call sort_files(3,0,grepDir($OGG_HOME,'\.xml$','p'),\
+                    grepDir(catDir($OGG_HOME,'cfg'),'^[^\.]','np'))
+unpretoc
+
+=head2 ggserr - ggserr.log File Content
+
+Displays the contents of F<ggserror.log> file. By default, RDA collects the
+last 1000 lines.
+
+=cut
+
+if testFile('r',$fil = catFile($OGG_HOME,'ggserr.log'))
+{debug ' Inside OGG module, collecting ggserr.log'
+ report ggserr
+ prefix
+ {write '---+ Last ',$TAIL,' Lines of ggserr.log File'
+  write '---## Information Taken from ',encode($fil)
+ }
+ call writeTail($fil,$TAIL)
+ if isCreated(true)
+ {write $TOP
+  toc '2:[[',getFile(),'][rda_report][ggserr.log File Content]]'
+ }
+}
+
+=head2 Other Log Files
+
+Collects other log files.
+
+=head3 gg_dump_files - Dump Files
+
+Collects Oracle GoldenGate-related dump files.
+
+=cut
+
+debug ' Inside OGG module, getting other log files'
+pretoc '2:Other Log Files'
+call tail_report($OGG_HOME,'jagent.log',$TAIL)
+report gg_dump_files
+prefix
+{write '---+ GoldenGate Dump Files'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present \
+             risks. To prevent them, access the file outside the browser or \
+             use the link to save them and use an adequate viewer.'
+ write '|*File Name*| *Size*|*Last Modified Date*|'
+}
+loop $fil (grepDir($OGG_HOME,'\.dmp$','np'))
+{if testFile('frB',$fil)
+ {var $lnk = encode($fil)
+  var $siz = getSize($fil)
+  if $siz
+  {output b,concat('log_',basename($fil))
+   if ${CUR.LAST}->write_data($fil)
+    var $lnk = concat('[[',${CUR.LAST}->get_file,'][_blank][',$lnk,']]')
+   end ${CUR.LAST}
+  }
+  write '|',$lnk,' | ',$siz,'|',\
+            getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+ }
+}
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Dump Files]]'
+}
+unpretoc 2
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.22: Nagendra Palukuri, Michael Zerger.
+
+=item RDA 4.26: Joseph deBuzna.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

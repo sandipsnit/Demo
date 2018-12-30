@@ -1,0 +1,67 @@
+# M290INST.def: Collects INSTINFO Installation Information
+# $Id: M290INST.def,v 1.3 2012/05/08 04:36:04 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M290INST.def,v 1.3 2012/05/08 04:36:04 mschenke Exp $
+#
+# Change History
+# 20120507  MSC  Apply naming conventions.
+
+=head1 NAME
+
+M290INST - Collects INSTINFO Installation Information
+
+=head1 DESCRIPTION
+
+Collects information from an INSTINFO installation.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+run XPLRlib('instinfo')
+
+#------------------------------------------------------------------------------
+# XPLR_instinfo section
+#------------------------------------------------------------------------------
+
+section XPLR_instinfo
+
+call log_run('Processing INST sections ...')
+
+=head2 inst - INSTINFO Installation Information
+
+Collects the F<instinfo/install_info> file from the Explorer configuration
+directory.
+
+=cut
+
+if testFile('f',$fil = catFile(${XPLR_ETC},'instinfo','install_info'))
+{debug ' Inside INSTINFO collection, gathering the INSTINFO information'
+ report inst
+ write '---+ Display of ',encode(basename($fil)),' File'
+ write '---## Information Taken from ',encode($fil)
+ call addBlock('E','D','etc/opt/SUNWexplo/instinfo/install_info')
+ call writeFile($fil)
+ toc '2:[[',getFile(),'][rda_report][INSTINFO Installation Information]]'
+}
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

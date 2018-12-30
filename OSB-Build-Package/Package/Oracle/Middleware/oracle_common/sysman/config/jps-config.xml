@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" standalone='yes'?>
+<jpsConfig xmlns="http://xmlns.oracle.com/oracleas/schema/jps-config-11_1.xsd"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"              xsi:schemaLocation="http://xmlns.oracle.com/oracleas/schema/jps-config-11_1.xsd"             
+          schema-major-version="11" schema-minor-version="1">
+
+    <property name="custom.provider" value="true"/>
+    <serviceProviders>
+    <serviceProvider type="LOGIN" name="jaas.login.provider" class="oracle.security.jps.internal.login.jaas.JaasLoginServiceProvider">
+             <description>This is Jaas Login Service Provider and is used to configure login module service instances</description>
+    </serviceProvider>
+        <serviceProvider type="IDENTITY_STORE" name="idstore.ldap.provider" class="oracle.security.jps.internal.idstore.ldap.LdapIdentityStoreProvider">
+            <description>LDAP-based ID store</description>
+        </serviceProvider>
+    </serviceProviders>
+
+
+    <serviceInstances>
+        <serviceInstance name="em_repos_login_module" provider="jaas.login.provider">
+            <description>EM Repos Login Module</description>
+            <property name="loginModuleClassName" value="oracle.sysman.eml.sec.auth.EMRepoLoginModule"/>
+            <property name="jaas.login.controlFlag" value="REQUIRED"/>
+        </serviceInstance>
+        <serviceInstance name="oracle.sysman.eml.sec.auth.EMWSLoginModule" provider="jaas.login.provider">
+            <description>EM Repos Login Module</description>
+            <property name="loginModuleClassName" value="oracle.sysman.eml.sec.auth.EMWSLoginModule"/>
+            <property name="jaas.login.controlFlag" value="REQUIRED"/>
+        </serviceInstance>
+        <serviceInstance name="em.oidstore" provider="idstore.ldap.provider">
+            <property name="subscriber.name" value="dc=us,dc=oracle,dc=com"/>
+            <property name="idstore.type" value="OID"/>
+            <property name="security.principal.key" value="ldap.credentials"/>
+            <property name="security.principal.alias" value="EM"/> 
+            <property name="ldap.url" value="ldap://host:port"/>
+            <extendedProperty>
+            <name>user.search.bases</name>
+            <values>
+             <value>cn=users,dc=us,dc=oracle,dc=com</value>
+            </values>
+             </extendedProperty>
+            <extendedProperty>
+            <name>group.search.bases</name>
+            <values>
+             <value>cn=groups,dc=us,dc=oracle,dc=com</value>
+            </values>
+            </extendedProperty>
+            <property name="username.attr" value="uid"/>
+            <propperty name="groupname.attr" value="cn"/>
+        </serviceInstance>
+        <serviceInstance name="idstore.loginmodule" provider="jaas.login.provider">
+            <description>Identity Store Login Module</description>
+            <property name="loginModuleClassName" value="oracle.security.jps.internal.jaas.module.idstore.IdStoreLoginModule"/>
+            <property name="jaas.login.controlFlag" value="REQUIRED"/>
+        </serviceInstance>
+    </serviceInstances>
+    <jpsContexts default="oracle.wsm.security.default">
+        <jpsContext name="EMLoginContext">
+            <serviceInstanceRef ref="em_repos_login_module"/>
+        </jpsContext>
+        <jpsContext name="em">
+            <serviceInstanceRef ref="oracle.sysman.eml.sec.auth.EMWSLoginModule"/>
+        </jpsContext>
+       <jpsContext name="oracle.wsm.security.default">
+	    <serviceInstanceRef ref="oracle.sysman.eml.sec.auth.EMWSLoginModule"/>
+        </jpsContext>
+        <jpsContext name="LDAP">
+            <serviceInstanceRef ref="em.oidstore"/>
+            <serviceInstanceRef ref="idstore.loginmodule"/>
+        </jpsContext>
+    </jpsContexts>
+</jpsConfig>

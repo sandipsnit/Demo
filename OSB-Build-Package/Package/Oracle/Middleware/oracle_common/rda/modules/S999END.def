@@ -1,0 +1,139 @@
+# S999END.def: Finalizes the Data Collection
+# $Id: S999END.def,v 2.9 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S999END.def,v 2.9 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S999END - RDA Module Finalizing the Data Collection
+
+=head1 DESCRIPTION
+
+This module finalizes the data collection.
+
+=cut
+
+use Mrc
+
+echo tput('bold'),'Processing End module ...',tput('off')
+
+# Initialization
+var $SEP = repeat('-',79)
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+# Identify the login name
+call setSetting('LOGNAME',user(),'T','Login name')
+
+# Identify the operating system module
+var $run = check(getOsName(),'aix',            'OSaix',\
+                             'darwin',         'OSdarwin',\
+                             'dec_osf',        'OSosf',\
+                             'dynixptx',       'OSptx',\
+                             'hpux',           'OShpux',\
+                             'linux',          'OSlinux',\
+                             'solaris',        'OSsunos',\
+                             cond(isCygwin(),  'OSwin32',\
+                                  isUnix(),    'OSunix',\
+                                  isWindows(), 'OSwin32',\
+                                  isVms(),     'OSvms'))
+
+=head2 system - System Information
+
+Collects key system configuration for the CFG module.
+
+=cut
+
+debug ' Inside END module, gathering system information'
+report system
+write '---+ System Information'
+run &{$run}('END_system')
+var $rpt = getFile('/')
+
+=head2 files - Collected Files
+
+Collects key system configuration for the CFG module.
+
+=head2 report - Report Settings
+
+Produces an overview report of the main current settings and the data
+collection, as well as some statistics about the SQL statement and operating
+system command execution for the CFG module.
+
+=cut
+
+collect M999END|END()
+
+=pod
+
+Locates packaging commands (for example, tar and zip) and the compression tools
+(compress or gzip) that are available.
+
+=cut
+
+debug ' Inside END module, locating packaging commands'
+if !defined(getEnv('RDA_NO_ZIP'))
+{if !isVms()
+  call setSetting('CMD_ZIP',findCommand('zip'),'T','Zip command')
+ elsif testCommand('zip -h')
+  call setSetting('CMD_ZIP','zip','T','Zip command')
+}
+if or(isUnix(),isCygwin())
+{if !defined(getEnv('RDA_NO_TAR'))
+  call setSetting('CMD_TAR',findCommand('tar'),'T','Tar command')
+ if !defined(getEnv('RDA_NO_PAX'))
+  call setSetting('CMD_PAX',findCommand('pax'),'T','Pax command')
+ if !defined(getEnv('RDA_NO_GZIP'))
+  call setSetting('CMD_GZIP',findCommand('gzip'),'T','Gzip command')
+ if !defined(getEnv('RDA_NO_COMPRESS'))
+  call setSetting('CMD_COMPRESS',findCommand('compress'),'T','Compress command')
+}
+if !defined(getEnv('RDA_NO_JAR'))
+{if !isVms()
+  call setSetting('CMD_JAR',findCommand('jar'),'T','Jar command')
+ #elsif testCommand('jar -h')
+ # call setSetting('CMD_JAR','jar','T','Jar command')
+}
+if and(not(defined(getEnv('RDA_NO_7ZIP'))),\
+       or(isWindows(),isCygwin()),\
+       testFile('d',$dir = getRegValue('HKLM\SOFTWARE\7-Zip','Path')))
+{if testFile('fr',catFile($dir,'7z.exe'))
+  call setSetting('CMD_7ZIP',lastCommand(),'T','7zip command')
+ elsif testFile('fr',catFile($dir,'7za.exe'))
+  call setSetting('CMD_7ZIP',lastCommand(),'T','7zip command')
+}
+
+=pod
+
+Stores the time of the last RDA Data Collection execution and indicates the end
+of the script.
+
+=cut
+
+call setSetting('RPT_LAST',${RDA.TIMESTAMP},'T','Last run time stamp')
+
+echo $SEP
+echo 'RDA Data Collection Ended ',${RDA.LOCALTIME}
+echo $SEP
+
+=head1 SEE ALSO
+
+L<M999END|modules::M999END>,
+L<OSaix|modules::OSaix>, L<OSdarwin|modules::OSdarwin>,
+L<OShpux|modules::OShpux>, L<OSlinux|modules::OSlinux>,
+L<OSosf|modules::OSosf>, L<OSptx|modules::OSptx>,
+L<OSsunos|modules::OSsunos>, L<OSunix|modules::OSunix>,
+L<OSvms|modules::OSvms>, L<OSwin32|modules::OSwin32>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

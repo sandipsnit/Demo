@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="ServiceForm" type="com.bea.alsb.console.test.service.ServiceForm" />
+        <form-bean name="XQueryForm" type="com.bea.alsb.console.test.transform.XQueryForm" />
+        <form-bean name="BuilderForm" type="com.bea.alsb.console.test.builder.BuilderForm" />
+        <form-bean name="XsltForm" type="com.bea.alsb.console.test.transform.XsltForm" />
+        <form-bean name="MflForm" type="com.bea.alsb.console.test.transform.MflForm" />
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+	<action-mappings>
+
+
+        <!--
+                Action Opening the Test Dialog
+        -->
+        <action path="/OpenTestDialog"
+                type="com.bea.alsb.console.test.actions.OpenTestDialogAction">
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/test/Error.jsp"/>
+            <forward name="proxy"
+                     path="/ServiceRequestAction.do?action=reset"/>
+            <forward name="business"
+                     path="/ServiceRequestAction.do?action=reset"/>
+            <forward name="xquery"
+                     path="/XQueryRequestAction.do?action=reset"/>
+            <forward name="builder"
+                     path="/BuilderRequestAction.do?action=reset"/>
+            <forward name="xslt"
+                     path="/XsltRequestAction.do?action=reset"/>
+            <forward name="mfl"
+                     path="/MflRequestAction.do?action=reset"/>
+        </action>
+
+
+        <!--
+                    Service Actions
+        -->
+        <action path="/ServiceRequestAction"
+                type="com.bea.alsb.console.test.actions.ServiceRequestAction"
+                name="ServiceForm"
+                scope="session"
+                attribute="com.bea.alsb.console.test.form"
+                validate="true"
+                input="request" >
+            <forward name="request"
+                     contextRelative="true"
+                     path="jsp/test/ServiceRequest.jsp"/>
+            <forward name="result"
+                     contextRelative="true"
+                     path="jsp/test/ServiceResult.jsp"/>
+            <forward name="limitedresult"
+                     contextRelative="true"
+                     path="jsp/test/LimitedServiceResult.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/test/Error.jsp"/>
+        </action>
+
+
+        <!--
+                    XQuery Actions
+        -->
+        <action path="/XQueryRequestAction"
+                type="com.bea.alsb.console.test.actions.DefaultRequestAction"
+                name="XQueryForm"
+                scope="session"
+                attribute="com.bea.alsb.console.test.form"
+                validate="true"
+                input="request" >
+            <forward name="request"
+                     contextRelative="true"
+                     path="jsp/test/XQueryRequest.jsp"/>
+            <forward name="result"
+                     contextRelative="true"
+                     path="jsp/test/XQueryResult.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/test/Error.jsp"/>
+        </action>
+
+
+        <!--
+                    XQuery Builder Actions
+        -->
+        <action path="/BuilderRequestAction"
+                type="com.bea.alsb.console.test.actions.DefaultRequestAction"
+                name="BuilderForm"
+                scope="session"
+                attribute="com.bea.alsb.console.test.form"
+                validate="true"
+                input="request" >
+            <forward name="request"
+                     contextRelative="true"
+                     path="jsp/test/BuilderRequest.jsp"/>
+            <forward name="result"
+                     contextRelative="true"
+                     path="jsp/test/BuilderResult.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/test/Error.jsp"/>
+        </action>
+
+
+        <!--
+                    XSLT Actions
+        -->
+        <action path="/XsltRequestAction"
+                type="com.bea.alsb.console.test.actions.DefaultRequestAction"
+                name="XsltForm"
+                scope="session"
+                attribute="com.bea.alsb.console.test.form"
+                validate="true"
+                input="request" >
+            <forward name="request"
+                     contextRelative="true"
+                     path="jsp/test/XsltRequest.jsp"/>
+            <forward name="result"
+                     contextRelative="true"
+                     path="jsp/test/XsltResult.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/test/Error.jsp"/>
+        </action>
+
+
+        <!--
+                    MFL Actions
+        -->
+        <action path="/MflRequestAction"
+                type="com.bea.alsb.console.test.actions.MflRequestAction"
+                name="MflForm"
+                scope="session"
+                attribute="com.bea.alsb.console.test.form"
+                validate="true"
+                input="request" >
+            <forward name="request"
+                     contextRelative="true"
+                     path="jsp/test/MflRequest.jsp"/>
+            <forward name="result"
+                     contextRelative="true"
+                     path="jsp/test/MflResult.jsp"/>
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/test/Error.jsp"/>
+        </action>
+
+    </action-mappings>
+
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                multipartClass="com.bea.alsb.console.controller.MultipartRequestHandler"
+                inputForward="true" nocache="true">
+        <set-property property="nocache" value="true" />
+   </controller>
+</struts-config>

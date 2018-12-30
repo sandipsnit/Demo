@@ -1,0 +1,191 @@
+# S313ASIT.def: Collects Oracle Application Server Installation Information
+# $Id: S313ASIT.def,v 2.14 2012/08/21 10:44:24 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S313ASIT.def,v 2.14 2012/08/21 10:44:24 mschenke Exp $
+#
+# Change History
+# 20120821  KRA  Extend installation type detection.
+
+=head1 NAME
+
+S313ASIT - Collects Information for Multiple Oracle Fusion Middleware
+Installation Types
+
+=head1 DESCRIPTION
+
+This module collects information for a single or all Oracle instances related 
+to:
+
+=over 3
+
+=item o Oracle Business Intelligence Enterprise Edition 11g
+
+=item o Oracle Forms and Reports 11g
+
+=item o Oracle Identity Management 11g
+
+=item o Oracle Portal, Forms, Reports and Discoverer 11g
+
+=item o Oracle WebTier
+
+=back
+
+Oracle Business Intelligence Enterprise Edition 11g includes:
+
+=over 3
+
+=item o Oracle Cluster Controller
+
+=item o Oracle JavaHost
+
+=item o Oracle Presentation Services
+
+=item o Oracle Process Management Node
+
+=item o Oracle Scheduler
+
+=item o Oracle Server
+
+=back
+
+Oracle Forms and Reports 11g includes:
+
+=over 3
+
+=item o Oracle Forms/Reports
+
+=item o Oracle HTTP Server
+
+=item o Oracle Process Management Node
+
+=back
+
+Oracle Identity Management 11g includes:
+
+=over 3
+
+=item o Oracle Directory Integration Platform
+
+=item o Oracle Directory Server Manager
+
+=item o Oracle Identity Federation
+
+=item o Oracle Internet Directory
+
+=item o Oracle Virtual Directory
+
+=back
+
+Oracle Portal, Forms, Reports and Discoverer 11g includes:
+
+=over 3
+
+=item o Oracle Discoverer
+
+=item o Oracle Forms/Reports
+
+=item o Oracle HTTP Server
+
+=item o Oracle Process Management Node
+
+=item o Portal Diagnostics
+
+=item o Oracle Web Cache
+
+=back
+
+Oracle Fusion Middleware 11g Web Tier includes:
+
+=over 3
+
+=item o Oracle HTTP Server
+
+=item o Oracle Process Management Node
+
+=item o Oracle Web Cache
+
+=back
+
+The following reports can be generated and are regrouped under C<Oracle
+Fusion Middleware 11g>:
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing ASIT module ...',tput('off')
+
+# Include the table of content files produced by IREQ
+toc '%PUSH("0:   * Oracle Fusion Middleware 11g")%'
+toc '%PUSH("1+:Oracle Home")%'
+toc '%INCLUDE("',${CUR.GROUP},'_IREQ_ASIT_OH.toc")%'
+toc '%POP%'
+
+toc '%PUSH("%SPLIT%")%'
+toc '%PUSH("1+:Common Product Home")%'
+toc '%INCLUDE("',${CUR.GROUP},'_IREQ_ASIT_CH.toc")%'
+toc '%POP2%'
+
+loop $key (grepSetting('^ASIT_OI\d+_REQ_INSTANCE$','n'))
+{var $tid = substr($key,0,-13)
+ var $nam = basename(catDir(getSetting($key,'')))
+ toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("0:      * ',"'",$nam,"'",' Instance")%'
+ toc '%PUSH("1++:Associated Oracle Home")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_IREQ_',replace($tid,'_OI','_OH'),'.toc",1)%'
+ toc '%POP%'
+ toc '%PUSH("%SPLIT%")%'
+ toc '%PUSH("1++:Instance Home")%'
+ toc '%INCLUDE("',${CUR.GROUP},'_IREQ_',$tid,'.toc")%'
+ toc '%POP4%'
+}
+toc '%POP%'
+
+=head1 SEE ALSO
+
+L<ASITlib.def|modules::ASITlib>,
+L<DEVinfo.def|modules::DEVinfo>,
+L<DEVlib.def|modules::DEVlib>,
+L<DEVr11.def|modules::DEVr11>,
+L<DSCVinfo.def|modules::DSCVinfo>,
+L<DSCVr11.def|modules::DSCVr11>,
+L<IAS.def|modules::IAS>,
+L<OIDinfo.def|modules::OIDinfo>,
+L<OIDr11.def|modules::OIDr11>,
+L<OVDr11.def|modules::OVDr11>,
+L<PDAinfo.def|modules::PDAinfo>,
+L<PDAr11.def|modules::PDAr11>,
+L<S313IREQ.def|modules::S313IREQ>,
+L<WEBCr11.def|modules::WEBCr11>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.14: Greg Cook, Gaurav Pathak, Andrew Salt.
+
+=item RDA 4.15: Greg Cook, Andrew Salt, Olaf Stullich.
+
+=item RDA 4.16: Greg Cook, Daniel Mortimer, Andrew Salt.
+
+=item RDA 4.18: Mark Frankenfield, Sunil Hingorani, Andrew Salt.
+
+=item RDA 4.19: Roelof Van Suilichem.
+
+=item RDA 4.20: Meraj Mohammed.
+
+=item RDA 4.29: Adriana Dominguez.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

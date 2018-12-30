@@ -1,0 +1,288 @@
+# DEVlib.def: Defines Common Macros for Oracle Developer
+# $Id: DEVlib.def,v 2.11 2012/01/23 13:46:42 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/DEVlib.def,v 2.11 2012/01/23 13:46:42 mschenke Exp $
+#
+# Change History
+# 20120123  KRA  Use HKCU abbreviation.
+
+=head1 NAME
+
+DEVlib - Defines Common Macros for Oracle Developer
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to Oracle Developer.
+
+The following macros are available:
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('dump_summary','find_files','get_file','get_install',\
+                     'get_forms_java_directory','get_printer_devices')
+
+=head2 S<dump_summary($lvl,\%fil)>
+
+This macro analyzes the forms dump file and produces a summary with important
+fields.
+
+=cut
+
+macro dump_summary
+{var ($lvl,\%fil) = @arg
+ import $TOP
+ keep $TOP
+
+ var %tb_mon = ('01','Jan','02','Feb','03','Mar','04','Apr','05','May',\
+                '06','Jun','07','Jul','08','Aug','09','Sep','10','Oct',\
+                '11','Nov','12','Dec')
+ report dump_sum
+ prefix
+ {write '---+ Forms Dump File Summary'
+  write '|*Dump File Name*|*File Date*|*Form/Block/Field*|*Last Trigger*\
+         |*Last Builtin*|*Client IP*|*Fault Address*|*Module*|*Date*|'
+ }
+ loop $fil (keys(%fil))
+ {if createBuffer('FRM','R',$fil)
+  {var ($loc,$add,$blk,$blt,$dat,$ip,$mod,$trg) = ('')
+   while grepBuffer('FRM','((^(Fault address|Module|Command line|\
+    FORM/BLOCK/FIELD|Last Trigger|Last Builtin):)|(^\[.+\]::Client Status))',\
+    'fr')
+   {var ($lin) = last
+    if match($lin,'^\[(.+)\]::Client Status')
+    {var ($dat) = last
+     if match($dat,'^[A-Za-z]{3}\s+([A-Za-z]{3})\s+(\d+)\s+(\d+):\
+                    (\d+):(\d+)\s+(\d{4})\s+([A-Za-z]{3})')
+     {var ($mon,$day,$hou,$min,$sec,$yer,$tmz) = last
+      var $loc = concat($day,'-',$mon,'-',$yer,'&nbsp;',\
+                        $hou,':',$min,':',$sec,'&nbsp;',$tmz)
+     }
+     else
+     {var ($mon,$day,$yer,$hou,$min,$sec,$tmz) = split('[\/\s:]',$dat,8)
+      var $loc = concat($day,'-',nvl($tb_mon{$mon},$mon),'-',$yer,'&nbsp;',\
+                        $hou,':',$min,':',$sec,'&nbsp;',$tmz)
+     }
+    }
+    elsif match($lin,'^Fault address:\s*(.*)$')
+     var ($add) = last
+    elsif match($lin,'^Module:\s*(.*)$')
+     var ($mod) = last
+    elsif match($lin,'^Command line:\s*(.*)$')
+     var ($ip) = field(',',-1,last)
+    elsif match($lin,'^FORM/BLOCK/FIELD:\s*(.*)$')
+     var ($blk) = last
+    elsif match($lin,'^Last Trigger:\s*(.*)$')
+     var ($trg) = last
+    elsif match($lin,'^Last Builtin:\s*(.*)$')
+     var ($blt) = last
+    break and($add,$blk,$blt,$dat,$ip,$mod,$trg)
+   }
+   write '|[[',$fil{$fil},'][_blank][',encode(basename($fil)),']]|',$dat,' |',\
+     $blk,' |',$trg,' |',$blt,' |',$ip,' |',$add,' |',$mod,' |',$loc,' |'
+   call deleteBuffer('FRM')
+  }
+ }
+ if hasOutput(true)
+ {write $TOP
+  toc $lvl,':[[',getFile(),'][rda_report][Dump Summary]]'
+ }
+}
+
+=head2 S<find_files(\%fil,$dir,$re,$lvl,$lgt[,$opt,$pre])>
+
+This macro looks in the specified directory and subdirectories for all files
+that match the regular expression. When a number of lines is specified, only
+the final lines are collected. In addition, you can provide the search options
+as an extra argument. By default, it performs a recursive case insensitive
+search.
+
+=cut
+
+macro find_files
+{var (\%fil,$dir,$re,$lvl,$lgt,$opt,$pre) = @arg
+ import $TOP
+ keep $TOP
+
+ var ($lst,$det) = ('',incr($lvl))
+ loop $fil (grepDir($dir,$re,nvl($opt,'dir')))
+ {next !testFile('frT',$fil)
+
+  # Check for a new section
+  var $grp = dirname($fil)
+  if compare('ne',$grp,$lst)
+  {var $lst = $grp
+   toc $lvl,':',encode(addSymbol($grp)),' '
+  }
+
+  # Create the report associated with the file
+  var $nam = basename($fil)
+  output F,concat(nvl($pre,'log_'),$nam)
+  if $lgt
+  {write '---+ Last ',$lgt,' Lines of ',encode($nam),' File'
+   write '---## Information Taken from ',encode($fil)
+   call statFile('b',$fil)
+   call writeTail($fil,$lgt)
+   write $TOP
+  }
+  else
+  {write '---+ Display of ',encode($nam),' File'
+   write '---## Information Taken from ',encode($fil)
+   call statFile('b',$fil)
+   call writeFile($fil)
+   write $TOP
+  }
+  var $fil{$fil} = getFile()
+  toc $det,':[[',$fil{$fil},'][rda_report][',encode($nam),']]'
+ }
+}
+
+=head2 S<get_file($fil,$lgt,$pre,$lvl)>
+
+This macro looks for a simple file and inserts a link in the RDA menu
+structure.
+
+=cut
+
+macro get_file
+{var ($fil,$lgt,$pre,$lvl) = @arg
+
+ if testFile('fr',$fil)
+ {import $TOP
+  keep $cnt
+  if !$pre
+  {incr $cnt
+   var $pre = sprintf('f%02d_',$cnt)
+  }
+  var $nam = basename($fil)
+  report concat($pre,$nam)
+  if $lgt
+  {prefix
+   {write '---+ Last ',$lgt,' Lines of File ',encode($nam)
+    write '---## Information Taken from ',encode($fil)
+   }
+   call writeTail($fil,$lgt)
+  }
+  else
+  {prefix
+   {write '---+ Display File ',encode($nam)
+    write '---## Information Taken from ',encode($fil)
+   }
+   call writeFile($fil)
+  }
+  if hasOutput(true)
+  {write $TOP
+   toc nvl($lvl,4),':[[',getFile(),'][rda_report][',encode(catSymbol($fil)),']]'
+  }
+ }
+}
+
+=head2 S<get_install($dir,$str,$typ)>
+
+This macro looks for an installation log for the specified Oracle Developer
+component type.
+
+=cut
+
+macro get_install
+{var ($dir,$str,$typ) = @arg
+ var $dir = catDir($dir,concat($str,$typ))
+ var $pre = concat('inventory_',$typ,'_')
+ if testDir('r',$dir)
+ {var ($fil) = grepDir($dir,'^context.xml$','ir')
+  call get_file($fil,0,$pre)
+  loop $fil (grepDir(dirname($fil),'^install.*log.xml$','ip'))
+   call get_file($fil,0,$pre)
+ }
+}
+
+=head2 S<get_forms_java_directory($frm)>
+
+This macro lists C<forms90/java> or C<forms/java> directory contents.
+
+=cut
+
+macro get_forms_java_directory
+{var ($frm) = @arg
+ import $TOC,$TOP
+
+ # List forms90/java or forms/java directory contents
+ if testDir('d',$frm)
+ {var $dir = catDir($frm,'java')
+  report forms_java
+  prefix
+  {write '---+!! Forms Java Directories'
+   write $TOC
+  }
+  loop $itm ($dir,grepDir($dir,'^[^\.]','dpr'))
+  {if testDir('d',$itm)
+   {write '---++ ',encode($itm)
+    call statDir('n',$itm)
+    write $TOP
+   }
+  }
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][',encode(addSymbol($dir)),']]'
+ }
+}
+
+=head2 S<get_printer_devices($lvl)>
+
+This macro collects the printer device information using the Windows registry.
+
+=cut
+
+macro get_printer_devices
+{var ($lvl) = @arg
+ import $TOC,$TOP
+ keep $TOC,$TOP
+
+ report printer
+ title '---+ Printer Devices Information'
+ title $TOC
+
+ # List the default printer devices
+ prefix
+  write '---++ Default Printer Devices'
+ if getRegValue(\
+   'HKCU\Software\Microsoft\Windows NT\CurrentVersion\Windows','Device')
+  write '|*Current User*|',last,' |'
+ if getRegValue(\
+   'HKEY_USERS\.DEFAULT\Software\Microsoft\Windows NT\CurrentVersion\Windows',\
+   'Device')
+  write '|*Default User*|',last,' |'
+ if hasOutput(true)
+  write $TOP
+
+ # List all devices for the current user
+ title '---++ All Printer Devices'
+ prefix
+  write '---+++ Current User'
+ call writeRegistry(\
+   'HKCU\Software\Microsoft\Windows NT\CurrentVersion\Devices',0)
+ if hasOutput(true)
+  write $TOP
+
+ # List all devices for the default user
+ prefix
+  write '---+++ Default User'
+ call writeRegistry(\
+   'HKEY_USERS\.DEFAULT\Software\Microsoft\Windows NT\CurrentVersion\Devices',0)
+ if hasOutput(true)
+  write $TOP
+
+ # Add the report to the table of content
+ if isCreated()
+  toc $lvl,':[[',getFile(),'][rda_report][Printer Device Information]]'
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

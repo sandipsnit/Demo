@@ -1,0 +1,2550 @@
+# DDCrun.def: Oracle Database Diagnostics Collector (Data Collection)
+# $Id: DDCrun.def,v 2.13 2012/05/07 04:33:21 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/DDCrun.def,v 2.13 2012/05/07 04:33:21 mschenke Exp $
+#
+# Change History
+# 20120427  KRA  Refine default systemstate dump level determination.
+
+=head1 NAME
+
+DDCrun - Oracle Database Diagnostics Collector (Data Collection)
+
+=head1 DESCRIPTION
+
+This module executes the data collection part of the Oracle Database
+Diagnostics Collector.
+
+=cut
+
+echo tput('bold'),'Collecting dumps/traces for Oracle Database processes ...',\
+     tput('off')
+
+# Initialisation
+import $ORACLE_HOME,$ORACLE_SID
+import $DDC_ASH,$DDC_CMD,$DDC_EVT_SLP,$DDC_PID,$DDC_SLP,$DDC_TRC_SLP,$DDC_USR
+import @DDC_PID,%DDC_BGP,%DDC_DMP,%DDC_PRC,%DDC_SQL
+import $WAIT
+
+var $ABR = concat('DDC_',localtime('%y%m%d%H%M'))
+var $CPG = getSetting('DDC_CALL_KSMCPG')
+var $DBC = not(getSqlPrelim())
+var $KIP = 0
+var $PID = getPid()
+var $PRE = concat(${CUR.GROUP},'_',$ABR,'_')
+var $SID = field(':',-1,$ORACLE_SID)
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+var $sid = replace(concat('_',$SID),'[\_\W]+','_',true)
+var $CLR = concat('^',${CUR.GROUP},'_TMP_ddc(st|up)',$sid,'\.tmp$')
+var $REQ = concat('^',${CUR.GROUP},'_TMP_(ddcrq',$sid,'_(\d+).tmp)$')
+var $STA = concat('ddcst',$sid,'.tmp')
+var $WUP = catFile(${OUT.E},concat(${CUR.GROUP},'_TMP_ddcup',$sid,'.tmp'))
+
+var ($TTL,@EVT,@HDR,@KIP,@TTL) = ()
+
+call setAbbr($ABR)
+
+# Load the common macros
+run DBinfo()
+
+# --- Features ----------------------------------------------------------------
+
+# Generic dumps/reports:
+#  A Hang Analyze Dump
+#  C Locking Contention Report
+#  D Active Session History Dump
+#  E Event Histogram
+#  H Shared Pool (Heap) Dump
+#  L Library Cache Dump
+#  R Row Cache Dump
+#  S System State Dump
+#  W Session Wait Events Report
+
+# Process dumps/traces:
+#  E Process Error Stack
+#  F Process Open Files
+#  L Process Dynamic Libraries
+#  O Operating System Trace
+#  P Process State Dump
+#  S Process Stack
+#  T 10046 Trace
+
+## Unimplemented features:
+##  X  export SCRIPT_LIST=`echo ${OPTARG} | sed "s/,/ /g"`;;
+## $DDC_TEST_MODE
+
+# --- Process Control Macro Definitions ---------------------------------------
+
+# Create an execution indicator
+macro create_lock
+{var ($job,$grp,$pid,@txt) = @arg
+
+ var $abr = setAbbr(concat('DDC',$job))
+ var $lck = $[OUT]->add_report('e',concat($grp,$pid),0,'.tmp')
+ if @txt
+  call $lck->write(@txt)
+ else
+  call $lck->create
+ call $lck->close
+ call setAbbr($abr)
+ return $lck
+}
+
+# Remove all execution indicators for a group
+macro delete_group
+{var ($job,$grp) = @arg
+
+ var $pat = concat(${CUR.GROUP},'_DDC',$job,'_',$grp,'_?\d+\.tmp$')
+ call purge('e',$pat,-1,0)
+}
+
+# Get the lock pattern
+macro get_lock
+{var ($job,$grp) = @arg
+
+ return concat('^',${CUR.GROUP},'_DDC',$job,'_',$grp,'(_)?(\d+)\.tmp$')
+}
+
+# Find running processes
+macro grep_lock
+{var ($job,$grp) = @arg
+
+ var $pat = concat('^',${CUR.GROUP},'_DDC',$job,'_',$grp,'_?\d+\.tmp$')
+ return grepDir(${OUT.E},$pat,'i')
+}
+
+# Check the synchronization requirements
+macro check_wait
+{if get_wait(@arg)
+  return sprintf('!!call kip(%d)',last)
+ return ''
+}
+
+macro get_wait
+{var $txt = join('',@arg)
+ import $KIP,$WAIT,@KIP
+ keep $KIP,$WAIT,@KIP
+
+ if $WAIT
+ {incr $KIP
+  var $KIP[$KIP] = $txt
+  return $KIP
+ }
+ return 0
+}
+
+# Synchronize the execution
+macro kip
+{var ($off) = @arg
+ import $REQ,$STA,$WUP,@KIP
+ keep $REQ,$STA,$WUP,@KIP
+
+ var $txt = $KIP[$off]
+ suspend report
+ call dsp_event('Waiting on wake-up for ',$txt)
+
+ var $abr = setAbbr('TMP')
+ while true
+ {# Touch the time stamp file
+  output E,$STA
+  write
+  close
+
+  # Check the presence of the wakeup file
+  sleep 3
+  if testFile('f',$WUP)
+  {call dsp_event('Waking up for ',$txt)
+   break
+  }
+
+  # Detect a status request
+  if grepDir(${OUT.E},$REQ,'if')
+  {var ($req) = last
+   var ($rpt,$pid) = match($req,$REQ,true)
+   next expr('==',$pid,$prv)
+   output >> E,$rpt
+   write '- Pending on ',$txt
+   close
+   var $prv = $pid
+  }
+ }
+ call setAbbr($abr)
+ resume report
+}
+
+# --- Output Macro Definitions ------------------------------------------------
+
+# Open the log report
+output >> e,log
+global $[log] = ${CUR.LAST}
+alias log    = $[log]->write()
+alias hasLog = $[log]->has_output()
+call $[log]->unlink
+call log('---+!! ORADDC Collection Log')
+call log('---### ORADDC collection started at ',${RDA.LOCALTIME})
+call log($TOC)
+
+# Start logging events
+macro begin_log
+{prefix $[log]
+  call log('<verbatim>')
+ call $[log]->close(true)
+}
+
+# Clone the log
+macro clone_log
+ global $[log] = $[log]->clone
+
+# Display and log an event
+macro dsp_event
+{debug @arg
+ call log_event(@arg)
+}
+macro DspEvent
+{var ($evt) = @arg
+ import @EVT
+ keep @EVT
+
+ call dsp_event($EVT[$evt])
+}
+
+# Display and log a line
+macro dsp_line
+{debug @arg
+ call log(@arg)
+}
+
+# End logging events
+macro end_log
+{if hasLog(true)
+  call log('</verbatim>')
+}
+
+# Log an event
+macro log_event
+ call log(substr(${RDA.LOCALTIME},-8),': ',@arg)
+
+# --- Macro Definitions -------------------------------------------------------
+
+# Check hanganalyze dump for suspicious sessions
+macro check_hanganalyze
+{call dsp_event('Checking hanganalyze dump for hangs and blockers ...')
+ if grepFile($[log]->get_file(true),'hanganalyze.*\.trc','i')
+ {# Identify the corresponding trace list (excluding duplicates)
+  loop $lin (last)
+   var $fil{value($lin)} = 1
+
+  # Treat all files
+  var $pre = '            '
+  loop $fil (keys(%fil))
+  {# List 'in-hang' SIDs
+   var %tbl = ()
+   loop $lin (grepFile($fil,'IN_HANG'))
+   {var @tbl = split('\/',$lin)
+    next !length($tbl[5])
+    var $tbl{concat($tbl[2],' (',$tbl[5],')')} = true
+   }
+   if keys(%tbl)
+   {var @tbl = last
+    call dsp_line()
+    call dsp_event('Examining file: ',$fil)
+    call dsp_event('The following "in hang" SIDs (O/S PIDs) found:')
+    loop $lin (@tbl)
+     call dsp_line($pre,$lin)
+    call dsp_event('Consider running a process state dump for these ...')
+    call dsp_line()
+   }
+
+   # List blocking SIDs
+   var %tbl = ()
+   loop $lin (grepFile($fil,'LEAF'))
+   {var @tbl = split('\/',$lin)
+    next !length($tbl[5])
+    var $tbl{concat($tbl[2],' (',$tbl[5],')')} = true
+   }
+   if keys(%tbl)
+   {var @tbl = last
+    call dsp_line()
+    call dsp_event('Examining file: ',$fil)
+    call dsp_event('The following blocking SIDs (O/S PIDs) found:')
+    loop $lin (@tbl)
+     call dsp_line($pre,$lin)
+    call dsp_event('Consider running a process state dump for these ...')
+   }
+
+   # List process dumps
+   call dsp_line()
+   call dsp_event('** If process traces have been generated')
+   call dsp_event('     by hanganalyze the PIDs will appear below ...')
+   var %tbl = ()
+   loop $lin (grepFile($fil,'^Dumping'))
+   {if match($lin,'^.* (\d+)')
+    {var ($pid) = last
+     var $tbl{$pid} = true
+    }
+   }
+   if keys(%tbl)
+   {var @dmp = last
+    call dsp_line()
+    call dsp_event('The hanganalyze has already generated process dumps for \
+                    the following:')
+    var %tbl = ()
+    loop $lin (grepFile($fil,'^Dumping'))
+     var $tbl{replace($lin,'Dumping','Dumped')} = 1
+    loop $lin (keys(%tbl))
+     call dsp_line($pre,$lin)
+    call dsp_line()
+
+    call dsp_line()
+    call dsp_event('Trace/dump files generated by HANGANALYZE:')
+    var $bdd = get_bdump()
+    var $udd = get_udump()
+    loop $pid (@dmp)
+    {loop $trc (grepDir($udd,concat('_',$pid,'_.*\.trc$'),'inp'))
+      call dsp_line($pre,$trc)
+     loop $trc (grepDir($bdd,concat('_',$pid,'_.*\.trc$'),'inp'))
+      call dsp_line($pre,$trc)
+    }
+   }
+   else
+    call dsp_event('The hanganalyze did not appear to generate any process \
+                    dumps.')
+  }
+ }
+}
+
+# Collate produced traces
+macro collate_traces
+{import $LDD_PGM,$PFL_PGM,$TOP,$STK_PGM,$TRC_PGM
+
+ # Stop event logging
+ call end_log()
+ call log($TOP)
+ prefix $[log]
+ {call log('---+ Trace File Summary')
+  call log('**Note:** Some trace files may also contain other diagnostic types \
+            in addition to what indicated, depending on the combination of \
+            options selected.%BR%&nbsp;')
+ }
+
+ # Define a macro retrieving reports
+ macro find_traces
+ {var ($pat) = @arg
+
+  var ($pth,@lnk) = ($[log]->get_file(true))
+  call $[log]->close(true)
+  loop $lin (grepFile($pth,$pat))
+  {var $fil = field(':\s+',2,$lin)
+   if testFile('r',catFile(${OUT.E},$fil))
+    call push(@lnk,concat('[[',$fil,'][_blank][',$fil,']]'))
+  }
+  return @lnk
+ }
+ macro find_reports
+ {var ($pth,@lnk) = ($[log]->get_file(true))
+  call $[log]->close(true)
+  loop $lin (grepFile($pth,'Spooling to:'))
+  {var $fil = field(':\s+',2,$lin)
+   call push(@lnk,concat('[[',value($fil),'][_blank][',key($fil),']]'))
+  }
+  return @lnk
+ }
+
+ # Collate report files
+ if find_reports()
+  call log('|*Reports*|',join('%BR%',last),'|')
+
+ # Collate stack traces
+ if find_traces('Stack trace written to:')
+  call log('|*Stack (',$STK_PGM,') Traces*|',join('%BR%',last),'|')
+
+ if find_traces('Pfiles trace written to:')
+  call log('|*Process Open Files (',$PFL_PGM,') Traces*|',join('%BR%',last),'|')
+
+ if find_traces('Pldd trace written to:')
+  call log('|*Process Dynamic Libraries (',$LDD_PGM,') Traces*|',\
+        join('%BR%',last),'|')
+
+ # Collate O/S traces
+ if find_traces('O/S trace written to:')
+  call log('|*O/S (',$TRC_PGM,') Traces*|',join('%BR%',last),'|')
+
+ # Collate Oracle dumps
+ call $[log]->close(true)
+ if grepFile($[log]->get_file(true),'Trace identifier:')
+ {var ($cnt,@lin) = (0,last)
+  loop $lin (@lin)
+  {var $lin = field(':\s+',2,$lin)
+   var $trc = catFile(value($lin))
+   if missing($lnk{$trc})
+   {incr $cnt
+    output E,concat('trc',$cnt,'_',basename($trc,'.trc'),'.dat')
+    call writeData($trc)
+    var $lnk{$trc} = concat('[[',basename(getFile('.')),'][_blank][',$trc,']]')
+    close
+   }
+   call setDataValue('trc',key($lin),$lnk{$trc},1)
+  }
+  loop $key (getDataKeys('trc'))
+   call log( '|*',$key,'*|',join('%BR%',getDataKeys('trc',$key)),'|')
+ }
+
+ # Terminate the report and restart event logging
+ if hasLog(true)
+  call log($TOP)
+ call log('---### ORADDC collection ended at ',${RDA.LOCALTIME})
+}
+
+# Collect a 10046 trace
+macro collect_10046
+{var ($pid) = @arg
+ import $PID
+ keep $PID
+
+ job
+ {import $pid,$PID
+  call create_lock($PID,'ddcpt',getPid(),'pid=',$pid)
+  call clone_log()
+  var $sql = check_wait('10046 trace (PID: ',$pid,')')
+  append $sql
+  {oradebug setospid :1
+  "PROMPT oradebug event 10046 trace name context forever, level 12
+  "oradebug event 10046 trace name context forever, level 12
+  "oradebug tracefile_name
+  "oradebug setmypid
+  }
+  output E,concat('pt_',$pid,'.tmp')
+  call writeSql(bindSql($sql,$pid))
+  if grepFile(getFile('/'),'\.trc','if')
+   call log_event('Trace identifier: 10046 Trace=',trim(last))
+ }
+}
+
+# Collect an active session history dump
+macro collect_ashdump
+{import $CPG,$DBC,$DDC_ASH,$PID,$TOP
+ keep $CPG,$DBC,$DDC_ASH,$PID,$TOP
+
+ job
+ {import $CPG,$DBC,$DDC_ASH,$PID,$TOP
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('active session history')
+  if $DBC
+  {append $sql
+   {alter session set tracefile_identifier='ashdump';
+   }
+  }
+  elsif $CPG
+  {append $sql
+   {oradebug call ksmcpg
+   }
+  }
+  append $sql
+  {oradebug setmypid
+  "oradebug dump ashdump :1
+  "oradebug tracefile_name
+  }
+  output E,concat('dd.tmp')
+  call writeSql(bindSql($sql,$DDC_ASH))
+  var $rpt = getFile('/')
+  if grepFile($rpt,'\.trc','if')
+  {var $fil = trim(last)
+   call log_event('Trace identifier: ASH dump=',$fil)
+  }
+
+  # Define a macro to resolve events
+  macro add_event
+  {import $TOP
+
+   # Determine the database version
+   if grepBuffer('ASH','^Oracle Database \S+ ','fr')
+    var ($ver) = match(last,'^Oracle Database (\S+)')
+   else
+    return
+
+   # Create an internal table
+   if match($ver,'^10')
+   {if !and(grepBuffer('ASH','HEADER BEGIN>>>$','fir'),\
+            createTable('ash',chomp(getLine('ASH'))),\
+            grepBuffer('ASH','DUMP BEGIN>>>$','fir'))
+     return
+    call setTableType('ash','TSP','SAMPLE_TIME')
+    while getLine('ASH')
+    {var $lin = chomp(last)
+     break match($lin,'DUMP END>>>$',true)
+     call addTableRow('ash',$lin)
+    }
+   }
+   else
+   {# Define parsing macros
+    macro add_ash_column
+    {var (\$def,$lin) = @arg
+
+     if !match($lin,'^[^\s,]+\s+CONSTANT\s',true)
+     {if match($lin,'^([^\s,]+)')
+       var $def = join(',',$def,last)
+     }
+     return -1
+    }
+
+    macro create_ash_table
+    {var ($def) = @arg
+
+     call createTable('ash',$def)
+     call setTableType('ash','TSP','SAMPLE_TIME','SQL_EXEC_START')
+    }
+
+    macro load_ash_row
+    {var $row = join('',parseBuffer())
+     if length($row)
+      call addTableRow('ash',$row)
+    }
+
+    macro merge_ash_row
+    {var (\$row,$lin) = @arg
+
+     var $row = concat($row,$lin)
+     return -1
+    }
+
+    # Define a parser
+    call parseReset()
+    call parseBegin('TOP','HEADER BEGIN>>>$','HDR')
+    call parseEnd('HDR','HEADER END>>>$')
+    call parseBegin('HDR','^\($','TBL')
+    call parseEnd('TBL','^\)$')
+    call parseInfo('TBL','end',create_ash_table($def))
+    call parseInfo('TBL','flp',false)
+    call parseCode('TBL',add_ash_column(\$def,line))
+    call parseBegin('TOP','DUMP BEGIN>>>$','DAT')
+    call parseBegin('DAT','^####$','REC','REC')
+    call parseEnd('DAT','DUMP END>>>$')
+    call parseInfo('REC','buf',-1)
+    call parseInfo('REC','end',load_ash_row())
+    call parseInfo('REC','flp',false)
+
+    # Parse the trace file
+    var $def = undef
+    call parse('ASH')
+    if !$def
+     return
+   }
+
+   # Modify the table
+   var $off2 = getTableOffset('ash','BLOCKING_SESSION_SERIAL#')
+   if defined($off2)
+   {var $off1 = getTableOffset('ash','BLOCKING_SESSION')
+    call addTableColumn('ash','BLOCKING_SESSION_ID_SERIAL',$off1,\
+      '%s-%s',$off1,$off2)
+   }
+   var $off = getTableOffset('ash','SESSION_ID')
+   call addTableColumn('ash','SESSION_ID_SERIAL',$off,\
+     '%s-%s',$off,'SESSION_SERIAL#')
+   call addTableColumn('ash','SNAP_ID','DBID',0)
+   call addTableColumn('ash','WAIT_CLASS_ID','WAIT_TIME')
+
+   call addTableColumn('ash','EVENT','EVENT_ID','')
+   call addTableColumn('ash','P1TEXT','P1','')
+   call addTableColumn('ash','P2TEXT','P2','')
+   call addTableColumn('ash','P3TEXT','P3','')
+   call addTableColumn('ash','WAIT_CLASS','WAIT_CLASS_ID','')
+
+   call setTableType('ash','NUM',\
+     'BLOCKING_SESSION','DBID','P1','P2','P3','TIME_WAITED','WAIT_TIME')
+   loop $nam (getTableColumns('ash'))
+   {if match($nam,'(_ID|_NUMBER|_VALUE|\#)$')
+     call setTableType('ash','NUM',$nam)
+   }
+
+   # Add event description when applicable
+   if getTableKeys('ash','EVENT_ID')
+   {var $key = join(',',last)
+
+    # Create a table for v$event_name
+    var @col = ('EVENT_ID','EVENT','P1TEXT','P2TEXT','P3TEXT','WAIT_CLASS')
+    call createTable('evt',@col)
+    set $sql
+    {SELECT 'EVT="' ||
+    "       event_id || '","' ||
+    "       name || '","' ||
+    "       parameter1 || '","' ||
+    "       parameter2 || '","' ||
+    "       parameter3 || '","' ||
+    "       wait_class || '"'
+    " FROM v$event_name
+    " WHERE event_id IN (:1);
+    }
+    loop $lin (grepSql(bindSql($sql,$key),'^EVT=.*'))
+     call addTableRow('evt',value($lin))
+    call addTableUid('evt',0)
+
+    # Merge the specified columns using the EVENT_ID
+    call mergeTable('ash','evt','EVENT_ID',$col[1],1,\
+                                           $col[2],2,\
+                                           $col[3],3,\
+                                           $col[4],4,\
+                                           $col[5],5)
+   }
+
+   # Write the table contents to the report in the desired order
+   output E,dd
+   prefix
+    write '---+!! Active Session History'
+   call writeTable('ash',\
+     'INSTANCE_NUMBER/A,SAMPLE_TIME/D,SESSION_ID/A,SESSION_SERIAL#/A')
+   if hasOutput(true)
+   {write $TOP
+    call log_event('Spooling to: Active Session History=',\
+                   basename(renderFile()))
+   }
+
+   # Delete the tables
+   call deleteTable('ash')
+   call deleteTable('evt')
+  }
+
+  # Add event information in the ASH records
+  if and($DBC,$fil,createBuffer('ASH','R',$fil))
+  {call add_event()
+   call deleteBuffer('ASH')
+  }
+
+  # Indicate the job completion
+  call dsp_event('(active session history) Done.')
+  call $lck->unlink
+ }
+}
+
+# Collect an error stack
+macro collect_error_stack
+{var ($pid) = @arg
+ import $DDC_SLP,$PID,@EVT
+ keep $DDC_SLP,$PID,@EVT
+
+ var $min = expr('*',3,$DDC_SLP)
+ call dsp_event('Please wait, this will take at least ',$min,' seconds ...')
+ job
+ {import $pid,$DDC_SLP,$PID,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('error stack (PID: ',$pid,')')
+  append $sql
+  {oradebug setospid :2
+  "oradebug unlimit
+  "PROMPT oradebug dump errorstack 3
+  "oradebug dump errorstack 3
+  "PROMPT ___Macro_DspEvent(2)___
+  "!!sleep(:1)
+  "oradebug dump errorstack 3
+  "PROMPT ___Macro_DspEvent(1)___
+  "!!sleep(:1)
+  "oradebug dump errorstack 3
+  "oradebug tracefile_name
+  "PROMPT ___Macro_DspEvent(0)___
+  }
+  output E,concat('pe_',$pid,'.tmp')
+  var @EVT = (\
+    concat('(PID: ',$pid,' / errorstack 3 of 3) Done.'),\
+    concat('(PID: ',$pid,' / errorstack 2 of 3) Sleeping for ',$DDC_SLP,\
+           ' seconds ...'),\
+    concat('(PID: ',$pid,' / errorstack 1 of 3) Sleeping for ',$DDC_SLP,\
+           ' seconds ...'))
+  call writeSql(bindSql($sql,$DDC_SLP,$pid))
+  if grepFile(getFile('/'),'\.trc','if')
+   call log_event('Trace identifier: Error Stack=',trim(last))
+  call $lck->unlink
+ }
+}
+
+# Collect hang analyze information
+macro collect_hang_analyze
+{import $CPG,$DBC,$DDC_SLP,$HAL,$PID,@EVT
+ keep $CPG,$DBC,$DDC_SLP,$HAL,$PID,@EVT
+
+ var $min = expr('*',3,$DDC_SLP)
+ call dsp_event('Please wait, this will take at least ',$min,' seconds ...')
+ job
+ {import $CPG,$DBC,$DDC_SLP,$HAL,$PID,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('hang analyze')
+  if $DBC
+  {append $sql
+   {alter session set tracefile_identifier='hanganalyze';
+   }
+  }
+  elsif $CPG
+  {append $sql
+   {oradebug call ksmcpg
+   }
+  }
+  append $sql
+  {oradebug setmypid
+  "oradebug unlimit
+  "PROMPT oradebug hanganalyze :2
+  "oradebug hanganalyze :2
+  "PROMPT ___Macro_DspEvent(2)___
+  "!!sleep(:1)
+  "oradebug hanganalyze :2
+  "PROMPT ___Macro_DspEvent(1)___
+  "!!sleep(:1)
+  "oradebug hanganalyze :2
+  "oradebug tracefile_name
+  "PROMPT ___Macro_DspEvent(0)___
+  }
+  output E,'da.tmp'
+  var @EVT = (\
+    '(hang_analyze 3 of 3) Done.',\
+    concat('(hang_analyze 2 of 3) Sleeping for ',$DDC_SLP,' seconds ...'),\
+    concat('(hang_analyze 1 of 3) Sleeping for ',$DDC_SLP,' seconds ...'))
+  call writeSql(bindSql($sql,$DDC_SLP,$HAL))
+  if grepFile(getFile('/'),'\.trc','i',-1)
+   call log_event('Trace identifier: Hang Analyze=',trim(last))
+  call $lck->unlink
+ }
+}
+
+# Collect a heapdump
+macro collect_heapdump
+{import $CPG,$DBC,$PID,@EVT
+ keep $CPG,$DBC,$PID,@EVT
+
+ job
+ {import $CPG,$DBC,$PID,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('heapdump')
+  if $DBC
+  {append $sql
+   {alter session set tracefile_identifier='heapdump';
+   }
+  }
+  elsif $CPG
+  {append $sql
+   {oradebug call ksmcpg
+   }
+  }
+  append $sql
+  {oradebug setmypid
+  "oradebug unlimit
+  "PROMPT oradebug dump heapdump 536870915;
+  "oradebug dump heapdump 536870915;
+  "oradebug tracefile_name
+  "PROMPT ___Macro_DspEvent(0)___
+  }
+  output E,'dh.tmp'
+  var @EVT = ('(heapdump 536870915) Done.')
+  call writeSql($sql)
+  if grepFile(getFile('/'),'\.trc','if')
+   call log_event('Trace identifier: Heapdump=',trim(last))
+  call $lck->unlink
+ }
+}
+
+# Collect the library cache
+macro collect_lib_cache
+{import $CPG,$DBC,$PID,@EVT
+ keep $CPG,$DBC,$PID,@EVT
+
+ job
+ {import $CPG,$DBC,$PID,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('library cache')
+  if $DBC
+  {append $sql
+   {alter session set tracefile_identifier='libcache';
+   }
+  }
+  elsif $CPG
+  {append $sql
+   {oradebug call ksmcpg
+   }
+  }
+  append $sql
+  {oradebug setmypid
+  "PROMPT oradebug dump library_cache 4
+  "oradebug dump library_cache 4
+  "oradebug tracefile_name
+  "PROMPT ___Macro_DspEvent(0)___
+  }
+  output E,'dl.tmp'
+  var @EVT = ('(library cache) Done.')
+  call writeSql($sql)
+  if grepFile(getFile('/'),'\.trc','if')
+   call log_event('Trace identifier: Library Cache=',trim(last))
+  call $lck->unlink
+ }
+}
+
+# Collect a process state dump
+macro collect_process_state
+{var ($pid) = @arg
+ import $DDC_SLP,$PID,@EVT
+ keep $DDC_SLP,$PID,@EVT
+
+ var $min = expr('*',3,$DDC_SLP)
+ call dsp_event('Please wait, this will take at least ',$min,' seconds ...')
+ job
+ {import $pid,$DDC_SLP,$PID,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('process state (PID: ',$pid,')')
+  append $sql
+  {oradebug setospid :2
+  "PROMPT oradebug dump processstate 10
+  "oradebug dump processstate 10
+  "PROMPT ___Macro_DspEvent(2)___
+  "!!sleep(:1)
+  "oradebug dump processstate 10
+  "PROMPT ___Macro_DspEvent(1)___
+  "!!sleep(:1)
+  "oradebug dump processstate 10
+  "oradebug tracefile_name
+  "oradebug setmypid
+  "PROMPT ___Macro_DspEvent(0)___
+  }
+  output E,concat('pp_',$pid,'.tmp')
+  var @EVT = (\
+    concat('(PID: ',$pid,' / process_state 3 of 3) Done.'),\
+    concat('(PID: ',$pid,' / process_state 2 of 3) Sleeping for ',$DDC_SLP,\
+           ' seconds ...'),\
+    concat('(PID: ',$pid,' / process_state 1 of 3) Sleeping for ',$DDC_SLP,\
+           ' seconds ...'))
+  call writeSql(bindSql($sql,$DDC_SLP,$pid))
+  if grepFile(getFile('/'),'\.trc','if')
+   call log_event('Trace identifier: Process State=',trim(last))
+  call $lck->unlink
+ }
+}
+
+# Collect the row cache
+macro collect_row_cache
+{import $CPG,$DBC,$PID,@EVT
+ keep $CPG,$DBC,$PID,@EVT
+
+ job
+ {import $CPG,$DBC,$PID,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('row cache')
+  if $DBC
+  {append $sql
+   {alter session set tracefile_identifier='rowcache';
+   }
+  }
+  elsif $CPG
+  {append $sql
+   {oradebug call ksmcpg
+   }
+  }
+  append $sql
+  {oradebug setmypid
+  "PROMPT oradebug dump row_cache 10
+  "oradebug dump row_cache 10
+  "oradebug tracefile_name
+  "PROMPT ___Macro_DspEvent(0)___
+  }
+  output E,'dr.tmp'
+  var @EVT = ('(row cache) Done.')
+  call writeSql($sql)
+  if grepFile(getFile('/'),'\.trc','if')
+   call log_event('Trace identifier: Row Cache=',trim(last))
+  call $lck->unlink
+ }
+}
+
+# Collect a system state dump
+macro collect_system_state
+{import $CPG,$DBC,$DDC_SLP,$PID,$SDL,@EVT
+ keep $CPG,$DBC,$DDC_SLP,$PID,$SDL,@EVT
+
+ var $min = expr('*',3,$DDC_SLP)
+ call dsp_event('Please wait, this will take at least ',$min,' seconds ...')
+ job
+ {import $CPG,$DBC,$DDC_SLP,$PID,$SDL,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('system state')
+  if $DBC
+  {append $sql
+   {alter session set tracefile_identifier='systemstate';
+   }
+  }
+  elsif $CPG
+  {append $sql
+   {oradebug call ksmcpg
+   }
+  }
+  append $sql
+  {oradebug setmypid
+  "oradebug unlimit
+  "PROMPT oradebug dump systemstate :2
+  "oradebug dump systemstate :2
+  "PROMPT ___Macro_DspEvent(2)___
+  "!!sleep(:1)
+  "oradebug dump systemstate :2
+  "PROMPT ___Macro_DspEvent(1)___
+  "!!sleep(:1)
+  "oradebug dump systemstate :2
+  "oradebug tracefile_name
+  "PROMPT ___Macro_DspEvent(0)___
+  }
+  output E,'ds.tmp'
+  var @EVT = (\
+    concat('(system_state 3 of 3) Done.'),\
+    concat('(system_state 2 of 3) Sleeping for ',$DDC_SLP,' seconds ...'),\
+    concat('(system_state 1 of 3) Sleeping for ',$DDC_SLP,' seconds ...'))
+  call writeSql(bindSql($sql,$DDC_SLP,$SDL))
+  if grepFile(getFile('/'),'\.trc','if')
+   call log_event('Trace identifier: System State=',trim(last))
+  call $lck->unlink
+ }
+}
+
+# Get the process identifier of a background process
+macro get_background
+{var (\%pid,$sid,\%pat) = @arg
+
+ if or(isWindows(),isCygwin(),isVms())
+ {# Outside Unix, use the database
+  debug 'Loading the background process identifiers ...'
+  set $sql
+  {SELECT b.name || '=' || p.spid
+  " FROM gv$process p,gv$bgprocess b
+  " WHERE p.inst_id = b.inst_id
+  "   AND p.addr    = b.paddr;
+  }
+  call loadSql($sql)
+  loop $nam (keys(%pat))
+  {if grepLastSql(concat($pat{$nam},'='),'i')
+   {loop $lin (last)
+     var $pid{key($lin)} = value($lin)
+   }
+   else
+    call dsp_event('WARNING: Unable to identify the "',$nam,'" process(es)')
+  }
+ }
+ elsif loadCommand('ps -ef')
+ {# Use the ps command for UNIX to get the process identifier
+  loop $nam (keys(%pat))
+  {var $pat = concat('(',$pat{$nam},')_',replace($sid,'\+','\+',true),'\b')
+   if grepLastFile($pat,'i')
+   {loop $lin (last)
+    {var ($key) = match($lin,$pat,true)
+     var $pid{$key} = field('\s+',1,$lin)
+    }
+   }
+   else
+    call dsp_event('WARNING: Unable to identify the "',$nam,'" process(es)')
+  }
+ }
+}
+
+# Collect the session process identifiers for the blocking sessions
+macro get_blocking_pids
+{var $sql = check_wait('blocking sessions PIDs')
+ append $sql
+ {SELECT 'pid=' || p.spid
+ " FROM v$process p,v$session s,dba_blockers b
+ " WHERE p.addr = s.paddr
+ "   AND b.holding_session = s.sid;
+ }
+ var @tbl = ()
+ loop $lin (grepSql($sql,'^pid='))
+  var @tbl = (@tbl,value($lin))
+ return @tbl
+}
+
+# Collect the session process identifiers for the events specified
+macro get_event_pids
+{import $TOP
+
+ if @arg
+ {# Display relevant events
+  call end_log()
+  prefix $[log]
+  {call log('---++ Requested Sessions on Following Wait Events')
+   call log('|*Event#*|*Wait Event*|')
+  }
+  var $sql = check_wait('event PIDs')
+  append $sql
+  {SELECT '|' ||
+  "       e.event# || '|' ||
+  "       e.name || '|'
+  " FROM  v$event_name e
+  " WHERE e.event# IN (:1);
+  }
+  call writeSql($[log],bindSql($sql,join(',',@arg)))
+  if hasLog(true)
+   call log($TOP)
+  call begin_log()
+
+  # Collect the 10 first session process identifiers for each event specified
+  loop $evt (@arg)
+  {var $sql = check_wait('10 first sessions for ',$evt,' event')
+   append $sql
+   {SELECT 'pid=' || p.spid
+   " FROM v$process p,
+   "      v$session s,
+   "      v$session_wait w,
+   "      v$event_name e
+   " WHERE p.addr = s.paddr
+   "   AND e.event# IN (:1)
+   "   AND w.sid = s.sid
+   "   AND e.name = w.event
+   "   AND ROWNUM < 11;
+   }
+   loop $lin (grepSql(bindSql($sql,$evt),'^pid='))
+    var @tbl = (@tbl,value($lin))
+  }
+ }
+ return @tbl
+}
+
+# Collect the event history information for the events specified
+macro get_event_hist
+{var ($DDC_EVT_SLP,@evt) = @arg
+ import $PID,$TOC,$TOP,@EVT
+
+ job
+ {import $PID,$TOC,$TOP,@EVT
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  var $sql = check_wait('event histogram data')
+  append $sql
+  {SELECT '|' ||
+  "       e.event# || '|' ||
+  "       e.name || '|'
+  " FROM  v$event_name e
+  " WHERE e.event# IN (:1);
+  }
+  if loadSql(bindSql($sql,join(',',@evt)))
+  {var %evt = ()
+   loop $lin (grepLastSql('^\|\d'))
+   {var (undef,$evt,$nam,undef) = split('\|',$lin,4)
+    var $evt{$nam} = $evt
+   }
+   set $sql
+   {SELECT wait_time_milli || ',' ||
+   "       wait_count
+   " FROM v$event_histogram
+   " WHERE event# = :1
+   " ORDER BY wait_time_milli;
+   }
+   var @EVT = (\
+     '(snapshot of event histogram 2 of 2) Done.',\
+     concat('(snapshot of event histogram 1 of 2) Sleeping for ',$DDC_EVT_SLP,\
+            ' seconds ...'))
+   call clearData()
+   call createData('',createData('',list()))
+   for $idx (1,2)
+   {loop $nam (keys(%evt))
+    {loop $lin (grepSql(bindSql($sql,$evt{$nam}),'^\d*,'))
+     {var ($tim,$cnt) = split(',',$lin,2)
+      call addDataValue($nam,$tim,$cnt)
+      if missingData($nam,$tim)
+       call addDataValue($nam,$tim,0)
+     }
+    }
+    if expr('<>',$idx,2)
+    {call DspEvent(1)
+     sleep $DDC_EVT_SLP
+    }
+    else
+     call DspEvent(0)
+   }
+   output E,de
+   loop $nam (keys(%evt))
+   {prefix
+    {if !isCreated()
+     {write '---+!! Snapshot Data from V$EVENT_HISTOGRAM'
+      write $TOC
+     }
+     write "---+ '",$nam,"' Wait Event Histogram"
+     write '| *Response Bucket (ms)*| *Event Count(1)*| *Event Count(2)*| \
+              *Delta*| *Weighted Total Time (ms)*|'
+    }
+    loop $bck (getDataIndex($nam))
+    {var ($cnt1,$cnt2) = getDataValue($nam,$bck)
+     var $del = expr('-',$cnt2,$cnt1)
+     var $tot = expr('*',$del,$bck)
+     write '| ',join('| ',$bck,$cnt1,$cnt2,$del,$tot),'|'
+    }
+    if hasOutput(true)
+     write $TOP
+   }
+   if isCreated(true)
+   {var $rpt = renderFile()
+    call log_event('Spooling to: Event Histogram=',basename($rpt))
+   }
+  }
+  close
+  call $lck->unlink
+ }
+}
+
+# Collect the process identifiers for the specified listener names
+macro get_listener_pids
+{var @lsn = @arg
+ var ($osn,$PS_ARG,$PS_EF,$PS_ELF,@pid) = (getOsName())
+
+ # Get the ps command format
+ if match($osn,'solaris')
+ {run OSsunos('PS')
+ }
+ elsif match($osn,'hpux')
+ {run OShpux('PS')
+ }
+ elsif match($osn,'aix')
+ {run OSaix('PS')
+ }
+ elsif match($osn,'dec_osf')
+ {run OSosf('PS')
+ }
+ elsif match($osn,'linux')
+ {run OSlinux('PS')
+ }
+ elsif match($osn,'dynixptx')
+ {run OSptx('PS')
+ }
+ elsif match($osn,'darwin')
+ {run OSdarwin('PS')
+ }
+ elsif isUnix()
+ {run OSunix('PS')
+ }
+ else
+  return @pid
+
+ # Identify the user-specified listener names
+ macro chk_listener
+ {var (\@pid,\@lsn,$fld1,$fld2,$off,@lin) = @arg
+
+  loop $lin (@lin)
+  {var $lsn = field('\s+',$fld1,substr($lin,$off))
+   next !grep(@lsn,concat('\b',quote($lsn),'\b'),'if')
+   var $pid = field('\s+',$fld2,$lin)
+   if match($pid,'^\d+$')
+    var @pid = (@pid,$pid)
+  }
+ }
+
+ # Extract the listener list
+ if loadCommand(replace($PS_ARG,'comm,args','pid,comm,args'))
+  call chk_listener(\@pid,\@lsn,3,0,0,grepLastFile('tnslsnr'))
+ elsif match($osn,'linux')
+ {if grepDir('/etc','suse.*release','i')
+   var $off = 6
+  else
+   var $off = 7
+  call chk_listener(\@pid,\@lsn,$off,3,39,\
+                    grepCommand($PS_ELF,'tnslsnr.*inherit'))
+ }
+ elsif match($osn,'aix')
+  call chk_listener(\@pid,\@lsn,3,1,39,grepCommand($PS_EF,'tnslsnr'))
+ else
+  call chk_listener(\@pid,\@lsn,2,1,42,grepCommand($PS_EF,'tnslsnr'))
+
+ # Get the listener PID's
+ return @pid
+}
+
+# Collect the session process identifiers for the Oracle process specified
+macro get_oracle_pids
+{var $sql = check_wait('Oracle PIDs')
+ append $sql
+ {SELECT 'pid=' || p.spid
+ " FROM v$process p
+ " WHERE p.pid IN (:1);
+ }
+ loop $lin (grepSql(bindSql($sql,join(',',@arg)),'^pid='))
+  var @tbl = (@tbl,value($lin))
+ return @tbl
+}
+
+# Collect the session process identifiers for the session identifiers specified
+macro get_session_pids
+{var $sql = check_wait('Session PIDs')
+ append $sql
+ {SELECT 'pid=' || p.spid
+ " FROM v$process p,v$session s
+ " WHERE p.addr = s.paddr
+ "   AND s.sid IN (:1);
+ }
+ loop $lin (grepSql(bindSql($sql,join(',',@arg)),'^pid='))
+  var @tbl = (@tbl,value($lin))
+ return @tbl
+}
+
+# Collect the session process identifiers for the user specified
+macro get_user_pids
+{var $sql = check_wait('User PIDs')
+ append $sql
+ {SELECT 'pid=' || p.spid
+ " FROM v$process p,v$session s
+ " WHERE p.addr = s.paddr
+ "   AND s.username = UPPER(':1');
+ }
+ loop $lin (grepSql(bindSql($sql,@arg),'^pid='))
+  var @tbl = (@tbl,value($lin))
+ return @tbl
+}
+
+# Report shared pool chunks
+macro report_chunks
+{import $PID,$TTL,@HDR,@TTL
+
+ job
+ {import $PID,$TTL,@HDR,@TTL
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  output E,dh
+  var $TTL = '---++ Shared Pool Memory Utilisation'
+  var @TTL = ('',\
+              '---+++ Database Instance',\
+              '---+++ Shared Pool Chunk Allocation (Size Aggregations)',\
+              '---+++ Shared Pool Chunk Allocation (Detailed)')
+  var @HDR = ('',\
+              '|*DBname*|*Instance*|*Date/Time*|',\
+              '| *SubPool*|*Size*|*Status*| *Min Bytes*| *Avg Bytes*| \
+                 *Max Bytes*| *Tot Bytes*| *Count*|',\
+              '| *SubPool*|*Chunk Comment*|*Size*| *Count*|*Status*| *Bytes*|')
+  var $sql = check_wait('shared pool chunks')
+  append $sql
+  {SELECT '|' ||
+  "       name || '|' ||
+  "       instance_name || '|' ||
+  "       TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') || '|'
+  " FROM v$instance,v$database;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '| ' ||
+  "      ksmchidx || '|' ||
+  "      DECODE(ROUND(ksmchsiz/1000),0,'0-1K',
+  "                                  1,'1-2K',
+  "                                  2,'2-3K',
+  "                                  3,'3-4K',
+  "                                  4,'4-5K',
+  "                                  5,'5-6k',
+  "                                  6,'6-7k',
+  "                                  7,'7-8k',
+  "                                  8,'8-9k',
+  "                                  9,'9-10k',
+  "                                  '> 10K') || '|' ||
+  "      ksmchcls || '| ' ||
+  "      MIN(ksmchsiz) || '| ' ||
+  "      ROUND(AVG(ksmchsiz)) || '| ' ||
+  "      MAX(ksmchsiz) || '| ' ||
+  "      SUM(ksmchsiz) || '| ' ||
+  "      COUNT(*) || '|'
+  " FROM x$ksmsp
+  " GROUP BY ksmchidx,ksmchcls,ksmchcls,
+  "          DECODE(ROUND(ksmchsiz/1000),0,'0-1K',
+  "                                      1,'1-2K',
+  "                                      2,'2-3K',
+  "                                      3,'3-4K',
+  "                                      4,'4-5K',
+  "                                      5,'5-6k',
+  "                                      6,'6-7k',
+  "                                      7,'7-8k',
+  "                                      8,'8-9k',
+  "                                      9,'9-10k',
+  "                                      '> 10K')
+  " ORDER BY ksmchidx,ksmchcls;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '| ' ||
+  "       ksmchidx || '|' ||
+  "       ksmchcom || '|' ||
+  "       DECODE(ROUND(ksmchsiz/1000),0,'0-1K',
+  "                                   1,'1-2K',
+  "                                   2,'2-3K',
+  "                                   3,'3-4K',
+  "                                   4,'4-5K',
+  "                                   5,'5-6k',
+  "                                   6,'6-7k',
+  "                                   7,'7-8k',
+  "                                   8,'8-9k',
+  "                                   9,'9-10k',
+  "                                   '> 10K') || '| ' ||
+  "       COUNT(*) || '|' ||
+  "       ksmchcls || '| ' ||
+  "       SUM(ksmchsiz) || '|'
+  " FROM x$ksmsp
+  " GROUP BY ksmchidx,
+  "          ROUND(ksmchsiz/1000),
+  "          ksmchcls,
+  "          'sga heap(' || ksmchidx || ',0)',
+  "          ksmchcom,
+  "          ksmchcls,
+  "          DECODE(ROUND(ksmchsiz/1000),0,'0-1K',
+  "                                      1,'1-2K',
+  "                                      2,'2-3K',
+  "                                      3,'3-4K',
+  "                                      4,'4-5K',
+  "                                      5,'5-6k',
+  "                                      6,'6-7k',
+  "                                      7,'7-8k',
+  "                                      8,'8-9k',
+  "                                      9,'9-10k',
+  "                                      '> 10K')
+  " ORDER BY ksmchidx;
+  }
+  call separator(1)
+  call writeSql($sql)
+  call separator(0)
+  if isCreated(true)
+  {var $rpt = renderFile()
+   call dsp_event('(shared spool chunks) Done.')
+   call log_event('Spooling to: Shared Pool Chunks=',basename($rpt))
+  }
+  call $lck->unlink
+ }
+}
+
+# Report locking contention
+macro report_locking_contention
+{import $PID,$TTL,@HDR,@TTL
+
+ job
+ {import $PID,$TTL,@HDR,@TTL
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  output E,dc
+  var $TTL = '---++!! Locking Contention Report'
+  var @TTL = ('',\
+              '---+++ Database Instance',\
+              '---+++ Lock Tree',\
+              '---+++ Lock / Block Objects',\
+              '---+++ Lock / Block Processes',\
+              '---+++ Lock / Block Transactions')
+  var @HDR = ('',\
+              '|*DBname*|*Instance*|*Date/Time*|',\
+              '|*Instance-SID*|*Username*|*Lock%BR%Type*|*Mode%BR%Held*|\
+                *Mode%BR%Requested*|*ID1-ID2*|',\
+              '|*Instance-SID*|*Object*|*Lock Wait*|*ID1-ID2*|*SQL Text*|',\
+              '|*Instance*|*Oracle%BR%User*| *Oracle%BR%PID*|\
+                *Session%BR%Module*| *SID*|*SERIAL#*|*OSUser*| *O/S%BR%PID*| \
+                *O/S%BR%PPID*|*Lockwait*|*ID1-ID2*|',\
+              '|*Instance-SID*|*Username*|*Table Name*|*Mode%BR%Held*|\
+                *Mode%BR%Requested*|*ID1-ID2*|*Lock%BR%Type*|')
+  var $sql = check_wait('locking contention')
+  append $sql
+  {SELECT '|' ||
+  "       name || '|' ||
+  "       instance_name || '|' ||
+  "       TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') || '|'
+  " FROM v$instance,v$database;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '|' ||
+  "       REPLACE(LPAD(' ',3*(LEVEL-1)),' ','&nbsp;') || wait_id || '|' ||
+  "       wusername || '|' ||
+  "       lock_type || '|' ||
+  "       mode_held || '|' ||
+  "       mode_requested || '|' ||
+  "       DECODE(lock_id1,NULL,NULL,lock_id1 || '-' || lock_id2) || '|'
+  " FROM (SELECT sw.inst_id || '-' || sw.sid wait_id,
+  "              sh.inst_id || '-' || sh.sid hold_id,
+  "              lh.type lock_type,
+  "              DECODE(sh.command,0,'None',
+  "              DECODE(lh.lmode,
+  "                     0,'None',          /* Mon Lock equivalent */
+  "                     1,'Null',          /* N */
+  "                     2,'Row-S (SS)',    /* L */
+  "                     3,'Row-X (SX)',    /* R */
+  "                     4,'Share',         /* S */
+  "                     5,'S/Row-X (SSX)', /* C */
+  "                     6,'Exclusive',     /* X */
+  "                     TO_CHAR(lh.lmode))) mode_held,
+  "              DECODE(lw.request,
+  "                     0,'None',          /* Mon Lock equivalent */
+  "                     1,'Null',          /* N */
+  "                     2,'Row-S (SS)',    /* L */
+  "                     3,'Row-X (SX)',    /* R */
+  "                     4,'Share',         /* S */
+  "                     5,'S/Row-X (SSX)', /* C */
+  "                     6,'Exclusive',     /* X */
+  "                     TO_CHAR(lw.request)) mode_requested,
+  "              lw.id1 lock_id1,
+  "              lw.id2 lock_id2,
+  "              NVL(sw.username,'Internal') wusername,
+  "              NVL(sh.username,'Internal') husername
+  "        FROM gv$lock lh,gv$lock lw,gv$session sh,gv$session sw
+  "        WHERE lh.sid = sh.sid
+  "          AND lw.sid = sw.sid
+  "          AND sh.type != 'BACKGROUND'
+  "          AND sw.type != 'BACKGROUND'
+  "          AND lh.lmode != 0
+  "          AND lw.lmode = 0
+  "          AND lw.id1 = lh.id1
+  "          AND lw.id2 = lh.id2
+  "       UNION
+  "       (SELECT hold_id,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL
+  "         FROM (SELECT sh.inst_id || '-' || sh.sid hold_id,
+  "                      NULL wait_id,
+  "                      NULL lock_type,
+  "                      NULL mode_held,
+  "                      NULL mode_requested,
+  "                      NULL lock_id1,
+  "                      NULL lock_id2,
+  "                      NULL wusername,
+  "                      NULL husername
+  "                FROM gv$lock lh,gv$lock lw,gv$session sh,gv$session sw
+  "                WHERE lh.sid = sh.sid
+  "                  AND lw.sid = sw.sid
+  "                  AND sh.type != 'BACKGROUND'
+  "                  AND sw.type != 'BACKGROUND'
+  "                  AND lh.lmode != 0
+  "                  AND lw.lmode = 0
+  "                  AND lw.id1 = lh.id1
+  "                  AND lw.id2 = lh.id2)
+  "        MINUS
+  "        SELECT wait_id,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL,
+  "               NULL
+  "         FROM (SELECT sw.inst_id || '-' || sw.sid wait_id,
+  "                      NULL hold_id,
+  "                      NULL lock_type,
+  "                      NULL mode_held,
+  "                      NULL mode_requested,
+  "                      NULL lock_id1,
+  "                      NULL lock_id2,
+  "                      NULL wusername,
+  "                      NULL husername
+  "                FROM gv$lock lh,gv$lock lw,gv$session sh,gv$session sw
+  "                WHERE lh.sid = sh.sid
+  "                  AND lw.sid = sw.sid
+  "                  AND sh.type != 'BACKGROUND'
+  "                  AND sw.type != 'BACKGROUND'
+  "                  AND lh.lmode != 0
+  "                  AND lw.lmode = 0
+  "                  AND lw.id1 = lh.id1
+  "                  AND lw.id2 = lh.id2)
+  "       )
+  "      )
+  " CONNECT BY PRIOR wait_id = hold_id
+  " START WITH hold_id IS NULL;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '|'||
+  "      inst_sid || ' |' ||
+  "      object || ' |' ||
+  "      lock_wait || ' |' ||
+  "      id || ' |' ||
+  "      REPLACE(REPLACE(REPLACE(sql_text,
+  "        '|', '&#124;'),
+  "        '<', '&lt;'),
+  "        '>', '&gt;') || ' |'
+  "FROM (SELECT b.inst_id || '-' || b.sid inst_sid,
+  "             c.owner || '.' || c.object object,
+  "             b.lockwait lock_wait,
+  "             d.id1 || '-' || d.id2 id,
+  "             a.sql_text sql_text
+  "       FROM gv$sqltext a,gv$session b,gv$access c,
+  "            (SELECT a.inst_id,a.sid,a.id1,a.id2
+  "              FROM gv$lock a
+  "              WHERE EXISTS (SELECT NULL
+  "                             FROM gv$lock b
+  "                             WHERE b.id1=a.id1
+  "                               AND b.id2=a.id2
+  "                               AND b.request > 0)) d
+  "       WHERE a.address = b.sql_address
+  "         AND a.inst_id = b.inst_id
+  "         AND b.inst_id = c.inst_id
+  "         AND c.inst_id = d.inst_id
+  "         AND a.hash_value = b.sql_hash_value
+  "         AND b.sid = c.sid
+  "         AND c.sid = d.sid
+  "         AND c.owner != 'SYS'
+  "      UNION
+  "      SELECT b.inst_id || '-' || b.sid inst_id,
+  "             c.owner || '.' || c.object object,
+  "             '<BLOCKER>'  lock_wait,
+  "             d.id1 || '-' || d.id2 id,
+  "             a.sql_text sql_text
+  "       FROM gv$sqltext a,gv$session b,gv$access c,
+  "            (SELECT a.inst_id,a.sid,a.id1,a.id2
+  "              FROM gv$lock a
+  "              WHERE (id1,id2) IN (SELECT b.id1,b.id2
+  "                                   FROM gv$lock b
+  "                                   WHERE b.id1 = a.id1
+  "                                     AND b.id2 = a.id2
+  "                                     AND b.request > 0)) d
+  "       WHERE a.address = b.prev_sql_addr
+  "         AND b.sql_address = '00'
+  "         AND a.inst_id = b.inst_id
+  "         AND b.inst_id = c.inst_id
+  "         AND c.inst_id = d.inst_id
+  "         AND b.sid = c.sid
+  "         AND c.sid = d.sid
+  "         AND a.hash_value = b.prev_hash_value
+  "         AND c.owner != 'SYS')
+  " ORDER BY id,lock_wait desc,inst_sid;
+  "PROMPT ___Macro_separator(4)___
+  "SELECT '|' ||
+  "       s.inst_id || ' |' ||
+  "       SUBSTR(s.username,1,11) || ' | ' ||
+  "       p.pid || '|' ||
+  "       s.module || ' |' ||
+  "       s.sid || ' |' ||
+  "       s.serial# || ' |' ||
+  "       osuser || ' | ' ||
+  "       p.spid || '| ' ||
+  "       s.process || '|' ||
+  "       NVL(s.lockwait,'<BLOCKER>') || ' |' ||
+  "       l.id1 || '-' || l.id2 || ' |'
+  " FROM gv$process p,gv$session s,
+  "      (SELECT a.inst_id,a.sid,a.id1,a.id2
+  "        FROM gv$lock a
+  "        WHERE EXISTS (SELECT NULL
+  "                       FROM gv$lock b
+  "                       WHERE b.id1 = a.id1
+  "                         AND b.id2 = a.id2
+  "                         AND b.request > 0)) l
+  " WHERE p.inst_id = s.inst_id
+  "   AND s.inst_id = l.inst_id
+  "   AND l.sid = s.sid
+  "   AND p.addr = s.paddr
+  " ORDER BY l.id1,l.id2,s.lockwait desc,s.inst_id,s.sid;
+  "PROMPT ___Macro_separator(5)___
+  "SELECT '|' ||
+  "       s.inst_id || '-' || s.sid || '|' ||
+  "       NVL(s.username,'Internal') || '|' ||
+  "       DECODE(command,0,'None',
+  "              DECODE(l.id2,0,u1.name || '.' || SUBSTR(t1.name,1,20),
+  "                     'Rollback Segment')) || '|' ||
+  "       DECODE(l.lmode,
+  "              0,'None',          /* Mon Lock equivalent */
+  "              1,'Null',          /* N */
+  "              2,'Row-S (SS)',    /* L */
+  "              3,'Row-X (SX)',    /* R */
+  "              4,'Share',         /* S */
+  "              5,'S/Row-X (SSX)', /* C */
+  "              6,'Exclusive',     /* X */
+  "              TO_CHAR(l.lmode)) || '|' ||
+  "       DECODE(l.request,
+  "              0,'None',          /* Mon Lock equivalent */
+  "              1,'Null',          /* N */
+  "              2,'Row-S (SS)',    /* L */
+  "              3,'Row-X (SX)',    /* R */
+  "              4,'Share',         /* S */
+  "              5,'S/Row-X (SSX)', /* C */
+  "              6,'Exclusive',     /* X */
+  "              TO_CHAR(l.request)) || '|' ||
+  "       l.id1||'-'||l.id2 || '|' ||
+  "       l.type || '|'
+  " FROM gv$lock l,gv$session s,sys.user$ u1,sys.obj$ t1
+  " WHERE l.sid = s.sid and
+  "       t1.obj# = DECODE(l.id2,0,l.id1,1) and
+  "       u1.user# = t1.owner# and
+  "       s.type != 'BACKGROUND'and
+  "       (l.sid) IN (SELECT b.sid
+  "                    FROM gv$lock b
+  "                    WHERE b.request > 0)
+  " ORDER BY l.id1,l.id2,l.request;
+  }
+  call separator(1)
+  call writeSql($sql)
+  call separator(0)
+  if isCreated(true)
+  {var $rpt = renderFile()
+   call dsp_event('(locking contention) Done.')
+   call log_event('Spooling to: Locking Contention=',basename($rpt))
+  }
+  call $lck->unlink
+ }
+}
+
+# Report session wait events
+macro report_session_events
+{import $PID,$TTL,@HDR,@TTL
+
+ job
+ {import $PID,$TTL,@HDR,@TTL
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  output E,dw
+  var $TTL = '---++ Session Wait Events Report'
+  var @TTL = ('',\
+               '---+++ Database Instance',\
+               '---+++ SMON Waits',\
+               '---+++ All Waits')
+  var @HDR = ('',\
+              '|*DBname*|*Instance*|*Date/Time*|',\
+              '|*Program*|*Sid*|*Event*|*Total_Waits*|*Total_Timeouts*|\
+                *Average_Wait*|',\
+               '|*Program*|*Sid*|*Event*|*Total_Waits*|*Total_Timeouts*|\
+                *Average_Wait*|')
+  var $sql = check_wait('session wait events')
+  append $sql
+  {SELECT '|' ||
+  "       name || '|' ||
+  "       instance_name || '|' ||
+  "       TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') || '|'
+  " FROM v$instance,v$database;
+  "PROMPT ___Macro_separator(2)___
+  "SELECT '|' ||
+  "       p.program || '|' ||
+  "       se.sid || '|' ||
+  "       se.event || '| ' ||
+  "       se.total_waits || '| ' ||
+  "       se.total_timeouts || '| ' ||
+  "       se.average_wait || '| '
+  " FROM v$session_event se,v$process p,v$session s
+  " WHERE s.paddr = p.addr and
+  "       s.sid = se.sid and
+  "       se.average_wait > 0 and
+  "       p.program like '%(SMON)'
+  " ORDER BY se.total_waits;
+  "PROMPT ___Macro_separator(3)___
+  "SELECT '|' ||
+  "       p.program || '|' ||
+  "       se.sid || '|' ||
+  "       se.event || '| ' ||
+  "       se.total_waits || '| ' ||
+  "       se.total_timeouts || '| ' ||
+  "       se.average_wait || '|'
+  " FROM v$session_event se,v$process p,v$session s
+  " WHERE s.paddr = p.addr and
+  "       s.sid = se.sid and
+  "       se.average_wait > 0
+  " ORDER BY se.total_waits;
+  }
+  call separator(1)
+  call writeSql($sql)
+  call separator(0)
+  if isCreated(true)
+  {var $rpt = renderFile()
+   call dsp_event('(session wait events) Done.')
+   call log_event('Spooling to: Sessions Wait Events=',basename($rpt))
+  }
+  call $lck->unlink
+ }
+}
+
+# Deal with the dumps/traces associated with the background processes
+macro service_background
+{var ($nam,$pid) = @arg
+ import $LDD_CMD,$PID,$PFL_CMD,$PFL_DIR,$PRE,$STK_CMD,$TOC,$TOP
+ import $DDC_SLP,$TRC_CMD,$TRC_PGM,%DDC_PRC,$WAIT
+
+ call dsp_event('"',$nam,'" process id: ',$pid)
+
+ # Request a 10046 trace
+ if exists($DDC_PRC{'T'})
+ {call dsp_event('Requesting a 10046, level 12 trace for ',$nam,' (PID: ',\
+                 $pid,')')
+  call collect_10046($pid)
+ }
+
+ # Request an error stack
+ if exists($DDC_PRC{'E'})
+ {call dsp_event('Requesting an error stack for ',$nam,' (PID: ',$pid,')')
+  call collect_error_stack($pid)
+ }
+
+ # Request a process state dump
+ if exists($DDC_PRC{'P'})
+ {call dsp_event('Requesting a process state dump for ',$nam,' (PID: ',$pid,')')
+  call collect_process_state($pid)
+ }
+
+ # Launch an operating system trace
+ if exists($DDC_PRC{'O'})
+ {var $fil = catFile(${OUT.E},concat($PRE,'po_',$nam,'.trc'))
+  var $cmd = concat($TRC_CMD,' -o ',$fil,' -p ',$pid)
+  if $WAIT
+  {call log_event('O/S trace written to: ',basename($fil))
+   job
+   {import $cmd,$nam,$pid,$PID
+    call kip(get_wait($nam,' trace (PID: ',$pid,') ...'))
+    call clone_log()
+    call dsp_event('Command: ',$cmd)
+    output | $cmd
+    call create_lock($PID,'ddcpo',getOutputPid())
+   }
+  }
+  else
+  {call log_event('Tracing with ',$TRC_PGM)
+   call log_event('O/S trace written to: ',basename($fil))
+   call dsp_event('Command: ',$cmd)
+   job
+   {import $cmd,$PID
+    output | $cmd
+    call create_lock($PID,'ddcpo',getOutputPid())
+   }
+  }
+ }
+
+ # Request a process open files trace
+ if exists($DDC_PRC{'F'})
+ {if $PFL_CMD
+   var ($flg,$cmd) = (true,concat($PFL_CMD,' ',$pid))
+  else
+   var ($flg,$dir) = (false,sprintf($PFL_DIR,$pid))
+  if $WAIT
+  {job
+   {import $cmd,$dir,$flg,$nam,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call kip(get_wait($nam,' pfiles trace'))
+    call dsp_event($nam,' pfiles trace (PID: ',$pid,') ...')
+    output E,concat('pf_',$nam,'.txt')
+    if $flg
+    {write '---+ Pfiles Trace for PID ',$pid
+     call writeCommand($cmd)
+    }
+    else
+    {write '---+ List of Open Files from ',$dir
+     call statDir('n',$dir)
+     call writeCommand($cmd)
+    }
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event($nam,' pfiles trace (PID: ',$pid,') completed')
+    call log_event('Pfiles trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+  else
+  {call dsp_event('Writing ',$nam,' process open files ...')
+   job
+   {import $cmd,$dir,$flg,$nam,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call dsp_event($nam,' pfiles trace (PID: ',$pid,') - please wait ...')
+    output E,concat('pf_',$nam,'.txt')
+    if $flg
+    {write '---+ Pfiles Trace for PID ',$pid
+     call writeCommand($cmd)
+    }
+    else
+    {write '---+ List of Open Files from ',$dir
+     call statDir('n',$dir)
+     call writeCommand($cmd)
+    }
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event($nam,' pfiles trace (PID: ',$pid,') completed')
+    call log_event('Pfiles trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+ }
+
+ # Request a process dynamic libraries trace
+ if exists($DDC_PRC{'L'})
+ {var $cmd = concat($LDD_CMD,' ',$pid)
+  if $WAIT
+  {job
+   {import $cmd,$nam,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call kip(get_wait($nam,' pldd trace'))
+    call dsp_event($nam,' pldd trace (PID: ',$pid,') ...')
+    output E,concat('pl_',$nam,'.txt')
+    write '---+ Pldd Trace for PID ',$pid
+    call writeCommand($cmd)
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event($nam,' pldd trace (PID: ',$pid,') completed')
+    call log_event('Pldd trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+  else
+  {call dsp_event('Writing ',$nam,' process dynamic libraries ...')
+   job
+   {import $cmd,$nam,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call dsp_event($nam,' pldd trace (PID: ',$pid,') - please wait ...')
+    output E,concat('pl_',$nam,'.txt')
+    write '---+ Pldd Trace for PID ',$pid
+    call writeCommand($cmd)
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event($nam,' pldd trace (PID: ',$pid,') completed')
+    call log_event('Pldd trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+ }
+
+ # Collect a stack trace
+ if exists($DDC_PRC{'S'})
+ {var $cmd = concat($STK_CMD,' ',$pid)
+  if $WAIT
+  {job
+   {import $cmd,$nam,$pid,$PID,$TOC,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call kip(get_wait($nam,' stack trace'))
+    call dsp_event($nam,' stack trace (PID: ',$pid,\
+                   ') - please wait (approx 6 minutes) ...')
+    output E,concat('ps_',$nam,'.txt')
+    write '---+!! Stack Trace for PID ',$pid
+    write $TOC
+    var $txt = ' (sleep 12)'
+    for $cnt (1,11)
+    {write '---+ Stack Trace No ',$cnt,$txt
+     call writeCommand($cmd)
+     write $TOP
+     sleep 12
+    }
+    for $cnt (12,24)
+    {write '---+ Stack Trace No ',$cnt,$txt
+     call writeCommand($cmd)
+     write $TOP
+     var $txt = ' (no sleep)'
+    }
+    var $rpt = basename(renderFile())
+    call dsp_event($nam,' stack trace (PID: ',$pid,') completed')
+    call log_event('Stack trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+  else
+  {call dsp_event('Writing ',$nam,' process stack (approx 6 minutes) ...')
+   job
+   {import $cmd,$nam,$pid,$PID,$TOC,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    sleep 1
+    call dsp_event($nam,' stack trace (PID: ',$pid,') - please wait ...')
+    output E,concat('ps_',$nam,'.txt')
+    write '---+!! Stack Trace for PID ',$pid
+    write $TOC
+    var $txt = ' (sleep 12)'
+    for $cnt (1,11)
+    {write '---+ Stack Trace No ',$cnt,$txt
+     call writeCommand($cmd)
+     write $TOP
+     sleep 12
+    }
+    for $cnt (12,24)
+    {write '---+ Stack Trace No ',$cnt,$txt
+     call writeCommand($cmd)
+     write $TOP
+     var $txt = ' (no sleep)'
+    }
+    var $rpt = basename(renderFile())
+    call dsp_event($nam,' stack trace (PID: ',$pid,') completed')
+    call log_event('Stack trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+ }
+}
+
+# Wait for background task completion
+macro wait_exit
+{import $DDC_TRC_SLP,$PID,$TRC_PGM,%DDC_PRC
+
+ if get_wait('all subprocesses')
+  call kip(last)
+ call dsp_event('Waiting for background processing to complete ...')
+
+ # Wait for trace completion
+ sleep 5
+ while grep_lock($PID,'ddcps')
+  sleep 5
+
+ # Stop operating system traces
+ if exists($DDC_PRC{'O'})
+ {var $pat = get_lock($PID,'ddcpo')
+  if grep_lock($PID,'ddcpo')
+  {var @lck = last
+   call dsp_event('Terminating ',$TRC_PGM,' process(es) in ',$DDC_TRC_SLP,\
+                  ' seconds ...')
+   sleep $DDC_TRC_SLP
+   loop $lck (@lck)
+   {var ($flg,$pid) = match($lck,$pat,true)
+    if ?$flg
+     var $pid = concat('-',$pid)
+    call dsp_event('Issuing: kill -9 ',$pid)
+    call kill(9,$pid)
+   }
+   call delete_group($PID,'ddcpo')
+  }
+ }
+
+ # Disable 10046 traces
+ var @pid = ()
+ loop $lck (grep_lock($PID,'ddcpt'))
+  call push(@pid,value(grepFile(catDir(${OUT.E},$lck),'pid=','f')))
+ if @pid
+ {call dsp_event("The 10046 level 12 traces are still active for:\012 ",\
+                 join(',',@pid))
+  if missing($DDC_PRC{'O'})
+  {call dsp_event('The 10046 traces will be switch off in approx. ',\
+                  $DDC_TRC_SLP,' seconds')
+   sleep $DDC_TRC_SLP
+  }
+  call dsp_event('The 10046 traces will now be switch off.')
+  set $sql
+  {oradebug setospid :1
+  "oradebug event 10046 trace name context off
+  }
+  loop $pid (@pid)
+  {call dsp_event('Disabling 10046 trace (PID: ',$pid,') ...')
+   call loadSql(bindSql($sql,$pid))
+  }
+  call delete_group($PID,'ddcpt')
+ }
+}
+
+# ---  Main Section -----------------------------------------------------------
+
+# Test the database connection
+debug 'Testing the database connection ...'
+call begin_log()
+if !$DBC
+{call dsp_event('Prelim mode set')
+ var ($DBVER) = ('10')
+ delete $DDC_DMP{'C'}
+ delete $DDC_DMP{'W'}
+}
+elsif testSql()
+{call dsp_event('ERROR: Cannot connect to the database')
+ var ($DBVER,%DDC_DMP) = ('')
+ delete $DDC_PRC{'E'}
+ delete $DDC_PRC{'T'}
+ delete $DDC_PRC{'P'}
+}
+else
+ var $DBVER = get_db_version(false,'10')
+
+# Set dump levels
+var $HAL = getSetting('CLUSTER_HANGANALYZE')
+var $SDL = getSetting('CLUSTER_SYSTEMSTATE')
+if !match($HAL,'^\d+$')
+ var $HAL = cond(isWindows(),1,isCygwin(),1,3)
+if !match($SDL,'^\d+$')
+{var $ver = get_db_full_version()
+ if or(isWindows(),isCygwin())
+ {if compare('VALID',$ver,'11.2.0.3')
+   var $SDL = 11
+  elsif compare('VALID',$ver,'11.1')
+   var $SDL = 2
+  elsif match($DBVER,'^10')
+   var $SDL = 11
+  else
+   var $SDL = 10
+ }
+ elsif compare('VALID',$ver,'11.2.0.3')
+  var $SDL = 266
+ elsif compare('VALID',$ver,'11.1')
+  var $SDL = 258
+ elsif match($DBVER,'^10')
+  var $SDL = 266
+ else
+  var $SDL = 10
+}
+
+# Disable the timeout
+call setSqlTimeout(0)
+
+# Give an overview
+call end_log()
+call log('---+ Report Overview')
+call log('|*Machine and Version*|',uname('a'),'|')
+if and($DBC,$DBVER)
+{var %ver = ('90','9i','92','9iR2',\
+             '10','10g assumed','101','10gR1','102','10gR2',\
+             '11','11g','111','11gR1','112','11gR2')
+ call log('|*Database Version*|',nvl($ver{$DBVER},$DBVER),' |')
+}
+call log('|*ORACLE_SID*|',$ORACLE_SID,'|')
+call log('|*ORACLE_HOME*|',$ORACLE_HOME,'|')
+call log('|*ORADDC Options*|',\
+      cond(isFiltered(),replace($DDC_CMD,':','&#58;',true),$DDC_CMD),' |')
+call log($TOP)
+call log('---+ Collection Details')
+call begin_log()
+
+# Find a pfiles program
+if exists($DDC_PRC{'F'})
+{debug 'Searching for a pfiles command ...'
+ if findCommand('procfiles')
+  var ($PFL_PGM,$PFL_CMD,$PFL_DIR) = ('procfiles',concat(last,' -F'))
+ elsif findCommand('pfiles')
+ {var ($PFL_PGM,$PFL_CMD,$PFL_DIR) = ('pfiles',last)
+  if match(getOsName(),'solaris')
+   var $PFL_CMD = concat($PFL_CMD,' -F')
+ }
+ elsif testFile('x','/usr/proc/bin/pfiles')
+  var ($PFL_PGM,$PFL_CMD,$PFL_DIR) = ('pfiles','/usr/proc/bin/pfiles')
+ elsif testDir('r','/proc')
+  var ($PFL_PGM,$PFL_DIR,$PFL_CMD) = ('proc_fd','/proc/%s/fd')
+ else
+ {var ($PFL_PGM,$PFL_CMD,$PFL_DIR) = ()
+  call dsp_event('WARNING: No pfiles command could be located.')
+  call log_event('WARNING: ORADDC will skip open files requests.')
+  delete $DDC_PRC{'F'}
+ }
+ if $PFL_CMD
+  call log('Pfiles command: ',$PFL_CMD)
+}
+
+# Find a pldd program
+if exists($DDC_PRC{'L'})
+{debug 'Searching for a pldd command ...'
+ if findCommand('procldd')
+  var ($LDD_PGM,$LDD_CMD) = ('procldd',concat(last,' -F'))
+ elsif findCommand('pldd')
+ {var ($LDD_PGM,$LDD_CMD) = ('pldd',last)
+  if match(getOsName(),'solaris')
+   var $LDD_CMD = concat($LDD_CMD,' -F')
+ }
+ elsif testFile('x','/usr/proc/bin/pldd')
+  var ($LDD_PGM,$LDD_CMD) = ('pfiles','/usr/proc/bin/pldd')
+ else
+ {var ($LDD_PGM,$LDD_CMD) = ()
+  call dsp_event('WARNING: No pldd command could be located.')
+  call log_event('WARNING: ORADDC will skip dynamic libraries requests.')
+  delete $DDC_PRC{'L'}
+ }
+ if $LDD_CMD
+  call log('Pldd command: ',$LDD_CMD)
+}
+
+# Find a trace program
+if exists($DDC_PRC{'O'})
+{debug 'Searching for a trace command ...'
+ if findCommand('truss')
+  var ($TRC_PGM,$TRC_CMD) = ('truss',concat(last,' -f -a -i -e'))
+ elsif findCommand('strace')
+ {var ($TRC_PGM,$TRC_CMD) = ('strace',concat(last,' -f'))
+  if !isWindows()
+   var $TRC_CMD = concat($TRC_CMD,' -F')
+ }
+ elsif findCommand('tusc')
+  var ($TRC_PGM,$TRC_CMD) = ('tusc',concat(last,' -f -a -i -e'))
+ else
+ {var ($TRC_PGM,$TRC_CMD) = ()
+  call dsp_event('WARNING: No trace command could be located.')
+  call log_event('WARNING: ORADDC will skip operating system traces.')
+  delete $DDC_PRC{'O'}
+ }
+ if $TRC_CMD
+  call log('Trace command: ',$TRC_CMD)
+}
+
+# Find the pstack program
+if exists($DDC_PRC{'S'})
+{debug 'Searching for the pstack command ...'
+ if findCommand('procstack')
+  var ($STK_PGM,$STK_CMD) = ('procstack',concat(last,' -F'))
+ elsif findCommand('pstack')
+ {var ($STK_PGM,$STK_CMD) = ('pstack',last)
+  if match(getOsName(),'solaris')
+   var $STK_CMD = concat($STK_CMD,' -F')
+ }
+ elsif testFile('x','/usr/proc/bin/pstack')
+  var ($STK_PGM,$STK_CMD) = ('pstack','/usr/proc/bin/pstack')
+ else
+ {var ($STK_PGM,$STK_CMD) = ()
+  call dsp_event('WARNING: No pstack command could be located.')
+  call log_event('WARNING: ORADDC will skip stack trace requests.')
+  delete $DDC_PRC{'S'}
+ }
+ if $STK_CMD
+  call log('Pstack command: ',$STK_CMD)
+}
+
+# Put a notice for the wait mode
+if $WAIT
+{debug
+ debug 'NOTE: You have specified the wait option. Use the wake-up command'
+ debug 'to start diagnostic collections for the waiting sessions.'
+ debug
+}
+
+# Get background process identifiers
+if %DDC_BGP
+{var %pid = ()
+ call get_background(\%pid,$SID,\%DDC_BGP)
+ loop $nam (keys(%pid))
+ {if $pid{$nam}
+   call service_background($nam,last)
+ }
+}
+
+# Request a ashdump
+if exists($DDC_DMP{'D'})
+{call dsp_event('Requesting a active session history report ...')
+ call collect_ashdump()
+}
+
+# Request a heapdump
+if exists($DDC_DMP{'H'})
+{call dsp_event('Requesting a heapdump ...')
+ call collect_heapdump()
+ if $DBC
+ {call dsp_event('Requesting a shared pool chunks report ...')
+  call report_chunks()
+ }
+}
+
+# Request a library cache dump
+if exists($DDC_DMP{'L'})
+{call dsp_event('Requesting a library cache dump ...')
+ call collect_lib_cache()
+}
+
+# Request a locking contention report
+if exists($DDC_DMP{'C'})
+{call dsp_event('Requesting a locking contention report ...')
+ call report_locking_contention()
+}
+
+# Request a row cache dump
+if exists($DDC_DMP{'R'})
+{call dsp_event('Requesting a row cache dump ...')
+ call collect_row_cache()
+}
+
+# Request an event histogram snapshot
+if exists($DDC_DMP{'E'})
+{if and(compare('eq',$DDC_PID,'E'),@DDC_PID)
+ {call dsp_event('Requesting a event histogram snapshot ...')
+  call get_event_hist($DDC_EVT_SLP,@DDC_PID)
+ }
+}
+
+# Request a session wait events report
+if exists($DDC_DMP{'W'})
+{call dsp_event('Requesting a session wait events report ...')
+ call report_session_events()
+}
+
+# Request a hang analyze dump
+if exists($DDC_DMP{'A'})
+{call dsp_event('Requesting a hang analyze dump ...')
+ call collect_hang_analyze()
+}
+
+# Request a system state sump
+if exists($DDC_DMP{'S'})
+{call dsp_event('Requesting a system state dump ...')
+ call collect_system_state()
+}
+
+# Get the process identifiers to analyze
+if and($WAIT,compare('ne',$DDC_PID,'-'))
+{debug
+ debug 'WARNING: The -W option has been specified. If this was specified due to'
+ debug 'issues with making new connections then tracing analysis of specified'
+ debug 'sessions may fail!'
+ debug
+}
+if compare('eq',$DDC_PID,'B')
+{# Get the PIDs of blocking sessions
+ var @pid = get_blocking_pids()
+ if @pid
+  call dsp_event("Client PIDs [Blocking PIDs]:\012 ",join(',',@pid))
+ else
+ {call dsp_event('WARNING: No Oracle blocking sessions detected')
+  call wait_exit()
+ }
+}
+elsif compare('eq',$DDC_PID,'E')
+{# Get the PIDs of sessions waiting on the wait#'s specified
+ var @pid = get_event_pids(@DDC_PID)
+ call dsp_event("Client PIDs [Waiting on event# ",join(',',@DDC_PID),\
+                "]:\012 ",join(',',@pid))
+}
+elsif compare('eq',$DDC_PID,'L')
+{# Get the PIDs of listeners as specified by listener names
+ var @pid = get_listener_pids(@DDC_PID)
+ if @pid
+  call dsp_event("Client PIDs [For listeners ",join(',',@DDC_PID),"]:\012 ",\
+                 join(',',@pid))
+}
+elsif compare('eq',$DDC_PID,'O')
+{# Get the PIDs of sessions connected as specified by Oracle PIDs
+ var @pid = get_oracle_pids(@DDC_PID)
+ if @pid
+  call dsp_event("Client PIDs [-o ",join(',',@DDC_PID),"]:\012 ",\
+                 join(',',@pid))
+ else
+ {call dsp_event('WARNING: No Oracle sessions found for Oracle PIDs specified')
+  call wait_exit()
+ }
+}
+elsif compare('eq',$DDC_PID,'P')
+{# Get the PIDs of sessions connected as specified by UNIX PIDs (-U):
+ var @pid = @DDC_PID
+ call dsp_event("Client PIDs [For process ",join(',',@DDC_PID),"]:\012 ",\
+                join(',',@pid))
+}
+elsif compare('eq',$DDC_PID,'S')
+{# Get the PIDs for the sessions specified
+ var @pid = get_session_pids(@DDC_PID)
+ if @pid
+  call dsp_event("Client PIDs [For SID(s) ",join(',',@DDC_PID),"]:\012 ",\
+                 join(',',@pid))
+ else
+ {call dsp_event('WARNING: No Oracle sessions detected for SIDs ',\
+                 join(',',@DDC_PID))
+  call wait_exit()
+ }
+}
+elsif compare('eq',$DDC_PID,'U')
+{# Get the PIDs of sessions connected as specified by $DDC_USR
+ var @pid = get_user_pids($DDC_USR)
+ if @pid
+  call dsp_event("Client PIDs [Username: ",$DDC_USR,"]:\012 ",join(',',@pid))
+ else
+ {call dsp_event('WARNING: No oracle sessions detected for username ',$DDC_USR)
+  call wait_exit()
+ }
+}
+else
+ var @pid = ()
+
+# Analyze specified process identifiers
+loop $pid (@pid)
+{# Request a 10046 trace
+ if exists($DDC_PRC{'T'})
+ {if $WAIT
+  {job
+   {import $pid
+    call kip(get_wait('10046 trace (PID: ',$pid,')'))
+    call clone_log()
+    call dsp_event('Tracing (10046) a shadow process (PID: ',$pid,') ...')
+    call collect_10046($pid)
+   }
+  }
+  else
+  {call dsp_event('Tracing (10046) a shadow process (PID: ',$pid,') ...')
+   call collect_10046($pid)
+  }
+  sleep 5
+ }
+
+ # Request a process state dump
+ if exists($DDC_PRC{'P'})
+ {call dsp_event('Requesting a process state dump (PID: ',$pid,') ...')
+  call collect_process_state($pid)
+ }
+
+ # Collect error stack
+ if exists($DDC_PRC{'E'})
+ {call dsp_event('Requesting an error stack (PID: ',$pid,') ...')
+  call collect_error_stack($pid)
+ }
+
+ # Launch an operating system trace
+ if exists($DDC_PRC{'O'})
+ {var $fil = catFile(${OUT.E},concat($PRE,'po_',$pid,'.trc'))
+  var $cmd = concat($TRC_CMD,' -o ',$fil,' -p ',$pid)
+  if $WAIT
+  {job
+   {import $cmd,$fil,$pid,$PID
+    call kip(get_wait('trace (PID: ',$pid,')'))
+    call clone_log()
+    call log_event('O/S trace written to: ',basename($fil))
+    call dsp_event('Command: ',$cmd)
+    output | $cmd
+    call create_lock($PID,'ddcpo',getOutputPid())
+   }
+  }
+  else
+  {call log_event('Tracing with ',$TRC_PGM,' ...')
+   call log_event('O/S trace written to: ',basename($fil))
+   call dsp_event('Command: ',$cmd)
+   job
+   {import $cmd,$PID
+    output | $cmd
+    call create_lock($PID,'ddcpo',getOutputPid())
+   }
+  }
+ }
+
+ # Collect pfiles traces
+ if exists($DDC_PRC{'F'})
+ {if $PFL_CMD
+   var ($flg,$cmd) = (true,concat($PFL_CMD,' ',$pid))
+  else
+   var ($flg,$dir) = (false,sprintf($PFL_DIR,$pid))
+  if $WAIT
+  {job
+   {import $cmd,$dir,$flg,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call kip(get_wait('process open files (PID: ',$pid,')'))
+    call dsp_event('Waking up to take pfiles trace (PID: ', $pid,') ...')
+    call dsp_event('Pfiles trace (PID: ',$pid,') - please wait ...')
+    output E,concat('pf_',$pid,'.txt')
+    if $flg
+    {write '---+ Pfiles Trace for PID ',$pid
+     call writeCommand($cmd)
+    }
+    else
+    {write '---+ List of Open Files from ',$dir
+     call statDir('n',$dir)
+    }
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event('Pfiles trace for ',$pid,' completed')
+    call log_event('Pfiles trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+  else
+  {call dsp_event('Writing process open files (PID: ',$pid,') ...')
+   job
+   {import $cmd,$dir,$flg,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call dsp_event('Pfiles trace (PID: ',$pid,') - please wait ...')
+    output E,concat('pf_',$pid,'.txt')
+    if $flg
+    {write '---+ Pfiles Trace for PID ',$pid
+     call writeCommand($cmd)
+    }
+    else
+    {write '---+ List of Open Files from ',$dir
+     call statDir('n',$dir)
+    }
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event('Pfiles trace for ',$pid,' completed')
+    call log_event('Pfiles trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+ }
+
+ # Collect pfiles traces
+ if exists($DDC_PRC{'L'})
+ {var $cmd = concat($LDD_CMD,' ',$pid)
+  if $WAIT
+  {job
+   {import $cmd,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call kip(get_wait('process dynamic libraries (PID: ',$pid,')'))
+    call dsp_event('Waking up to take pldd trace (PID: ', $pid,') ...')
+    call dsp_event('Pldd trace (PID: ',$pid,') - please wait ...')
+    output E,concat('pl_',$pid,'.txt')
+    write '---+ Pldd Trace for PID ',$pid
+    call writeCommand($cmd)
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event('Pldd trace for ',$pid,' completed')
+    call log_event('Pldd trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+  else
+  {call dsp_event('Writing process dynamic libraries (PID: ',$pid,') ...')
+   job
+   {import $cmd,$pid,$PID,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call dsp_event('Pldd trace (PID: ',$pid,') - please wait ...')
+    output E,concat('pl_',$pid,'.txt')
+    write '---+ Pldd Trace for PID ',$pid
+    call writeCommand($cmd)
+    write $TOP
+    var $rpt = basename(renderFile())
+    call dsp_event('Pldd trace for ',$pid,' completed')
+    call log_event('Pldd trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+ }
+
+ # Collect stack traces
+ if exists($DDC_PRC{'S'})
+ {var $cmd = concat($STK_CMD,' ',$pid)
+  if $WAIT
+  {job
+   {import $cmd,$pid,$rpt,$PID,$TOC,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    call kip(get_wait('process stack (PID: ',$pid,')'))
+    call dsp_event('Waking up to take stack trace (PID: ', $pid,') ...')
+    call dsp_event('Stack trace (PID: ',$pid,') - please wait ...')
+    output E,concat('ps_',$pid,'.txt')
+    write '---+!! Stack Trace for PID ',$pid
+    write $TOC
+    for $cnt (1,24)
+    {write '---+ Stack Trace No ',$cnt
+     call writeCommand($cmd)
+     write $TOP
+    }
+    var $rpt = basename(renderFile())
+    call dsp_event('Stack trace for ',$pid,' completed')
+    call log_event('Stack trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+  else
+  {call dsp_event('Writing process stack (PID: ',$pid,') ...')
+   job
+   {import $cmd,$pid,$rpt,$PID,$TOC,$TOP
+    var $lck = create_lock($PID,'ddcps',getPid())
+    call clone_log()
+    sleep 1
+    call dsp_event('Stack trace (PID: ',$pid,') - please wait ...')
+    output E,concat('ps_',$pid,'.txt')
+    write '---+!! Stack Trace for PID ',$pid
+    write $TOC
+    for $cnt (1,24)
+    {write '---+ Stack Trace No ',$cnt
+     call writeCommand($cmd)
+     write $TOP
+    }
+    var $rpt = basename(renderFile())
+    call dsp_event('Stack trace for ',$pid,' completed')
+    call log_event('Stack trace written to: ',$rpt)
+    call $lck->unlink
+   }
+  }
+ }
+}
+
+# Execute the custom scripts
+loop $fil (keys(%DDC_SQL))
+{call dsp_event('Executing ',$fil,' ...')
+ job
+ {import $fil,$DDC_SLP,$PID,%DDC_SQL
+  var $lck = create_lock($PID,'ddcps',getPid())
+  call clone_log()
+  if createBuffer('SQL','R',$fil)
+  {var ($nam,$sql,$typ,@TTL,@HDR,%tbl) = ()
+
+   # Parse the file
+   while getLine('SQL')
+   {var $lin = chomp(last)
+    if match($lin,'REM\s+ORADDC.(\w+)="(.*)"',true)
+    {var ($key,$val) = last
+     if match($val,'\w+(\s+\w+)*')
+      var $tbl{lc($key)} = $val
+    }
+    elsif match($lin,'REM\s+ORADDC.TTL\[(\d+)\]="(.*)"',true)
+    {var ($off,$val) = last
+     var $TTL[$off] = $val
+    }
+    elsif match($lin,'REM\s+ORADDC.HDR\[(\d+)\]="(.*)"',true)
+    {var ($off,$val) = last
+     var $HDR[$off] = $val
+    }
+    else
+     var $sql = join("\012", $sql,$lin)
+   }
+   var $typ = nvl($tbl{'typ'},'text')
+   var $nam = nvl($tbl{'nam'},$DDC_SQL{$fil})
+   var $rpt = nvl($tbl{'rpt'},basename($fil))
+
+   # Execute the request
+   if match($typ,'trace')
+   {var $sql = join("\012",check_wait($nam),$sql,'oradebug tracefile_name')
+    output E,concat('sql_',$rpt,'.tmp')
+    call writeSql(bindSql($sql,$DDC_SLP,getPid()))
+    var $rpt = getFile('/')
+    if grepFile($rpt,'\.trc','if')
+    {var $fil = trim(last)
+     call dsp_event('(',$nam,') Done.')
+     call log_event('Trace identifier: ',$nam,'=',$fil)
+    }
+    close
+   }
+   elsif match($typ,'data')
+   {var $sql = join("\012",check_wait($nam),$sql)
+    output E,concat('sql_',$rpt,'.dat')
+    call writeSql($sql)
+    if isCreated(true)
+    {var $rpt = getFile('.')
+     call dsp_event('(',$nam,') Done.')
+     call log_event('Spooling to: ',$nam,'=',basename($rpt))
+    }
+    close
+   }
+   elsif match($typ,'wiki')
+   {var $sql = join("\012",check_wait($nam),$sql)
+    output E,concat('sql_',$rpt,'.txt')
+    var $TTL = concat('---++!! ',$nam)
+    call writeSql($sql)
+    if isCreated(true)
+    {var $rpt = renderFile()
+     call dsp_event('(',$nam,') Done.')
+     call log_event('Spooling to: ',$nam,'=',basename($rpt))
+    }
+   }
+   call deleteBuffer('SQL')
+  }
+  call $lck->unlink
+ }
+}
+
+# Wait for trace completion
+call wait_exit()
+
+# Finalize the log
+if exists($DDC_DMP{'A'})
+ call check_hanganalyze()
+call collate_traces()
+if $WAIT
+ call purge('e',$CLR,-1,0)
+debug 'ORADDC collection ended'
+call $[log]->render()
+echo 'ORADDC log: ',last
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>, L<TLoraddc.def|modules::TLoraddc>,
+L<DDCstat.def|modules::DDCstat>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.11: Clive Bostock.
+
+=item RDA 4.12: Clive Bostock, Francois Lange.
+
+=item RDA 4.15: Clive Bostock.
+
+=item RDA 4.16: Clive Bostock.
+
+=item RDA 4.21: Takeyoshi Sasaki.
+
+=item RDA 4.25: Deepak Malik.
+
+=item RDA 4.27: Deepak Malik.
+
+=item RDA 4.28: Bob Caldwell, Michael Polaski.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

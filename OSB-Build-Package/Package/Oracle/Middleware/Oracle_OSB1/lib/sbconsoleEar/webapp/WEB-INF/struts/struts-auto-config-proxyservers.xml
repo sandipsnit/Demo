@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="ProxyServerForm" type="com.bea.alsb.console.proxyserver.forms.ProxyServerForm"/>
+        <form-bean name="BrowserForm" type="com.bea.alsb.console.forms.ResourceSummaryForm"/>
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+    
+    <action-mappings>
+        <action path="/ViewAllProxyServers"
+            type="com.bea.alsb.console.proxyserver.actions.ViewAllProxyServersAction" >
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/proxyserver/ViewAllProxyServers.jsp"/>
+        </action>
+
+        <action path="/ManageProxyServer"
+            type="com.bea.alsb.console.proxyserver.actions.ManageProxyServerAction" >
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/proxyserver/ViewAllProxyServers.jsp"/>
+
+            <forward name="view"
+                contextRelative="true"
+                path="jsp/proxyserver/ViewProxyServer.jsp"/>
+
+            <forward name="add"
+                contextRelative="true"
+                path="jsp/proxyserver/EditProxyServer.jsp"/>
+
+            <forward name="edit"
+                contextRelative="true"
+                path="jsp/proxyserver/EditProxyServer.jsp"/>
+
+            <forward name="success"
+                path="/ViewAllProxyServers.do"/>
+        </action>
+
+        <action path="/SubmitEditProxyServer"
+            type="com.bea.alsb.console.proxyserver.actions.SubmitEditProxyServerAction"
+            name="ProxyServerForm"
+            attribute="actionform"
+            scope="session"
+            validate="true"
+            input="error">
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/proxyserver/ViewAllProxyServers.jsp"/>
+
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/proxyserver/EditProxyServer.jsp"/>
+
+            <forward name="stay"
+                contextRelative="true"
+                path="jsp/proxyserver/EditProxyServer.jsp"/>
+
+            <forward name="success"
+                path="/ViewAllProxyServers.do"/>
+        </action>
+
+
+        <action path="/ProxyServersBrowserPgSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/proxyserver/ProxyServersBrowser.jsp"/>
+
+        <action path="/ProxyServersBrowser"
+                type="com.bea.alsb.console.proxyserver.actions.ProxyServersBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                parameter="entry"
+                attribute="ProxyServersBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/proxyserver/ProxyServersBrowser.jsp"/>
+        </action>
+
+        <action path="/ProxyServersBrowserTask"
+                type="com.bea.alsb.console.proxyserver.actions.ProxyServersBrowserAction"
+                name="BrowserForm"
+                scope="session"
+                attribute="ProxyServersBrowserForm"
+                validate="false">
+            <forward name="finish"
+                     contextRelative="true"
+                     path="jsp/proxyserver/ProxyServersBrowser.jsp"/>
+        </action>
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

@@ -1,0 +1,1597 @@
+<?xml version="1.0"?>
+<!--  $Header: emas/sysman/admin/adml/domain-j2ee_application-11.0.xml /st_emasgc_11.1as/5 2010/06/27 20:43:08 scgrover Exp $ -->
+
+<!-- 
+ Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     domain_j2ee_application.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   scgrover    06/24/10 - add websphere support
+   scgrover    06/21/10 - fix uptake issues
+   scgrover    08/31/09 - Creation
+
+-->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	TableSpace="domain_j2ee_application">
+
+<!-- 
+  Status metric for domain app.  If one app instance is up then the domain app is up.
+-->
+	<Table Name="deployment_status">
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="Status" Type="Integer" />
+		<Union Name="application_union">
+			<TableFrom Name="weblogic_j2eeserver:application"/>
+			<TableFrom Name="websphere_j2eeserver:application"/>
+			<Column Name="appName" Type="String"/>
+			<Column Name="Status" Type="Integer"/>
+		</Union> 
+		<Select Name="application_result_int">
+			<TableFrom Name="application_union" />
+			<Column Name="appName" Type="String" />
+			<Column Name="Status" Type="Integer">
+				<Aggregation Operator="Sum" Name="Status" />
+			</Column>
+			<GroupBy Name="appName" />
+
+			<Where>
+				<Or>
+					<Condition Type="String" Operator="EQ">
+						<ColumnFrom Name="appName" />
+						<Value Name="appName.parameter" />
+					</Condition>
+                                        <Condition Type="String" Operator="EQ">
+                                                <Value Name="appName.parameter" xsi:nil="true" />
+                                                <Null />
+                                        </Condition>
+				</Or>
+			</Where>
+		</Select>
+		<Select Name="application_result">
+			<TableFrom Name="application_result_int" />
+			<Column Name="appName" Type="String" />
+			<Column Name="Status" Type="Integer">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="Status" />
+						<Value>0</Value>
+					</Condition>
+					<Then>
+						<Value>1</Value>
+					</Then>
+					<Else>
+						<Value>0</Value>
+					</Else>
+				</If>
+			</Column>
+		</Select>
+	</Table>
+
+<!--
+  Intermediate table to sum up values.  Rate data cannot be calculated in hte same Table as the Sums, Bug with ADML ?
+-->
+	<Table Name="deployment_overview_no_rate">
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="session.active" Type="Long" />
+		<ColumnDef Name="service.totalTime" Type="Long" />
+		<ColumnDef Name="service.completed" Type="Long" />
+		<ColumnDef Name="service.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheActivation.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheActivation.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbCache.active" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolUsed.active" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAvailable.active" Type="Long" />
+		<ColumnDef Name="ejbPoolFailed.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolFailed.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionCommit.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionCommit.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionRollback.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionRollback.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionTimeout.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionTimeout.throughput" Type="Double" />
+		<ColumnDef Name="wmProcessed.throughput" Type="Double" />
+		<ColumnDef Name="wmPending.active" Type="Long" />
+		<ColumnDef Name="mdbMessage.completed" Type="Long" />
+		<ColumnDef Name="mdbMessage.throughput" Type="Double" />
+		<Select Name="deployment_overview_no_rate_result">
+			<TableFrom Name="weblogic_j2eeserver:app_overview" />
+			<Column Name="appName" Type="String" />
+			<Column Name="session.active" Type="Long">
+				<Aggregation Operator="Sum" Name="session.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.totalTime" Type="Long">
+				<Aggregation Operator="Sum" Name="service.totalTime" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="service.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="service.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheActivation.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCacheActivation.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheActivation.throughput" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCacheActivation.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheAccess.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCacheAccess.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheAccess.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbCacheAccess.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCache.active" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCache.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheMiss.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCacheMiss.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheMiss.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbCacheMiss.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAccess.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolAccess.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAccess.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbPoolAccess.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolUsed.active" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolUsed.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolDestroy.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolDestroy.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolDestroy.throughput" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolDestroy.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAvailable.active" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolAvailable.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolFailed.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolFailed.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolFailed.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbPoolFailed.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionCommit.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbTransactionCommit.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionCommit.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbTransactionCommit.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionRollback.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbTransactionRollback.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionRollback.throughput" Type="Double">
+				<Aggregation Operator="Sum"
+					Name="ejbTransactionRollback.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionTimeout.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbTransactionTimeout.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionTimeout.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbTransactionTimeout.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="wmProcessed.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="wmProcessed.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="wmPending.active" Type="Long">
+				<Aggregation Operator="Sum" Name="wmPending.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="mdbMessage.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="mdbMessage.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="mdbMessage.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="mdbMessage.throughput" />
+				<Default>0</Default>
+			</Column>
+			<GroupBy Name="appName" />
+		</Select>
+	</Table>
+
+<!--
+  All Columns of weblogic_j2eeserver:app_overview are summed of recalculated and exposed (except serverName)
+-->
+	<Table Name="deployment_overview">
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="session.active" Type="Long" />
+		<ColumnDef Name="service.totalTime" Type="Long" />
+		<ColumnDef Name="service.completed" Type="Long" />
+		<ColumnDef Name="service.time" Type="Double" />
+		<ColumnDef Name="service.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheActivation.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheActivation.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbCache.active" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheHit.percentage" Type="Double" />
+		<ColumnDef Name="ejbPoolAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolUsed.active" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAvailable.active" Type="Long" />
+		<ColumnDef Name="ejbPoolFailed.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolFailed.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAccessSuccess.percentage" Type="Double" />
+		<ColumnDef Name="ejbTransactionCommit.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionCommit.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionRollback.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionRollback.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionTimeout.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionTimeout.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionCommit.percentage" Type="Double" />
+		<ColumnDef Name="wmProcessed.throughput" Type="Double" />
+		<ColumnDef Name="wmPending.active" Type="Long" />
+		<ColumnDef Name="mdbMessage.completed" Type="Long" />
+		<ColumnDef Name="mdbMessage.throughput" Type="Double" />
+		<Select Name="deployment_overview_results">
+			<TableFrom Name="domain_j2ee_application:deployment_overview_no_rate" />
+			<Column Name="appName" Type="String" />
+			<Column Name="session.active" Type="Long" />
+			<Column Name="service.totalTime" Type="Long" />
+			<Column Name="service.completed" Type="Long" />
+			<Column Name="service.time" Type="Double">
+				<Rate Interval="300000">
+					<ColumnFrom Name="service.totalTime" />
+					<ColumnFrom Name="service.completed" />
+					<Default>0</Default>
+				</Rate>
+			</Column>
+			<Column Name="service.throughput" Type="Double" />
+			<Column Name="ejbCacheActivation.completed" Type="Long" />
+			<Column Name="ejbCacheActivation.throughput" Type="Long" />
+			<Column Name="ejbCacheAccess.completed" Type="Long" />
+			<Column Name="ejbCacheAccess.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbCacheAccess.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="cacheAccess.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbCacheAccess.completed.previous" />
+						<ColumnFrom Name="ejbCacheAccess.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbCacheAccess.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbCacheAccess.completed" />
+							<ColumnFrom Name="ejbCacheAccess.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheAccess.throughput" Type="Double" />
+			<Column Name="ejbCache.active" Type="Long" />
+			<Column Name="ejbCacheMiss.completed" Type="Long" />
+			<Column Name="ejbCacheMiss.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbCacheMiss.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbCacheMiss.throughput" Type="Double" />
+			<Column Name="cacheMiss.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbCacheMiss.completed.previous" />
+						<ColumnFrom Name="ejbCacheMiss.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbCacheMiss.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbCacheMiss.completed" />
+							<ColumnFrom Name="ejbCacheMiss.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheHit.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<Expression Operator="Minus">
+							<ColumnFrom Name="cacheAccess.deltaCompleted" />
+							<ColumnFrom Name="cacheMiss.deltaCompleted" />
+						</Expression>
+						<Value>100.0</Value>
+					</Expression>
+					<ColumnFrom Name="cacheAccess.deltaCompleted" />
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAccess.completed" Type="Long" />
+			<Column Name="ejbPoolAccess.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbPoolAccess.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbPoolAccess.throughput" Type="Double" />
+			<Column Name="poolAccess.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbPoolAccess.completed.previous" />
+						<ColumnFrom Name="ejbPoolAccess.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbPoolAccess.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbPoolAccess.completed" />
+							<ColumnFrom Name="ejbPoolAccess.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolUsed.active" Type="Long" />
+			<Column Name="ejbPoolDestroy.completed" Type="Long" />
+			<Column Name="ejbPoolDestroy.throughput" Type="Long" />
+			<Column Name="ejbPoolAvailable.active" Type="Long" />
+			<Column Name="ejbPoolFailed.completed" Type="Long" />
+			<Column Name="ejbPoolFailed.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbPoolFailed.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbPoolFailed.throughput" Type="Double" />
+			<Column Name="poolFailed.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbPoolFailed.completed.previous" />
+						<ColumnFrom Name="ejbPoolFailed.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbPoolFailed.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbPoolFailed.completed" />
+							<ColumnFrom Name="ejbPoolFailed.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAccessSuccess.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<Expression Operator="Minus">
+							<ColumnFrom Name="poolAccess.deltaCompleted" />
+							<ColumnFrom Name="poolFailed.deltaCompleted" />
+						</Expression>
+						<Value>100.0</Value>
+					</Expression>
+					<ColumnFrom Name="poolAccess.deltaCompleted" />
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionCommit.completed" Type="Long" />
+			<Column Name="ejbTransactionCommit.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbTransactionCommit.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbTransactionCommit.throughput" Type="Double" />
+			<Column Name="transactionCommit.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbTransactionCommit.completed.previous" />
+						<ColumnFrom Name="ejbTransactionCommit.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbTransactionCommit.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbTransactionCommit.completed" />
+							<ColumnFrom Name="ejbTransactionCommit.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionRollback.completed" Type="Long" />
+			<Column Name="ejbTransactionRollback.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbTransactionRollback.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbTransactionRollback.throughput" Type="Double" />
+			<Column Name="transactionRollback.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbTransactionRollback.completed.previous" />
+						<ColumnFrom Name="ejbTransactionRollback.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbTransactionRollback.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbTransactionRollback.completed" />
+							<ColumnFrom Name="ejbTransactionRollback.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionTimeout.completed" Type="Long" />
+			<Column Name="ejbTransactionTimeout.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbTransactionTimeout.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbTransactionTimeout.throughput" Type="Double" />
+			<Column Name="transactionTimeout.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbTransactionTimeout.completed.previous" />
+						<ColumnFrom Name="ejbTransactionTimeout.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbTransactionTimeout.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbTransactionTimeout.completed" />
+							<ColumnFrom Name="ejbTransactionTimeout.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionCommit.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<ColumnFrom Name="transactionCommit.deltaCompleted" />
+						<Value>100.0</Value>
+					</Expression>
+					<Expression Operator="Plus">
+						<Expression Operator="Plus">
+							<ColumnFrom Name="transactionCommit.deltaCompleted" />
+							<ColumnFrom Name="transactionRollback.deltaCompleted" />
+						</Expression>
+						<ColumnFrom Name="transactionTimeout.deltaCompleted" />
+					</Expression>
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="wmProcessed.throughput" Type="Double" />
+			<Column Name="wmPending.active" Type="Long" />
+			<Column Name="mdbMessage.completed" Type="Long" />
+			<Column Name="mdbMessage.throughput" Type="Double" />
+			<Where>
+				<Or>
+					<Condition Type="String" Operator="EQ">
+						<ColumnFrom Name="appName" />
+						<Value Name="appName.parameter" />
+					</Condition>
+					<Condition Type="String" Operator="EQ">
+						<Value Name="appName.parameter" xsi:nil="true" />
+						<Null />
+					</Condition>
+				</Or>
+			</Where>
+		</Select>
+	</Table>
+
+<!--
+ Intermediate table to sum values, cannot calculate rate data in same table.
+-->
+
+	<Table Name="deployment_servlet_jsp_no_rate">
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="name" Type="String" Key="true" />
+		<ColumnDef Name="webModuleName" Type="String" Key="true" />
+		<ColumnDef Name="service.throughput" Type="Double" />
+		<ColumnDef Name="service.totalTime" Type="Double" />
+		<ColumnDef Name="service.completed" Type="Long" />
+		<ColumnDef Name="reload.completed" Type="Long" />
+		<ColumnDef Name="reload.throughput" Type="Double" />
+		<Select Name="deployment_servlet_jsp_no_rate_result">
+			<TableFrom Name="weblogic_j2eeserver:servlet_jsp" />
+			<Column Name="appName" Type="String" />
+			<Column Name="webModuleName" Type="String" />
+			<Column Name="name" Type="String" />
+			<Column Name="service.totalTime" Type="Long">
+				<Aggregation Operator="Sum" Name="service.totalTime" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="service.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="service.throughput" />
+			</Column>
+			<Column Name="reload.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="reload.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="reload.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="reload.throughput" />
+			</Column>
+			<GroupBy Name="appName" />
+			<GroupBy Name="webModuleName" />
+			<GroupBy Name="name" />
+		</Select>
+	</Table>
+
+<!--
+  all columns of weblogic_j2eeserver:servlet_jsp summed or recalculated and exposed (except serverName)
+-->
+	<Table Name="deployment_servlet_jsp">
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="name" Type="String" Key="true" />
+		<ColumnDef Name="webModuleName" Type="String" Key="true" />
+		<ColumnDef Name="service.throughput" Type="Double" />
+		<ColumnDef Name="service.time" Type="Double" />
+		<ColumnDef Name="service.totalTime" Type="Double" />
+		<ColumnDef Name="service.avg" Type="Double" />
+		<ColumnDef Name="service.completed" Type="Long" />
+		<ColumnDef Name="reload.completed" Type="Long" />
+		<ColumnDef Name="reload.throughput" Type="Double" />
+		<Select Name="deployment_servlet_jsp_result">
+			<TableFrom Name="domain_j2ee_application:deployment_servlet_jsp_no_rate" />
+			<Column Name="appName" Type="String" />
+			<Column Name="webModuleName" Type="String" />
+			<Column Name="name" Type="String" />
+			<Column Name="service.totalTime" Type="Long" />
+			<Column Name="service.completed" Type="Long" />
+			<Column Name="reload.completed" Type="Long" />
+			<Column Name="service.time" Type="Double">
+				<Rate Interval="300000">
+					<ColumnFrom Name="service.totalTime" />
+					<ColumnFrom Name="service.completed" />
+					<Default>0</Default>
+				</Rate>
+			</Column>
+			<Column Name="service.avg" Type="Double">
+				<Expression Operator="Div">
+					<ColumnFrom Name="service.totalTime" />
+					<ColumnFrom Name="service.completed" />
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.throughput" Type="Double" />
+			<Column Name="reload.throughput" Type="Double" />
+			<Where>
+				<And>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="name" />
+							<Value Name="name.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="name.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="webModuleName" />
+							<Value Name="webModuleName.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="webModuleName.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="appName" />
+							<Value Name="appName.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="appName.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+				</And>
+			</Where>
+		</Select>
+	</Table>
+
+<!--
+ intermediate table to sum values
+-->
+	<Table Name="deployment_web_module_no_rate">
+		<ColumnDef Name="name" Type="String" Key="true" />
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="service.totalTime" Type="Long" />
+		<ColumnDef Name="service.completed" Type="Long" />
+		<ColumnDef Name="service.throughput" Type="Double" />
+		<ColumnDef Name="session.active" Type="Long" />
+		<Select Name="deployment_web_module_no_rate_result">
+			<TableFrom Name="weblogic_j2eeserver:web_module" />
+			<Column Name="name" Type="String" />
+			<Column Name="appName" Type="String" />
+			<Column Name="service.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="service.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.totalTime" Type="Long">
+				<Aggregation Operator="Sum" Name="service.totalTime" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="service.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="service.throughput" />
+			</Column>
+			<Column Name="session.active" Type="Long">
+				<Aggregation Operator="Sum" Name="session.active" />
+				<Default>0</Default>
+			</Column>
+			<GroupBy Name="name" />
+			<GroupBy Name="appName" />
+		</Select>
+	</Table>
+
+<!--
+  all colums of weblogic_j2eeserver:web_module summed of recalculated and exported (except serverName)
+-->
+	<Table Name="deployment_web_module">
+		<ColumnDef Name="name" Type="String" Key="true" />
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="service.throughput" Type="Double" />
+		<ColumnDef Name="service.time" Type="Double" />
+		<ColumnDef Name="service.totalTime" Type="Long" />
+		<ColumnDef Name="service.completed" Type="Long" />
+		<ColumnDef Name="session.active" Type="Long" />
+		<Select Name="deployment_web_module_result">
+			<TableFrom Name="domain_j2ee_application:deployment_web_module_no_rate" />
+			<Column Name="name" Type="String" />
+			<Column Name="appName" Type="String" />
+			<Column Name="service.completed" Type="Long" />
+			<Column Name="service.totalTime" Type="Long" />
+			<Column Name="session.active" Type="Long" />
+			<Column Name="service.throughput" Type="Double" />
+			<Column Name="service.time" Type="Double">
+				<Rate Interval="300000">
+					<ColumnFrom Name="service.totalTime" />
+					<ColumnFrom Name="service.completed" />
+					<Default>0</Default>
+				</Rate>
+			</Column>
+			<Where>
+				<And>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="name" />
+							<Value Name="name.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="name.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="appName" />
+							<Value Name="appName.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="appName.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+				</And>
+			</Where>
+		</Select>
+	</Table>
+
+<!--
+ Intermediate table summing values
+-->
+	<Table Name="deployment_ejb_module_no_rate">
+		<ColumnDef Name="ejbModuleName" Type="String" Key="true" />
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="ejbCacheActivation.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheActivation.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbCache.active" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.throughput" Type="Double" />
+		<ColumnDef Name="ejbCachePassivation.completed" Type="Long" />
+		<ColumnDef Name="ejbCachePassivation.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolUsed.active" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolFailed.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolFailed.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAvailable.active" Type="Long" />
+		<ColumnDef Name="ejbTransactionCommit.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionCommit.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionRollback.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionRollback.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionTimeout.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionTimeout.throughput" Type="Double" />
+		<ColumnDef Name="mdbMessage.completed" Type="Long" />
+		<ColumnDef Name="mdbMessage.throughput" Type="Double" />
+		<Select Name="deployment_ejb_module_no_rate_result">
+			<TableFrom Name="weblogic_j2eeserver:ejb_module" />
+			<Column Name="ejbModuleName" Type="String" />
+			<Column Name="appName" Type="String" />
+			<Column Name="ejbCacheActivation.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCacheActivation.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheActivation.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbCacheActivation.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheAccess.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCacheAccess.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheAccess.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbCacheAccess.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCache.active" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCache.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheMiss.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCacheMiss.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheMiss.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbCacheMiss.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCachePassivation.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbCachePassivation.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCachePassivation.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbCachePassivation.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAccess.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolAccess.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAccess.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbPoolAccess.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolUsed.active" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolUsed.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolDestroy.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolDestroy.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolDestroy.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbPoolDestroy.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolFailed.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolFailed.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolFailed.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbPoolFailed.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAvailable.active" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbPoolAvailable.active" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionCommit.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbTransactionCommit.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionCommit.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbTransactionCommit.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionRollback.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbTransactionRollback.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionRollback.throughput" Type="Double">
+				<Aggregation Operator="Sum"
+					Name="ejbTransactionRollback.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionTimeout.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="ejbTransactionTimeout.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbTransactionTimeout.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="ejbTransactionTimeout.throughput" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="mdbMessage.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="mdbMessage.completed" />
+				<Default>0</Default>
+			</Column>
+			<Column Name="mdbMessage.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="mdbMessage.throughput" />
+				<Default>0</Default>
+			</Column>
+			<GroupBy Name="ejbModuleName" />
+			<GroupBy Name="appName" />
+		</Select>
+	</Table>
+
+<!--
+  All columns of weblogic_j2eeserver summed or recalculated and exported (except serverName)
+-->
+	<Table Name="deployment_ejb_module">
+		<ColumnDef Name="ejbModuleName" Type="String" Key="true" />
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="ejbCacheActivation.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheActivation.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbCache.active" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.completed" Type="Long" />
+		<ColumnDef Name="ejbCacheMiss.throughput" Type="Double" />
+		<ColumnDef Name="ejbCacheHit.percentage" Type="Double" />
+		<ColumnDef Name="ejbCachePassivation.completed" Type="Long" />
+		<ColumnDef Name="ejbCachePassivation.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAccess.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolAccess.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAccessSuccess.percentage" Type="Double" />
+		<ColumnDef Name="ejbPoolUsed.active" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolDestroy.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolFailed.completed" Type="Long" />
+		<ColumnDef Name="ejbPoolFailed.throughput" Type="Double" />
+		<ColumnDef Name="ejbPoolAvailable.active" Type="Long" />
+		<ColumnDef Name="ejbTransactionCommit.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionCommit.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionRollback.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionRollback.throughput" Type="Double" />
+		<ColumnDef Name="ejbTransactionTimeout.completed" Type="Long" />
+		<ColumnDef Name="ejbTransactionTimeout.throughput" Type="Double" />
+		<ColumnDef Name="mdbMessage.completed" Type="Long" />
+		<ColumnDef Name="mdbMessage.throughput" Type="Double" />
+		<Select Name="deployment_ejb_module_result_int">
+			<TableFrom Name="domain_j2ee_application:deployment_ejb_module_no_rate" />
+			<Column Name="ejbModuleName" Type="String" />
+			<Column Name="appName" Type="String" />
+			<Column Name="ejbCacheActivation.completed" Type="Long" />
+			<Column Name="ejbCacheActivation.throughput" Type="Double" />
+			<Column Name="ejbCacheAccess.completed" Type="Long" />
+			<Column Name="ejbCacheAccess.throughput" Type="Double" />
+			<Column Name="ejbCacheAccess.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbCacheAccess.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbCache.active" Type="Long" />
+			<Column Name="ejbCacheMiss.completed" Type="Long" />
+			<Column Name="ejbCacheMiss.throughput" Type="Double" />
+			<Column Name="ejbCacheMiss.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbCacheMiss.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbCachePassivation.completed" Type="Long" />
+			<Column Name="ejbCachePassivation.throughput" Type="Double" />
+			<Column Name="ejbPoolAccess.completed" Type="Long" />
+			<Column Name="ejbPoolAccess.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbPoolAccess.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbPoolAccess.throughput" Type="Double" />
+			<Column Name="ejbPoolUsed.active" Type="Long" />
+			<Column Name="ejbPoolDestroy.completed" Type="Long" />
+			<Column Name="ejbPoolDestroy.throughput" Type="Double" />
+			<Column Name="ejbPoolFailed.completed" Type="Long" />
+			<Column Name="ejbPoolFailed.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="ejbPoolFailed.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="ejbPoolFailed.throughput" Type="Double" />
+			<Column Name="ejbPoolAvailable.active" Type="Long" />
+			<Column Name="ejbTransactionCommit.completed" Type="Long" />
+			<Column Name="ejbTransactionCommit.throughput" Type="Double" />
+			<Column Name="ejbTransactionRollback.completed" Type="Long" />
+			<Column Name="ejbTransactionRollback.throughput" Type="Double" />
+			<Column Name="ejbTransactionTimeout.completed" Type="Long" />
+			<Column Name="ejbTransactionTimeout.throughput" Type="Double" />
+			<Column Name="mdbMessage.completed" Type="Long" />
+			<Column Name="mdbMessage.throughput" Type="Double" />
+			<Where>
+				<And>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="ejbModuleName" />
+							<Value Name="ejbModuleName.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="ejbModuleName.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="appName" />
+							<Value Name="appName.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="appName.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+				</And>
+			</Where>
+		</Select>
+
+		<Select Name="deployment_ejb_module_result">
+			<TableFrom Name="deployment_ejb_module_result_int" />
+			<Column Name="ejbModuleName" Type="String" />
+			<Column Name="appName" Type="String" />
+			<Column Name="serverName" Type="String" />
+			<Column Name="ejbCacheActivation.completed" Type="Long"/>
+			<Column Name="ejbCacheActivation.throughput" Type="Double" />
+			<Column Name="ejbCacheAccess.completed" Type="Long"/>
+			<Column Name="ejbCacheAccess.throughput" Type="Double" />
+			<Column Name="cacheAccess.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbCacheAccess.completed.previous" />
+						<ColumnFrom Name="ejbCacheAccess.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbCacheAccess.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbCacheAccess.completed" />
+							<ColumnFrom Name="ejbCacheAccess.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCache.active" Type="Long"/>
+			<Column Name="ejbCacheMiss.completed" Type="Long"/>
+			<Column Name="ejbCacheMiss.throughput" Type="Double" />
+			<Column Name="cacheMiss.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbCacheMiss.completed.previous" />
+						<ColumnFrom Name="ejbCacheMiss.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbCacheMiss.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbCacheMiss.completed" />
+							<ColumnFrom Name="ejbCacheMiss.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCacheHit.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<Expression Operator="Minus">
+							<ColumnFrom Name="cacheAccess.deltaCompleted" />
+							<ColumnFrom Name="cacheMiss.deltaCompleted" />
+						</Expression>
+						<Value>100.0</Value>
+					</Expression>
+					<ColumnFrom Name="cacheAccess.deltaCompleted" />
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbCachePassivation.completed" Type="Long"/>
+			<Column Name="ejbCachePassivation.throughput" Type="Double" />
+			<Column Name="ejbPoolAccess.completed" Type="Long"/>
+			<Column Name="ejbPoolAccess.throughput" Type="Double" />
+			<Column Name="poolAccess.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbPoolAccess.completed.previous" />
+						<ColumnFrom Name="ejbPoolAccess.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbPoolAccess.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbPoolAccess.completed" />
+							<ColumnFrom Name="ejbPoolAccess.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolFailed.completed" Type="Long"/>
+			<Column Name="ejbPoolFailed.throughput" Type="Double" />
+			<Column Name="poolFailed.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="ejbPoolFailed.completed.previous" />
+						<ColumnFrom Name="ejbPoolFailed.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="ejbPoolFailed.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="ejbPoolFailed.completed" />
+							<ColumnFrom Name="ejbPoolFailed.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolAccessSuccess.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<Expression Operator="Minus">
+							<ColumnFrom Name="poolAccess.deltaCompleted" />
+							<ColumnFrom Name="poolFailed.deltaCompleted" />
+						</Expression>
+						<Value>100.0</Value>
+					</Expression>
+					<ColumnFrom Name="poolAccess.deltaCompleted" />
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="ejbPoolUsed.active" Type="Long"/>
+			<Column Name="ejbPoolDestroy.completed" Type="Long"/>
+			<Column Name="ejbPoolDestroy.throughput" Type="Double" />
+			<Column Name="ejbPoolAvailable.active" Type="Long"/>
+			<Column Name="ejbTransactionCommit.completed" Type="Long"/>
+			<Column Name="ejbTransactionCommit.throughput" Type="Double" />
+			<Column Name="ejbTransactionRollback.completed" Type="Long"/>
+			<Column Name="ejbTransactionRollback.throughput" Type="Double" />
+			<Column Name="ejbTransactionTimeout.completed" Type="Long"/>
+			<Column Name="ejbTransactionTimeout.throughput" Type="Double" />
+			<Column Name="mdbMessage.completed" Type="Long"/>
+			<Column Name="mdbMessage.throughput" Type="Double" />
+		</Select>
+	</Table>
+
+<!-- 
+  Intermediate table summing values
+-->
+	<Table Name="deployment_datasource_no_rate">
+		<ColumnDef Name="name" Type="String" Key="true" />
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="connectionInUse.active" Type="Long" />
+		<ColumnDef Name="connectionCreated.completed" Type="Long" />
+		<ColumnDef Name="connectionCreated.throughput" Type="Double" />
+		<ColumnDef Name="connectionPoolSize.active" Type="Long" />
+		<ColumnDef Name="connectionRequestFailures.completed" Type="Long" />
+		<ColumnDef Name="connectionRequestFailures.throughput" Type="Double" />
+		<ColumnDef Name="connectionRequests.completed" Type="Long" />
+		<ColumnDef Name="connectionRequests.throughput" Type="Double" />
+		<ColumnDef Name="connectionRefreshFailures.completed" Type="Long" />
+		<ColumnDef Name="connectionRefreshFailures.throughput" Type="Double" />
+		<ColumnDef Name="connectionLeaks.completed" Type="Long" />
+		<ColumnDef Name="connectionLeaks.throughput" Type="Double" />
+		<ColumnDef Name="connectionAvailable.active" Type="Long" />
+		<ColumnDef Name="connectionUnavailable.active" Type="Long" />
+		<ColumnDef Name="stmtCacheAdded.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheAdded.throughput" Type="Double" />
+		<ColumnDef Name="stmtCacheSize.active" Type="Long" />
+		<ColumnDef Name="stmtCacheDiscarded.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheDiscarded.throughput" Type="Double" />
+		<ColumnDef Name="stmtCacheSatisfied.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheSatisfied.throughput" Type="Double" />
+		<ColumnDef Name="stmtCacheNotSatisfied.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheNotSatisfied.throughput" Type="Double" />
+		<ColumnDef Name="connectionWaiters.active" Type="Long" />
+		<ColumnDef Name="connectionWaitFailures.completed" Type="Long" />
+		<ColumnDef Name="connectionWaitFailures.throughput" Type="Double" />
+		<ColumnDef Name="connectionWaitSuccesses.completed" Type="Long" />
+		<ColumnDef Name="connectionWaitSuccesses.throughput" Type="Double" />
+		<ColumnDef Name="connectionWaits.completed" Type="Long" />
+		<ColumnDef Name="connectionWaits.throughput" Type="Double" />
+		<Select Name="deployment_datasource_no_rate_result">
+			<TableFrom Name="weblogic_j2eeserver:datasource" />
+			<Column Name="name" Type="String" />
+			<Column Name="appName" Type="String" />
+			<Column Name="connectionInUse.active" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionInUse.active" />
+			</Column>
+			<Column Name="connectionCreated.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionCreated.completed" />
+			</Column>
+			<Column Name="connectionCreated.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="connectionCreated.throughput" />
+			</Column>
+			<Column Name="connectionPoolSize.active" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionPoolSize.active" />
+			</Column>
+			<Column Name="connectionRequestFailures.completed" Type="Long">
+				<Aggregation Operator="Sum"
+					Name="connectionRequestFailures.completed" />
+			</Column>
+			<Column Name="connectionRequestFailures.throughput" Type="Double">
+				<Aggregation Operator="Sum"
+					Name="connectionRequestFailures.throughput" />
+			</Column>
+			<Column Name="connectionRequests.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionRequests.completed" />
+			</Column>
+			<Column Name="connectionRequests.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="connectionRequests.throughput" />
+			</Column>
+			<Column Name="connectionRefreshFailures.completed" Type="Long">
+				<Aggregation Operator="Sum"
+					Name="connectionRefreshFailures.completed" />
+			</Column>
+			<Column Name="connectionRefreshFailures.throughput" Type="Double">
+				<Aggregation Operator="Sum"
+					Name="connectionRefreshFailures.throughput" />
+			</Column>
+			<Column Name="connectionLeaks.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionLeaks.completed" />
+			</Column>
+			<Column Name="connectionLeaks.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="connectionLeaks.throughput" />
+			</Column>
+			<Column Name="connectionAvailable.active" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionAvailable.active" />
+			</Column>
+			<Column Name="connectionUnavailable.active" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionUnavailable.active" />
+			</Column>
+			<Column Name="stmtCacheAdded.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="stmtCacheAdded.completed" />
+			</Column>
+			<Column Name="stmtCacheAdded.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="stmtCacheAdded.throughput" />
+			</Column>
+			<Column Name="stmtCacheSize.active" Type="Long">
+				<Aggregation Operator="Sum" Name="stmtCacheSize.active" />
+			</Column>
+			<Column Name="stmtCacheDiscarded.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="stmtCacheDiscarded.completed" />
+			</Column>
+			<Column Name="stmtCacheDiscarded.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="stmtCacheDiscarded.throughput" />
+			</Column>
+			<Column Name="stmtCacheSatisfied.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="stmtCacheSatisfied.completed" />
+			</Column>
+			<Column Name="stmtCacheSatisfied.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="stmtCacheSatisfied.throughput" />
+			</Column>
+			<Column Name="stmtCacheNotSatisfied.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="stmtCacheNotSatisfied.completed" />
+			</Column>
+			<Column Name="stmtCacheNotSatisfied.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="stmtCacheNotSatisfied.throughput" />
+			</Column>
+			<Column Name="connectionWaiters.active" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionWaiters.active" />
+			</Column>
+			<Column Name="connectionWaitFailures.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionWaitFailures.completed" />
+			</Column>
+			<Column Name="connectionWaitFailures.throughput" Type="Double">
+				<Aggregation Operator="Sum"
+					Name="connectionWaitFailures.throughput" />
+			</Column>
+			<Column Name="connectionWaitSuccesses.completed" Type="Long">
+				<Aggregation Operator="Sum"
+					Name="connectionWaitSuccesses.completed" />
+			</Column>
+			<Column Name="connectionWaitSuccesses.throughput" Type="Double">
+				<Aggregation Operator="Sum"
+					Name="connectionWaitSuccesses.throughput" />
+			</Column>
+			<Column Name="connectionWaits.completed" Type="Long">
+				<Aggregation Operator="Sum" Name="connectionWaits.completed" />
+			</Column>
+			<Column Name="connectionWaits.throughput" Type="Double">
+				<Aggregation Operator="Sum" Name="connectionWaits.throughput" />
+			</Column>
+			<GroupBy Name="name" />
+			<GroupBy Name="appName" />
+		</Select>
+	</Table>
+
+<!--
+  state column omitted, does not make sense to rollup, all other columns of weblogic_j2eeserver:datasource exposed except serverName
+  
+-->
+	<Table Name="deployment_datasource">
+		<ColumnDef Name="name" Type="String" Key="true" />
+		<ColumnDef Name="appName" Type="String" Key="true" />
+		<ColumnDef Name="connectionInUse.active" Type="Long" />
+		<ColumnDef Name="connectionCreated.completed" Type="Long" />
+		<ColumnDef Name="connectionCreated.throughput" Type="Double" />
+		<ColumnDef Name="connectionPoolSize.active" Type="Long" />
+		<ColumnDef Name="connectionRequestFailures.completed" Type="Long" />
+		<ColumnDef Name="connectionRequestFailures.throughput" Type="Double" />
+		<ColumnDef Name="connectionRequests.completed" Type="Long" />
+		<ColumnDef Name="connectionRequests.throughput" Type="Double" />
+		<ColumnDef Name="connectionSuccess.percentage" Type="Double" />
+		<ColumnDef Name="connectionRefreshFailures.completed" Type="Long" />
+		<ColumnDef Name="connectionRefreshFailures.throughput" Type="Double" />
+		<ColumnDef Name="connectionLeaks.completed" Type="Long" />
+		<ColumnDef Name="connectionLeaks.throughput" Type="Double" />
+		<ColumnDef Name="connectionAvailable.active" Type="Long" />
+		<ColumnDef Name="connectionUnavailable.active" Type="Long" />
+		<ColumnDef Name="stmtCacheAdded.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheAdded.throughput" Type="Double" />
+		<ColumnDef Name="stmtCacheSize.active" Type="Long" />
+		<ColumnDef Name="stmtCacheDiscarded.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheDiscarded.throughput" Type="Double" />
+		<ColumnDef Name="stmtCacheSatisfied.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheSatisfied.throughput" Type="Double" />
+		<ColumnDef Name="stmtCacheNotSatisfied.completed" Type="Long" />
+		<ColumnDef Name="stmtCacheNotSatisfied.throughput" Type="Double" />
+		<ColumnDef Name="stmtCacheSatisfied.percentage" Type="Double" />
+		<ColumnDef Name="connectionWaiters.active" Type="Long" />
+		<ColumnDef Name="connectionWaitFailures.completed" Type="Long" />
+		<ColumnDef Name="connectionWaitFailures.throughput" Type="Double" />
+		<ColumnDef Name="connectionWaitSuccesses.completed" Type="Long" />
+		<ColumnDef Name="connectionWaitSuccesses.throughput" Type="Double" />
+		<ColumnDef Name="connectionWaits.completed" Type="Long" />
+		<ColumnDef Name="connectionWaits.throughput" Type="Double" />
+		<ColumnDef Name="connectionWaitSuccesses.percentage" Type="Double" />
+		<Select Name="deployment_datasource_result">
+			<TableFrom Name="domain_j2ee_application:deployment_datasource_no_rate" />
+			<Column Name="name" Type="String" />
+			<Column Name="appName" Type="String" />
+			<Column Name="serverName" Type="String" />
+			<Column Name="connectionInUse.active" Type="Long" />
+			<Column Name="connectionCreated.completed" Type="Long" />
+			<Column Name="connectionCreated.throughput" Type="Double" />
+			<Column Name="connectionPoolSize.active" Type="Long" />
+			<Column Name="connectionRequestFailures.completed" Type="Long" />
+			<Column Name="connectionRequestFailures.throughput" Type="Double" />
+			<Column Name="connectionRequestFailures.completed.previous"
+				Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="connectionRequestFailures.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="requestFailures.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="connectionRequestFailures.completed.previous" />
+						<ColumnFrom Name="connectionRequestFailures.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="connectionRequestFailures.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="connectionRequestFailures.completed" />
+							<ColumnFrom Name="connectionRequestFailures.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="connectionRequests.completed" Type="Long" />
+			<Column Name="connectionRequests.throughput" Type="Double" />
+			<Column Name="connectionRequests.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="connectionRequests.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="requests.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="connectionRequests.completed.previous" />
+						<ColumnFrom Name="connectionRequests.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="connectionRequests.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="connectionRequests.completed" />
+							<ColumnFrom Name="connectionRequests.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="connectionSuccess.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<Expression Operator="Minus">
+							<ColumnFrom Name="requests.deltaCompleted" />
+							<ColumnFrom Name="requestFailures.deltaCompleted" />
+						</Expression>
+						<Value>100.0</Value>
+					</Expression>
+					<ColumnFrom Name="requests.deltaCompleted" />
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="connectionRefreshFailures.completed" Type="Long" />
+			<Column Name="connectionRefreshFailures.throughput" Type="Double" />
+			<Column Name="connectionLeaks.completed" Type="Long" />
+			<Column Name="connectionLeaks.throughput" Type="Double" />
+			<Column Name="connectionAvailable.active" Type="Long" />
+			<Column Name="connectionUnavailable.active" Type="Long" />
+			<Column Name="stmtCacheAdded.completed" Type="Long" />
+			<Column Name="stmtCacheAdded.throughput" Type="Double" />
+			<Column Name="stmtCacheSize.active" Type="Long" />
+			<Column Name="stmtCacheDiscarded.completed" Type="Long" />
+			<Column Name="stmtCacheDiscarded.throughput" Type="Double" />
+			<Column Name="stmtCacheSatisfied.completed" Type="Long" />
+			<Column Name="stmtCacheSatisfied.throughput" Type="Double" />
+			<Column Name="stmtCacheSatisfied.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="stmtCacheSatisfied.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="cacheSatisfied.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="stmtCacheSatisfied.completed.previous" />
+						<ColumnFrom Name="stmtCacheSatisfied.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="stmtCacheSatisfied.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="stmtCacheSatisfied.completed" />
+							<ColumnFrom Name="stmtCacheSatisfied.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="stmtCacheNotSatisfied.completed" Type="Long" />
+			<Column Name="stmtCacheNotSatisfied.throughput" Type="Double" />
+			<Column Name="stmtCacheNotSatisfied.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="stmtCacheNotSatisfied.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="cacheNotSatisfied.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="stmtCacheNotSatisfied.completed.previous" />
+						<ColumnFrom Name="stmtCacheNotSatisfied.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="stmtCacheNotSatisfied.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="stmtCacheNotSatisfied.completed" />
+							<ColumnFrom Name="stmtCacheNotSatisfied.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="stmtCacheSatisfied.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<ColumnFrom Name="cacheSatisfied.deltaCompleted" />
+						<Value>100.0</Value>
+					</Expression>
+					<Expression Operator="Plus">
+						<ColumnFrom Name="cacheSatisfied.deltaCompleted" />
+						<ColumnFrom Name="cacheNotSatisfied.deltaCompleted" />
+					</Expression>
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="connectionWaiters.active" Type="Long" />
+			<Column Name="connectionWaitFailures.completed" Type="Long" />
+			<Column Name="connectionWaitFailures.throughput" Type="Double" />
+			<Column Name="connectionWaitFailures.completed.previous" Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="connectionWaitFailures.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="waitFailures.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="connectionWaitFailures.completed.previous" />
+						<ColumnFrom Name="connectionWaitFailures.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="connectionWaitFailures.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="connectionWaitFailures.completed" />
+							<ColumnFrom Name="connectionWaitFailures.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="connectionWaitSuccesses.completed" Type="Long" />
+			<Column Name="connectionWaitSuccesses.throughput" Type="Double" />
+			<Column Name="connectionWaitSuccesses.completed.previous"
+				Type="Long">
+				<Previous Interval="300000" Index="0">
+					<ColumnFrom Name="connectionWaitSuccesses.completed" />
+					<Default>0</Default>
+				</Previous>
+			</Column>
+			<Column Name="waitSuccesses.deltaCompleted" Type="Long">
+				<If>
+					<Condition Operator="GT">
+						<ColumnFrom Name="connectionWaitSuccesses.completed.previous" />
+						<ColumnFrom Name="connectionWaitSuccesses.completed" />
+					</Condition>
+					<Then>
+						<ColumnFrom Name="connectionWaitSuccesses.completed" />
+					</Then>
+					<Else>
+						<Expression Operator="Minus">
+							<ColumnFrom Name="connectionWaitSuccesses.completed" />
+							<ColumnFrom Name="connectionWaitSuccesses.completed.previous" />
+						</Expression>
+					</Else>
+				</If>
+				<Default>0</Default>
+			</Column>
+			<Column Name="connectionWaitSuccesses.percentage" Type="Double">
+				<Expression Operator="Div">
+					<Expression Operator="Mult">
+						<ColumnFrom Name="waitSuccesses.deltaCompleted" />
+						<Value>100.0</Value>
+					</Expression>
+					<Expression Operator="Plus">
+						<ColumnFrom Name="waitSuccesses.deltaCompleted" />
+						<ColumnFrom Name="waitFailures.deltaCompleted" />
+					</Expression>
+				</Expression>
+				<Default>0</Default>
+			</Column>
+			<Column Name="connectionWaits.completed" Type="Long" />
+			<Column Name="connectionWaits.throughput" Type="Double" />
+			<Where>
+				<And>
+					<Or>
+						<Condition Type="String" Operator="EQ">
+							<ColumnFrom Name="appName" />
+							<Value Name="appName.parameter" />
+						</Condition>
+						<Condition Type="String" Operator="EQ">
+							<Value Name="appName.parameter" xsi:nil="true" />
+							<Null />
+						</Condition>
+					</Or>
+        	                        <Or>
+                	                        <Condition Type="String" Operator="EQ">
+                        	                        <ColumnFrom Name="name" />
+                          	                        <Value Name="name.parameter" />
+                                 	        </Condition>
+                                       			<Condition Type="String" Operator="EQ">
+                                               		 <Value Name="name.parameter" xsi:nil="true" />
+                                                	<Null />
+                                        	</Condition>
+                                	</Or>
+				</And>
+			</Where>
+		</Select>
+	</Table>
+
+
+        <Table Name="deployment_webservice_endpoint_no_rate">
+         <ColumnDef Name="portName" Type="String" Key="true"/>
+         <ColumnDef Name="webserviceName" Type="String" Key="true"/>
+         <ColumnDef Name="appName" Type="String" Key="true"/>
+         <ColumnDef Name="InvocationCount" Type="Long"/>
+         <ColumnDef Name="FaultCount" Type="Long"/>
+         <ColumnDef Name="TotalInvocationTime" Type="Long"/>
+                <Select Name="deployment_webservice_all_endpoint_no_rate_result">
+                        <TableFrom Name="weblogic_j2eeserver:webservice_all_endpoint_no_rate" />
+                        <Column Name="portName" Type="String" />
+                        <Column Name="webserviceName" Type="String" />
+                        <Column Name="appName" Type="String" />
+                        <Column Name="InvocationCount" Type="Long">
+                                <Aggregation Operator="Sum" Name="InvocationCount" />
+                                <Default>0</Default>
+                        </Column>
+                        <Column Name="FaultCount" Type="Long">
+                                <Aggregation Operator="Sum" Name="FaultCount" />
+                                <Default>0</Default>
+                        </Column>
+                        <Column Name="TotalInvocationTime" Type="Long">
+                                <Aggregation Operator="Sum" Name="TotalInvocationTime" />
+                                <Default>0</Default>
+                        </Column>
+                        <GroupBy Name="portName"/>
+                        <GroupBy Name="webserviceName"/>
+                        <GroupBy Name="appName"/>
+                        <Where>
+                                <Or>
+                                        <Condition Type="String" Operator="EQ">
+                                                <ColumnFrom Name="appName" />
+                                                <Value Name="appName.parameter" />
+                                        </Condition>
+                                        <Condition Type="String" Operator="EQ">
+                                                <Value Name="appName.parameter" xsi:nil="true" />
+                                                <Null />
+                                        </Condition>
+                                </Or>
+                        </Where>
+                </Select>
+        </Table>
+</Adml>

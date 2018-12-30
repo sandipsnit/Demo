@@ -1,0 +1,186 @@
+# M252LVM.def: Collects Solstice DiskSuite Information
+# $Id: M252LVM.def,v 1.3 2012/05/29 04:59:28 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M252LVM.def,v 1.3 2012/05/29 04:59:28 mschenke Exp $
+#
+# Change History
+# 20120528  PRO  Align module with XPLRlib macros.
+
+=head1 NAME
+
+M252LVM - Collects Solstice DiskSuite Information
+
+=head1 DESCRIPTION
+
+This module collects Solstice DiskSuite information.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('lvm')
+
+#------------------------------------------------------------------------------
+# XPLR_lvm section
+#------------------------------------------------------------------------------
+
+section XPLR_lvm
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing LVM sections ...')
+if testFile('x','/usr/opt/SUNWmd/sbin/metastat')
+ var ($sds,$etc) = ('/usr/opt/SUNWmd/sbin','/etc/opt/SUNWmd')
+else
+ var ($sds,$etc) = ('/usr/sbin',           '/etc/lvm')
+if !testFile('x',catFile($sds,'metastat'))
+ return log_info('Solstice DiskSuite not installed')
+var $MDB = catFile($sds,'metasb')
+var $MST = catFile($sds,'metastat')
+
+pretoc '2:Solstice DiskSuite'
+
+=head2 lvm - Solstice DiskSuite information
+
+Gathers the Solstice DiskSuite information using the following commands:
+
+=over 2
+
+=item o C</usr/sbin/metastat -c>
+
+=item o C</usr/sbin/metastat ${METAPARAM} -c>
+
+=item o C<${SDSPATH}/metastat>
+
+=item o C<${SDSPATH}/metastat -p>
+
+=item o C<${SDSPATH}/metastat -t>
+
+=item o C<${SDSPATH}/metadb>
+
+=item o C<${SDSPATH}/metastat -s${DISKSET}>
+
+=item o C<${SDSPATH}/metastat -s${DISKSET} -p>
+
+=item o C<${SDSPATH}/metastat -s${DISKSET} -t>
+
+=item o C<${SDSPATH}/metadb -s${DISKSET}>
+
+=item o C<${SDSPATH}/metaset -s${DISKSET}>
+
+=back
+
+=cut
+
+debug ' Inside LVM collection, gathering LVM information'
+var @cmd = ()
+var $osv = get_osv()
+var $grp = cond(expr('<=',$osv,'8'),'disks/sds','disks/svm')
+
+if expr('>=',$osv,'10')
+ call push(@cmd,\
+   ['disks/svm/metastat-c',\
+    $MST,'-c',\
+    '---+ Detailed Status for all Metadevices and Hot Spare Pools'])
+call push(@cmd,\
+  [concat($grp,'/metastat-p'),\
+   $MST,'-p',\
+   '---+ List of all Active Metadevices and Hot Spare Pools'],\
+  [concat($grp,'/metastat-t'),\
+   $MST,'-t',\
+   '---+ Status and Timestamp for all Metadevices and Hot Spare Pools'],\
+  [concat($grp,'/metastat'),\
+   $MST,undef,\
+   '---+ Status for all Metadevices and Hot Spare Pools'],\
+  [concat($grp,'/metadb'),\
+   $MDB,undef,\
+   '---+ Status for Local Database Replicas'])
+
+loop $set (grepCommand(concat($sds,'/metaset 2>/dev/null'),\
+           'Set name\s+=\s+(.*?),','1'))
+{call push(@cmd,concat('---+ Disk Set "',$set,'"'))
+ if expr('>=',$osv,'10')
+  call push(@cmd,\
+    [concat($grp,'/metastat-c.',$set),\
+     $MST,concat('-s',$set,' -c'),\
+     concat('---++ Detailed Status (',$set,')')])
+ call push(@cmd,\
+   [concat($grp,'/metastat-p.',$set),\
+    $MST,concat('-s',$set,' -p'),\
+    concat('---++ List of Active Metadevices and Hot Spare Pools (',$set,')')],\
+   [concat($grp,'/metastat-t.',$set),\
+    $MST,concat('-s',$set,' -t'),\
+    concat('---++ Status and Timestamp (',$set,')')],\
+   [concat($grp,'/metastat.',$set),\
+    $MST,concat('-s',$set),\
+    concat('---++ Status (',$set,')')],\
+   [concat($grp,'/metadb.',$set),\
+    $MDB,concat(' -s',$set),\
+    concat('---++ Status for Database Replicas (',$set,')')])
+}
+
+report lvm_cmd
+title '---+!! Solstice DiskSuite Commands'
+title $TOC
+call do_exec(@cmd)
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Commands]]'
+
+=head2 lvm_files - Files
+
+Gathers the Solstice DiskSuite files from the following directories:
+
+=over 2
+
+=item o F</etc/lvm>
+
+=item o F</etc/opt/SUNWmd>
+
+=back
+
+=cut
+
+debug ' Inside LVM collection, collecting files'
+report lvm_files
+prefix
+{write '---+!! Solstice DiskSuite Files'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present risks. \
+             To prevent them, access the file outside the browser or use the \
+             link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_dir(concat($grp,$etc),$etc)
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Files]]'
+}
+
+# Adjust the table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

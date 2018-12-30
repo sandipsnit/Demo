@@ -1,0 +1,166 @@
+# S212DNFS.def: Collects Direct NFS Information
+# $Id: S212DNFS.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S212DNFS.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S212DNFS - Collects Direct NFS Information
+
+=head1 DESCRIPTION
+
+This module collects the Direct NFS information. This module applies to Oracle
+Database 11g and later only.
+
+The following reports can be generated and are regrouped under C<Direct NFS>:
+
+=cut
+
+echo tput('bold'),'Processing Direct NFS module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME = getSetting('ORACLE_HOME','')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+# Load the common macros
+run DBinfo()
+
+# Check the version
+if !match(get_db_version(true),'^11')
+ return
+pretoc '^1:RDBMS'
+pretoc '1+:Direct NFS'
+
+=head2 dbinfo - Database Information
+
+Collects Direct NFS database information.
+
+=cut
+
+debug ' Inside DNFS module, gathering database information'
+report dbinfo
+var $TTL = '---+!! Database Information'
+var @TTL = ('',\
+  'Direct NFS Servers Accessed by Direct NFS',\
+  'Oracle Process Files Open Through Direct NFS',\
+  'Oracle Process Connections (Channels) Open to NFS Servers',\
+  'Oracle Process NFS Operation Statistics Issued by Direct NFS')
+var @HDR = ()
+
+var ($HDR[1],$col1) = getSqlColumns('RDA','','V$DNFS_SERVERS')
+call clearSqlColumns('RDA')
+set $sql
+{SET TIMING OFF
+}
+if $col1
+{append $sql
+ {PROMPT ___Macro_separator(1)___
+ "SELECT :1
+ " FROM v$dnfs_servers;
+ }
+}
+var ($HDR[2],$col2) = getSqlColumns('RDA','','V$DNFS_FILES')
+call clearSqlColumns('RDA')
+if $col2
+{append $sql
+ {PROMPT ___Macro_separator(2)___
+ "SELECT :2
+ " FROM v$dnfs_files;
+ }
+}
+var ($HDR[3],$col3) = getSqlColumns('RDA','','V$DNFS_CHANNELS')
+call clearSqlColumns('RDA')
+if $col3
+{append $sql
+ {PROMPT ___Macro_separator(3)___
+ "SELECT :3
+ " FROM v$dnfs_channels;
+ }
+}
+var ($HDR[4],$col4) = getSqlColumns('RDA','','V$DNFS_STATS')
+call clearSqlColumns('RDA')
+if $col4
+{append $sql
+ {PROMPT ___Macro_separator(4)___
+ "SELECT :4
+ " FROM v$dnfs_stats;
+ }
+}
+call writeSql(bindSql($sql,$col1,$col2,$col3,$col4))
+call separator(0,'Database Information')
+
+=head2 oranfstab_etc - /etc/oranfstab File
+
+Displays the F</etc/oranfstab> file.
+
+=cut
+
+debug ' Inside DNFS module, gathering /etc/oranfstab file'
+report oranfstab_etc
+prefix
+ write '---+ Information from /etc/oranfstab File'
+call writeFile('/etc/oranfstab')
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][/etc/oranfstab File]]'
+
+=head2 oranfstab_oh - $OH/dbs/oranfstab File
+
+Displays the F<$ORACLE_HOME/dbs/oranfstab> file.
+
+=cut
+
+debug ' Inside DNFS module, gathering $OH/dbs/oranfstab file'
+var $fil = catFile($ORACLE_HOME,'dbs','oranfstab')
+report oranfstab_oh
+prefix
+ write '---+ Information from $OH/dbs/oranfstab File'
+call writeFile($fil)
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][$OH/dbs/oranfstab File]]'
+
+=head2 mtab - /etc/mtab File
+
+Displays the F</etc/mtab> file.
+
+=cut
+
+debug ' Inside DNFS module, gathering /etc/mtab file'
+report mtab
+prefix
+ write '---+ Information from /etc/mtab File'
+call writeFile('/etc/mtab')
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][/etc/mtab File]]'
+
+# Disable the group title in next index
+if isTocCreated(true)
+ toc '-:RDBMS'
+ 
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.17: Jean-Marc Gaudron.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

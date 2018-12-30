@@ -1,0 +1,671 @@
+# OSdarwin.def: Darwin Specific Code
+# $Id: OSdarwin.def,v 2.9 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/OSdarwin.def,v 2.9 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+OSdarwin - Submodule Specific to the Mac OS/Darwin Operating System
+
+=cut
+
+use Mrc
+
+# Make the module persistent
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('ping_command')
+
+# Get the calling module
+var $MODULE = $arg[0]
+import $TOC,$TOP
+
+=head1 DESCRIPTION
+
+This module determines the F<ps> command format.
+
+=cut
+
+if !$OS
+{keep $OS,$OSA,$OSL,$OSN,$OSP,$OSV
+ var $OS = true
+
+ # Determine the ps command format
+ var $OSP = testCommand('ps -axww','/bin/ps -axww','/usr/bin/ps -axww')
+ var $OSL = replace($OSP,'-axww','-alxww')
+ var $OSA = concat($OSP,' -o pid,command')
+
+ # Determine the darwin version
+ var $OSN = uname('s')
+ var $OSV = uname('r')
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE INI MODULE
+
+Nothing required yet.
+
+=cut
+
+if compare('eq',$MODULE,'INI')
+{# Nothing required yet
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE END MODULE
+
+=head2 report - Report Settings
+
+Determines the operating system version.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_report')
+{# Load the system settings
+ var %osd = ()
+ if command('sw_vers')
+ {loop $lin (last)
+  {var ($key,$val) = split(':\s*',$lin,2)
+   var $osd{$key} = $val
+  }
+  write '|Platform|',$osd{'ProductName'},' (',getOsName(),') |'
+  write '|O/S Version|',$osd{'ProductVersion'},' |'
+  write '|O/S Build|',$osd{'BuildVersion'},' |'
+ }
+ else
+  write '|Platform|',getOsName(),' |'
+ write '|Kernel Version|',uname('r'),' |'
+}
+
+=head2 system - System Information
+
+Extracts system information such as CPU and memory information.
+
+=cut
+
+elsif compare('eq',$MODULE,'END_system')
+{macro get_sysinfo
+ {var ($key,$val) = @arg
+  var ($lin) = grepLastFile($key,'f')
+  if $lin
+   return field('\:\s*',1,$lin)
+  return $val
+ }
+
+ debug ' Inside END module, getting CPU and memory information (darwin)'
+ prefix
+  write '|*Item*|*Value*|'
+ if loadCommand('system_profiler SPHardwareDataType')
+ {var $cnt = get_sysinfo('^\s*Number Of CPUs:\s',0)
+  var $cpu = get_sysinfo('^\s*CPU Type:\s','?')
+  var $mhz = get_sysinfo('^\s*CPU Speed:\s','?')
+  if $cnt
+  {var ($off,$str) = (0,concat($cnt,' Processor(s) Installed'))
+   while expr('<',$off,$cnt)
+   {incr $off
+    var $str = sprintf('%s%%BR%%[%02d]: %s %s',$str,$off,$cpu,$mhz)
+   }
+   write '|Processor(s)|',$str,'|'
+  }
+  write '|Total Physical Memory|',get_sysinfo('^\s*Memory:\s'),'|'
+ }
+
+ if !hasOutput(true)
+  write 'Information not available'
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE OS MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'OS')
+{
+
+=head2 cpu_info - CPUs
+
+Gets CPU information.
+
+=cut
+
+ debug ' Inside OS module, getting CPU information (darwin)'
+ report cpu_info
+ write '---+ CPU Information'
+ call writeCommand('system_profiler SPHardwareDataType')
+ toc '2:[[',getFile(),'][rda_report][CPUs]]'
+
+=head2 memory_info - Memory
+
+Gets information about the physical memory.
+
+=cut
+
+ debug ' Inside OS module, about physical memory (darwin)'
+ report memory_info
+ write '---+ Physical Memory Installed'
+ call writeCommand('system_profiler SPMemoryDataType')
+ toc '2:[[',getFile(),'][rda_report][Memory]]'
+
+=head2 disk_info - Disk Drives
+
+Gets information about the disks.
+
+=cut
+
+ debug ' Inside OS module, about disks (darwin)'
+ report disk_info
+ write '---+!! Disk Information'
+ write $TOC
+
+ write '---+ Disk Mounts'
+ call writeCommand('mount')
+ write $TOP
+
+ write '---+ Disk Free'
+ call writeCommand('df -k')
+ write $TOP
+
+ # write '---+ Swap'
+ # write $TOP
+ toc '2:[[',getFile(),'][rda_report][Disk Drives]]'
+
+=head2 ipc_info - Kernel Tables and IPC
+
+Gets the kernel tables and IPC information.
+
+=cut
+
+ report kernel_info
+ write '---+!! Kernel Tables and IPC'
+ write $TOC
+
+ write '---+ Kernel Tables'
+ call writeCommand('pstat -T')
+ write $TOP
+
+ write '---+ Semaphores'
+ call writeCommand('ipcs -sa')
+ write $TOP
+
+ write '---+ Shared Memory'
+ call writeCommand('ipcs -ma')
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Kernel Tables and IPC]]'
+
+=head2 ntp - NTP Status and Configuration
+
+Collects NTP status information when NTP is running and accessible. It collects
+the F</etc/ntp.conf> file when present.
+
+=cut
+
+ debug ' Inside OS module, getting NTP status and configuration'
+ report ntp
+ var $ttl = '---+!! NTP Status and Configuration Information'
+
+ #Get NTP Status
+ if findCommand('ntpq')
+ {var $cmd = concat(last,' -p')
+
+  report ntpstatus
+  prefix
+  {if !isCreated()
+   {write $ttl
+    write $TOC
+   }
+   write '---+ NTP Status'
+   write '---## Using: ntpq -p'
+  }
+  var $hdr = true
+  loop $lin (grepCommand($cmd,'.'))
+  {if match($lin,'^=')
+    var $hdr = false
+   elsif match($lin,'No association ')
+    write $lin
+   elsif $hdr
+    write '|*',replace(trim($lin),'\s+','*|*',true),'*|'
+   else
+    write '|',replace(trim($lin),'\s+',' |',true),' |'
+  }
+ }
+
+ # Get the NTP configuration file
+ prefix
+ {if !isCreated()
+  {write $ttl
+   write $TOC
+  }
+  write '---+ NTP Configuration'
+  write '---## Information Taken from /etc/ntp.conf'
+ }
+ call writeFile('/etc/ntp.conf')
+ if hasOutput(true)
+  write $TOP
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][NTP Status and Configuration]]'
+
+=head2 packages - Operating System Packages
+
+Lists all operating system packages.
+
+=cut
+
+ debug ' Inside OS module, getting operating system package information'
+ report packages
+ write '---+!! Operating System Package Information'
+ write $TOC
+
+ var $cmd = 'system_profiler SPApplicationsDataType'
+ write '---+ Applications'
+ write '---## Using:',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+
+ var $cmd = 'system_profiler SPFrameworksDataType'
+ write '---+ Frameworks'
+ write '---## Using:',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Operating System Packages]]'
+
+=head2 sysdef - System/Kernel Settings
+
+Gets the system/kernel settings.
+
+=cut
+
+ debug ' Inside OS module, getting system/kernel settings'
+ report sysdef
+ write '---+!! Display of System/Kernel Settings'
+ write $TOC
+
+ var $cmd = '/usr/sbin/sysctl -a'
+ write '---+ Main Kernel Parameters'
+ write '|*Parameter*| *Value*|*Source*|'
+ call loadCommand($cmd)
+ write '|maxproc| ',field('\s+',2,grepLastFile('maxproc\b','if')),'|',$cmd,'|'
+ write '|maxprocperuid| ',field('\s+',2,grepLastFile('maxprocperuid','if')),\
+       '|',$cmd,'|'
+ write '|semmni| ',field('\s+',1,grepLastFile('semmni','if')),'|',$cmd,'|'
+ write '|semmns| ',field('\s+',1,grepLastFile('semmns','if')),'|',$cmd,'|'
+ write '|semmnu| ',field('\s+',1,grepLastFile('semmnu','if')),'|',$cmd,'|'
+ write '|semmsl| ',field('\s+',1,grepLastFile('semmsl','if')),'|',$cmd,'|'
+ write '|semume| ',field('\s+',1,grepLastFile('semume','if')),'|',$cmd,'|'
+ write $TOP
+
+ write '---+ System/Kernel Settings'
+ write '---## Using: ',encode($cmd)
+ call writeLastFile()
+ write $TOP
+
+ var $cmd = '/usr/sbin/kextstat'
+ write '---+ Dynamically Loaded Kernel Extensions'
+ write '---## Using: ',encode($cmd)
+ call writeCommand($cmd)
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][System/Kernel Settings]]'
+
+=head2 system_error_log - System Error Log
+
+Collects system error log data.
+
+=cut
+
+ collect RCdarwin|OS()
+
+=pod
+
+Identifies useful platform-related links (not implemented).
+
+=cut
+
+ var \@LINKS = $arg[1]
+ var @LINKS = ('http://www.apple.com/support/',\
+               'http://www.apple.com/support/downloads/',\
+               'http://www.apple.com/support/manuals/')
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE PERF MODULE
+
+=cut
+
+elsif compare('eq',$MODULE,'PERF')
+{# Produce the performance report
+ report overview
+ write '---+!! Performance Overview'
+ write $TOC
+ toc '2:[[',getFile(),'][rda_report][Overview]]'
+
+=pod
+
+Gets the system uptime.
+
+=cut
+
+ debug ' Inside PERF module, about to execute uptime command'
+ prefix
+  write '---+ Uptime'
+ call writeCommand('uptime')
+ if hasOutput(true)
+  write $TOP
+
+ if loadCommand($OSL)
+ {debug ' Inside PERF module, about to gather user and process counts'
+  write '---+ Process Overview'
+  var $cnt = grepLastFile('oracle')
+  write '|*Oracle Processes*| ',    $cnt,'|'
+  var $cnt = grepLastFile('tnslsn','i')
+  write '|*Listeners Processes*| ', $cnt,'|'
+  var $cnt = grepLastFile('DESCRIPTION=')
+  write '|*Background Processes*| ',$cnt,'|'
+  var $cnt = grepLastFile('root')
+  write '|*Root Processes*| ',      $cnt,'|'
+  var $cnt = getLastLength()
+  write '|*Total Processes*| ',     $cnt,'|'
+  var $cnt = command('who')
+  write '|*Number Users*| ',        $cnt,'|'
+  write $TOP
+
+  var ($hdr) = getLines(0,0)
+  call sortLastFile('ps_time')
+
+=pod
+
+Gets a process overview in terms of running databases, users logged on, and top
+CPU users.
+
+=cut
+
+  debug ' Inside PERF module, about to determine running databases'
+  prefix
+  {write '---+ Running Databases'
+   write 'Note: the CPU usage in minutes'
+   write '<verbatim>'
+   write $hdr
+  }
+  loop $lin (grepLastFile('pmon'))
+   write $lin
+  if hasOutput(true)
+  {write '</verbatim>'
+   write $TOP
+  }
+
+  debug ' Inside PERF module, about to determine users logged on'
+  write '---+ Who is Logged On?'
+  call writeCommand('who | sort')
+  write $TOP
+
+  debug ' Inside PERF module, about to determine CPU hogs'
+  var $cnt = getSetting('PERF_TOP_PS',15)
+  write '---+ Current CPU Hogs / Top ',$cnt,' by CPU Time'
+  call writeLastFile(0,$cnt)
+  write $TOP
+
+  debug ' Inside PERF module, about to determine CPU hogs by %CPU'
+  write '---+ Current TOP 10 CPU by %CPU'
+  call writeCommand('ps -aux | head -11')
+
+  debug ' Inside PERF module, about to determine root CPU hogs'
+  var $cnt = getSetting('PERF_TOP_ROOT',5)
+  write '---+ Root CPU Hogs / Top ',$cnt,' by CPU Time'
+  write '<verbatim>'
+  write $hdr
+  loop $lin (grepLastFile('^\s*0\s'))
+  {write $lin
+   decr $cnt
+   break !$cnt
+  }
+  write '</verbatim>'
+  write $TOP
+ }
+
+=pod
+
+Gets a disk overview in terms of free space, disk I/O, and paging.
+
+=cut
+
+ debug ' Inside PERF module, about to gather File System Free Space'
+ write '---+ File System Free Space in KiB'
+ call writeCommand('df')
+ write $TOP
+
+ debug ' Inside PERF module, about to gather disk throughput in KiB'
+ write '---+ Disks Throughput'
+ write '100 I/O per sec implies seek time 10 ms since most access is seek \
+        time%BR%Disks on PC capable of sustained 8-16 Mbit/sec and UNIX 32-40 \
+        Mbit/sec'
+ write '---## Using: iostat -d 10 3'
+ call writeCommand('iostat -d 10 3')
+ write $TOP
+
+ var $out = quote($OSN)
+ debug ' Inside PERF module, about to gather paging statistics'
+ write '---+ Paging Activities'
+ write '---## Using: sar -g 1 4'
+ call writeCommand('sar -g 1 4')
+ write $TOP
+
+=pod
+
+Get a system overview in terms of CPU usage, top processes, and virtual memory
+statistics.
+
+=cut
+
+ debug ' Inside PERF module, about to gather CPU usage stats'
+ write '---+ CPU Usage Statistics'
+ write '---## Using: sar -u 1 4'
+ call writeCommand('sar -u 1 4')
+ write $TOP
+
+ debug ' Inside PERF module, about to echo top command output'
+ write '---+ Top Report Usage'
+ write '---## Using: /usr/bin/top -tl 2'
+ call writeCommand('/usr/bin/top -tl 2')
+ write $TOP
+
+ debug ' Inside PERF module, about to gather virtual memory statistics \
+        (takes 30 sec)'
+ write '---+ Virtual Memory Statistics'
+ write '---## Using: vm_stat'
+ call writeCommand('vm_stat')
+ write $TOP
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE NET MODULE
+
+Determines the F<ping> command format.
+
+=cut
+
+elsif compare('eq',$MODULE,'NET')
+{# usage: ping [-Rdfnqrv] [-c count] [-i wait] [-l preload] [-p pattern]
+ #             [-s packetsize] host
+ #        -R records the route (but seems not supported).
+ var (undef,\$PING,\$NETSTAT) = @arg
+ var $PING = 'ping -c 10 -s %d %s'
+ var $NETSTAT = 'netstat'
+
+=head2 ifconfig - Interface Configuration
+
+Gets the network interface configuration.
+
+=cut
+
+ collect RCdarwin|NET()
+
+=head2 tcpip_settings - TCP/IP Settings
+
+Gets the TCP/IP settings.
+
+=cut
+
+ if loadCommand('/usr/sbin/sysctl -a')
+ {debug ' Inside NET module, getting TCP/IP settings (darwin)'
+  report tcpip_settings
+  write '---+ TCP/IP Settings'
+  write '---## Using: sysctl -a | grep net.inet.tcp.'
+  prefix
+   write '<verbatim>'
+  loop $lin (grepLastFile('^net\.inet\.tcp\.'))
+   write $lin
+  if isCreated(true)
+  {write '</verbatim>'
+   toc '2:[[',getFile(),'][rda_report][TCP/IP Settings]]'
+  }
+
+=head2 udp_settings - UDP Settings
+
+Gets the UDP settings.
+
+=cut
+
+  debug ' Inside NET module, getting UDP settings (darwin)'
+  report udp_settings
+  write '---+ UDP Settings'
+  write '---## Using: sysctl -a | grep net.inet.udp.'
+  prefix
+   write '<verbatim>'
+  loop $lin (grepLastFile('^net\.inet\.udp\.'))
+   write $lin
+  if isCreated(true)
+  {write '</verbatim>'
+   toc '2:[[',getFile(),'][rda_report][UDP Settings]]'
+  }
+ }
+}
+
+#------------------------------------------------------------------------------
+
+=head1 CONTRIBUTION TO THE DEV MODULE
+
+Sets up the shared library path for Oracle Forms and Reports.
+
+=cut
+
+elsif compare('eq',$MODULE,'DEV')
+{# Setup shared library path for Forms and Reports
+ var (undef,\%ENV,\$PS_EF) = @arg
+ var $ora = getSetting('ORACLE_HOME')
+ var $key = ${CUR.SHLIB}
+ if and($ora,$key)
+ {var $lib = getEnv($key,undef,true)
+  var $ENV{$key} = $lib
+ }
+ var $PS_EF = $OSP
+}
+
+#------------------------------------------------------------------------------
+
+elsif compare('eq',$MODULE,'PS')
+{# Pass the command format of the ps variants
+ import $PS_ARG,$PS_EF,$PS_ELF
+ var $PS_ARG = $OSA
+ var $PS_EF  = $OSP
+ var $PS_ELF = $OSL
+}
+
+#------------------------------------------------------------------------------
+
+# Return a ping command
+macro ping_command
+ return concat('ping -c 10 -s ',nvl($arg[1],56),' ',$arg[0])
+
+=head1 OPERATING SYSTEM COMMANDS USED
+
+The main operating system commands used in the data collection include the
+following:
+
+=over 16
+
+=item o F<cksum>
+
+=item o F<df>
+
+=item o F<dmesg>
+
+=item o F<echo>
+
+=item o F<grep>
+
+=item o F<ifconfig>
+
+=item o F<iostat>
+
+=item o F<ipcs>
+
+=item o F<lsof>
+
+=item o F<mount>
+
+=item o F<netstat>
+
+=item o F<nm>
+
+=item o F<nslookup>
+
+=item o F<ntpq>
+
+=item o F<ping>
+
+=item o F<ps>
+
+=item o F<pstat>
+
+=item o F<sar>
+
+=item o F<sort>
+
+=item o F<sysctl>
+
+=item o F<system_profiler>
+
+=item o F<tail>
+
+=item o F<top>
+
+=item o F<traceroute>
+
+=item o F<uptime>
+
+=item o F<vm_stat>
+
+=item o F<who>
+
+=back
+
+=head1 SEE ALSO
+
+L<RCdarwin|modules::RCdarwin>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.1:  Richard Gulledge.
+
+=item RDA 4.9:  Tom Holden.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

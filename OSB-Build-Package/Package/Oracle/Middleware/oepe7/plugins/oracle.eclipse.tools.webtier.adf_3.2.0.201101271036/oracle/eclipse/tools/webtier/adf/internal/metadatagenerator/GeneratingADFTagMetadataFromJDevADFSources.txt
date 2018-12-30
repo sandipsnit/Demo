@@ -1,0 +1,95 @@
+**************************************************************************************************************									
+																												
+                                Generating ADF Tag Metadata for OEPE     
+
+                                             by GK    								         													
+				          08/20/2010																						
+																											
+**************************************************************************************************************
+
+Introduction:
+
+	This document describes the process for generating the static tag/component metadata from JDevADF sources for consumption by OEPE.
+
+
+Supported Component Libraries:
+
+	For PS3 (JDevADF v11.1.1.4)
+		1) ADF Faces: 
+		2) ADF Data Visualization :
+		3) ADF Data Visualization Core (Trinidad Data Visualization):
+
+
+Generators:
+
+	1) Are implemented as Java Applications.
+	
+		- ADF_AFU_Generator for ADF Faces
+		- ADF_DVT_Generator for ADF Data Visualization
+		- Trinidad_DVT_Trinidad for ADF Data Visualization Core1
+
+
+	2) The generator classes have variables that point to the required source files.   
+	3) When regenerating, edit the directory locations, if necessary, of sources and output.
+
+
+Output:
+	
+	1) The generators produce xml and property files for the core and ui adf plugins:
+	
+		- o.e.t.webtier.adf
+		- o.e.t.webtier.adf.ui
+
+	2) The generators will also copy icons to the output location if they did not already exist.
+
+	3) This output is never meant to be edited directly and should remain 100% generatable.   See Customizations section below.
+	
+	4) It is necessary to first checkout the output files before generating.
+
+Input:
+
+	1) The Jdev source modules of interest are:
+		ADF Faces
+			- adf-faces-rt
+			- adf-faces-dt (the src zip file must be expanded to some location)
+
+		ADF Data Visualization
+			- dvt-dt
+			- dvt-faces
+
+		ADF Data Visualization Core/Trinidad Data Visualization
+			- dvt-dt
+			- dvt-trinidad
+
+	2) Currently the files used by the generator are:
+		- TLD
+		- facelet taglib
+		- bali (designtime) metadata xml file
+		- bali properties/bundle
+		- faces-config.xml (jsr276 metadata)
+	
+
+Customization:
+
+	The OverrideMetadataSource should be used to apply any customizations.   It should be fairly obvious how this works by looking at any of the other IMetadataSource files.   Since this source is used first in the input strategy, it will be the one to set a trait value for a tag or tag attribute.
+	
+
+New Versions:
+	<TBD>
+	
+	If changes are required to what or how metadata is collected, for a new version, it is highly desirable to maintain how previous metadat was generated.
+	
+	ex.   Sherman metadata (PS4?)
+	
+	1) Create o.e.t.webtier.adf.internal.metadatagenerator.sherman(?)
+	2) copy the generators from the ps3 package
+	3) subclass only the impl classes needing subclassing to support the generation.   These should go in sherman.impl package (?)
+
+ 
+Testing:
+	1) After each generation the generation tests in o.e.t.w.adf.tests should be run to verify.   If all is well, the newly genned metadata files must be added to the baseline folder in  adf.tests.  If this last step is not done, a build failure will result
+	2) Since metadata can affect the smart editor rendering, one must update the SWTTTESTS before checkin also.
+	
+
+
+	

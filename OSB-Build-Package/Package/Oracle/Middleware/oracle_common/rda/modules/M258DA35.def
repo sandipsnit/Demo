@@ -1,0 +1,229 @@
+# M258DA35.def: Collects Sun StorEdge A3X00 Information
+# $Id: M258DA35.def,v 1.4 2012/06/05 13:30:18 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M258DA35.def,v 1.4 2012/06/05 13:30:18 mschenke Exp $
+#
+# Change History
+# 20120605  PRO  Improve title management.
+
+=head1 NAME
+
+M258DA35 - Collects Sun StorEdge A3X00 Information
+
+=head1 DESCRIPTION
+
+This module collects Sun StorEdge A3X00 information. It collects additional
+data for each logical unit number (LUN).
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('sonoma')
+
+#------------------------------------------------------------------------------
+# XPLR_sonoma section
+#------------------------------------------------------------------------------
+
+section XPLR_sonoma
+
+# Validate the execution context
+if !${XPLR_GLOBAL:true}
+ return
+call log_run('Processing DA35 sections ...')
+if !testDir('d','/usr/sbin/osa')
+ return log_info('A3X00 not installed')
+
+pretoc '2:Sun StorEdge A3X00'
+
+=head2 da35_cmd - Overview
+
+Gathers the Sun StorEdge A3X00 information using the following commands:
+
+=over 2
+
+=item o C</usr/bin/ls -l /dev/osa/dev/dsk/*>
+
+=item o C</usr/bin/ls -l /dev/osa/dev/rdsk/*>
+
+=item o C</usr/lib/osa/bin/perfutil -c "\"${DEV}\">
+
+=item o C</usr/sbin/osa/drivutil -d "\"${MOD}\"">
+
+=item o C</usr/sbin/osa/drivutil -i "\"${MOD}\"">
+
+=item o C</usr/sbin/osa/drivutil -I "\"${MOD}\"">
+
+=item o C</usr/sbin/osa/drivutil -l "\"${MOD}\"">
+
+=item o C</usr/sbin/osa/healthck -a>
+
+=item o C</usr/sbin/osa/lad>
+
+=item o C</usr/sbin/osa/nvutil -v "\"${DEV}\"">
+
+=item o C</usr/sbin/osa/raidutil -c "\"${DEV}\"" -B>
+
+=item o C</usr/sbin/osa/storutil -c "\"${DEV}\"" -d>
+
+=item o C</usr/sbin/osa/raidutil -c "\"${DEV}\"" -i>
+
+=item o C</usr/sbin/osa/raidutil -c "\"${DEV}\"" -V 0>
+
+=item o C</usr/sbin/osa/rdacutil -i "\"${MOD}\"">
+
+=back
+
+=cut
+
+debug ' Inside DA35 collection, gathering command outputs'
+
+# Determine the commande to execute
+var @cmd = (\
+  ['disks/sonoma/ls-l_dev.osa.dev.dsk',\
+   '/usr/bin/ls','-l /dev/osa/dev/dsk/*',\
+   '---+ Content of /dev/osa/dev/dsk',\
+   true],\
+  ['disks/sonoma/ls-l_dev.osa.dev.rdsk',\
+   '/usr/bin/ls','-l /dev/osa/dev/rdsk/*',\
+   '---+ Content of /dev/osa/dev/rdsk',\
+   true],\
+  ['disks/sonoma/healthck-a',\
+   '/usr/sbin/osa/healthck','-a',\
+   '---+ Health Check on all RAID Modules'],\
+  ['disks/sonoma/lad',\
+   '/usr/sbin/osa/lad',undef,\
+   '---+ List of all Array Devices Connected to the System'])
+
+if testFile('r','/etc/osa/mnf')
+{loop $rms (grepFile('/etc/osa/mnf','^([^\~]+)\~','1'))
+ {var $arg = quote($rms,'x')
+  call push(@cmd,\
+    {cmd => 'TITLE',\
+     txt => concat('---+ Module Information (',$rms,')')},\
+    [concat('disks/sonoma/drivutil-d/',$rms),\
+     '/usr/sbin/osa/drivutil',concat('-d ',$arg),\
+     concat('---++ Drives Associated with each Drive Group')],\
+    [concat('disks/sonoma/drivutil-i/',$rms),\
+     '/usr/sbin/osa/drivutil',concat('-i ',$arg),\
+     concat('---++ Drive Information for Controller')],\
+    [concat('disks/sonoma/drivutil-I/',$rms),\
+     '/usr/sbin/osa/drivutil',concat('-I ',$arg),\
+     concat('---++ Drive Group Information')],\
+    [concat('disks/sonoma/drivutil-l/',$rms),\
+     '/usr/sbin/osa/drivutil',concat('-l ',$arg),\
+     concat('---++ LUNs Information in RAID module')],\
+    [concat('disks/sonoma/rdacutil-i/',$rms),\
+     '/usr/sbin/osa/rdacutil',concat('-i ',$arg),\
+     concat('---++ Redundant Controller Configuration Information in RAID \
+             Module')],\
+    {cmd => 'UNTITLE'})
+ }
+}
+
+call loadCommand('/usr/sbin/osa/lad')
+if !grepLastFile('No RAID devices found')
+{loop $dev (grepLastFile('^(\S+)\s','1'))
+ {var $arg = quote($dev,'x')
+  call push(@cmd,\
+    {cmd => 'TITLE',\
+     txt => concat('---+ Physical Path Information (',$dev,')')},\
+    [concat('disks/sonoma/raidutil-i/',$dev),\
+     '/usr/sbin/osa/raidutil',concat('-c ',$arg,' -i'),\
+     concat('---++ LUNs, Size, and Firmware Information in RAID Module'),\
+     true],\
+    [concat('disks/sonoma/raidutil-V/',$dev),\
+     '/usr/sbin/osa/raidutil',concat('-c ',$arg,' -V 0'),\
+     concat('---++ Values in Controller Caching Mode Page'),\
+     true],\
+    [concat('disks/sonoma/raidutil-B/',$dev),\
+     '/usr/sbin/osa/raidutil',concat('-c ',$arg,' -B'),\
+     concat('---++ Battery Age'),\
+     true],\
+    [concat('disks/sonoma/nvutil-v/',$dev),\
+     '/usr/sbin/osa/nvutil',concat('-v ',$arg),\
+     concat('---++ Verify NVSRAM Settings')],\
+    [concat('disks/sonoma/storutil-d/',$dev),\
+     '/usr/sbin/osa/storutil',concat('-c ',$arg,' -d'),\
+     concat('---++ Display Information from Host Store'),\
+     true],\
+    [concat('disks/sonoma/perfutil-c/',$dev),\
+     '/usr/lib/osa/bin/perfutil',concat('-c ',$arg),\
+     concat('---++ Performance Data'),\
+     true],\
+    {cmd => 'UNTITLE'})
+ }
+}
+
+# Generate the report
+report da35_cmd
+title '---+!! Sun StorEdge A3X00 Commands'
+title $TOC
+call do_exec(@cmd)
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Overview]]'
+
+=head2 da35_files - Key Files
+
+Gathers the following files:
+
+=over 2
+
+=item o F</etc/osa/mnf>
+
+=item o F</usr/lib/osa/rdac_address>
+
+=item o F</usr/lib/osa/rmparams>
+
+=item o F</usr/lib/osa/rmlog.*>
+
+=back
+
+=cut
+
+debug ' Inside DA35 collection, collecting key files'
+report da35_files
+prefix
+{write '---+!! Sun StorEdge A3X00 Files'
+ write '   * Links point to files that have been collected in their original \
+             format. Opening them directly in your browser can present risks. \
+             To prevent them, access the file outside the browser or use the \
+             link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_fil(\
+  ['disks/sonoma/etc_osa/mnf',             '/etc/osa/mnf'],\
+  ['disks/sonoma/usr_lib_osa/rdac_address','/usr/lib/osa/rdac_address'],\
+  ['disks/sonoma/usr_lib_osa/rmparams',    '/usr/lib/osa/rmparams'],\
+  ['disks/sonoma/usr_lib_osa',             '/usr/lib/osa','','','^rmlog\.'])
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Key Files]]'
+}
+
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

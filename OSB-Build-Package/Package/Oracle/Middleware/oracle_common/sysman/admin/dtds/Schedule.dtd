@@ -1,0 +1,136 @@
+<!-- 
+
+   Schedule.DTD
+
+   MODIFIED    (MM/DD/YY)
+    njagathe    08/25/06 - Adding READ_ONLY attribute
+    gachen      11/12/02 - add Offset_type
+    lyang       05/09/02 - lyang_move_emsdk_common
+    aaitghez    07/16/01 - syntax issues
+    gachen      06/07/01 - remove format
+    gachen      05/30/01 - skipschedule
+    gachen      05/24/01 -
+    gachen      05/24/01 - Creation
+
+   ================================
+
+Schedule will be used in the following sub systems:
+
+  * Collection
+  * Blackout  
+
+   If OFFSET_TYPE is INCREMENTAL, the collection will happen very soon after it is
+   scheduled, otherwise, it may subject to a random delay to avoid the spike at the
+   system startup time
+
+   READ_ONLY (since 11) - if set to true indicates to the console apps that
+this schedule should not be changed..
+
+================================================================  -->
+
+<!ELEMENT Schedule  (( IntervalSchedule | WeekSchedule | MonthSchedule | SkipSchedule)?, Duration?)>
+<!ATTLIST Schedule    
+    START_DATE   CDATA  #IMPLIED
+    START_TIME   CDATA  #IMPLIED    
+    END_DATE     CDATA  #IMPLIED
+    END_TIME     CDATA  #IMPLIED    
+    OFFSET_TYPE  (RANDOM|INCREMENTAL)  "RANDOM"
+    READ_ONLY    (TRUE|FALSE) "FALSE"
+>
+
+<!--  
+  Schedule define a DATE_TIME range when it is valid.
+
+
+ATTRIBUTES:
+
+    START_DATE:  Date when the schedule will start
+    START_TIME:  Effective until this time 
+    END_DATE:    Date the schedule will end
+    END_TIME:    Time the schedule will end, 
+  
+============================================================================  -->
+
+
+<!ELEMENT IntervalSchedule EMPTY>
+<!ATTLIST IntervalSchedule
+  INTERVAL CDATA #REQUIRED
+  TIME_UNIT (Sec | Min | Hr | Day) "Min"
+>
+
+<!--   IntervalSchedule will be run every INTERVAL period of time.
+
+ATTRIBUTES:
+
+  INTERVAL:   the interval between two occurrences
+  TIME_UNIT:  the unit of the INTERVAL
+
+EXAMPLE:
+
+  INTERVAL="10"   TIME_UNIT="Min"
+
+  This schedule will happen every 10 minutes.
+
+=============================================================================== -->
+
+
+<!ELEMENT WeekSchedule EMPTY>
+<!ATTLIST WeekSchedule
+  DAY_OF_WEEK  CDATA #REQUIRED
+>
+
+<!--  happen in the following day of week
+
+
+ATTRIBUTES:
+  DAY_OF_WEEK:    The Day of week this schedule is effective. Each day is could be one of the
+    following:    SUN, MON, TUE, WED, THR, FRI, SAT.  And is seperated by comma.
+
+EXAMPLE:
+
+  <WeekSchedule DAY_OF_WEEK="SUN,SAT"/>
+
+  This schedule will be effective every sunday and satursday
+
+=============================================================================== -->
+
+
+<!ELEMENT MonthSchedule EMPTY>
+<!ATTLIST MonthSchedule 
+   DAY_OF_MONTH  CDATA #REQUIRED
+>
+ 
+<!--   happen in the day defined in the list
+
+ATTRIBUTES:
+  DAY_OF_MONTH:  The Day of month  this schedule is effective. Is the list of day that 
+    will be scheduled.        
+
+EXAMPLE:
+
+  <MonthSchedule DAY_OF_MONTH="1,15,LAST"/>
+
+This will happen every 1,15 and the last day of the month
+
+==========================================================================   -->
+
+<!ELEMENT Duration EMPTY>
+<!ATTLIST Duration 
+  LENGTH     CDATA #REQUIRED
+  TIME_UNIT (Sec | Min | Hr | Day) "Min"
+>
+
+<!--  The duration of the Blackout. This is only valid when defining the Blackout.
+  For Colleciton, this tag is ignored. 
+
+   LENGTH:    the length of the blackout
+   TIME_UNIT: the time unit, default is Minute
+
+==============================================================================-->
+
+
+<!ELEMENT SkipSchedule EMPTY>
+<!-- only used in Collection, not valid in blackout 
+========================================================-->
+
+

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<diagnosticRules xmlns="http://www.oracle.com/DFW/DiagnosticsFrameworkRules" xmlns:xs="http://www.w3.org/2001/XMLSchema-instance">
+
+<!--
+    Diagnostic rules files are used to drive the incident detection and creation process. This template file details how to define each part of the rules file.
+    
+    Rules filename
+    ============== 
+    Rules filenames must use the ".xml" extension, and by default will be registered as server scoped. If the rules need to be registered in the scope of an application you should name the file as    "<appname>#<name>.xml", where "<appname>" is the name of the application and "<name>" is a name to describe the rules.
+    
+    Log detection conditions
+    ======================== 
+    It is possible to define a set of conditions to check for in the diagnostic logs applicable to the entire server or the application that the rules are registered against. When a log message matching the condition is detected an incident will be created, capturing diagnostics that will help identify the problem. By default all internal/incident level messages will be detected and an incident created for them.
+    
+    To enable this feature the log handler being used for logging must be configured to use the oracle.dfw.incident.IncidentDetectionLogFilter log filter. The default "oracle" log handler will be configured out of the box to use this filter.
+    
+    The logDetectionConditions element is optional. 
+    
+    It is possible to use a combination of attributes to build up conditions, including:
+    
+    - messageSeverity - the ODL log level at which the message was logged (e.g. INCIDENT_ERROR, ERROR)
+    - messageId  - the error message id (e.g. FMW-40300)
+    - component - component name (this is a log message attribute)
+    - module - module name (this is a log message attribute)
+    
+    The following shows a sample log message:
+    
+    [2009-01-05T11:49:00.566-08:00] [jrfServer_admin] [ERROR] [TESTA-596401] [test.ServletA] [tid: [ACTIVE].ExecuteThread: '5'for queue:
+    'weblogic.kernel.Default (self-tuning)'] [userId: <anonymous>] [ecid: 0000HucLoqdE^MQ6ubQ5UH19OaGH000002,0] [APP: webappa] [arg: Servlet A test]
+      Test Servlet A test log detection
+    
+     The following shows 4 example conditions:
+     
+    <logDetectionConditions>
+      <condition messageSeverity="INCIDENT_ERROR"/> // detect all message logged at level INCIDENT_ERROR
+      <condition messageSeverity="ERROR" component="jrfServer_admin"/> // detect all "jrfServer_admin" component messages logged at level ERROR
+      <condition messageSeverity="ERROR" module="test.servletA"/> // detect all "test.servlet" module messages logged at level ERROR
+      <condition messageId="FMW-40300"/> // detect message "FMW-40300"
+    </logDetectionConditions>
+   
+    Each condition element is OR'd.
+ 
+    Processing rules
+    ================ 
+    
+    It is possible to define processing rules that get evaluated when either the server or application rules are involved in incident creation. For example, if application Foo is involved in incident creation any rules associated with the Foo application will be evaluated. In all cases server wide rules will be evaluated regardless of the application.
+    
+    The processing rules consist of two parts:
+    
+    - default actions - these will always get executed during incident creation
+    - condition based actions - these will only get executed if the condition evaluate to true
+    
+    The default actions are a list of diagnostic dumps to execute, along with optional arguments. The dumpAction may also specify child argument elements, that comprise the following attributes:
+    
+    - name - argument name
+    - value - argument value
+    - type - "fact", "context", "literal", the default being "literal". If literal is specified the literal value of the value argument will be used. If fact is specified the value should either be INCIDENT_TIME or ECID. If context is specified the value should come from the DMS Execution Content. If the underlying value is not null it will be used and passed to the dump when executed. If the value is null the dump will not be executed.
+    
+    An example set of default actions is shown below:
+    
+    <defaultActions>
+      <dumpAction name="odl.logs">
+        <argument name="timestamp" value="INCIDENT_TIME" valueType="fact"/>
+      </dumpAction>
+      <dumpAction name="dms.metrics"/>
+    </defaultActions>
+    
+    defaultActions is an optional element.
+    
+    The condition based actions are evaluated when an incident is created and must evaluate to true for the associated actions to be executed. Each rule element consists of a name attribute, along with a child ruleCondition element and a child ruleActions element. The ruleActions element contains one or more dumpAction elements.  The ruleCondition element consists of the following attributes:
+    
+    - name - If "valueType" is "fact" this should be one of COMPONENT_ID, MODULE_ID, MESSAGE_ID. If "valueType" is "context" this should be the name of a value in the DMS Execution Context.
+    - operator - This can be one of EQ, EQNoCase, NE, Contains, StartsWith, EndsWith, LT, GT, LE, GE. The default is EQ
+    - value - literal value to compare against
+    - datatype - String or Integer. The default is String.
+    - valueType - "fact" or "context". The default is "fact".
+    
+    If multiple "condition" elements exist in a single rule they will all need to evaluate to true before the actions will be executed.
+    
+    An example condition based rule is shown below. If the message facility is FMW and the message number is 40300 condition will evaluate to true and the "jvm.threads" dump will be executed.
+    
+    <processingRules>
+      <rule name="MAS timeout error">
+        <ruleCondition>
+          <condition name="MESSAGE_ID" value="FMW-40300"/>
+        </ruleCondition>
+        <ruleActions>
+          <dumpAction name="jvm.threads"/>
+        </ruleActions>
+      </rule>
+    </processingRules>
+    
+    processingRules is an optional element.
+-->
+
+</diagnosticRules>

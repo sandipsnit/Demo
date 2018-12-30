@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja" lang="ja">
+  <head>
+
+<!-- LOCALIZATION RELATED INFORMATION -->
+<meta name="LOC_PROJ_ID" content="WLPF8.1" />
+<meta name="LOC_OWNER" content="BEAJ" />
+<meta name="LOC_STATUS" content="READY!" />
+<meta name="LOC_COMMENT" content="LOC_COMMENT" />
+<meta name="LOC_US_REV" content="" />
+<meta name="LOC_US_CHANGE" content="" />
+<meta name="LOC_US_SRCFILE" content="" />
+<!-- LOCALIZATION RELATED INFORMATION -->
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Style-Type" content="text/css" />
+    <meta name="GENERATOR" content="Quadralay WebWorks AutoMap 2003 Platinum Edition for FrameMaker 8.6.6577.0" />
+    <meta name="TEMPLATEBASE" content="BEA_WWH_Template_V1.0" />
+    <meta name="LASTUPDATED" content="03/06/10 00:59:13" />
+    <title>操作選択構成ページ</title>
+    <link rel="StyleSheet" href="edocs.css" type="text/css" />
+<script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/context.js"></script>
+  <script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/towwhdir.js"></script>
+  <script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/wwhpagef.js"></script>
+
+  <script type="text/javascript" language="JavaScript1.2">
+   <!--
+    // Set reference to top level help frame
+    //
+    var  WWHFrame = WWHGetWWHFrame("");
+
+if (top.location == self.location )
+    self.location = "index.html?href=proxyserviceCreateProxyServiceOperationSelectionConfigurationPage.html"
+   // -->
+  </script>
+
+    <script type="text/javascript" language="JavaScript1.2" src="scripts/expand.js"></script>
+  </head>
+
+  <body onload="WWHUpdate();" onunload="WWHUnload();" onkeydown="WWHHandleKeyDown((document.all||document.getElementById||document.layers)?event:null);" onkeypress="WWHHandleKeyPress((document.all||document.getElementById||document.layers)?event:null);" onkeyup="WWHHandleKeyUp((document.all||document.getElementById||document.layers)?event:null);">
+
+<a name="wp1265459"> </a><h3 class="pHeading2">
+操作選択構成ページ
+</h3>
+<a name="wp1316683"> </a><p class="pBody">
+<b class="cBold">プロキシ・サービスの作成/編集 - 操作選択構成</b>ページは、プロキシ・サービスの作成および編集(<a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateAndConfigureProxyServices.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateAndConfigureProxyServices.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">プロキシ・サービスの作成と構成</span></a>および<a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceViewandModifyProxyServices.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceViewandModifyProxyServices.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">プロキシ・サービス構成の編集</span></a>を参照)に使用する一連のページのうちの1つです。このページは、作成しているサービスに操作が含まれている場合にのみ表示されます。
+</p>
+<a name="wp1316690"> </a><p class="pBody">
+このページでは、WS-Iを適用し(SOAP 1.1サービスの場合のみ)、このプロキシ・サービスによって呼び出される操作の決定に使用される選択アルゴリズムを選択できます。このオプションは、WSDLに基づいて定義されたSOAPサービスまたはXMLサービスでのみ使用できます。 
+</p>
+<a name="wp1316691"> </a><p class="pBody">
+WSDL仕様では、受信するSOAPメッセージのタイプに基づいて呼び出す操作を計算するデフォルトのアルゴリズムが定義されています。ただし、その他の手段に基づいて操作を選択する必要がある場合もあります(パフォーマンスや、署名および暗号化に問題があったり、デフォルトのアルゴリズムが使用できない場合など)。
+</p>
+<a name="wp1304093"> </a><p class="pBody">
+Oracle Service Busには、アルゴリズムが追加で用意されています。これらはそれぞれ同じパターンに従っており、式の評価に基づいて値を取得し、その値を使用して静的な表から対応する操作をルックアップします。
+</p>
+<a name="wp1304094"> </a><p class="pBody">
+通常、Oracle Service Busは、インバウンド・メッセージが不明なデータで処理を判断できない場合や、データが有効な処理に対応していない場合にも、柔軟に対処します。どちらの場合も、<code class="cCode">$operation</code>は空になります。Oracle Service Busでは、このようなメッセージをすべて拒否するのではなく、コンテキスト内のoperation変数を初期化せずに、メッセージの処理を続行します。
+</p>
+<a name="wp1304095"> </a><p class="pBody">
+ただし、プロキシ・サービスがWSDLベースで、次の条件の1つ以上が当てはまる場合は、セキュリティ要件が適用されます。
+</p>
+<div class="pSmartList1Bullet"><ul class="pSmartList1Bullet">
+<a name="wp1304096"> </a><li>WSDLにWS-Securityポリシーが存在し、プロキシがアクティブな仲介になっている。</li>
+<a name="wp1304097"> </a><li>プロキシにメッセージ・レベルのカスタム認証(カスタム・トークンまたはユーザー名/パスワード)が存在する。</li>
+</ul></div>
+<a name="wp1304098"> </a><p class="pBody">
+これらの条件に該当する場合、操作選択アルゴリズムが有効な操作名を戻すかどうかを確認する実行時チェックが行われます。操作選択アルゴリズムでnullまたはWSDLに存在しない操作が戻された場合、メッセージは拒否され、エラーが発生します。
+</p>
+<a name="wp1292487"> </a><p class="pBody">
+<a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateProxyServiceOperationSelectionConfigurationPage.html#wp1316619');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateProxyServiceOperationSelectionConfigurationPage.html#wp1316619', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">表19-16</span></a>に、<b class="cBold">プロキシ・サービスの作成/編集 - 操作選択構成</b>ページの使用方法を示します。
+</p>
+<a name="wp1316663"> </a><p class="pBodyRelative">
+</p>
+<div align="left">
+<table class="table" border="1" cellpadding="3" cellspacing="0" id="wp1316619table1316613">
+  <caption><a name="wp1316619"> </a>表19-16 プロキシ・サービスの作成/編集 - 操作選択構成ページ
+
+
+</caption>
+  <tr bgcolor="#CCCCCC" align="center" valign="top">    <th scope="col"><a name="wp1316623"> </a><div class="pCellHeading">
+オプション
+</div>
+</th>
+    <th scope="col"><a name="wp1316625"> </a><div class="pCellHeading">
+作成または編集の方法
+</div>
+</th>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316627"> </a><div class="pCellBody">
+WS-I準拠の適用
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316629"> </a><div class="pCellBody">
+SOAP 1.1サービス専用です。 
+</div>
+<a name="wp1316630"> </a><div class="pCellBody">
+Web Services Interoperability Organizationで定義されたBasic Profileにサービスを準拠させるかどうかを指定する場合は、このチェック・ボックスを選択します。
+</div>
+<a name="wp1316631"> </a><div class="pCellBody">
+サービスをWS-I準拠として指定すると、サービス間で送受信されるメッセージの確認が行われます。プロキシの場合、プロキシが受信した要求メッセージの確認が行われます。呼び出されるサービス(つまり、プロキシがサービス・コールアウト・アクションまたはルート・ノード経由で呼び出すサービス)の場合、それらのサービスから受信した応答メッセージの確認が行われます。呼び出されるサービスから受信したメッセージを確認するかどうかを決定するのは、呼び出されるサービス側のWS-I準拠プロパティであり、プロキシ側ではありません。呼び出されるサービスでWS-I準拠のテストを指定すると、メッセージ・フローによって応答エラーのfaultが生成されます。 
+</div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316633"> </a><div class="pCellBody">
+選択アルゴリズム
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316635"> </a><div class="pCellBody">
+次のいずれか1つを選択し、必要に応じて追加の手順を実行します。
+</div>
+<div class="pSmartList1TableBullet"><ul class="SmartList1TableBullet">
+<a name="wp1316636"> </a><li><b class="cBold">「トランスポート・ヘッダー」</b> - ルックアップ値を含むトランスポート・ヘッダーを定義する場合は、このアルゴリズムを選択します。次に、次を実行します。</li>
+<div class="pSmartList2TableBullet"><ul class="pSmartList2TableBullet">
+<a name="wp1316637"> </a><li><b class="cBold">「ヘッダー名」</b>フィールドに、呼び出される操作を選択するときにキーとして使用される値を抽出するトランスポート・ヘッダーを入力します。</li>
+<a name="wp1316638"> </a><li><b class="cBold">「操作のマッピング」</b>フィールドの下にある<b class="cBold">「値」</b>フィールドに、各操作の値を指定します。この値が操作のキーとして使用されます。 </li>
+</ul></div>
+<a name="wp1316639"> </a><li><b class="cBold">「SOAPActionヘッダー」</b> - このプロキシ・サービスに関連付けられたWSDLから自動的に操作のマッピングが行われるように指定する場合は、このアルゴリズムを選択します。</li>
+<a name="wp1316640"> </a><li><b class="cBold">「WS-Addressing」</b> - ルックアップ値がSOAPメッセージのSOAPヘッダー内のWS-Addressing <code class="cCode">Action</code>タグに入るように指定するには、このアルゴリズムを選択します。その後で、<b class="cBold">「操作のマッピング」</b>フィールドの下にある<b class="cBold">「値」</b>フィールドに、各操作の値を指定します。この値が操作のキーとして使用されます。</li>
+<a name="wp1316641"> </a><li><b class="cBold">「SOAPヘッダー」</b> - SOAPヘッダーに対して評価されるXPath式を定義するには、このアルゴリズムを選択します。これにより、ルックアップ値を取得できるようになります。次に、次を実行します。</li>
+<div class="pSmartList2TableBullet"><ul class="pSmartList2TableBullet">
+<a name="wp1316642"> </a><li><b class="cBold">「XPath式」</b>フィールドに、呼び出される操作を選択するときにキーとして使用される値を抽出するXPath式を指定します。</li>
+<a name="wp1316643"> </a><li><b class="cBold">「操作のマッピング」</b>フィールドの下にある<b class="cBold">「値」</b>フィールドに、各操作の値を指定します。この値が操作のキーとして使用されます。 </li>
+</ul></div>
+<a name="wp1316644"> </a><li><b class="cBold">「SOAP本体タイプ」</b> - WSDL仕様で定義されたデフォルトのアルゴリズムです。受信するSOAPメッセージのタイプに基づいて呼び出す操作が計算されます。</li>
+<a name="wp1316645"> </a><p class="pTableListPara">
+プロキシ・サービスを構成するWebサービス・セキュリティのパススルー・シナリオで本体が暗号化されている場合は、このアルゴリズムを選択することはできません。パススルーの暗号化されたSOAPヘッダーについても同様です。
+</p>
+<a name="wp1316646"> </a><p class="pTableListPara">
+同じ入力メッセージで2つの操作のあるWSDLの場合、入力メッセージを調べて操作を一意に識別できないため、このアルゴリズムを操作に選択しないでください。
+</p>
+<a name="wp1316647"> </a><li><b class="cBold">「ペイロード・タイプ」</b> - WSDLポートまたはWSDLバインドに基づいたXMLサービスでのみ使用できます。</li>
+</ul></div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316649"> </a><div class="pCellBody">
+ヘッダー名 
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316651"> </a><div class="pCellBody">
+このオプションは、<b class="cBold">「選択アルゴリズム」</b>オプションが<b class="cBold">「トランスポート・ヘッダー」</b>に設定されている場合にのみ使用できます。
+</div>
+<a name="wp1316652"> </a><div class="pCellBody">
+呼び出される操作を選択するときにキーとして使用される値を抽出するトランスポート・ヘッダーを入力します。
+</div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316654"> </a><div class="pCellBody">
+XPath式
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316656"> </a><div class="pCellBody">
+このオプションは、<b class="cBold">「選択アルゴリズム」</b>オプションが<b class="cBold">「SOAPヘッダー」</b>に設定されている場合にのみ使用できます。
+</div>
+<a name="wp1316657"> </a><div class="pCellBody">
+呼び出される操作を選択するときにキーとして使用される値を抽出するXPath式を指定します。
+</div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316659"> </a><div class="pCellBody">
+操作のマッピング
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316661"> </a><div class="pCellBody">
+このオプションは、<b class="cBold">「選択アルゴリズム」</b>オプションが<b class="cBold">「トランスポート・ヘッダー」</b>、<b class="cBold">「WS-Addressing」</b>または<b class="cBold">「SOAP本体タイプ」</b>に設定されている場合にのみ使用できます。
+</div>
+<a name="wp1316662"> </a><div class="pCellBody">
+<b class="cBold">「値」</b>フィールドに、各操作の値を指定します。この値が操作のキーとして使用されます。
+</div>
+</td>
+</tr>
+</table>
+</div>
+<p class="pBodyRelative">
+
+</p>
+<a name="wp1316672"> </a><p class="pBody">
+<b class="cBold">終了後</b>
+</p>
+<a name="wp1316673"> </a><p class="pBody">
+<b class="cBold">「次」</b>をクリックして次のページでこのサービスの構成を続行するか、<b class="cBold">「最後」</b>をクリックして<b class="cBold">プロキシ・サービスの作成/編集 - </b><a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateProxyServiceSummaryPage.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateProxyServiceSummaryPage.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">サマリー・ページ</span></a>でこの構成を確認および保存します。
+</p>
+
+
+
+  <script type="text/javascript" language="JavaScript1.2">
+   <!--
+    // Clear related topics
+    //
+    WWHClearRelatedTopics();
+
+   // -->
+  </script>
+
+
+<script type="text/javascript" language="JavaScript1.2">
+   <!--
+function WWHDefineBEALogoLink()
+{
+return "http://www.bea.com";
+}
+    document.write(WWHRelatedTopicsDivTag() + WWHPopupDivTag() + WWHALinksDivTag());
+   // -->
+  </script>
+
+  </body>
+</html>

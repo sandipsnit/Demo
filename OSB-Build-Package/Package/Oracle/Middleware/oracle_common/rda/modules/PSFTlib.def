@@ -1,0 +1,87 @@
+# PSFTlib.def: Defines Common Macros for PeopleSoft Products
+# $Id: PSFTlib.def,v 1.4 2012/01/03 13:34:43 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/PSFTlib.def,v 1.4 2012/01/03 13:34:43 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+PSFTlib - Defines Common Macros for PeopleSoft Products
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to several PeopleSoft
+related-modules.
+
+The following macro is available:
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('sort_psft')
+
+=head2 S<sort_psft($lvl,$lgt,$pat,$pre,@fil)>
+
+This macro uses the unsorted file list to generate links in the RDA menu
+structure for each directory and the files located in that directory.
+
+=cut
+
+macro sort_psft
+{var ($lvl,$lgt,$pat,$pre,@fil) = @arg
+ import $TOP
+ keep $TOP
+
+ # Filter the file list
+ loop $fil (@fil)
+ {if testFile('frT',$fil)
+  {next match($fil,'\.(bmp|exe|gif|gz|ico|jar|jpe?g|wav|wbmp|zip)$',true)
+   var $fil{join("\001",dirname($fil),basename($fil))} = $fil
+  }
+ }
+
+ # Generate the reports and related index links
+ var $lst = ''
+ var $det = $lvl
+ incr $det
+ loop $fil (keys(%fil))
+ {var $fil = $fil{$fil}
+
+  # Check for a new section
+  var $grp = dirname($fil)
+  if compare('ne',$grp,$lst)
+  {var $lst = $grp
+   toc $lvl,':',encode(replace($grp,$pat,$pre)),' '
+  }
+
+  # Create the report associated with the file
+  debug ' Inside sort_psft, getting ',$fil
+  var $nam = basename($fil)
+  output F,concat('log','_',$nam)
+  if $lgt
+   write '---+ Last ',$lgt,' Lines of ',encode($nam),' File'
+  else
+   write '---+ Display of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  call statFile('b',$fil)
+  if $lgt
+   call writeTail($fil,$lgt)
+  else
+   call writeFile($fil)
+  write $TOP
+  toc $det,':[[',getFile(),'][rda_report][',encode($nam),']]'
+ }
+}
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

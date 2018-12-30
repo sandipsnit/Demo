@@ -1,0 +1,479 @@
+# library.def: Defines Common Macros
+# $Id: library.def,v 2.16 2012/02/23 16:20:14 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/library.def,v 2.16 2012/02/23 16:20:14 mschenke Exp $
+#
+# Change History
+# 20120223  MSC  Revert pattern matching for log files.
+
+=head1 NAME
+
+library - Defines Common Macros
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to several modules.
+
+The following macros are available:
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@RESET_MACROS,@SHARE_MACROS
+var @SHARE_MACROS = ('cat_file','cat_report','cat_search',\
+                     'head_file','head_report',\
+                     'search_files','skip_files','sort_files','sort_shares',\
+                     'tail_file','tail_report')
+var @RESET_MACROS = @SHARE_MACROS
+
+# Define the duplicate file hash
+delete %DUP
+import %DUP
+keep %DUP
+
+=head2 S<cat_file($dir,$nam,[$cmd,$alt[,$txt]])>
+
+This macro inserts a file into the current report.
+
+=cut
+
+macro cat_file
+{var ($dir,$nam,$cmd,$alt,$txt) = @arg
+ debug ' Inside cat_file, looking for ',$nam,' in ',$dir
+ var $fil = catFile($dir,$nam)
+ if testFile('f',$fil)
+ {write '---+ Display of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  if $cmd
+   var $flg = writeFilter($fil,$cmd,$alt)
+  else
+   var $flg = writeFile($fil)
+  if !$flg
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+  if ?$txt
+   write $txt
+ }
+}
+
+=head2 S<cat_report($dir,$nam,$pre,$cmd,$alt)>
+
+This macro generates a report from a file.
+
+=cut
+
+macro cat_report
+{var ($dir,$nam,$pre,$cmd,$alt) = @arg
+ debug ' Inside cat_report, looking for ',$nam,' in ',$dir
+ var $fil = catFile($dir,$nam)
+ if testFile('f',$fil)
+ {report concat(nvl($pre,''),$nam)
+  write '---+ Display of ',encode($nam),' File'
+
+  # Add the file in the report
+  write '---## Information Taken from ',encode($fil)
+  if $cmd
+   var $flg = writeFilter($fil,$cmd,$alt)
+  else
+   var $flg = writeFile($fil)
+  if !$flg
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+
+  # Add it in the index
+  toc '3:[[',getFile(),'][rda_report][',encode($nam),']]'
+ }
+}
+
+=head2 S<cat_search($nam,$opt,$pre,$cmd,$alt)>
+
+This macro generates a report from a file that is searched for in a directory
+list.
+
+=cut
+
+macro cat_search
+{var ($nam,$opt,$pre,$cmd,$alt) = @arg
+
+ # On first call, initialize the directory list
+ if !@dir
+ {keep @dir
+  var $ORACLE_HOME = catDir(getSetting('ORACLE_HOME',''))
+  var @dir = (\
+   catDir($ORACLE_HOME,'bin'),\
+   '/etc',\
+   '/var/opt/oracle',\
+   catDir($ORACLE_HOME,'network','admin'),\
+   catDir($ORACLE_HOME,'network','agent'))
+  if getEnv('TNS_ADMIN')
+  {var $tns = catDir(last)
+   if and(testDir('d',$tns),not(sameDir($tns,$dir[3])))
+    call push(@dir,$tns)
+  }
+
+  # Add some possible ASM locations
+  if getSetting('ASM_DISTINCT_HOME')
+  {var $dir = catDir(getSetting('ASM_ORACLE_HOME',$ORACLE_HOME))
+   var $sid = getSetting('ASM_ORACLE_SID','*')
+   if compare('eq',$sid,'*')
+    run ASMinit(\$dir,\$sid)
+   if and(testDir('d',$dir),not(sameDir($dir,$ORACLE_HOME)))
+    call push(@dir,catDir($dir,'bin'),\
+                   catDir($dir,'network','admin'),\
+                   catDir($dir,'network','agent'))
+  }
+
+  # Add extra TNSADMIN directories
+  loop $key (grepSetting('_TNSADMIN_LIST$','n'))
+  {loop $dir (split('\|',getSetting($key)))
+   {next !testDir('d',$dir = catDir($dir))
+    next grep(@dir,code(sameDir($dir,last)))
+    call push(@dir,$dir)
+   }
+  }
+ }
+
+ # Search the file in the directory list
+ report concat(nvl($pre,''),$nam)
+ var $flg = $opt
+ var $top = true
+ var $ttl = concat('---+ Display of ',encode($nam),\
+                   ' File from all Well-Known Locations')
+
+ loop $dir (@dir)
+ {debug ' Inside cat_search, looking for ',$nam,' in ',$dir
+  var $fil = catFile($dir,$nam)
+  prefix
+  {if $ttl
+   {write $ttl
+    var $ttl = undef
+   }
+   write '---## Information Taken from ',encode($fil)
+   if $top
+   {var ($hit,$top) = ($fil,false)
+    write '**File from this location will override the contents for ',\
+          encode($nam),' at every other location**'
+   }
+  }
+  if $cmd
+  {if writeFilter($fil,$cmd,$alt)
+    var $flg = true
+  }
+  else
+  {if writeFile($fil)
+    var $flg = true
+  }
+ }
+ unprefix
+
+ # Display the permissions for mandatory files
+ if !$flg
+ {write $ttl
+  write '**No readable ',encode($nam),' file found in any usual place.**%BR%\
+         May be file permission problems or file does not exist.%BR%'
+  loop $dir (@dir)
+  {var $fil = catFile($dir,$nam)
+   write 'Permissions for ',encode($fil),' are:%BR%'
+   if !statFile('b',$fil)
+    write "&nbsp;''File not found''%BR%"
+  }
+  write 'User: ',id(),'%BR%'
+ }
+
+ # Add it in the index
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',encode($nam),']]'
+
+ # Return the first file
+ return $hit
+}
+
+=head2 S<head_file($dir,$nam,$lin[,$txt])>
+
+This macro inserts the first lines of a file into the current report.
+
+=cut
+
+macro head_file
+{var ($dir,$nam,$lin,$txt) = @arg
+ debug ' Inside head_file, looking for ',$lin,' first lines of ',$nam,\
+       ' in ',$dir
+ var $fil = catFile($dir,$nam)
+ if testFile('f',$fil)
+ {write '---+ ',$lin,' First Lines of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  if !writeLines($fil,1,$lin)
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+  if ?$txt
+   write $txt
+ }
+}
+
+=head2 S<head_report($dir,$nam,$lin,$pre)>
+
+This macro inserts the first lines of a file into a report.
+
+=cut
+
+macro head_report
+{var ($dir,$nam,$lin,$pre) = @arg
+ debug ' Inside head_report, looking for ',$lin,' first lines of ',$nam,\
+       ' in ',$dir
+ var $fil = catFile($dir,$nam)
+ if testFile('f',$fil)
+ {report concat(nvl($pre,''),$nam)
+  write '---+ ',$lin,' First Lines of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  if !writeLines($fil,1,$lin)
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+
+  # Add it in the index
+  toc '3:[[',getFile(),'][rda_report][',encode($nam),']]'
+ }
+}
+
+=head2 S<search_files($dir,$re,$lgt[,$opt])>
+
+This macro looks in the specified directory and subdirectories for all files
+that match the regular expression. When a number of lines is specified, only
+the final lines are collected. In addition, you can provide the search options
+as an extra argument. By default, it performs a recursive case insensitive
+search.
+
+=cut
+
+macro search_files
+{var ($dir,$re,$lgt,$opt) = @arg
+ import $TOP
+ keep $TOP
+ debug ' Inside search_files, looking for "',$re,'" in ',$dir
+
+ var $lst = ''
+ loop $fil (grepDir($dir,$re,nvl($opt,'dir')))
+ {next !testFile('frT',$fil)
+
+  # Check for a new section
+  var $grp = dirname($fil)
+  if compare('ne',$grp,$lst)
+  {var $lst = $grp
+   toc '3:',encode(addSymbol($grp)),' '
+  }
+
+  # Create the report associated with the file
+  var $nam = basename($fil)
+  output F,concat('log','_',$nam)
+  if match($nam,'^USData.xml$',true)
+  {write '---+ Display of ',encode($nam),' File'
+   write '---## Information Taken from ',encode($fil)
+   call statFile('b',$fil)
+   write '**File was not collected, because of the file size.**%BR%'
+  }
+  elsif $lgt
+  {write '---+ Last ',$lgt,' Lines of ',encode($nam),' File'
+   write '---## Information Taken from ',encode($fil)
+   call statFile('b',$fil)
+   call writeTail($fil,$lgt)
+   write $TOP
+  }
+  else
+  {write '---+ Display of ',encode($nam),' File'
+   write '---## Information Taken from ',encode($fil)
+   call statFile('b',$fil)
+   call writeFile($fil)
+   write $TOP
+  }
+  toc '4:[[',getFile(),'][rda_report][',encode($nam),']]'
+ }
+}
+
+=head2 S<skip_files($fil,...)>
+
+This macro indicates that C<sort_files> and C<sort_shares> must skip the
+specified files.
+
+=cut
+
+macro skip_files
+{import %DUP
+ keep %DUP
+
+ loop $fil (@arg)
+  var $DUP{$fil} = undef
+}
+
+=head2 S<sort_files($lvl,$lgt,@fil)>
+
+This macro is equivalent to C<sort_shares(undef,$lvl,$lgt,@fil)>.
+
+=cut
+
+macro sort_files
+ return sort_shares(undef,@arg)
+
+=head2 S<sort_shares($shr,$lvl,$lgt,@fil)>
+
+This macro uses the unsorted file list to generate links in the RDA menu
+structure for each directory and the files located in that directory. If the
+file name has the C<*.log> structure, it limits the lines collected to the last
+lines.
+
+When a nonempty string is specified as a share group, all produced reports are
+shared automatically using that group, specifying their file name as link text.
+
+A file is collected once per module only. The following occurrences are
+replaced by a link to the first one.
+
+=cut
+
+macro sort_shares
+{var ($shr,$lvl,$lgt,@fil) = @arg
+ import $TOP,%DUP,%LOG
+ keep $TOP,%DUP
+
+ # Filter the file list
+ loop $fil (@fil)
+ {if testFile('frT',$fil)
+  {next match($fil,'\.(bmp|exe|gif|gz|ico|jar|jpe?g|wav|wbmp|zip)$',true)
+   var $fil{dirname($fil),basename($fil)} = $fil
+  }
+ }
+
+ # Generate the reports and related index links
+ var $det = $lvl
+ incr $det
+ loop $grp (keys(%fil))
+ {# Start a new section
+  toc $lvl,':',encode(addSymbol($grp)),' '
+
+  # Treat each file
+  loop $nam (keys($fil{$grp}))
+  {var $fil = $fil{$grp,$nam}
+
+   debug ' Inside sort_files, getting ',$fil
+   if missing($DUP{$fil})
+   {output F,concat('log','_',$nam)
+    if $shr
+     share $shr,$fil
+    if match($nam,'^USData.xml$',true)
+    {write '---+ Display of ',encode($nam),' File'
+     write '---## Information Taken from ',encode($fil)
+     call statFile('b',$fil)
+     write '**File was not collected, because of the file size.**%BR%'
+    }
+    elsif match($fil,'(logs?[\/\\]|log$)',true)
+    {if exists($LOG{$fil})
+      var $cnt = $LOG{$fil}
+     else
+      var $cnt = $lgt
+     if $cnt
+      write '---+ Last ',$cnt,' Lines of ',encode($nam),' File'
+     else
+      write '---+ Display of ',encode($nam),' File'
+     write '---## Information Taken from ',encode($fil)
+     call statFile('b',$fil)
+     if $cnt
+      call writeTail($fil,$cnt)
+     else
+      call writeFile($fil)
+     write $TOP
+    }
+    else
+    {write '---+ Display of ',encode($nam),' File'
+     write '---## Information Taken from ',encode($fil)
+     call statFile('b',$fil)
+     call writeFile($fil)
+     write $TOP
+    }
+    var $DUP{$fil} = getFile()
+   }
+   if $DUP{$fil}
+    toc $det,':[[',last,'][rda_report][',encode($nam),']]'
+  }
+ }
+}
+
+=head2 S<tail_file($dir,$nam,$lin[,$txt])>
+
+This macro inserts the last lines of a file into the current report.
+
+=cut
+
+macro tail_file
+{var ($dir,$nam,$lin,$txt) = @arg
+ debug ' Inside tail_file, looking for ',$lin,' last lines of ',$nam,\
+       ' in ',$dir
+ var $fil = catFile($dir,$nam)
+ if testFile('f',$fil)
+ {write '---+ Last ',$lin,' Lines of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  if !writeTail($fil,$lin)
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+  if ?$txt
+   write $txt
+ }
+}
+
+=head2 S<tail_report($dir,$nam,$lin,$pre)>
+
+This macro inserts the last lines of a file into a report.
+
+=cut
+
+macro tail_report
+{var ($dir,$nam,$lin,$pre) = @arg
+ debug ' Inside tail_report, looking for ',$lin,' last lines of ',$nam,\
+       ' in ',$dir
+ var $fil = catFile($dir,$nam)
+ if testFile('f',$fil)
+ {report concat(nvl($pre,''),$nam)
+  write '---+ Last ',$lin,' Lines of ',encode($nam),' File'
+  write '---## Information Taken from ',encode($fil)
+  if !writeTail($fil,$lin)
+  {write '**',encode($nam),' not readable.**%BR%\
+         May be file permission problems.%BR%\
+         Permissions are:%BR%'
+   call statFile('b',$fil)
+   write 'User: ',id(),'%BR%'
+  }
+
+  # Add it in the index
+  toc '3:[[',getFile(),'][rda_report][',encode($nam),']]'
+ }
+}
+
+=head1 SEE ALSO
+
+L<ASMinit.def|modules::ASMinit>, L<CRSinit.def|modules::CRSinit>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

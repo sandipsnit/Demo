@@ -1,0 +1,84 @@
+# DDCstat.def: Oracle Database Diagnostics Collector (Status Check)
+# $Id: DDCstat.def,v 2.5 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/DDCstat.def,v 2.5 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+DDCstat - Oracle Database Diagnostics Collector (Status Check)
+
+=head1 DESCRIPTION
+
+This module checks whether Oracle Database Diagnostics Collector (ORADDC) is
+waiting still for a wake-up by checking the last modification of its time-stamp
+file. When the time since the last modification exceeds the specified tolerance
+(30 seconds by default), it removes the file and exits with a nonzero status.
+
+=cut
+
+echo tput('bold'),'Checking if ORADDC is still active ...',tput('off'),"\012"
+
+# Initialisation
+var ($max,$flg) = @arg
+import $ORACLE_SID
+
+var $max = nvl($max,30)
+var $sid = field(':',-1,$ORACLE_SID)
+var $sid = replace(concat('_',$sid),'[\_\W]+','_',true)
+var $fil = catFile(${OUT.E},concat(${CUR.GROUP},'_TMP_ddcst',$sid,'.tmp'))
+
+# Determine ORADDC stattus
+call setAbbr('TMP')
+if !testFile('f',$fil)
+{echo 'No time-stamp file found (',$fil,')'
+ echo 'Possible that ORADDC is not running or not in a wait state'
+ call purge('E',concat('ddcup',$sid,'\.tmp$'),-1,0)
+ call setSetting('RDA_EXIT', 2)
+}
+elsif isOlder($fil,0,$max)
+{echo 'Tolerance exceeded'
+ echo 'Timestamp file removed'
+ call purge('E',concat('ddc(st|up)',quote($sid),'\.tmp$'),-1,0)
+ call setSetting('RDA_EXIT', 1)
+}
+else
+{echo 'ORADDC active'
+
+ # Ask ORADDC to report pending requests
+ if $flg
+ {var $tmp = $[OUT]->add_report('E',concat('ddcrq',$sid,'_',getPid()),0,'.tmp')
+  call $tmp->create
+  call $tmp->close
+  sleep 6
+  loop $lin (grepFile($tmp->get_file(true),'\w'))
+   echo $lin
+  call $tmp->unlink
+ }
+}
+
+=head1 SEE ALSO
+
+L<TLoraddc.def|modules::TLoraddc>, L<DDCrun.def|modules::DDCstat>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.11:  Clive Bostock.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

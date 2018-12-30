@@ -1,0 +1,456 @@
+<sdp_diaglet platform="hpux" product="EB11510" set="A500EB11510_hp" title="Oracle E-Business Suite Release 11i (11.5.10) Preinstall (HP-UX)" type="A">
+<sdp_meta type="version" id="$Id: A500EB11510_hp.xml,v 1.9 2012/04/18 16:44:20 mschenke Exp $" header="$Header: /home/cvs/cvs/RDA_4/src/scripting/lib/hcve/A500EB11510_hp.xml,v 1.9 2012/04/18 16:44:20 mschenke Exp $" version="1.0"/>
+<sdp_meta author="JCR" change="Update OS Patches" date="20120409" type="history"/>
+<sdp_content set="A500EB11510_hp" title="Oracle E-Business Suite Release 11i (11.5.10) Preinstall (HP-UX)" type="check">
+<sdp_group>
+
+<sdp_rule id="A00100" mode="RECORD" name="OS Type">
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$OS_BIT,$OS_NAM,$OS_VER
+call setHcveResult(check(uc($OS_NAM),\
+  'HP-UX',concat($OS_NAM,' ',$OS_ARC,' ',$OS_VER,' ',$OS_BIT,'-bit'),\
+  'Not HP-UX OS'))
+var $BOOK = 'Oracle Applications Installation Guide: Using Rapid Install \
+  Release 11i (11.5.10.2)'
+var $NOTE = 'Knowledge Article 316806.1'
+call setHcveVariable('$BOOK','$NOTE')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system (OS) name, architecture, version and bit of your system when you work on HP-UX system.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00200" mode="VERIFY" name="OS Certified?">
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$OS_NAM,$OS_VER
+call setHcveResult(check(uc($OS_NAM),\
+  'HP-UX',check($OS_ARC,\
+    'PA-RISC',check($OS_VER,'^11\.(11|23|31)$','Certified','Inadequate OS'),\
+    'Itanium',check($OS_VER,'^11\.(23|31)$',   'Certified','Inadequate OS'),\
+    'Inadequate platform'),\
+  'Not HP-UX OS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the correct version of HP-UX for installing the application tier of Oracle E-Business Suite Release 11i (11.5.10.2).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Certified" result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[!!SHOWSTOPPER!! |*Return Value*|*Action*|
+|Inadequate OS|You do not have a correct version of HP-UX installed on your server. For the certified versions of HP-UX, see My Oracle Support and ${NOTE}.|
+|Inadequate platform|Either the architecture of your platform was not detected or it is not PA-RISC or Itanium. Use a certified platform architecture.|
+]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00210" mode="VERIFY" name="Got OS Bundles? ">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on an adequate HP-UX system"><![CDATA[This rule applies for adequate HP-UX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER
+macro check_bundle
+{var ($bdl,$ref,$pat1,$pat2,$num) = @arg
+ var ($fnd) = grepLastFile($bdl,'if')
+ if !$fnd
+  return concat($bdl,'NotFound')
+ return cond(expr('>=',field($pat2,$num,field($pat1,1,$fnd)),$ref),\
+             concat($bdl,'Found'),concat($bdl,'TooOld'))
+}
+if !loadCommand('/usr/sbin/swlist -l bundle')
+ return setHcveResult('No access to /usr/sbin/swlist')
+if compare('eq',$OS_VER,'11.11')
+{var $msg = check_bundle('GOLDQPK11i',2001,',','\s+',1)
+ if !match($msg,'GOLDQPK11iNotFound')
+  call push(@tbl,$msg)
+ else
+ {var $msg = check_bundle('GOLDAPPS11i',0112,'\s+','\.',3)
+  var @cmp = (@cmp,$msg)
+  if !match($msg,'GOLDAPPS11iFound')
+   call push(@tbl,$msg)
+  var $msg = check_bundle('GOLDBASE11i',0112,'\s+','\.',3)
+  var @cmp = (@cmp,$msg)
+  if !match($msg,'GOLDBASE11iFound')
+   call push(@tbl,$msg)
+  if and(match($cmp[0],'GOLDAPPS11iFound'),match($cmp[1],'GOLDBASE11iFound'))
+   call push(@tbl,'GOLDAPPS11iandGOLDBASE11iAdequate')
+  elsif and(match($cmp[0],'GOLDAPPS11iNotFound'),\
+            match($cmp[1],'GOLDBASE11iNotFound'))
+   call push(@tbl,'The GOLDQPK11i is not installed and neither are the \
+                   separate parts of it, GOLDAPPS11i or GOLDBASE11i')
+  elsif and(match($cmp[0],'GOLDAPPS11iTooOld'),\
+            match($cmp[1],'GOLDBASE11iTooOld'))
+   call push(@tbl,'The GOLDQPK11i is not installed; however both \
+                   GOLDAPPS11i and GOLDBASE11i are but they are too old')
+  elsif and(match($cmp[0],'GOLDAPPS11iFound'),\
+            match($cmp[1],'GOLDBASE11iNotFound'))
+   call push(@tbl,'The GOLDQPK11i is not installed; however GOLDAPPS11i \
+                   is installed but not GOLDBASE11i')
+  else
+   call push(@tbl,'The GOLDQPK11i is not installed; however GOLDBASE11i is \
+                   installed but not GOLDAPPS11i')
+ }
+}
+else
+ call push(@tbl,'NotChecked')
+call setHcveResult(join("\012",@tbl))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that all required OS bundles are installed.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="GOLDQPK11iFound|GOLDAPPS11iandGOLDBASE11iAdequate|Bundle11iFound|NotChecked" result="PASSED"><![CDATA[The required OS patch bundle is installed. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[For HP-UX PA-RISC 11.11, install GOLDQPK11i, December 2001 or later or both GOLDAPPS11i and GOLDBASE11i, December 2001 or later. 
+This test requires that the current user can execute ``/usr/sbin/swlist``.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00220" mode="VERIFY" name="Got OS Patches?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00200" minimum="PASSED" result="SKIPPED" value="Not on an adequate HP-UX system"><![CDATA[This rule applies to adequate HP-UX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_VER
+macro check_patch
+{var (\@tbl,$pch,@pch) = @arg
+ var $pat = concat('(',join('|',$pch,@pch),')')
+ if !grepLastFile($pat,'if')
+  call push(@tbl,concat($pch,' missing'))
+}
+if !loadCommand('/usr/sbin/swlist -l fileset')
+ return setHcveResult('NoAccess')
+if match($OS_VER,'^11\.11$')
+{call check_patch(\@tbl,'PHCO_25452','PHCO_26124','PHCO_27910','PHCO_27434',\
+                        'PHCO_27740','PHCO_28427','PHCO_29029','PHCO_29287',\
+                        'PHCO_29495','PHCO_29955','PHCO_30030','PHCO_30530',\
+                        'PHCO_31061','PHCO_31903','PHCO_32761','PHCO_33360',\
+                        'PHCO_33533','PHCO_33711','PHCO_34275','PHCO_35743',\
+                        'PHCO_36184','PHCO_37369','PHCO_38279','PHCO_40310')
+ call check_patch(\@tbl,'PHNE_25084','PHNE_26728','PHNE_27703','PHNE_28467',\
+                        'PHNE_29825','PHNE_30367','PHNE_31091','PHNE_33313',\
+                        'PHNE_33729','PHNE_34131','PHNE_34777','PHNE_35453',\
+                        'PHNE_36576','PHNE_37259')
+ call check_patch(\@tbl,'PHNE_25642','PHNE_25644','PHNE_27063','PHNE_28089',\
+                        'PHNE_28895','PHNE_29887','PHNE_31247','PHNE_33159',\
+                        'PHNE_33628','PHNE_34135','PHNE_34672','PHNE_35183',\
+                        'PHNE_35351','PHNE_36125','PHNE_37671','PHNE_37898',\
+                        'PHNE_38678','PHNE_39386','PHNE_42029')
+ call check_patch(\@tbl,'PHSS_24638','PHSS_26946','PHSS_28880','PHSS_31221',\
+                        'PHSS_32573','PHSS_33263','PHSS_33942','PHSS_33944',\
+                        'PHSS_33945','PHSS_33946')
+}
+else
+ call push(@tbl,'NotChecked')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'OSpatchesFound'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the required OS patches for the installation of the application tier of an E-Business Suite Release 11i (11.5.10.2).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="OSpatchesFound|NotChecked" result="PASSED"><![CDATA[All required OS patches are adequate. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="NoAccess" result="FAILED"><![CDATA[You do not have access to ``/usr/sbin/swlist``.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required OS patches were not met or found. Review the recommended OS patches from the ${NOTE}.
+Ensure that the following patches or superseding patches are installed.
+|*Return Value*|*Action*|
+|PHCO_25452 missing|PHCO_25452 (last known superseding patch PHCO_40310)|
+|PHNE_25084 missing|PHNE_25084 (last known superseding patch PHNE_37259)|
+|PHNE_25642 missing|PHNE_25642 (last known superseding patch PHNE_32029)|
+|PHSS_24638 missing|PHSS_24638 (last known superseding patch PHSS_33946)|
+The list of superseding patches may be incomplete and patches installed in this system may already include patches that supersede the requirements.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00370" mode="VERIFY" name="Got Software Tools?">
+<sdp_command type="RDA"><![CDATA[import $OS_ARC
+var @tbl = ()
+macro find_exe
+{var (\@tbl,$exe,$ref) = @arg
+ if findCommand($exe)
+ {var $cmd = readLink(last,last)
+  if !compare('eq',$cmd,$ref)
+   call push(@tbl,concat(ucfirst($exe),'Elsewhere'))
+ }
+ else
+  call push(@tbl,concat(ucfirst($exe),'NotFound'))
+}
+call find_exe(\@tbl,'ar','/usr/ccs/bin/ar')
+if !findCommand('cc')
+ call push(@tbl,'CcNotFound')
+if match($OS_ARC,'PA-RISC')
+{if !findCommand('aCC')
+  call push(@tbl,'aCCNotFound')
+}
+call find_exe(\@tbl,'make','/usr/ccs/bin/make')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'tools_found'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the required software tools for the installation of the installation of the application tier of an Oracle E-Business Suite Release 11i (11.5.10.2) exist.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="tools_found" result="PASSED"><![CDATA[All required software tools for the installation of the application tier of Oracle E-Business Suite Release 11i (11.5.10.2) were found. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Some of the required software tools for the the application tier of Oracle E-Business Suite Release 11i (11.5.10.2) installation were not found. Check your installation. The required tools are specified in ${'BOOK}.
+|*Return Value*|*Action*|
+|aCCNotFound|``aCC`` is not found in PATH.|
+|LdNotFound|``ld`` is found in PATH.|
+|ArNotFound|``ar`` is not found in PATH.|
+|ArElsewhere|``ar`` is not in ``/usr/ccs/bin`` as required.|
+|CcNotFound|``cc`` is not found in PATH.|
+|MakeNotFound|``make`` is not found in PATH.|
+|MakeElsewhere|``make`` is not in ``/usr/ccs/bin`` as required.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00400" mode="RECORD" name="IP Address">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var $ip = field('\s+',3,\
+ grepCommand(concat('/usr/sbin/ping ',$hst,' -n 1'),'\s(\d+\.\d+\.)+','f'))
+call setHcveResult(replace($ip,':'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host IP address.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00410" mode="RECORD" name="Domain Name">
+<sdp_command type="RDA"><![CDATA[var ($hst) = command('hostname')
+var ($nam,$dom) = split('\.',$hst,2)
+if testFile('x','/bin/domainname')
+ var ($nis) = command('/bin/domainname')
+if testFile('r','/etc/resolv.conf')
+ var $dns = field('\s+',1,grepFile('/etc/resolv.conf','domain'))
+if testFile('x','/bin/nslookup')
+{if $nam
+  var $nsl = field(concat(quote($nam),'\.'),1,\
+                   grepCommand(concat('/bin/nslookup ',$hst),'Name','f'))
+ else
+  var $nsl = field(concat(quote($hst),'\.'),1,\
+                   grepCommand(concat('/bin/nslookup ',$hst),'Name','f'))
+}
+call setHcveResult(cond($dom,$dom,\
+                        $nis,$nis,\
+                        $dns,$dns,\
+                        $nsl,$nsl,\
+                        'Not configured'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the host domain name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00420" mode="VERIFY" name="DNS Lookup">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00400" minimum="RECORD" result="FAILED" value="IP address required"><![CDATA[This rule requires the IP address.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[var $ip  = "%A00400%"
+var $hst = field('\.',0,command('hostname'))
+call setHcveResult(cond(\
+  not(length($ip)),\
+    'Cannot determine IP address',\
+  not(testFile('x','/bin/nslookup')),\
+    'Cannot access /bin/nslookup',\
+  and(grepCommand(concat('/bin/nslookup ',$hst),quote($ip),'f'),\
+      grepCommand(concat('/bin/nslookup ',$ip),quote($hst),'f')),\
+    'Host correctly registered in DNS',\
+    'Host not correctly registered in DNS'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the host is registered correctly in the DNS.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Host correctly registered in DNS" result="PASSED"><![CDATA[The host is registered correctly in the DNS.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Host not correctly registered in DNS|Register the host.domain in the DNS.|
+|Cannot determine IP address|Fix any problem with the host IP address.|
+|Cannot access /bin/nslookup|Grant execute permissions on ``/bin/nslookup`` for the login user.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00430" mode="VERIFY" name="/etc/hosts Format">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00410" minimum="RECORD" result="FAILED" value="Domain name required"><![CDATA[This rule requires the domain name.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+if !testFile('r','/etc/hosts')
+ return setHcveResult('Cannot access /etc/hosts')
+if !@tbl = grepFile('/etc/hosts',\
+  concat('^([^\s\#]+\s+)+',quote(${RDA.HOST}),\
+         '\s+([^\s\#]+\s+)*',quote(${RDA.NODE}),'(\s|\z|\#)'))
+ return setHcveResult('no entry found')
+
+# Test that line begins with IPv4 IP address
+if grep(@tbl,'^(\d{1,3}\.){3}\d{1,3}\s','f')
+ return setHcveResult('Adequate IPv4 entry')
+
+# Tests that line begins with IPv6 IP address, first that all eight groups are populated, then situations where groups that are all zero are omitted (two colons together).
+if grep(@tbl,'^([A-F\d]{1,4}(:[A-F\d]{1,4}){7}\s|\
+                :(:[A-F\d]{1,4}){1,6}\s|\
+                ([A-F\d]{1,4}:){1,5}(:[A-F\d]{1,4}){1,5}\s|\
+                ([A-F\d]{1,4}:){1,6}:\s)','f')
+ return setHcveResult('Adequate IPv6 entry')
+return setHcveResult('no correct entry found')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the ``/etc/hosts`` file contains a line with ``ip_address fully_qualified_domainname short_hostname``.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^Adequate" result="PASSED"><![CDATA[The ``/etc/hosts`` entry for the fully qualified domain name and host name is adequate.]]></sdp_action>
+<sdp_action condition="==" minimum="Cannot access /etc/hosts" result="FAILED"><![CDATA[Grant read permissions on ``/etc/hosts`` to the current user.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The fully qualified host name and host name are not configured correctly. Ensure that there is an IP address entry for the fully qualified domain name with the host name as one of the aliases.
+|*Return Value*|*Action"|
+|no entry found|No entry with the fully qualified domain name followed by the host name was found.|
+|no correct entry found|No entry beginning with an IP address with the fully qualified domain name followed by the host name was found.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00440" mode="VERIFY" name="Net Service Access?">
+<sdp_command type="RDA"><![CDATA[var $NET='/tmp/.oracle'
+call setHcveResult(cond(not(testDir('e',$NET)),'NonExist',\
+                        not(testDir('d',$NET)),'NoDir',\
+                        testDir('rwx',$NET),'PermOk','PermNotOk'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user who is logged in can create the ``/tmp/.oracle`` directory or can create files in it. The directory is used by the Net Service Listeners.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="NonExist|PermOk" result="PASSED"><![CDATA[The user who is logged in can create the ``/tmp/.oracle`` directory or he can create files in the directory.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoDir|The ``/tmp/.oracle`` is not a directory. Remove the ``.oracle`` entry in ``/tmp``.|
+|PermNotOk|The user who is logged in cannot create files in the ``/tmp/.oracle`` directory. Grant read, write, and execute permissions on this directory to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00500" mode="VERIFY" name="Kernel Parameters">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A00200" minimum="Certified$" result="SKIPPED" value="Not on an adequate HP-UX system"><![CDATA[This rule applies to adequate HP-UX Operating Systems only.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_ARC,$MEM
+if !or(loadCommand('/usr/sbin/kctune'),\
+       loadCommand('/usr/sbin/kmtune'),\
+       loadFile('/stand/system'))
+ return setHcveResult('NoAccess')
+
+macro hx2dec
+{var ($hex) = @arg
+ var %tbl = ('0',0,'1',1,'2',2,'3',3,'4',4,'5',5,'6',6,'7',7,'8',8,'9',9,\
+             'A',10,'B',11,'C',12,'D',13,'E',14,'F',15)
+ var $res = 0
+ loop $chr (split('',uc($hex)))
+  var $res = expr('+',expr('*',$res,16),$tbl{$chr})
+}
+
+macro rpl_nam
+{var ($str) = @arg
+
+ var $cnt = 8
+ while match($str,'\b([A-Za-z_]+)\b')
+ {var ($nam) = last
+  var $val = field('\s+',1,grepLastFile(concat('^',quote($nam)),'fi'))
+  var $str = replace($str,concat('\b',quote($nam),'\b'),\
+                          concat('(',nvl($val, 0),')'),true)
+  decr $cnt
+  break !$cnt
+ }
+ return compute($str)
+}
+
+var @par = ('maxdsiz=3221225472',\
+            'maxssiz=67108864')
+
+if match($OS_ARC,'PA-RISC')
+{loop $par (@par)
+ {var ($nam,$val) = split('=',$par,2)
+  var ($val,$exp) = split('\|',$val,2)
+  var $cur = field('\s+',1,grepLastFile(concat('^',quote($nam)),'fi'))
+  if !length($cur)
+   call push(@tbl,concat('[',$nam,'] undef'))
+  else
+  {if match($cur,'^0X',true)
+    var $cur = hx2dec($cur)
+   if match($cur,'\b[A-Za-z_]+\b')
+   {var $cur = rpl_nam($cur)
+    if !length($cur)
+    {call push(@tbl,concat('[',$nam,'] too complex'))
+     next
+    }
+   }
+   if expr('<',$cur,$val)
+    call push(@tbl,concat('[',$nam,'=',$cur,'] too small'))
+  }
+ }
+}
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'All Set'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the kernel parameters are set to values greater than or equal to the recommended values. The recommended values are as follows:
+maxdsiz=3221225472
+maxssiz=67108864
+]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" maximum="N" minimum="All Set" result="PASSED"><![CDATA[All kernel parameters are set correctly.]]></sdp_action>
+<sdp_action condition="==" minimum="NoAccess" result="FAILED"><![CDATA[You do not have access to ``/stand/system``.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Not Certified OS|You must use one of the listed certified operating systems.|
+|... undef|Some kernel parameters are not set. Ensure they are set.|
+|... too small|Set the value of the kernel parameters listed to the correct value.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00600" mode="RECORD" name="ApplTierDirectory">
+<sdp_command type="PROMPT" default="" variable="$APP_TIER_DIR"><![CDATA[Planned application tier installation directory]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user for the planned directory of the application tier of the Oracle E-Business Suite Release 11i (11.5.10.2).]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A00610" mode="VERIFY" name="A_T Valid?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00600" minimum="RECORD" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a planned directory for application tier.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+call setHcveResult(cond(\
+  not($APP_TIER_DIR),             'ATNotSpecified',\
+  not(testDir('d',$APP_TIER_DIR)),'ATnotvalid',\
+  not(testDir('l',$APP_TIER_DIR)),'ATexists',\
+                                  'ATsymlink'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the directory for the installation of the application tier (A_T) of the Oracle E-Business suite R11i (11.5.10.2).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="ATexists" result="PASSED"><![CDATA[The application tier installation directory exists. No action required]]></sdp_action>
+<sdp_action condition="==" minimum="ATNotSpecified" result="SKIPPED"><![CDATA[The application tier installation directory was not specified. No action required]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[ALERT:
+You did not specify a valid application tier installation directory. Ensure that you provided the correct location or that this directory is created and then run this script again.
+|*Return Value*|*Action*|
+|ATnotvalid|Ensure that the application tier directory is a valid directory.|
+|ATsymlink|Ensure that the specified application tier directory is not a symbolic link.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00620" mode="VERIFY" name="A_T Permissions OK?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00610" minimum="PASSED" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a valid application tier directory]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+call setHcveResult(cond(\
+  not(testDir('r',$APP_TIER_DIR)),'NoReadPerm',\
+  not(testDir('w',$APP_TIER_DIR)),'NoWritePerm',\
+  not(testDir('x',$APP_TIER_DIR)),'NoExecutePerm',\
+                                  'CorrectPerms'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the user has the correct privileges to install the application tier (A_T) of the Oracle E-Business Suite Release 11i (11.5.10.2).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="CorrectPerms" result="PASSED"><![CDATA[The permissions for the application tier directory are correct. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|NoReadPerm|The install user has no read permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|
+|NoWritePerm|The install user has no write permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|
+|NoExecutePerm|The install user has no execute permissions. Ensure that the install user has read, write, and execute permissions for the application tier home directory.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00630" mode="VERIFY" name="A_T Disk Space">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00610" minimum="PASSED" result="SKIPPED" value="Unspecified A_T"><![CDATA[You did not specify a valid application tier directory.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $APP_TIER_DIR
+var $dsk = get_df($APP_TIER_DIR)
+call setHcveResult(cond(and(isNumber($dsk),\
+                            expr('>=',$dsk,27262976)),\
+                   'Available','NotAvailable'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks if there is sufficient disk space to install the application tier of the Oracle E-Business Suite Release 11i (11.5.10.2). At least 26GB are required.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[There is sufficient disk space to install the application tier of the Oracle E-Business Suite Release 11i (11.5.10.2) in the directory. No action is required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[There is insufficient disk space to install the application tier of the Oracle E-Business Suite Release 11i (11.5.10.2). You need at least 26 GB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A00640" mode="VERIFY" name="Space in tmp">
+<sdp_command type="RDA"><![CDATA[var $tmp = nvl(getEnv('TMP'),getEnv('TMPDIR'),'/tmp')
+call setHcveResult(cond(\
+  not(testDir('d',$tmp)),         'Cannot access tmp directory',\
+  expr('>=',get_df($tmp),1048576),'Available',\
+                                  'Need at least 1GB'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the system has enough temporary space. Initially Oracle Rapid Install (RI) checks the ``TMP`` and ``TMPDIR`` environment variables to locate the temporary directory. If these environment variables do not exist, then RI uses ``/tmp``. The minimum requirement is 1 GB.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Available" result="PASSED"><![CDATA[The system has enough temporary space.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 1 GB|Increase the available temporary space to 1 GB or more. You can define ``TMP`` or ``TMPDIR`` to point to a directory with 1 GB available space.|
+|Cannot access tmp directory|Grant read, write, and execute permissions on ``/tmp`` or directories in ``TMP`` or ``TMPDIR`` to the user who is logged in.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+</sdp_group>
+</sdp_content>
+</sdp_diaglet>

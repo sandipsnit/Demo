@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" lang="fr">
+  <head>
+
+<!-- LOCALIZATION RELATED INFORMATION -->
+<meta name="LOC_PROJ_ID" content="WLPF8.1" />
+<meta name="LOC_OWNER" content="BEAJ" />
+<meta name="LOC_STATUS" content="READY!" />
+<meta name="LOC_COMMENT" content="LOC_COMMENT" />
+<meta name="LOC_US_REV" content="" />
+<meta name="LOC_US_CHANGE" content="" />
+<meta name="LOC_US_SRCFILE" content="" />
+<!-- LOCALIZATION RELATED INFORMATION -->
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Style-Type" content="text/css" />
+    <meta name="GENERATOR" content="Quadralay WebWorks AutoMap 2003 Platinum Edition for FrameMaker 8.6.6577.0" />
+    <meta name="TEMPLATEBASE" content="BEA_WWH_Template_V1.0" />
+    <meta name="LASTUPDATED" content="03/06/10 00:59:13" />
+    <title>Page Configuration de la sélection d'opération</title>
+    <link rel="StyleSheet" href="edocs.css" type="text/css" />
+<script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/context.js"></script>
+  <script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/towwhdir.js"></script>
+  <script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/wwhpagef.js"></script>
+
+  <script type="text/javascript" language="JavaScript1.2">
+   <!--
+    // Set reference to top level help frame
+    //
+    var  WWHFrame = WWHGetWWHFrame("");
+
+if (top.location == self.location )
+    self.location = "index.html?href=proxyserviceCreateProxyServiceOperationSelectionConfigurationPage.html"
+   // -->
+  </script>
+
+    <script type="text/javascript" language="JavaScript1.2" src="scripts/expand.js"></script>
+  </head>
+
+  <body onload="WWHUpdate();" onunload="WWHUnload();" onkeydown="WWHHandleKeyDown((document.all||document.getElementById||document.layers)?event:null);" onkeypress="WWHHandleKeyPress((document.all||document.getElementById||document.layers)?event:null);" onkeyup="WWHHandleKeyUp((document.all||document.getElementById||document.layers)?event:null);">
+
+<a name="wp1265459"> </a><h3 class="pHeading2">
+Page Configuration de la sélection d'opération
+</h3>
+<a name="wp1316683"> </a><p class="pBody">
+La page <b class="cBold">Créer/Modifier un service proxy - Configuration de la sélection d'opération</b> est l'une des pages destinées à la création et à la modification de services proxy, décrites dans les rubriques <a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateAndConfigureProxyServices.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateAndConfigureProxyServices.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">Création et configuration de services proxy</span></a> et <a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceViewandModifyProxyServices.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceViewandModifyProxyServices.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">Modification des configurations des services proxy</span></a>. Cette page apparaît uniquement si le service que vous créez contient des opérations.
+</p>
+<a name="wp1316690"> </a><p class="pBody">
+Cette page permet d'imposer la conformité WS-I (pour les services&nbsp;SOAP&nbsp;1.1 uniquement) et de choisir l'algorithme de sélection à utiliser pour déterminer l'opération appelée par ce service proxy. Cette option est disponible uniquement pour les services SOAP et XML définis à partir d'une ressource WSDL. 
+</p>
+<a name="wp1316691"> </a><p class="pBody">
+La spécification WSDL définit un algorithme par défaut pour déterminer l'opération appelée en fonction du type du message SOAP reçu. Cependant, dans certains cas (par exemple, problèmes de performances, problèmes de signature/cryptage ou si l'algorithme par défaut n'est pas applicable), vous devez sélectionner l'opération en fonction d'autres moyens.
+</p>
+<a name="wp1304093"> </a><p class="pBody">
+Oracle&nbsp;Service&nbsp;Bus propose d'autres algorithmes. Ils suivent tous le même modèle et sont basés sur l'évaluation d'une expression pour obtenir une valeur qui est ensuite utilisée pour rechercher l'opération correspondante dans une table statique.
+</p>
+<a name="wp1304094"> </a><p class="pBody">
+Oracle&nbsp;Service&nbsp;Bus est généralement très tolérant s'il manque des données dans un message entrant, ce qui fait que l'opération ne peut pas être déterminée, ou s'il a des données qui ne correspondent pas à une opération valide. Pour ces deux situations, le champ <code class="cCode">$operation</code> est vide. Au lieu de rejeter tous les messages de ce type, Oracle&nbsp;Service&nbsp;Bus n'initialise pas la variable de l'opération dans le contexte mais continue malgré tout à traiter le message.
+</p>
+<a name="wp1304095"> </a><p class="pBody">
+Cependant, des exigences de sécurité sont imposées si le service proxy est basé sur WSDL et si au moins l'une des conditions suivantes est vraie&nbsp;:
+</p>
+<div class="pSmartList1Bullet"><ul class="pSmartList1Bullet">
+<a name="wp1304096"> </a><li>Le WSDL a une stratégie de sécurité WS et le proxy est un intermédiaire actif.</li>
+<a name="wp1304097"> </a><li>Le proxy dispose d'une authentification personnalisée au niveau du message (jeton personnalisé ou nom utilisateur/mot de passe).</li>
+</ul></div>
+<a name="wp1304098"> </a><p class="pBody">
+Si ces conditions sont remplies, une vérification d'exécution est réalisée pour s'assurer que l'algorithme de sélection de l'opération renvoie un nom d'opération valide. Si la sélection de l'opération renvoie NULL ou une opération qui n'est pas dans le WSDL, le message est rejeté et une erreur survient.
+</p>
+<a name="wp1292487"> </a><p class="pBody">
+Le<a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateProxyServiceOperationSelectionConfigurationPage.html#wp1316619');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateProxyServiceOperationSelectionConfigurationPage.html#wp1316619', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink"> tableau&nbsp;19-16</span></a> explique comment utiliser la page <b class="cBold">Créer/Modifier un service proxy - Configuration de la sélection d'opération</b>.
+</p>
+<a name="wp1316663"> </a><p class="pBodyRelative">
+</p>
+<div align="left">
+<table class="table" border="1" cellpadding="3" cellspacing="0" id="wp1316619table1316613">
+  <caption><a name="wp1316619"></a>Tableau&nbsp;19-16 Page Créer/Modifier un service proxy - Configuration de la sélection d'opération
+
+
+</caption>
+  <tr bgcolor="#CCCCCC" align="center" valign="top">    <th scope="col"><a name="wp1316623"> </a><div class="pCellHeading">
+Option
+</div>
+</th>
+    <th scope="col"><a name="wp1316625"> </a><div class="pCellHeading">
+Procédure
+</div>
+</th>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316627"> </a><div class="pCellBody">
+Imposer la conformité WS-I
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316629"> </a><div class="pCellBody">
+Pour les services&nbsp;SOAP&nbsp;1.1 uniquement&nbsp;: 
+</div>
+<a name="wp1316630"> </a><div class="pCellBody">
+Cochez cette case si vous souhaitez indiquer si le service est conforme au profil de base défini par la Web Services Interoperability Organization.
+</div>
+<a name="wp1316631"> </a><div class="pCellBody">
+Lorsqu'un service est conforme à la WS-I, des vérifications sont effectuées sur les messages envoyés vers et depuis ce service. Pour les proxies, des vérifications sont effectuées sur les messages de demande reçus par le proxy. Pour les services appelés (les services appelés par un proxy via une action d'appel de service ou un noeud de routage), des vérifications sont effectuées sur les messages de réponse reçus de ces services. C'est la propriété de conformité WS-I du service appelé et non le proxy qui détermine la réalisation de vérifications sur les messages reçus à partir du service appelé. Si vous indiquez des tests de conformité WS-I pour un service appelé, le flux de messages génère une erreur pour les erreurs de réponse. 
+</div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316633"> </a><div class="pCellBody">
+Algorithme de sélection
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316635"> </a><div class="pCellBody">
+Sélectionnez-en un parmi les suivants et effectuez les étapes supplémentaires nécessaires&nbsp;:
+</div>
+<div class="pSmartList1TableBullet"><ul class="SmartList1TableBullet">
+<a name="wp1316636"> </a><li><b class="cBold">En-tête de transport&nbsp;:</b> sélectionnez cet algorithme pour définir l'en-tête de transport contenant la valeur de recherche. Ensuite&nbsp;:</li>
+<div class="pSmartList2TableBullet"><ul class="pSmartList2TableBullet">
+<a name="wp1316637"> </a><li>Dans le champ <b class="cBold">En-tête</b>, entrez l'en-tête de transport qui extrait la valeur utilisée comme clé pour sélectionner l'opération appelée.</li>
+<a name="wp1316638"> </a><li>Dans le champ <b class="cBold">Mise en correspondance d'opération</b>, indiquez la valeur pour chaque opération dans le champ <b class="cBold">Valeur</b>. Cette valeur est utilisée comme clé de l'opération. </li>
+</ul></div>
+<a name="wp1316639"> </a><li><b class="cBold">En-tête SOAPAction&nbsp;:</b> sélectionnez cet algorithme pour indiquer que la mise en correspondance de l'opération doit être faite automatiquement à partir du WSDL associé à ce service proxy.</li>
+<a name="wp1316640"> </a><li><b class="cBold">Adressage WS&nbsp;:</b> sélectionnez cet algorithme pour indiquer que la valeur de recherche est contenue dans la balise d'adressage WS <code class="cCode">Action</code> située dans les en-têtes SOAP du message SOAP. Sous le champ <b class="cBold">Mise en correspondance d'opération</b>, indiquez ensuite la valeur pour chaque opération dans le champ <b class="cBold">Valeur</b>. Cette valeur est utilisée comme clé de l'opération.</li>
+<a name="wp1316641"> </a><li><b class="cBold">En-tête SOAP&nbsp;:</b> sélectionnez cet algorithme pour définir l'expression XPath à évaluer dans les en-têtes SOAP. Cela vous permet d'obtenir la valeur de recherche. Ensuite&nbsp;:</li>
+<div class="pSmartList2TableBullet"><ul class="pSmartList2TableBullet">
+<a name="wp1316642"> </a><li>Dans le champ <b class="cBold">Expression XPath</b>, indiquez l'expression XPath qui extrait la valeur utilisée comme clé pour sélectionner l'opération appelée.</li>
+<a name="wp1316643"> </a><li>Dans le champ <b class="cBold">Mise en correspondance d'opération</b>, indiquez la valeur pour chaque opération dans le champ <b class="cBold">Valeur</b>. Cette valeur est utilisée comme clé de l'opération. </li>
+</ul></div>
+<a name="wp1316644"> </a><li><b class="cBold">Type de corps SOAP&nbsp;:</b> il s'agit de l'algorithme par défaut défini par la spécification WSDL pour calculer l'opération appelée en fonction du type de message SOAP reçu.</li>
+<a name="wp1316645"> </a><p class="pTableListPara">
+Si le service proxy est configuré pour un scénario pass-through de sécurité de service Web avec un corps crypté, vous ne pouvez pas sélectionner cet algorithme. Le même avertissement s'applique aux en-têtes SOAP pass-through cryptés.
+</p>
+<a name="wp1316646"> </a><p class="pTableListPara">
+Si vous avez un WSDL qui dispose de deux opérations avec le même message d'entrée, ne sélectionnez pas cet algorithme pour des opérations, car l'opération ne peut pas être identifiée de manière unique en examinant le message d'entrée.
+</p>
+<a name="wp1316647"> </a><li><b class="cBold">Type de données traitées&nbsp;:</b> disponible uniquement pour les services XML basés sur un port ou une liaison WSDL.</li>
+</ul></div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316649"> </a><div class="pCellBody">
+Nom d'en-tête 
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316651"> </a><div class="pCellBody">
+Cette option est disponible uniquement lorsque l'option <b class="cBold">Algorithme de sélection</b> est définie sur <b class="cBold">En-tête de transport</b>.
+</div>
+<a name="wp1316652"> </a><div class="pCellBody">
+Entrez l'en-tête de transport qui extrait la valeur utilisée comme clé pour sélectionner l'opération appelée.
+</div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316654"> </a><div class="pCellBody">
+Expression XPath
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316656"> </a><div class="pCellBody">
+Cette option est disponible uniquement lorsque l'option <b class="cBold">Algorithme de sélection</b> est définie sur <b class="cBold">En-tête SOAP</b>.
+</div>
+<a name="wp1316657"> </a><div class="pCellBody">
+Indiquez l'expression XPath qui extrait la valeur utilisée comme clé pour sélectionner l'opération appelée.
+</div>
+</td>
+</tr>
+  <tr align="left" valign="top">    <td class="table" scope="row"><a name="wp1316659"> </a><div class="pCellBody">
+Mise en correspondance d'opération
+</div>
+</td>
+    <td class="table" scope="row"><a name="wp1316661"> </a><div class="pCellBody">
+Cette option est disponible uniquement lorsque l'option <b class="cBold">Algorithme de sélection</b> est définie sur <b class="cBold">En-tête de transport</b>, <b class="cBold">Adressage WS</b> ou <b class="cBold">Type de corps SOAP</b>.
+</div>
+<a name="wp1316662"> </a><div class="pCellBody">
+Indiquez la valeur pour chaque opération dans le champ <b class="cBold">Valeur</b>. Cette valeur est utilisée comme clé de l'opération.
+</div>
+</td>
+</tr>
+</table>
+</div>
+<p class="pBodyRelative">
+
+</p>
+<a name="wp1316672"> </a><p class="pBody">
+<b class="cBold"> Après avoir fini </b>
+</p>
+<a name="wp1316673"> </a><p class="pBody">
+Cliquez sur <b class="cBold">Suivant</b> pour poursuivre la configuration du service sur la page suivante ou cliquez sur <b class="cBold">Dernier</b> pour vérifier et enregistrer cette configuration sur la page <b class="cBold">Créer/Modifier un service proxy : </b><a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateProxyServiceSummaryPage.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateProxyServiceSummaryPage.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">Récapitulatif</span></a>.
+</p>
+
+
+
+  <script type="text/javascript" language="JavaScript1.2">
+   <!--
+    // Clear related topics
+    //
+    WWHClearRelatedTopics();
+
+   // -->
+  </script>
+
+
+<script type="text/javascript" language="JavaScript1.2">
+   <!--
+function WWHDefineBEALogoLink()
+{
+return "http://www.bea.com";
+}
+    document.write(WWHRelatedTopicsDivTag() + WWHPopupDivTag() + WWHALinksDivTag());
+   // -->
+  </script>
+
+  </body>
+</html>

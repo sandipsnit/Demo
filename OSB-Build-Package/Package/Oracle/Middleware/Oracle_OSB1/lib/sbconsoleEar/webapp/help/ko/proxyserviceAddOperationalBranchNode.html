@@ -1,0 +1,106 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+  <head>
+
+<!-- LOCALIZATION RELATED INFORMATION -->
+<meta name="LOC_PROJ_ID" content="WLPF8.1" />
+<meta name="LOC_OWNER" content="BEAJ" />
+<meta name="LOC_STATUS" content="READY!" />
+<meta name="LOC_COMMENT" content="LOC_COMMENT" />
+<meta name="LOC_US_REV" content="" />
+<meta name="LOC_US_CHANGE" content="" />
+<meta name="LOC_US_SRCFILE" content="" />
+<!-- LOCALIZATION RELATED INFORMATION -->
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Style-Type" content="text/css" />
+    <meta name="GENERATOR" content="Quadralay WebWorks AutoMap 2003 Platinum Edition for FrameMaker 8.6.6577.0" />
+    <meta name="TEMPLATEBASE" content="BEA_WWH_Template_V1.0" />
+    <meta name="LASTUPDATED" content="03/06/10 00:59:21" />
+    <title>메시지 흐름에 작업 분기 추가</title>
+    <link rel="StyleSheet" href="edocs.css" type="text/css" />
+<script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/context.js"></script>
+  <script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/towwhdir.js"></script>
+  <script type="text/javascript" language="JavaScript1.2" src="wwhdata/common/wwhpagef.js"></script>
+
+  <script type="text/javascript" language="JavaScript1.2">
+   <!--
+    // Set reference to top level help frame
+    //
+    var  WWHFrame = WWHGetWWHFrame("");
+
+if (top.location == self.location )
+    self.location = "index.html?href=proxyserviceAddOperationalBranchNode.html"
+   // -->
+  </script>
+
+    <script type="text/javascript" language="JavaScript1.2" src="scripts/expand.js"></script>
+  </head>
+
+  <body onload="WWHUpdate();" onunload="WWHUnload();" onkeydown="WWHHandleKeyDown((document.all||document.getElementById||document.layers)?event:null);" onkeypress="WWHHandleKeyPress((document.all||document.getElementById||document.layers)?event:null);" onkeyup="WWHHandleKeyUp((document.all||document.getElementById||document.layers)?event:null);">
+
+<a name="wp1274745"> </a><h2 class="pHead1Split">
+메시지 흐름에 작업 분기 추가
+</h2>
+<a name="wp1274746"> </a><p class="pBody">
+메시지 흐름이 WSDL(Web Services Description Language) 기반 프록시 서비스를 정의하면 작업별 처리가 필요합니다. 수동으로 작업에 기반한 분기 노드를 구성하는 대신 Oracle Service Bus는 작업에 따라 자동으로 분기되는 최소 구성 분기 노드를 제공합니다. 즉, 메시지 흐름에서 작업 분기 노드를 생성하면 Oracle Service Bus 관리 콘솔이 분기 노드 구성 페이지에서 해당 작업을 제공하기 때문에 신속하게 WSDL에서 정의한 작업에 기반한 분기 로직을 작성할 수 있습니다.
+</p>
+<a name="wp1272646"> </a><p class="pBody">
+분기 노드를 사용하면 여러 개의 가능한 경로 중 정확히 하나의 경로로 처리를 진행할 수 있습니다. 분기는 XPath 기반 스위치 테이블을 기반으로 합니다. 테이블의 각 분기는 단일 XPath 표현식에 대해 <code class="cCode">&lt;500</code>과 같이 메시지 흐름이 내림차순으로 평가되는 조건을 지정합니다(예: <code class="cCode">$body</code>의 <code class="cCode">./ns: PurchaseOrder/ns:totalCost</code>). 먼저 만족되는 조건에 따라 다음에 오는 분기가 결정됩니다. 만족하는 분기 조건이 없는 경우 기본 분기가 옵니다. 분기 노드는 메시지 흐름에서 기본 분기를 포함하여 각 분기에 대해 하나씩, 여러 개의 하위 항목을 가질 수 있습니다.
+</p>
+<a name="wp1272599"> </a><p class="pBody">
+<b class="cBold">시작하기 전에</b>
+</p>
+<a name="wp1272886"> </a><p class="pBody">
+이 지침에서는 <a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateEditViewMessageFlows.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateEditViewMessageFlows.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">메시지 흐름 생성, 편집 및 보기</span></a>에 설명된 것처럼 <b class="cBold">메시지 흐름 편집</b> 페이지에서 메시지 흐름을 편집하고 있다고 가정합니다.
+</p>
+<a name="wp1272890"> </a><p class="pBody">
+<b class="cBold">메시지 흐름에 작업 분기를 추가하려면 다음을 수행합니다.</b>
+</p>
+<div class="pSmartList1"><ol type="1" class="pSmartList1">
+<a name="wp1268762"> </a><li><b class="cBold">파이프 라인 쌍 노드</b> 아이콘 또는 <b class="cBold">분기 노드</b> 아이콘을 누른 다음 <b class="cBold">작업 분기 생성</b>을 누릅니다. 작업 분기 노드가 추가되고 삽입된 분기 노드 다음의 기존 노드가 새 작업 분기 노드의 기본 분기로 이동합니다.</li>
+<a name="wp1245983"> </a><li>기본 이름을 변경하고 분기 노드에 대한 설명을 추가하려면 다음 작업을 수행합니다.</li>
+<div class="pSmartList2"><ol type="a" class="pSmartList2">
+<a name="wp1245984"> </a><li><b class="cBold">작업 분기</b> 아이콘을 누른 다음 <b class="cBold">이름 및 주석</b> <b class="cBold">편집</b>을 누릅니다.</li>
+<a name="wp1261936"> </a><li>원하는 대로 이름 및 설명을 변경합니다. </li>
+<a name="wp1262190"> </a><li><b class="cBold">저장</b>을 누릅니다.</li>
+</ol></div>
+<a name="wp1262194"> </a><li>분기 정의를 추가하려면 <b class="cBold">작업 분기</b> 아이콘을 누른 다음 <b class="cBold">분기</b> <b class="cBold">편집</b>을 누릅니다. <b class="cBold">분기 노드 편집</b> 페이지가 표시됩니다.</li>
+<a name="wp1262195"> </a><li><b class="cBold">작업 분기 정의</b> 패널에서 서비스 작업을 선택합니다.</li>
+<a name="wp1262260"> </a><li>선택적으로 <b class="cBold">옵션</b>에서 다음을 수행합니다. </li>
+<div class="pSmartList2Bullet"><ul class="pSmartList2Bullet">
+<a name="wp1262264"> </a><li>새 분기 정의를 이 분기 노드에 추가하려면 <b class="cBold">새 분기 추가</b>를 누릅니다.</li>
+<a name="wp1262268"> </a><li>분기 정의를 삭제하려면 <b class="cBold">이 분기 삭제</b>를 누릅니다.</li>
+<a name="wp1262272"> </a><li><b class="cBold">분기 위로 이동</b> 또는 <b class="cBold">분기 아래로 이동</b>을 눌러 분기 정의 위치를 변경합니다. 이 옵션은 둘 이상의 분기 정의가 존재하는 경우에만 표시됩니다.</li>
+</ul></div>
+<a name="wp1263206"> </a><li><b class="cBold">저장</b>을 누릅니다. </li>
+<a name="wp1263220"> </a><li><b class="cBold">메시지 흐름 편집</b> 페이지에서 <a href="javascript:WWHClickedPopup('consolehelp', 'proxyserviceCreateEditViewMessageFlows.html');" onMouseOut="WWHHidePopup();" onMouseOver="WWHShowPopup('consolehelp', 'proxyserviceCreateEditViewMessageFlows.html', (document.all||document.getElementById||document.layers)?event:null);"><span class="cHyperlink">메시지 흐름 생성, 편집 및 보기</span></a>에 설명된 대로 메시지 흐름을 계속해서 생성할 수 있습니다.</li>
+<a name="wp1263224"> </a><li><b class="cBold">저장</b>을 눌러 현재 세션에서 갱신을 커밋합니다. </li>
+<a name="wp1273594"> </a><li>세션을 종료하고 구성을 런타임에 배치하려면 <span style="font-weight: bold">변경 센터</span>에서 <span style="font-weight: bold">활성화</span>를 누릅니다. </li>
+</ol></div>
+
+
+
+  <script type="text/javascript" language="JavaScript1.2">
+   <!--
+    // Clear related topics
+    //
+    WWHClearRelatedTopics();
+
+   // -->
+  </script>
+
+
+<script type="text/javascript" language="JavaScript1.2">
+   <!--
+function WWHDefineBEALogoLink()
+{
+return "http://www.bea.com";
+}
+    document.write(WWHRelatedTopicsDivTag() + WWHPopupDivTag() + WWHALinksDivTag());
+   // -->
+  </script>
+
+  </body>
+</html>

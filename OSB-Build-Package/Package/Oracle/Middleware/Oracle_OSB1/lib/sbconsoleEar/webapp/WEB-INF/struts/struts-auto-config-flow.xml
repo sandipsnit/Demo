@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean name="EditFlowForm" type="com.bea.alsb.console.resources.flow.forms.EditFlowForm" />
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+
+	<action-mappings>
+        <!--
+            Flows
+        -->
+
+        <action path="/ViewAllFlows"
+                type="com.bea.alsb.console.resources.flow.actions.ViewAllFlowsAction" >
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/flow/ViewAllFlows.jsp"/>
+        </action>
+
+        <action path="/ViewAllFlowsPgOrSort"
+                type="org.apache.struts.actions.ForwardAction"
+                parameter="jsp/resources/flow/ViewAllFlows.jsp" />
+
+        <action path="/ManageFlows"
+                type="com.bea.alsb.console.resources.flow.actions.ManageFlowsAction">
+            <forward name="add"
+                     contextRelative="true"
+                     path="jsp/resources/flow/EditFlow.jsp" />
+            <forward name="edit"
+                     contextRelative="true"
+                     path="jsp/resources/flow/EditFlow.jsp" />
+            <forward name="deleted"
+                     contextRelative="true"
+                     path="jsp/resources/flow/ViewAllFlows.jsp" />
+            <forward name="view"
+                     contextRelative="true"
+                     path="jsp/resources/flow/ViewFlow.jsp"/>
+            <forward name="scPolicy"
+                     contextRelative="true"
+                     path="jsp/resources/flow/EditFlowSchedulerPolicy.jsp"/>
+        </action>
+
+        <action path="/EditFlow"
+                type="com.bea.alsb.console.resources.flow.actions.EditFlowAction"
+                name="EditFlowForm"
+                scope="request"
+                attribute="actionform"
+                validate="true"
+                input="error" >
+
+            <forward name="error"
+                     contextRelative="true"
+                     path="jsp/resources/flow/EditFlow.jsp" />
+
+        </action>
+
+        <action path="/EditFlowOpSettings"
+                type="com.bea.alsb.console.resources.flow.actions.EditFlowOpSettingsAction" >
+
+            <forward name="stay"
+                     contextRelative="true"
+                     path="jsp/resources/flow/ViewFlow.jsp" />
+
+        </action>
+
+        <action path="/ViewFlow"
+                type="com.bea.alsb.console.resources.flow.actions.ViewFlowAction">
+            <forward name="success"
+                     contextRelative="true"
+                     path="jsp/resources/flow/ViewFlow.jsp"/>
+        </action>
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                multipartClass="com.bea.alsb.console.controller.MultipartRequestHandler"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

@@ -1,0 +1,76 @@
+<!--  $Header: mas_group_resource_usage_metric.xmlp 31-mar-2008.20:40:01 vyadalam Exp $ -->
+
+<!-- 
+ Copyright (c) 2008, Oracle. All rights reserved.  
+
+   NAME
+     mas_group_resource_usage_metric.xmlp - Resource usage for groups
+
+   DESCRIPTION
+     This file contains a general resource usage metrics for groups of system 
+     components
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   vyadalam    03/20/08 - 
+   klmichae    03/14/08 - Creation
+
+-->
+
+  <Metric NAME="ResourceUsage_by_component" TYPE="TABLE">
+      <Display>
+         <Label NLSID="component_ru">Resource Usage by Component</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="component" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="component_ru_component">Name of the Component</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="status" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_status">Status</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="cpu.component" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_cpu_component">CPU Usage (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memory.component" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory">Memory Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="memoryPercentage.component" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_memory_percent">Memory Usage (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+          <ColumnDescriptor NAME="heap.component" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_heap">Heap Usage (MB)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="startTime.value" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="component_ru_start_time">Start Time</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="serviceURL" SCOPE="ASSOCTGT" ASSOCIATION_NAME="farm">serviceURL</Property>
+         <Property NAME="UserName" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">UserName</Property>
+         <Property NAME="password" SCOPE="ASSOCTGT" OPTIONAL="TRUE" ASSOCIATION_NAME="farm">password</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">oracle_webcache_mas_group:ResourceUsage_by_component</Property>
+         <Property NAME="topologyNodeID" SCOPE="INSTANCE">topologyNodeID</Property>
+         <Property NAME="topologyNodeID.parameter" SCOPE="INSTANCE">topologyNodeID</Property>
+         <Property NAME="MetricService" SCOPE="GLOBAL">true</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">component;status;cpu.component;memory.component;memoryPercentage.component;heap.component;startTime.value</Property>
+         <Property NAME="admlMap" SCOPE="GLOBAL">
+           <![CDATA[<argument type="java.util.Map"><value><item><key>topologyNodeID.parameter</key><value type="java.lang.String">%topologyNodeID.parameter%</value></item></value></argument>]]>
+         </Property>
+      </QueryDescriptor>
+   </Metric>

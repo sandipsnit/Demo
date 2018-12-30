@@ -1,0 +1,520 @@
+<!--  $Header: oracle_bi_sch.xml 22-aug-2007.02:15:47 ckannusa Exp $ -->
+<!-- 
+ Copyright (c) 2007, Oracle. All rights reserved.  
+
+   NAME
+     oracle_bi_sch.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   ckannusa    08/22/07 - 
+   vverneka    08/10/07 - 
+   vdwaram     07/03/07 - 
+   vverneka    06/19/07 - 
+   vverneka    06/19/07 - 
+   vdwaram     06/16/07 - 
+   ckannusa    06/06/07 - 
+   vverneka    05/22/07 - Added Failed Jobs and Next Scheduled Jobs metrics
+   ckannusa    05/14/07 - Add ECM Metric
+   vdwaram     05/08/07 - 
+   vverneka    04/04/07 - Creation
+
+-->
+
+
+
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="1.0" TYPE="oracle_bi_sch"
+                CATEGORY_PROPERTIES="VersionCategory;DBEnabled">
+   <Display>
+      <Label NLSID="oracle_bi_sch_name">Oracle BI Scheduler</Label>
+      <ShortName NLSID="oracle_bi_sch_short_name">oracle_bi_sch</ShortName>
+      <Description NLSID="oracle_bi_sch_description">Oracle BI Scheduler</Description>
+   </Display>
+   <Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_sch_resp">Response</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="oracle_bi_sch_resp_status">Status</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+         <Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/getStatus.pl</Property>
+         <Property NAME="args" SCOPE="GLOBAL">%BIHome%/server/Bin/nqscheduler</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Resources" TYPE="TABLE">
+      <Display>
+         <Label NLSID="RESOURCES">Resources</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="CPU" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="CPU">CPU (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Memory" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="MEMORY">Memory (KB)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+         <Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/procResUsage.pl</Property>
+         <Property NAME="args" SCOPE="GLOBAL">"%BIHome%" "/server/Bin/nqscheduler"</Property>
+      </QueryDescriptor>
+   </Metric>
+
+   <Metric NAME="Jobs" TYPE="TABLE">
+<ValidIf>
+      <CategoryProp NAME="DBEnabled" CHOICES="1"/>
+    </ValidIf>
+
+      <Display>
+         <Label NLSID="oracle_bi_sch_jobs">Job Metrics</Label>
+      </Display>
+      <TableDescriptor>
+        <ColumnDescriptor NAME="totalNoOfJobs" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE" HELP="NO_HELP">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_sch_aggrTotalJobs">Total jobs</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="totalFailedJobs" TYPE="NUMBER" IS_KEY="FALSE" TRANSIENT="TRUE" HELP="NO_HELP">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_sch_aggrFailedJobs">Total failed jobs</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="noOfJobs" TYPE="NUMBER" IS_KEY="FALSE"
+                COMPUTE_EXPR="(totalNoOfJobs - _totalNoOfJobs) > 0 ? (totalNoOfJobs - _totalNoOfJobs) : 0">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_sch_totalJobs">Total jobs</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failedJobs" TYPE="NUMBER" IS_KEY="FALSE"
+                COMPUTE_EXPR="(totalFailedJobs - _totalFailedJobs) > 0 ? (totalFailedJobs - _totalFailedJobs) : 0">
+            <Display FOR_SUMMARY_UI="TRUE">
+               <Label NLSID="oracle_bi_sch_failedJobs">Failed jobs</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE" OPTIONAL="TRUE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                select max(c1), max(c2) from 
+		(
+                    select count(*) as c1, 0 as c2 from S_NQ_INSTANCE
+                        UNION ALL
+		    select 0 as c1, count(*) as c2 from S_NQ_INSTANCE where STATUS = '2'
+                ) a
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE" OPTIONAL="TRUE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE" OPTIONAL="TRUE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+   
+   <Metric NAME="Failed Jobs" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_sch_failedJobs">Failed Jobs</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="JobName" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_failedJobName">Job Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="JobId" TYPE="NUMBER" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="oracle_bi_sch_failedJobId">Job Id</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="InstanceId" TYPE="NUMBER" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="oracle_bi_sch_failedInstanceId">Instance Id</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="StartTime" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_failedJobStartTime">Start Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="EndTime" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_failedJobEndTime">End Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ErrorMsg" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_failedJobErrorMsg">Error Message</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="RelativeOrder" TYPE="NUMBER" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="oracle_bi_sch_failedJobErrorMsgRelativeOrder">Relative Order</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE" OPTIONAL="TRUE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+           <![CDATA[
+      select s_nq_job.NAME, s_nq_instance.job_id, s_nq_instance.instance_id, TO_CHAR(s_nq_instance.begin_ts, 'YYYY-MM-DD HH24:MI:SS'), TO_CHAR(s_nq_instance.end_ts, 'YYYY-MM-DD HH24:MI:SS'), s_nq_err_msg.ERROR_MSG_TEXT, s_nq_err_msg.RELATIVE_ORDER  from s_nq_instance, s_nq_job, s_nq_err_msg where s_nq_instance.JOB_ID = s_nq_job.JOB_ID and s_nq_instance.JOB_ID = s_nq_err_msg.JOB_ID and s_nq_instance.INSTANCE_ID = s_nq_err_msg.INSTANCE_ID and s_nq_instance.STATUS = '2' and s_nq_instance.begin_ts > sysdate-1
+]]> 
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE" OPTIONAL="TRUE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE" OPTIONAL="TRUE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="Scheduled Jobs" TYPE="TABLE">
+      <Display>
+         <Label NLSID="oracle_bi_sch_scheduledJobs">Scheduled Jobs</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="JobName" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_scheduledJobName">Job Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="JobId" TYPE="NUMBER"  IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="oracle_bi_sch_scheduledJobId">Job Id</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="UserId" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_scheduledJobUserId">User Id</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="NextRunTime" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_scheduledJobNextRunTime">Next Run Time</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="ScriptType" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_scheduledJobScriptType">Script Type</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="TimeZone" TYPE="STRING">
+            <Display>
+               <Label NLSID="oracle_bi_sch_scheduledJobTimeZone">Time Zone</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="SysTimeStamp" TYPE="STRING" HELP="NO_HELP">
+            <Display>
+               <Label NLSID="oracle_bi_sch_sysTimeStamp">SysTimeStamp</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE" OPTIONAL="TRUE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+           <![CDATA[
+      select NAME, JOB_ID, USER_ID, TO_CHAR(NEXT_RUNTIME_TS, 'YYYY-MM-DD HH24:MI:SS'), SCRIPT_TYPE, TZ_NAME, TO_CHAR(systimestamp, 'YYYY-MM-DD HH24:MI:SS') from S_NQ_JOB where NEXT_RUNTIME_TS > sysdate-1
+]]> 
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE" OPTIONAL="TRUE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE" OPTIONAL="TRUE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+
+   <Metric NAME="BIScheduler_Config" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_ORACLE_BI_SCH_CONFIG">
+      
+      <ColumnDescriptor NAME="PRODUCT_VERSION" COLUMN_NAME="PRODUCT_VERSION" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="ADMIN_NAME" COLUMN_NAME="ADMIN_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="BULK_FETCH_BUFF_SIZE"
+                        COLUMN_NAME="BULK_FETCH_BUFF_SIZE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CLI_TYPE" COLUMN_NAME="CLI_TYPE" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="CLUSTER_PORT" COLUMN_NAME="CLUSTER_PORT"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DSN" COLUMN_NAME="DSN" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="DEFAULT_SCRIPT_PATH"
+                        COLUMN_NAME="DEFAULT_SCRIPT_PATH" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="LOG_ALL_SQL_STMTS" COLUMN_NAME="LOG_ALL_SQL_STMTS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAX_EXEC_THREADS" COLUMN_NAME="MAX_EXEC_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MIN_EXEC_THREADS" COLUMN_NAME="MIN_EXEC_THREADS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="NUM_DB_CONNECTIONS"
+                        COLUMN_NAME="NUM_DB_CONNECTIONS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PART_OF_CLUSTER" COLUMN_NAME="PART_OF_CLUSTER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PAUSE_ON_STARTUP" COLUMN_NAME="PAUSE_ON_STARTUP"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POOL_TIMEOUT" COLUMN_NAME="POOL_TIMEOUT"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="POOL_USERNAME" COLUMN_NAME="POOL_USERNAME"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PORT_STRING" COLUMN_NAME="PORT_STRING"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PURGE_INSTDAYS" COLUMN_NAME="PURGE_INSTDAYS"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="PURGE_INTL_MINUTES"
+                        COLUMN_NAME="PURGE_INTL_MINUTES" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SCH_SCRIPT_PATH" COLUMN_NAME="SCH_SCRIPT_PATH"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TARGET_TYPE" COLUMN_NAME="TARGET_TYPE"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TEMP_PATH" COLUMN_NAME="TEMP_PATH" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/DB_Column_Names-->
+      <ColumnDescriptor NAME="TABLE_ERRMSGS" COLUMN_NAME="TABLE_ERRMSGS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TABLE_INSTANCES" COLUMN_NAME="TABLE_INSTANCES"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TABLE_JOBS" COLUMN_NAME="TABLE_JOBS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="TABLE_PARAMS" COLUMN_NAME="TABLE_PARAMS"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <!--ServerInstance/Java_Extension-->
+      <ColumnDescriptor NAME="JAVA_HOST_SERVER" COLUMN_NAME="JAVA_HOST_SERVER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <!--ServerInstance/SSL-->
+      <ColumnDescriptor NAME="SSL_CA_CERT_DIR" COLUMN_NAME="SSL_CA_CERT_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CA_CERT_FILE" COLUMN_NAME="SSL_CA_CERT_FILE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CERT_PRIKEY_FILENAME"
+                        COLUMN_NAME="SSL_CERT_PRIKEY_FILENAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CERT_FILENAME" COLUMN_NAME="SSL_CERT_FILENAME"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CERT_VERIFYDEPTH"
+                        COLUMN_NAME="SSL_CERT_VERIFYDEPTH" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_CIPHER_LIST" COLUMN_NAME="SSL_CIPHER_LIST"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_PASS_PHRASE_FILENAME"
+                        COLUMN_NAME="SSL_PASS_PHRASE_FILENAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_PASS_PHRASE_PRG_NAME"
+                        COLUMN_NAME="SSL_PASS_PHRASE_PRG_NAME" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_TRUSTED_PEERDNS"
+                        COLUMN_NAME="SSL_TRUSTED_PEERDNS" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_USE_SSL" COLUMN_NAME="SSL_USE_SSL"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="SSL_VERIFY_PEER" COLUMN_NAME="SSL_VERIFY_PEER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <!--ServerInstance/ScriptEngine-->
+      <ColumnDescriptor NAME="SENG_SCRIPTRPCPORT"
+                        COLUMN_NAME="SENG_SCRIPTRPCPORT" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <!--ServerInstance/Workflow-->
+      <ColumnDescriptor NAME="WFLOW_AUTH_USER" COLUMN_NAME="WFLOW_AUTH_USER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WFLOW_SERVER" COLUMN_NAME="WFLOW_SERVER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WFLOW_SERVICE" COLUMN_NAME="WFLOW_SERVICE"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="WFLOW_SYSTEM" COLUMN_NAME="WFLOW_SYSTEM"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml_sch.pl" "%ConfigFile%" "Scheduler" "%AttributeDefFile%" "V#ServerInstance@AdminName|BulkFetchBufferSize|CLIType|ClusterPort|DSN|DefaultScriptPath|LogAllSqlStmts|MaxExecThreads|MinExecThreads|NumDbConnections|PartOfCluster|PauseOnStartup|PoolTimeout|PoolUsername|PortString|PurgeInstDays|PurgeIntervalMinutes|SchedulerScriptPath|TargetType|TempPath#ServerInstance/DB_Column_Names@TABLE_ERRMSGS|TABLE_INSTANCES|TABLE_JOBS|TABLE_PARAMS#ServerInstance/Java_Extension@Java_Host_Server#ServerInstance/SSL@CACertificateDir|CACertificateFile|CertPrivateKeyFileName|CertificateFileName|CertificateVerifyDepth|CipherList|PassphraseFileName|PassphraseProgramName|TrustedPeerDNs|UseSSL|VerifyPeer#ServerInstance/ScriptEngine@ScriptRPCPort#ServerInstance/Workflow@Auth_User|Server|Service|System" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>
+   
+<Metric NAME="BIScheduler_Mail_Config" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_SCH_MAIL_CONFIG">
+      <!--ServerInstance/Mail-->
+      <ColumnDescriptor NAME="MAIL_FROM" COLUMN_NAME="MAIL_FROM" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_MAXRECIPIENTS"
+                        COLUMN_NAME="MAIL_MAXRECIPIENTS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_SMTP_PORT" COLUMN_NAME="MAIL_SMTP_PORT"
+                        TYPE="NUMBER" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_SMTP_SERVER" COLUMN_NAME="MAIL_SMTP_SERVER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_SENDER" COLUMN_NAME="MAIL_SENDER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_SMTP_CACERTDIR"
+                        COLUMN_NAME="MAIL_SMTP_CACERTDIR" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_SMTP_CACERTFILE"
+                        COLUMN_NAME="MAIL_SMTP_CACERTFILE" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_SMTP_CA_VERDEPTH"
+                        COLUMN_NAME="MAIL_SMTP_CA_VERDEPTH" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_SMTP_CIPHERLIST"
+                        COLUMN_NAME="MAIL_SMTP_CIPHERLIST" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_TRY" COLUMN_NAME="MAIL_TRY" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_USEBCC" COLUMN_NAME="MAIL_USEBCC"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_USESSL" COLUMN_NAME="MAIL_USESSL"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="MAIL_USERNAME" COLUMN_NAME="MAIL_USERNAME"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml_sch.pl" "%ConfigFile%" "Scheduler" "%AttributeDefFile%" "ServerInstance/Mail@From|MaxRecipients|SMTP_Port|SMTP_Server|Sender|SmtpCaCertificateDirectory|SmtpCaCertificateFile|SmtpCaCertificateVerificationDepth|SmtpCipherList|Try|UseBcc|UseSSL|Username" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>   
+
+<Metric NAME="BIScheduler_IBots_Config" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_SCH_IBOTS_CONFIG">
+      <!--ServerInstance/iBots-->
+      <ColumnDescriptor NAME="IBOTS_DEBUG" COLUMN_NAME="IBOTS_DEBUG"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_KEEP_ERR_LOGFILES"
+                        COLUMN_NAME="IBOTS_KEEP_ERR_LOGFILES" TYPE="STRING"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_LOGPURGE_DAYS"
+                        COLUMN_NAME="IBOTS_LOGPURGE_DAYS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_LOG_DIR" COLUMN_NAME="IBOTS_LOG_DIR"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_MAX_DELY_SLP_SECS"
+                        COLUMN_NAME="IBOTS_MAX_DELY_SLP_SECS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_MAX_GLBL_SLPSECS"
+                        COLUMN_NAME="IBOTS_MAX_GLBL_SLPSECS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_MAX_REQ_SLEEPSECS"
+                        COLUMN_NAME="IBOTS_MAX_REQ_SLEEPSECS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_MAX_ROWS_TIMESCOLS"
+                        COLUMN_NAME="IBOTS_MAX_ROWS_TIMESCOLS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_MIN_DELY_SLPSECS"
+                        COLUMN_NAME="IBOTS_MIN_DELY_SLPSECS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_MIN_GLBL_SLPSECS"
+                        COLUMN_NAME="IBOTS_MIN_GLBL_SLPSECS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_MIN_REQ_SLEEPSECS"
+                        COLUMN_NAME="IBOTS_MIN_REQ_SLEEPSECS" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_NUM_DELVY_RETRIES"
+                        COLUMN_NAME="IBOTS_NUM_DELVY_RETRIES" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_NUM_GLOBAL_RETRIES"
+                        COLUMN_NAME="IBOTS_NUM_GLOBAL_RETRIES" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_NUM_REQ_RETRIES"
+                        COLUMN_NAME="IBOTS_NUM_REQ_RETRIES" TYPE="NUMBER"
+                        IS_KEY="FALSE"/>
+      <ColumnDescriptor NAME="IBOTS_WEB_SERVER" COLUMN_NAME="IBOTS_WEB_SERVER"
+                        TYPE="STRING" IS_KEY="FALSE"/>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadxml_sch.pl" "%ConfigFile%" "Scheduler" "%AttributeDefFile%" "ServerInstance/iBots@Debug|KeepErrorLogFiles|LogPurgeDays|Log_Dir|MaxDeliverySleepSecs|MaxGlobalSleepSecs|MaxRequestSleepSecs|MaxRowsTimesColumns|MinDeliverySleepSecs|MinGlobalSleepSecs|MinRequestSleepSecs|NumDeliveryRetries|NumGlobalRetries|NumRequestRetries|Web_Server" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>   
+   
+
+   <InstanceProperties>
+      <InstanceProperty NAME="BIHome">
+         <Display>
+            <Label NLSID="BI_HOME_LABEL">BI Home</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="Host">
+         <Display>
+            <Label NLSID="BI_HOST_LABEL">Host</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBConnectionString" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_SCHED_DB_CONN_STRING_LABEL">Scheduler DB JDBC Url</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBClassString" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_SCHED_DB_CLASS_STRING_LABEL">Scheduler DB JDBC Driver</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBUserName" CREDENTIAL="TRUE" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_SCHED_DB_USER_NAME">Scheduler DB Username</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBPassword" CREDENTIAL="TRUE" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_SCHED_DB_PASSWORD">Scheduler DB Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="ConfigFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_configFile">Configuration File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="AttributeDefFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_AttributeDefFile">Attribute Definition File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="SADATADIR" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="BI_NLSID_SADATADIR">Oracle BI Data Directory</Label>
+         </Display>
+      </InstanceProperty>      
+      <DynamicProperties NAME="ComputeDB" FORMAT="ROW"
+                       PROP_LIST="DBEnabled">
+         <QueryDescriptor FETCHLET_ID="OSLineToken">
+            <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+            <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="DBConnectionString" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+            <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+            <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+            <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/isEmpty.pl %DBConnectionString%</Property>
+         </QueryDescriptor>
+      </DynamicProperties>
+   </InstanceProperties>
+</TargetMetadata>

@@ -1,0 +1,863 @@
+<!DOCTYPE TargetMetadata SYSTEM "../dtds/TargetMetadata.dtd">
+<TargetMetadata META_VER="1.0" TYPE="oracle_bi_ans"
+                CATEGORY_PROPERTIES="VersionCategory;JMXEnabled">
+   <Display>
+      <Label NLSID="TYPE_LABEL">Oracle BI Analytics Server</Label>
+      <ShortName NLSID="TYPE_SHORT_NAME">Oracle BI Analytics Server</ShortName>
+      <Description NLSID="TYPE_DESCRIPTION">Oracle BI Analytics Server</Description>
+   </Display>
+   <Metric NAME="Response" TYPE="TABLE">
+      <Display>
+         <Label NLSID="RESPONSE">Response</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Status" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="STATUS">Status</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+         <Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/getStatus.pl</Property>
+         <Property NAME="args" SCOPE="GLOBAL">%BIHome%/server/Bin/nqsserver</Property>
+      </QueryDescriptor> 
+   </Metric>
+   
+   <Metric NAME="Resources" TYPE="TABLE">
+      <Display>
+         <Label NLSID="RESOURCES">Resources</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="CPU" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="CPU">CPU (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="Memory" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+               <Label NLSID="MEMORY">Memory (KB)</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+         <Property NAME="BIHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/procResUsage.pl</Property>
+         <Property NAME="args" SCOPE="GLOBAL">"%BIHome%" "/server/Bin/nqsserver"</Property>
+      </QueryDescriptor>
+   </Metric>
+  <Metric NAME="PhysicalDB" TYPE="TABLE">
+  <ValidIf>
+      <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+    </ValidIf>
+      <Display>
+         <Label NLSID="PHYSICALDB">PhysicalDB</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="NAME">Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="rows_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="ROWS_PER_SEC">Rows/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="avg_query_respnse_time"
+                           TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AVG_QUERY_RESPONSE_TIME">Avg. query request response time</Label>
+               <Unit NLSID="SEC">sec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="failed_queries_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="FAILED_QUERIES_PER_SEC">Failed Queries/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="queries_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="QUERIES_PER_SEC">Queries/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Server,Oracle BI=Performance,type=Oracle BI Physical DB,*</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Rows~/sec;Avg. query request response time;Failed Queries~/sec;Queries~/sec</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">2</Property>
+      </QueryDescriptor>
+   </Metric>
+    <Metric NAME="DBConnectionPool" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+    </ValidIf>
+      <Display>
+         <Label NLSID="DBCONNECTIONPOOL">DBConnectionPool</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="current_busy_connection_count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CURRENT_BUSY_CONNECTION_COUNT">Current Busy Connection Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="current_connection_count" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="CURRENT_CONNECTION_COUNT">Current Connection Count</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Server,Oracle BI=Performance,name=Star_Forecast_XML_Forecast,type=Oracle BI DB Connection Pool</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Current Busy Connection Count;Current Connection Count</Property>
+      </QueryDescriptor>
+   </Metric>
+  <Metric NAME="General" TYPE="TABLE">
+    <ValidIf>
+      <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+    </ValidIf>
+      <Display>
+         <Label NLSID="GENERAL">General</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="active_execute_requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="ACTIVE_EXECUTE_REQUESTS">Active Execute Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="active_fetch_requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="ACTIVE_FETCH_REQUESTS">Active Fetch Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="active_logins" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="ACTIVE_LOGINS">Active Logins</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="active_prepare_requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="ACTIVE_PREPARE_REQUESTS">Active Prepare Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="avg_query_elapsed_time" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="AVG_QUERY_ELAPSED_TIME">Avg. query elapsed time</Label>
+               <Unit NLSID="SEC">sec</Unit>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="new_execute_requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="NEW_EXECUTE_REQUESTS">New Execute Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="new_fetch_requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="NEW_FETCH_REQUESTS">New Fetch Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="new_prepare_requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="NEW_PREPARE_REQUESTS">New Prepare Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="queries_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="QUERIES_PER_SEC">Queries/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_sessions" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="TOTAL_SESSIONS">Total sessions</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="active_execute_requests_since_lc" TYPE="NUMBER" COMPUTE_EXPR="((_active_execute_requests > active_execute_requests) ? 0 : (active_execute_requests - _active_execute_requests))">
+            <Display>
+               <Label NLSID="ACTIVE_EXECUTE_REQUESTS_SINCE_LC">Active Execute Requests Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="active_fetch_requests_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_active_fetch_requests > active_fetch_requests) ? 0 : (active_fetch_requests - _active_fetch_requests))">
+            <Display>
+               <Label NLSID="ACTIVE_FETCH_REQUESTS_SINCE_LC">Active Fetch Requests Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="active_logins_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_active_logins > active_logins) ? 0 : (active_logins - _active_logins))">
+            <Display>
+               <Label NLSID="ACTIVE_LOGINS_SINCE_LC">Active Logins Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="active_prepare_requests_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_active_prepare_requests > active_prepare_requests) ? 0 : (active_prepare_requests - _active_prepare_requests))">
+            <Display>
+               <Label NLSID="ACTIVE_PREPARE_REQUESTS_SINCE_LC">Active Prepare Requests Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="new_fetch_requests_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_new_fetch_requests > new_fetch_requests) ? 0 : (new_fetch_requests - _new_fetch_requests))">
+            <Display>
+               <Label NLSID="NEW_FETCH_REQUESTS_SINCE_LC">New Fetch Requests Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="new_execute_requests_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_new_execute_requests > new_execute_requests) ? 0 : (new_execute_requests - _new_execute_requests))">
+            <Display>
+               <Label NLSID="NEW_EXECUTE_REQUESTS_SINCE_LC">New Execute Requests Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="new_prepare_requests_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_new_prepare_requests > new_prepare_requests) ? 0 : (new_prepare_requests - _new_prepare_requests))">
+            <Display>
+               <Label NLSID="NEW_PREPARE_REQUESTS_SINCE_LC">New Prepare Requests Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="sessions_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_total_sessions > total_sessions) ? 0 : (total_sessions - _total_sessions))">
+            <Display>
+               <Label NLSID="SESSIONS_SINCE_LC">Sessions Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Server,Oracle BI=Performance,name=Oracle BI General</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Active Execute Requests;Active Fetch Requests;Active Logins;Active Prepare Requests;Avg. query elapsed time;New Execute Requests;New Fetch Requests;New Prepare Requests;Queries~/sec;Total sessions</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="DataCache" TYPE="TABLE">
+   <ValidIf>
+      <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+    </ValidIf>
+      <Display>
+         <Label NLSID="DATACACHE">DataCache</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="data_cache_hit_ratio_as_percent" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="DATA_CACHE_HIT_RATIO_AS_PERCENT">Data Cache Hit Ratio as %</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="data_cache_hits_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="DATA_CACHE_HITS_PER_SEC">Data Cache Hits/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="data_cache_qualified_queries_misses_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="DATA_CACHE_QUALIFIED_QUERIES_MISSES_PER_SEC">Data Cache Qualified Queries Misses/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="data_cache_unqualified_queries_misses_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="DATA_CACHE_UNQUALIFIED_QUERIES_MISSES_PER_SEC">Data Cache Unqualified Queries Misses/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="data_cache_misses_per_sec" TYPE="NUMBER"
+                           COMPUTE_EXPR="(data_cache_unqualified_queries_misses_per_sec + data_cache_qualified_queries_misses_per_sec)">
+            <Display>
+               <Label NLSID="DATA_CACHE_MISSES_PER_SEC">Data Cache Misses/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Server,Oracle BI=Performance,name=Oracle BI Data Cache</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Hit Ratio as %;Hits~/sec;QMiss~/sec;UMiss~/sec</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="GenericCache" TYPE="TABLE">
+   <ValidIf>
+      <CategoryProp NAME="JMXEnabled" CHOICES="1"/>
+    </ValidIf>
+      <Display>
+         <Label NLSID="GENERICCACHE">GenericCache</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="Name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="NAME">Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="generic_cache_total_requests" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="GENERIC_CACHE_TOTAL_REQUESTS">Generic Cache Total Requests</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="generic_cache_avg_hits_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="GENERIC_CACHE_AVG_HITS_PER_SEC">Generic Cache Avg. Hits/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="generic_cache_avg_misses_per_sec" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="GENERIC_CACHE_AVG_MISSES_PER_SEC">Generic Cache Avg. Misses/sec</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="generic_cache_utilization_ratio_percent" TYPE="NUMBER">
+            <Display>
+               <Label NLSID="GENERIC_CACHE_UTILIZATION_PERCENT">Generic Cache Utilization Ratio (%)</Label>
+            </Display>
+         </ColumnDescriptor>
+                  <ColumnDescriptor NAME="generic_cache_requests_since_lc" TYPE="NUMBER"
+                           COMPUTE_EXPR="((_generic_cache_total_requests > generic_cache_total_requests) ? 0 : (generic_cache_total_requests - _generic_cache_total_requests))">
+            <Display>
+               <Label NLSID="GENERIC_CACHE_REQUESTS_SINCE_LC">Generic Cache Requests Since Last Collection</Label>
+            </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JMX">
+         <Property NAME="MachineName" SCOPE="INSTANCE">Host</Property>
+         <Property NAME="Port" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+         <Property NAME="UserName" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXUserName</Property>
+         <Property NAME="password" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPassword</Property>
+         <Property NAME="protocol" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXProtocol</Property>
+         <Property NAME="service" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXService</Property>
+         <Property NAME="SSLTrustStore" SCOPE="INSTANCE" OPTIONAL="TRUE">SSLTrustStore</Property>
+         <Property NAME="SSLTrustStorePassword" SCOPE="INSTANCE"
+                   OPTIONAL="TRUE">SSLTrustStorePassword</Property>
+         <Property NAME="lookupClass" SCOPE="INSTANCE" OPTIONAL="TRUE">lookupClass</Property>
+         <Property NAME="metric" SCOPE="GLOBAL">Oracle BI Management:AppName=Oracle BI Server,Oracle BI=Performance,type=Oracle BI Generic Cache,*</Property>
+         <Property NAME="columnOrder" SCOPE="GLOBAL">Total requests;AvgHit~/sec;AvgMiss~/sec;Utilization ratio as %</Property>
+         <Property NAME="identityCol" SCOPE="GLOBAL" OPTIONAL="TRUE">2</Property>
+      </QueryDescriptor>
+   </Metric>
+     <Metric NAME="TopUsersInLast7Days" TYPE="TABLE">
+      <Display>
+         <Label NLSID="TOP_USERS_IN_LAST_7_DAYS">Top Users in last 7 Days</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="user_name" TYPE="STRING" IS_KEY="TRUE">
+         <Display>
+               <Label NLSID="USER_NAME">User Name</Label>
+               </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_time" TYPE="NUMBER" IS_KEY="FALSE"><Display>
+           <Label NLSID="TOTAL_TIME">Total Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_db_time" TYPE="NUMBER" IS_KEY="FALSE"><Display>
+           <Label NLSID="TOTAL_DB_TIME">Total Database Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_compile_time" TYPE="NUMBER" IS_KEY="FALSE"><Display>
+           <Label NLSID="TOTAL_COMPILE_TIME">Total Compile Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_failed_requests" TYPE="NUMBER" IS_KEY="FALSE"><Display>
+           <Label NLSID="TOTAL_FAILED_REQUESTS">Total Failed Requests</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_requests" TYPE="NUMBER" IS_KEY="FALSE"><Display>
+           <Label NLSID="TOTAL_REQUESTS">Total Requests</Label>
+           </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE" OPTIONAL="TRUE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                SELECT * FROM 
+(SELECT 
+    USER_NAME, 
+    (SUM(CUM_DB_TIME_SEC) + SUM(TOTAL_TIME_SEC) + SUM(COMPILE_TIME_SEC)) OVERALL_TIME, 
+    SUM(CUM_DB_TIME_SEC) DTS, 
+    SUM(COMPILE_TIME_SEC) CTS, 
+    (SELECT COUNT(*) FROM S_NQ_ACCT T WHERE T.USER_NAME = S.USER_NAME AND SUCCESS_FLG > 0 AND 
+          (T.SAW_DASHBOARD IS NOT NULL) AND (T.END_TS > SYSDATE - 7)) AS FAILED_REQUESTS, 
+    COUNT(*) AS TOTAL_REQUESTS
+FROM S_NQ_ACCT S 
+WHERE (S.USER_NAME IS NOT NULL) 
+AND (END_TS > SYSDATE - 7) 
+GROUP BY USER_NAME 
+ORDER BY OVERALL_TIME DESC) WHERE ROWNUM <= 20
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE" OPTIONAL="TRUE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE" OPTIONAL="TRUE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+        <Metric NAME="TopDashBoardsInLast7Days" TYPE="TABLE">
+      <Display>
+         <Label NLSID="TOP_DASHBOARDS_IN_LAST_7_DAYS">Top Dashboards in last 7 Days</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="dashboard" TYPE="STRING" IS_KEY="TRUE">
+         <Display>
+               <Label NLSID="DASHBOARD">Dashboard</Label>
+               </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_time" TYPE="NUMBER" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="TOTAL_TIME">Total Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_db_time" TYPE="NUMBER" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="TOTAL_DB_TIME">Total Database Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_compile_time" TYPE="NUMBER" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="TOTAL_COMPILE_TIME">Total Compile Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_failed_requests" TYPE="NUMBER" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="TOTAL_FAILED_REQUESTS">Total Failed Requests</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="total_requests" TYPE="NUMBER" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="TOTAL_REQUESTS">Total Requests</Label>
+           </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE" OPTIONAL="TRUE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                SELECT * FROM 
+(SELECT 
+    SAW_DASHBOARD, 
+    (SUM(CUM_DB_TIME_SEC) + SUM(TOTAL_TIME_SEC) + SUM(COMPILE_TIME_SEC)) OVERALL_TIME, 
+    SUM(CUM_DB_TIME_SEC) DTS, 
+    SUM(COMPILE_TIME_SEC) CTS, 
+    (SELECT COUNT(*) FROM S_NQ_ACCT T WHERE T.SAW_DASHBOARD = S.SAW_DASHBOARD AND SUCCESS_FLG > 0 AND 
+          (T.SAW_DASHBOARD IS NOT NULL) AND (T.END_TS > SYSDATE - 7)) AS FAILED_REQUESTS, 
+    COUNT(*) AS TOTAL_REQUESTS
+FROM S_NQ_ACCT S 
+WHERE (S.SAW_DASHBOARD IS NOT NULL) 
+AND (END_TS > SYSDATE - 7) 
+GROUP BY SAW_DASHBOARD 
+ORDER BY OVERALL_TIME DESC) WHERE ROWNUM <= 20
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE" OPTIONAL="TRUE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE" OPTIONAL="TRUE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+      <Metric NAME="FailedDashboardsInLast24Hrs" TYPE="TABLE">
+      <Display>
+         <Label NLSID="FAILED_DASHBOARDS_IN_LAST_24_HRS">Failed Dashboards in Last 24 Hours</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="dashboard" TYPE="STRING" IS_KEY="FALSE">
+         <Display>
+               <Label NLSID="DASHBOARD">Dashboard</Label>
+               </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="error_code" TYPE="NUMBER" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="ERROR_CODE">Error Code</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="error_message" TYPE="STRING" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="ERROR_MESSAGE">Error Message</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="repository" TYPE="STRING" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="REPOSITORY">Repository</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="subject_area" TYPE="STRING" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="SUBJECT_AREA">Subject Area</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="start_time" TYPE="STRING" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="START_TIME">Start Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="end_time" TYPE="STRING" IS_KEY="FALSE">
+         <Display>
+           <Label NLSID="END_TIME">End Time</Label>
+           </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="row_num" TYPE="STRING" IS_KEY="TRUE">
+         <Display>
+           <Label NLSID="ROW_NUM">Row Number</Label>
+           </Display>
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE" OPTIONAL="TRUE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                SELECT 
+    SAW_DASHBOARD, SUCCESS_FLG, ERROR_TEXT, REPOSITORY_NAME, SUBJECT_AREA_NAME, START_TS, END_TS, ROWNUM  
+    FROM S_NQ_ACCT 
+    WHERE SUCCESS_FLG > 0 
+    AND (END_TS > SYSDATE - 1) 
+    ORDER BY END_TS DESC
+		]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE" OPTIONAL="TRUE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE" OPTIONAL="TRUE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+
+      <Metric NAME="UsageByDashBoardInLast7Days" TYPE="TABLE">
+      <Display>
+         <Label NLSID="USAGE_BY_DASHBOARD_IN_LAST_7_DAYS">Dashboard Usage in Last 7 Days</Label>
+      </Display>
+      <TableDescriptor>
+         <ColumnDescriptor NAME="dashboard" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+               <Label NLSID="DASHBOARD">Dashboard</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="user_name" TYPE="STRING" IS_KEY="TRUE">
+            <Display>
+                <Label NLSID="USER_NAME">User Name</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="count" TYPE="NUMBER" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="COUNT">Count</Label>
+            </Display>
+         </ColumnDescriptor>
+         <ColumnDescriptor NAME="last_accessed_on" TYPE="STRING" IS_KEY="FALSE">
+            <Display>
+                <Label NLSID="LAST_ACCESSED_ON">Last Accessed On</Label>
+            </Display>    
+         </ColumnDescriptor>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="JDBCSQL">
+         <Property NAME="ConnInfo" SCOPE="INSTANCE" OPTIONAL="TRUE">DBConnectionString</Property>
+         <Property NAME="Class" SCOPE="INSTANCE" OPTIONAL="TRUE">DBClassString</Property>
+         <Property NAME="STATEMENT" SCOPE="GLOBAL">
+            <![CDATA[
+                
+                select SAW_DASHBOARD, USER_NAME, count(diff), max(START_TS) from
+                (
+                    select
+                        SAW_DASHBOARD, USER_NAME,
+                        case
+                        concat(LAG(USER_NAME, 1, USER_NAME)  OVER(ORDER BY SAW_DASHBOARD, USER_NAME, START_TS desc), 
+                        LAG(SAW_DASHBOARD, 1, SAW_DASHBOARD)  OVER(ORDER BY SAW_DASHBOARD, USER_NAME, START_TS desc)) when concat(USER_NAME, SAW_DASHBOARD) then
+                        (START_TS - LAG(START_TS, 1, (START_TS + 10 / (24 * 60)))  OVER(ORDER BY SAW_DASHBOARD, USER_NAME, START_TS desc)) * 24 * 60
+                        else -10 end diff, START_TS
+                        from S_NQ_ACCT WHERE (START_TS > SYSDATE - 7) AND SAW_DASHBOARD IS NOT NULL
+                )
+                where diff <= -10
+                group by SAW_DASHBOARD, USER_NAME 
+            ]]>
+         </Property>
+         <Property NAME="CONNECT_PROP_user" SCOPE="INSTANCE" OPTIONAL="TRUE">DBUserName</Property>
+         <Property NAME="CONNECT_PROP_password" SCOPE="INSTANCE" OPTIONAL="TRUE">DBPassword</Property>
+      </QueryDescriptor>
+   </Metric>
+
+
+   <Metric NAME="BIAnalyticsServerConfig" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_ANS_CONFIG">
+         <ColumnDescriptor NAME="PRODUCT_VERSION" COLUMN_NAME="PRODUCT_VERSION"
+                           TYPE="STRING" IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="CACHE_ENABLE" COLUMN_NAME="CACHE_ENABLE"
+                           TYPE="STRING" IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="REPLACE_ALGORITHM"
+                           COLUMN_NAME="REPLACE_ALGORITHM" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_ROWS_PER_CACHE_ENTRY"
+                           COLUMN_NAME="MAX_ROWS_PER_CACHE_ENTRY" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_CACHE_ENTRY_SIZE_KB"
+                           COLUMN_NAME="MAX_CACHE_ENTRY_SIZE_KB" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_CACHE_ENTRIES"
+                           COLUMN_NAME="MAX_CACHE_ENTRIES" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_GLOBAL_CACHE_ENTRIES"
+                           COLUMN_NAME="MAX_GLOBAL_CACHE_ENTRIES" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="CACHE_POLL_SECONDS"
+                           COLUMN_NAME="CACHE_POLL_SECONDS" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="LOCALE" COLUMN_NAME="LOCALE" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="SORT_MEMORY_SIZE_KB"
+                           COLUMN_NAME="SORT_MEMORY_SIZE_KB" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="SORT_BUFFER_INCREMENT_SIZE_KB"
+                           COLUMN_NAME="SORT_BUFFER_INCREMENT_SIZE_KB"
+                           TYPE="NUMBER" IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="VIRTUAL_TABLE_PAGE_SIZE_KB"
+                           COLUMN_NAME="VIRTUAL_TABLE_PAGE_SIZE_KB"
+                           TYPE="NUMBER" IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="SSL" COLUMN_NAME="SSL" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="RPC_SERVICE_OR_PORT"
+                           COLUMN_NAME="RPC_SERVICE_OR_PORT" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_SESSION_LIMIT"
+                           COLUMN_NAME="MAX_SESSION_LIMIT" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="SERVER_THREAD_RANGE"
+                           COLUMN_NAME="SERVER_THREAD_RANGE" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="SERVER_THREAD_STACK_SIZE"
+                           COLUMN_NAME="SERVER_THREAD_STACK_SIZE" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="DB_GWAY_THRD_STK_SIZE"
+                           COLUMN_NAME="DB_GWAY_THRD_STK_SIZE" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_EXP_SUBQ_PREDICATES"
+                           COLUMN_NAME="MAX_EXP_SUBQ_PREDICATES" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_QY_PLAN_CACHE_ENTS"
+                           COLUMN_NAME="MAX_QY_PLAN_CACHE_ENTS" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_DDW_INF_CACHE_ENTS"
+                           COLUMN_NAME="MAX_DDW_INF_CACHE_ENTS" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="MAX_DDW_QRY_CACHE_ENTS"
+                           COLUMN_NAME="MAX_DDW_QRY_CACHE_ENTS" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="CLIENT_MGMT_THR_MAX"
+                           COLUMN_NAME="CLIENT_MGMT_THR_MAX" TYPE="NUMBER"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="ENABLE_DB_HINTS" COLUMN_NAME="ENABLE_DB_HINTS"
+                           TYPE="STRING" IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="CLUSTER_PARTICIPANT"
+                           COLUMN_NAME="CLUSTER_PARTICIPANT" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="DISCONNECTED" COLUMN_NAME="DISCONNECTED"
+                           TYPE="STRING" IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="ODBC200" COLUMN_NAME="ODBC200"
+                           TYPE="STRING" IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="ODBC350" COLUMN_NAME="ODBC350" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="OCI7" COLUMN_NAME="OCI7" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="OCI8" COLUMN_NAME="OCI8" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="OCI8i" COLUMN_NAME="OCI8i" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="OCI10g" COLUMN_NAME="OCI10g" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="DB2CLI" COLUMN_NAME="DB2CLI" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="DB2CLI35" COLUMN_NAME="DB2CLI35" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="NQSXML" COLUMN_NAME="NQSXML" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="XMLA" COLUMN_NAME="XMLA" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+         <ColumnDescriptor NAME="STRONG_DT_TYPE_CHECK"
+                           COLUMN_NAME="STRONG_DT_TYPE_CHECK" TYPE="STRING"
+                           IS_KEY="FALSE"/>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/loadini.pl" "%ConfigFile%" "Analytics configuration" "%AttributeDefFile%" "V#CACHE@ENABLE|REPLACE_ALGORITHM|MAX_ROWS_PER_CACHE_ENTRY|MAX_CACHE_ENTRY_SIZE|MAX_CACHE_ENTRIES|MAX_GLOBAL_CACHE_ENTRIES|CACHE_POLL_SECONDS#GENERAL@LOCALE|SORT_MEMORY_SIZE|SORT_BUFFER_INCREMENT_SIZE|VIRTUAL_TABLE_PAGE_SIZE#SECURITY@SSL#SERVER@RPC_SERVICE_OR_PORT|MAX_SESSION_LIMIT|SERVER_THREAD_RANGE|SERVER_THREAD_STACK_SIZE|DB_GATEWAY_THREAD_STACK_SIZE|MAX_EXPANDED_SUBQUERY_PREDICATES|MAX_QUERY_PLAN_CACHE_ENTRIES|MAX_DRILLDOWN_INFO_CACHE_ENTRIES|MAX_DRILLDOWN_QUERY_CACHE_ENTRIES|CLIENT_MGMT_THREADS_MAX|ENABLE_DB_HINTS|CLUSTER_PARTICIPANT|DISCONNECTED#DB_DYNAMIC_LIBRARY@ODBC200|ODBC350|OCI7|OCI8|OCI8i|OCI10g|DB2CLI|DB2CLI35|NQSXML|XMLA#OPTIMIZATION_FLAGS@STRONG_DATETIME_TYPE_CHECKING" "%BIHome%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>
+<!--
+   <Metric NAME="BI_ANS_ConfigFiles" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_ANS_CONFIGFILES">
+         <ColumnDescriptor NAME="DisplayFilePath" COLUMN_NAME="DISPLAYFILEPATH"
+                           TYPE="STRING" IS_KEY="TRUE"/>
+         <ColumnDescriptor NAME="FilePath" COLUMN_NAME="FILEPATH"
+                           TYPE="STRING"/>
+         <ColumnDescriptor NAME="FileSize" COLUMN_NAME="FILESIZE"
+                           TYPE="NUMBER"/>
+         <ColumnDescriptor NAME="ModificationTime"
+                           COLUMN_NAME="MODIFICATIONTIME" TYPE="STRING"
+                           IS_DATE="TRUE"/>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="oracleHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/listConfigFilesBI.pl" "%oracleHome%" "false" ""</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>
+   <Metric NAME="BI_ANS_ConfigFilesUpload" TYPE="RAW" CONFIG="TRUE">
+      <TableDescriptor TABLE_NAME="MGMT_BI_ANS_CF_UPLOAD">
+         <ColumnDescriptor NAME="FilePath" COLUMN_NAME="FILECONTENT" TYPE="CLOB"
+                           IS_FILENAME="TRUE"/>
+         <ColumnDescriptor NAME="DisplayFilePath" COLUMN_NAME="FILEPATH"
+                           TYPE="STRING" IS_KEY="TRUE"/>
+         <ColumnDescriptor NAME="ModificationTime"
+                           COLUMN_NAME="MODIFICATIONTIME" TYPE="STRING"
+                           IS_DATE="TRUE"/>
+         <ColumnDescriptor NAME="TagetName" COLUMN_NAME="TARGET_NAME"
+                           TYPE="STRING"/>
+      </TableDescriptor>
+      <QueryDescriptor FETCHLET_ID="OSLineToken" ON_TARGET="TRUE">
+         <Property NAME="TARGET_NAME" SCOPE="INSTANCE">NAME</Property>
+         <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+         <Property NAME="oracleHome" SCOPE="INSTANCE">BIHome</Property>
+         <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+         <Property NAME="command" SCOPE="GLOBAL">"%perlBin%/perl" "%scriptsDir%/bi/listConfigFilesBI.pl" "%oracleHome%" "true" "%NAME%"</Property>
+         <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+         <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+         <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+      </QueryDescriptor>
+   </Metric>
+-->
+   <InstanceProperties>
+      <InstanceProperty NAME="BIHome">
+         <Display>
+            <Label NLSID="BI_HOME">BI Home</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="Host">
+         <Display>
+            <Label NLSID="BI_HOST_LABEL">Host</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXPort" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="JMX_PORT ">JMX Port</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXUserName" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="JMX_USER_NAME">JMX User Name</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXPassword" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="JMX_PASSWORD">JMX Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXProtocol" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="JMX_PROTOCOL">JMX Protocol</Label>
+         </Display>
+         rmi
+      </InstanceProperty>
+      <InstanceProperty NAME="JMXService" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="JMX_SERVICE">JMX Service</Label>
+         </Display>
+         jmxrmi
+      </InstanceProperty>
+      <InstanceProperty NAME="SSLTrustStore" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="SSLTRUST_STORE">SSLTrust Store</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="SSLTrustStorePassword" OPTIONAL="TRUE"
+                        CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="SSLTRUST_STORE_PASSWORD">SSLTrust Store Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="lookupClass" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="JMX_LOOKUP_CLASS">Custom lookup provider Class</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBConnectionString" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="DB_CONNECTION_STRING">DB Connection String</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBClassString" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="DB_CLASS_STRING">DB Class String</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBUserName" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="DB_USER_NAME">DB User Name</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="DBPassword" OPTIONAL="TRUE" CREDENTIAL="TRUE">
+         <Display>
+            <Label NLSID="DB_PASSWORD">DB Password</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="ConfigFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="CONFIGURATION_FILE">Configuration File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="AttributeDefFile" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="ATTRIBUTE_DEFINITION_FILE">Attribute Definition File</Label>
+         </Display>
+      </InstanceProperty>
+      <InstanceProperty NAME="SADATADIR" OPTIONAL="TRUE">
+         <Display>
+            <Label NLSID="ORACLE_BI_DATA_DIRECTORY">Oracle BI Data Directory</Label>
+         </Display>
+      </InstanceProperty> 
+      <DynamicProperties NAME="ComputeJMX" FORMAT="ROW" 
+                       PROP_LIST="JMXEnabled">
+         <QueryDescriptor FETCHLET_ID="OSLineToken">
+            <Property NAME="scriptsDir" SCOPE="SYSTEMGLOBAL">scriptsDir</Property>
+            <Property NAME="perlBin" SCOPE="SYSTEMGLOBAL">perlBin</Property>
+            <Property NAME="delimiter" SCOPE="GLOBAL">|</Property>
+            <Property NAME="JMXPort" SCOPE="INSTANCE" OPTIONAL="TRUE">JMXPort</Property>
+            <Property NAME="startsWith" SCOPE="GLOBAL">em_result=</Property>
+            <Property NAME="warningStartsWith" SCOPE="GLOBAL">em_warning=</Property>
+            <Property NAME="command" SCOPE="GLOBAL">%perlBin%/perl %scriptsDir%/bi/isEmpty.pl %JMXPort%</Property>
+         </QueryDescriptor>      
+      </DynamicProperties>
+   </InstanceProperties>
+</TargetMetadata>

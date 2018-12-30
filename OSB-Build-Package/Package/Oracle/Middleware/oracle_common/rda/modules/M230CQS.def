@@ -1,0 +1,153 @@
+# M230CQS.def: Collects Cluster Quorum Server Information
+# $Id: M230CQS.def,v 1.2 2012/04/02 07:29:18 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M230CQS.def,v 1.2 2012/04/02 07:29:18 mschenke Exp $
+#
+# Change History
+# 20120402  MSC  Extend the collection macros.
+
+=head1 NAME
+
+M230CQS - Collects Cluster Quorum Server Information
+
+=head1 DESCRIPTION
+
+This module collects information on Cluster Quorum Server quorum device.
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+run XPLRlib('quorumserv')
+
+#------------------------------------------------------------------------------
+# XPLR_cqs section
+#------------------------------------------------------------------------------
+
+section XPLR_cqs
+
+# Validate the execution context
+if !${XPLR_GLOBAL:1}
+ return
+call log_run('Processing CQS sections ...')
+if !testFile('d','/usr/cluster/lib/sc')
+ return log_info('Cluster Quorum Server software not installed')
+if !is_pkg_installed('SUNWscqsr')
+ return log_info('Cluster Quorum Server software not installed')
+
+pretoc '2:Cluster Quorum Server'
+
+=head2 cqs_cmd - Commands
+
+Gathers the Cluster Quorum Server device information using the following
+commands:
+
+=over 2
+
+=item o C</usr/cluster/bin/clqs show ${INST_NAME}>
+
+=item o C</usr/bin/cat ${BUFF_LOC}/.scqsd_dbg_buf>
+
+=back
+
+=cut
+
+debug ' Inside CQS collection, gathering command outputs'
+report cqs_cmd
+title '---+!! Cluster Quorum Server Commands'
+title $TOC
+var %dir = ()
+loop $lin (grepFile('/etc/scqsd/scqsd.conf','^#','v'))
+{if ?$ins = field('\s',0,replace($lin,'^.*-i\s'))
+ {var $cmd = concat('/usr/cluster/bin/clqs show ',$ins)
+  prefix
+  {write '---+ Configuration Information for Quorum Server ',$ins
+   write '---## Using: ',encode($cmd)
+  }
+  call collectCommand({nam=>concat('quorumserv/clqs_show-',$ins),\
+    out=>{blk=>true,flt=>true,idx=>true,rpt=>${CUR.REPORT}},\
+    err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+    },$cmd)
+  if hasOutput(true)
+   write $TOP
+ }
+
+ if ?$dir = field('\s',0,replace($lin,'^.*-d\s'))
+ {if testDir('d',$dir)
+  {var $cmd = concat('/usr/bin/cat ',catFile($dir,'.scqsd_dbg_buf'))
+   var $dir{$dir} = 1
+   prefix
+   {write '---+ Content of ``',lastFile(),'`` File'
+    write '---## Using: ',encode($cmd)
+   }
+   call collectCommand({nam=>'quorumserv/scqsd_dbg_buf',\
+     out=>{blk=>true,ext=>'',flt=>true,idx=>true,rpt=>${CUR.REPORT}},\
+     err=>{blk=>true,flt=>true,hdr=>$ERR,rpt=>${CUR.REPORT}}\
+     },$cmd)
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+}
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][Commands]]'
+
+=head2 cqs_files - Files
+
+Gathers the following Cluster Quorum Server files:
+
+=over 2
+
+=item o F</etc/scqsd/scqsd.conf>
+
+=item o F</var/scqsd/$cluster_name.0x${CLUSTER_ID}>
+
+=back
+
+=cut
+
+debug ' Inside CQS collection, collecting files'
+report cqs_files
+title '---+!! Cluster Quorum Server Files'
+prefix
+{write '   * Links point to files that have been collected in their original \
+            format. Opening them directly in your browser can present \
+            risks. To prevent them, access the file outside the browser or \
+            use the link to save them and use an adequate viewer.'
+ write '|*File Path*| *Size*|*Last Modified Date*|'
+}
+call do_collect_fil(['quorumserv/scqsd.conf','/etc/scqsd/scqsd.conf'])
+loop $dir (keys(%dir))
+ call do_collect_sel('quorumserv',$dir,'\.0x')
+if isCreated(true)
+{write $TOP
+ toc '3:[[',getFile(),'][rda_report][Files]]'
+}
+
+# Adjust the table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

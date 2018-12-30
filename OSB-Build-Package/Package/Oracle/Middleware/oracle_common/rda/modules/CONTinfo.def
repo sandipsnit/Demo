@@ -1,0 +1,394 @@
+# CONTinfo.def: Collects Generic Oracle Content Services Information
+# $Id: CONTinfo.def,v 2.6 2012/01/03 13:34:41 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/CONTinfo.def,v 2.6 2012/01/03 13:34:41 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+CONTinfo - Collects Generic Oracle Content Services Information
+
+=head1 DESCRIPTION
+
+This module collects generic Oracle Content Services information.
+
+=cut
+
+# Initialization
+var ($AS11,$UOA) = @arg
+import $ORACLE_HOME,$TAIL1,$TAIL2,$TOC,$TOP
+
+var $ORACLE_SID = field(':',-1,getSetting('ORACLE_SID',''))
+
+=head2 repos_info - Repository
+
+Collects the repository information such as repository version, domain
+properties, node, service, and server configurations.
+
+Requests for the Oracle Content Services repository user password. For
+batch/cron execution, you can encode the password in the setup file using the
+pseudo user C<CONTENT_REPOS_USER>.
+
+=cut
+
+report repos_info
+debug ' Inside CONT module, collecting the Content repository information'
+if $UOA
+ write '---+!! Oracle Universal Online Archive Repository Information'
+else
+ write '---+!! Oracle Content Services Repository Information'
+write $TOC
+
+if $AS11
+{if xmlLoadFile(catFile(\
+  getSetting('UOA_DOM_REQ_DOMAIN',''),'config','jdbc','uoa-ds-jdbc.xml'))
+ {var ($uoa) = xmlFind(last,'jdbc-data-source/jdbc-driver-params')
+  if xmlFind($uoa,'url')
+   var $CONTENT_REP = replace(xmlData(last),'^.*@')
+  else
+   var $CONTENT_REP = $ORACLE_SID
+  if compare('eq',xmlData(xmlFind($uoa,'properties/property/name')),'user')
+   var $CONTENT_USR = xmlData(xmlFind($uoa,'properties/property/value'))
+ }
+}
+else
+{macro get_info
+ {var ($obj,$nam,$val) = @arg
+  if xmlFind($obj,$nam)
+   var $val = xmlValue(last,'VALUE')
+  return $val
+ }
+
+ var $xml = xmlLoadFile(catFile($ORACLE_HOME,'sysman','emd','targets.xml'))
+ var ($ocs) = xmlFind($xml,'.../Target TYPE="oracle_(content|files)"')
+ var $CONTENT_REP = get_info($ocs,'Property NAME="DBConnectDescriptor"',\
+                             $ORACLE_SID)
+ var $CONTENT_USR = get_info($ocs,'Property NAME="SchemaName"')
+}
+var $CONTENT_PWD = getSetting('SQL_PASSWORD_CONTENT_REPOS_USER')
+
+if and($CONTENT_REP,$CONTENT_USR)
+{# Get the user password
+ if $CONTENT_PWD
+  var ($CONTENT_PWD) = unpack('u',$CONTENT_PWD)
+ else
+  var $CONTENT_PWD = askPassword(concat('Enter ',$CONTENT_USR,\
+                                        ' user password: '))
+
+ # Change the database context
+ var $old = setSqlLogin(concat($CONTENT_USR,'@',$CONTENT_REP),$CONTENT_PWD)
+ var $try = setSqlFailure(0)
+
+ # Get the repository version
+ debug ' Inside CONT module, collecting the repository version'
+ prefix
+  write '---+ Repository Version'
+ set $sql
+ {SELECT '|*Version*|' || value || ' |'
+ " FROM odmz_RepositoryParameter
+ " WHERE name = 'SCHEMAVERSION';
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ # Get the domain properties
+ debug ' Inside CONT module, collecting the domain properties'
+ prefix
+ {write '---+ Domain Properties'
+  write '|*Property*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE(p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue,
+ "                           11, p.publicobjectvalue,
+ "                           p.bundle) || '|'
+ " FROM odmv_PropertyBundle pb, odmv_Property p
+ " WHERE pb.name  = 'IFS.DOMAIN.Properties'
+ "   AND p.bundle = pb.id
+ " ORDER BY p.name;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ # Get the node configurations
+ debug ' Inside CONT module, collecting the node configurations'
+ prefix
+ {write '---+ Node Configurations'
+  write '|*Node Name*|*Property*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       nc.name || '(' || nc.id || ')|' ||
+ "       p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE(p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue,
+ "                           11, p.publicobjectvalue,
+ "                           p.bundle) || '|'
+ " FROM odmv_NodeConfiguration nc,
+ "      odmv_Property p
+ " WHERE nc.propertybundle = p.bundle
+ "UNION
+ "SELECT '|' ||
+ "       nc.name || '(' || nc.id || ')|' ||
+ "       '~ ' || p.name || '/' || p1.name || '=' ||
+ "        DECODE(p1.datatype, 2, p1.stringvalue,
+ "                            4, p1.integervalue,
+ "                            5, DECODE(p1.booleanvalue, 0, 'false', 1, 'true'),
+ "                            8, p1.longvalue,
+ "                            11, p1.publicobjectvalue,
+ "                            p1.bundle) || '|'
+ " FROM odmv_NodeConfiguration nc,
+ "      odmv_PropertyBundle pb,
+ "      odmv_property p,
+ "      odmv_PropertyBundle pb1,
+ "      odmv_Property p1
+ " WHERE nc.services = pb.id
+ "   AND p.bundle    = pb.id
+ "   AND pb1.id      = p.publicobjectvalue
+ "   AND p1.bundle   = pb1.id
+ "UNION
+ "SELECT '|' ||
+ "       nc.name || '(' || nc.id || ')|' ||
+ "       '~~ ' || p.name || '/' || p1.name || '=' ||
+ "        DECODE(p1.datatype, 2, p1.stringvalue,
+ "                            4, p1.integervalue,
+ "                            5, DECODE(p1.booleanvalue, 0, 'false', 1, 'true'),
+ "                            8, p1.longvalue,
+ "                            11, p1.publicobjectvalue,
+ "                            p1.bundle) || '|'
+ " FROM odmv_NodeConfiguration nc,
+ "      odmv_PropertyBundle pb,
+ "      odmv_property p,
+ "      odmv_PropertyBundle pb1,
+ "      odmv_Property p1
+ " WHERE nc.servers = pb.id
+ "   AND p.bundle   = pb.id
+ "   AND pb1.id     = p.publicobjectvalue
+ "   AND p1.bundle  = pb1.id;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ # Get the service configurations
+ debug ' Inside CONT module, collecting the service configurations'
+ prefix
+ {write '---+ Service Configurations'
+  write '|*Service Name*|*Property*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       sc.name || '(' || sc.id || ')|' ||
+ "       p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE(p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue,
+ "                           11, p.publicobjectvalue,
+ "                           p.bundle) || '|'
+ " FROM odmv_ServiceConfiguration sc,
+ "      odmv_Property p
+ " WHERE sc.id = p.bundle
+ " ORDER BY sc.name, p.name;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ # Get the server configurations
+ debug ' Inside CONT module, collecting the server configurations'
+ prefix
+ {write '---+ Server Configurations'
+  write '|*Server Name*|*Property Name*|'
+ }
+ set $sql
+ {SELECT '|' ||
+ "       sc.name || '(' || sc.id || ')|' ||
+ "       p.name || '=' ||
+ "        DECODE(p.datatype, 2, p.stringvalue,
+ "                           4, p.integervalue,
+ "                           5, DECODE(p.booleanvalue, 0, 'false', 1, 'true'),
+ "                           8, p.longvalue,
+ "                           11, p.publicobjectvalue,
+ "                           p.bundle) || '|'
+ " FROM odmv_ServerConfiguration sc,
+ "      odmv_Property p
+ " WHERE sc.id = p.bundle
+ " ORDER BY sc.name, p.name ;
+ }
+ call writeSql($sql)
+ if hasOutput(true)
+  write $TOP
+
+ # Display  the last SQL error message
+ if getSqlMessage()
+  write '%BR%',last
+
+ # Restore the previous context
+ call setSqlLogin($old)
+ call setSqlFailure($try)
+}
+else
+{echo 'Missing information to connect to the Content repository'
+ write '**Missing information to connect to the Content repository.**'
+}
+toc '2:[[',getFile(),'][rda_report][Repository]]'
+
+=head2 Configuration and Log Files
+
+Gets configuration and log files for Content Services node.
+
+=cut
+
+if !$AS11
+{# Load the common macros
+ run library()
+
+ debug ' Inside CONT module, collecting the configuration and log files'
+ pretoc '2:Content Services Node Config and Log Files'
+ var $dir = catDir($ORACLE_HOME,'content')
+ var $log = catFile($dir,'log','ContentMTConfig.log')
+ var $LOG{$log} = 0
+ call sort_files(3,$TAIL1,\
+                 catFile($dir,'settings','oracle','ifs','utils','common',\
+                         'Settings.properties'),\
+                 catFile($dir,'settings','uoa','patch.properties'),\
+                 catFile($dir,'temp','ifsoc4j.properties'),\
+                 catFile($dir,'log','cdbinstallactions.log'),\
+                 grepDir(catDir($dir,'log'),'^Content.*Config\.log$','ip'),\
+                 catFile($dir,'log','Patch.log'),\
+                 catFile($dir,'log','UoaSetup.log'),\
+                 grepDir(catDir($dir,'log','Content'),'_Node.log$','ip'),\
+                 $log,\
+                 grepDir(catDir($ORACLE_HOME,'.patch_storage'),\
+                         '^Apply_.*\.log$','ir',2))
+ unpretoc
+
+=pod
+
+Gets configuration and log files for Content Services HTTP node.
+
+=cut
+
+ pretoc '2:HTTP Node Config and Log Files'
+ var $dir = catDir($ORACLE_HOME,'j2ee','OC4J_Content')
+ var $dir1 = catDir($dir,'config')
+ var $dir2 = catDir($dir,'log','OC4J_Content_default_island_1')
+ var $dir3 = catDir($dir,'application-deployments','content',\
+                    'OC4J_Content_default_island_1')
+ var %LOG = ()
+ call sort_files(3,$TAIL1,\
+                 catFile($dir3,'application.log'))
+ call sort_files(3,$TAIL2,\
+                 catFile($dir1,'application.xml'),\
+                 catFile($dir1,'data-sources.xml'),\
+                 catFile($dir1,'default-web-site.xml'),\
+                 catFile($dir1,'global-web-application.xml'),\
+                 catFile($dir1,'http-web-site.xml'),\
+                 catFile($dir1,'internal-settings.xml'),\
+                 catFile($dir1,'j2ee-logging.xml'),\
+                 catFile($dir1,'jazn.xml'),\
+                 catFile($dir1,'jazn-data.xml'),\
+                 catFile($dir1,'jms.xml'),\
+                 catFile($dir1,'oc4j.properties'),\
+                 catFile($dir1,'oc4j-connectors.xml'),\
+                 catFile($dir1,'principals.xml'),\
+                 catFile($dir1,'rmi.xml'),\
+                 catFile($dir1,'server.xml'),\
+                 catFile($dir2,'default-web-access.log'),\
+                 catFile($dir2,'global-application.log'),\
+                 catFile($dir2,'jms.log'),\
+                 catFile($dir2,'rmi.log'),\
+                 catFile($dir2,'server.log'))
+ unpretoc
+
+=pod
+
+Gets configuration and log files for Content Services Records Management node.
+
+=cut
+
+ pretoc '2:Records Management Node Config and Log Files'
+ var $dir = catDir($ORACLE_HOME,'j2ee','OC4J_RM')
+ var $dir1 = catDir($dir,'config')
+ var $dir2 = catDir($dir,'log','OC4J_RM_default_island_1')
+ var $dir3 = catDir($dir,'application-deployments','rm',\
+                    'OC4J_RM_default_island_1')
+ call sort_files(3,$TAIL1,\
+                 catFile($dir3,'application.log'))
+ call sort_files(3,$TAIL2,\
+                 catFile($dir1,'application.xml'),\
+                 catFile($dir1,'data-sources.xml'),\
+                 catFile($dir1,'default-web-site.xml'),\
+                 catFile($dir1,'global-web-application.xml'),\
+                 catFile($dir1,'http-web-site.xml'),\
+                 catFile($dir1,'internal-settings.xml'),\
+                 catFile($dir1,'j2ee-logging.xml'),\
+                 catFile($dir1,'jazn.xml'),\
+                 catFile($dir1,'jazn-data.xml'),\
+                 catFile($dir1,'jms.xml'),\
+                 catFile($dir1,'oc4j.properties'),\
+                 catFile($dir1,'oc4j-connectors.xml'),\
+                 catFile($dir1,'principals.xml'),\
+                 catFile($dir1,'rmi.xml'),\
+                 catFile($dir1,'server.xml'),\
+                 catFile($dir2,'server.log'),\
+                 catFile($dir2,'default-web-access.log'),\
+                 catFile($dir2,'jms.log'),\
+                 catFile($dir2,'global-application.log'),\
+                 catFile($dir2,'rmi.log'))
+ unpretoc
+
+=pod
+
+Gets configuration and log files for Java containers running Content Services
+node, HTTP node, and Records Management node.
+
+=cut
+
+ pretoc '2:Java Containers Config and Log Files'
+ var $dir1 = catDir($ORACLE_HOME,'opmn','conf')
+ var $dir2 = catDir($ORACLE_HOME,'opmn','logs')
+ call sort_files(3,$TAIL2,\
+                 catFile($dir1,'opmn.xml'),\
+                 catFile($dir2,'Content~Node~1'),\
+                 catFile($dir2,'Content~OC4J_Content~default_island~1'),\
+                 catFile($dir2,'Content~OC4J_RM~default_island~1'))
+ unpretoc
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.1:  Bert Vanderstraeten, Matthias von Ehrenstein.
+
+=item RDA 4.2:  Frederic Daurelle, Bert Vanderstraeten.
+
+=item RDA 4.16: Greg Cook, Andrew Salt.
+
+=item RDA 4.17: Pramod Vasista.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

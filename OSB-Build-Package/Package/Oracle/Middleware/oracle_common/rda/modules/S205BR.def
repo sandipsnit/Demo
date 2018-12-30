@@ -1,0 +1,987 @@
+# S205BR.def: Collects Oracle Database Backup and Recovery Information
+# $Id: S205BR.def,v 2.12 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S205BR.def,v 2.12 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S205BR - Collects Oracle Database Backup and Recovery Information
+
+=head1 DESCRIPTION
+
+This module collects the Oracle RDBMS backup and recovery-related
+information. This is performed only for databases associated with the current
+Oracle home.
+
+The following reports can be generated and are regrouped under C<Backup and
+Recovery>:
+
+=cut
+
+if !getSetting('DATABASE_LOCAL')
+ return
+
+echo tput('bold'),'Processing BR module ...',tput('off')
+
+# Initialization
+var $ORACLE_HOME  = getSetting('ORACLE_HOME')
+var $ORACLE_SID   = field(':',-1,getSetting('ORACLE_SID',''))
+var $RMAN_CATALOG = getSetting('RMAN_CATALOG')
+var $RMAN_IN_USE  = getSetting('RMAN_IN_USE')
+var $RMAN_SCHEMA  = getSetting('RMAN_SCHEMA','rman')
+var $TAIL         = getSetting('RDA_TAIL',1000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+pretoc '^1:RDBMS'
+pretoc '1+:Backup and Recovery'
+
+# Load the key information
+run library()
+run DBinfo()
+var $DATABASE_VERSION = get_db_version()
+var $UDUMP_DIR = get_udump()
+
+=head2 dump_request - Request
+
+Dumps control files and file headers, which can be used by Recovery Advisor.
+
+=cut
+
+toc '2:File Header Dump'
+
+debug ' Inside BR module, about to dump file headers'
+report dump_request
+write '---+ File Header Dump Request'
+write 'A trace file will be produced for Recovery Advisor. Refer to Knowledge \
+       Article 219836.1 for more information about Recovery Advisor.%BR%'
+write '<verbatim>'
+if match($DATABASE_VERSION,'^(10|11)')
+{set $sql
+ {oradebug setmypid
+ "oradebug unlimit
+ "ALTER session SET events 'immediate trace name controlf level 12';
+ "ALTER session SET events 'immediate trace name file_hdrs level 10';
+ "oradebug tracefile_name
+ }
+}
+else
+{set $sql
+ {oradebug setmypid
+ "oradebug unlimit
+ "ALTER session SET events 'immediate trace name controlf level 10';
+ "ALTER session SET events 'immediate trace name file_hdrs level 10';
+ "oradebug tracefile_name
+ }
+}
+call writeSql($sql,1,'\.trc\b')
+write '</verbatim>'
+if getSqlMessage()
+ write last,'%BR%'
+toc '3:[[',getFile(),'][rda_report][Request]]'
+
+=head2 dump_file - Dump File
+
+Retrieves the dump file in the user dump destination.
+
+=cut
+
+debug ' Inside BR module, about to retrieve the dump file'
+if getSqlHits()
+{var ($fil) = (last)
+ report dump_file
+ write '---+ File Header Dump'
+ write '---## Trace File: ',encode($fil)
+ call writeFile($fil)
+ toc '3:[[',getFile(),'][rda_report][Dump File]]'
+}
+
+=head2 user_dump - User Dump Destination
+
+Lists the contents of user dump destination.
+
+=cut
+
+debug ' Inside BR module, doing ls of the user dump destination'
+report user_dump
+write '---+ User Dump Destination'
+if !$UDUMP_DIR
+ write 'User Dump destination could not be determined.%BR%'
+elsif !statDir('at',$UDUMP_DIR)
+ write 'Could not list files in ',encode($UDUMP_DIR),'%BR%'
+if isCreated(true)
+ toc '3:[[',getFile(),'][rda_report][User Dump Destination]]'
+
+=head2 db - Database Information
+
+Gathers the backup/recovery information from the database. It displays data
+from C<v$datafile>, C<v$backup>, C<v$recover_file>, C<v$tablespace>, and
+C<v$tempfile>.
+
+=cut
+
+debug ' Inside BR module, about to gathering database information'
+report db
+var $TTL = '---+!! Backup/Recovery Database Information'
+var @TTL = ('',\
+            '---+ Datafiles',\
+            '---+ Backup',\
+            '---+ Recover Files',\
+            '---+ Tablespaces',\
+            '---+ Temporary Files',\
+            '---+ Instance Information',\
+            '---+ Database Information',\
+            '---+ Recovery File Destination',\
+            '---+ Flash Recovery Area Usage',\
+            '---+ Recovery Log',\
+            '---+ File Information',\
+            '---+ Log Groups',\
+            '---+ Redo Logs',\
+            '---+ Archived Redo Logs',\
+            '---+ Redo Logs Changes')
+var @HDR = ('',\
+            '| *File*| *Ts*| *Rfile*|*Status*|*Enabled*| \
+               *Checkpoint Change#*|  *Offline Change*| \
+               *Unrecoverable Change*| *Bytes*| *Blocks*|*Name*|',\
+            '| *File*|*Status*| *Change*|*Time*|',\
+            '| *File*|*Online Status*|*Error*| *Change*|*Time*|',\
+            '| *Ts*|*Name*|*Included*|*Bigfile*|*Flashback On*|*Encrypt*|',\
+            '| *File*| *Creation Change*|*Creation Time*| *Ts*| *Rfile#*|\
+               *Status*|*Enabled*| *Bytes*| *Blocks*| *Create Bytes*| \
+               *Block Size*|*Name*|',\
+            '',\
+            '',\
+            '|*Name*| *Space Limit*| *Space Used*| *Space Reclaimable*| \
+              *Number of Files*|',\
+            '|*File Type* | *Used(MiB)*| *Reclaimable(MiB)*| \
+              *Number of Files*|',\
+            '| *Thread#*| *Sequence#*|*Time*|*Archive Name*|',\
+            '| *File No*|*File Name*| *Type*| *Validity*| *SCN*|*Tablespace*| \
+               *Status*| *Sequence*|',\
+            '| *Group#*| *Thread#*| *Seq#*| *Members*|*Archived*|*Status*| \
+               *First Change#*|',\
+            '| *Group#*|*Member*|',\
+            '| *Recid*| *Thread#*| *Sequence#*|*Name*|*Archived*|*Deleted*|\
+               *Completed*|',\
+            '| *Sequence#*| *Thread#*| *First Change#*| *Next Change#*|')
+set $sql
+{SELECT '| ' ||
+"       d.file# || '| ' ||
+"       d.ts# || '| ' ||
+"       d.rfile# || '|' ||
+"       d.status  || '|' ||
+"       d.enabled || '| ' ||
+"       TO_CHAR(d.checkpoint_change#) || '| ' ||
+"       TO_CHAR(d.offline_change#)  || '| ' ||
+"       TO_CHAR(d.unrecoverable_change#)  || '| ' ||
+"       d.bytes || '| ' ||
+"       d.blocks || '|' ||
+"       d.name || '|'
+" FROM v$datafile d;
+"PROMPT ___Macro_separator(2)___
+"SELECT '|' ||
+"       b.file# || '|' ||
+"       b.status || ' |' ||
+"       b.change# || '|' ||
+"       TO_CHAR(b.time, 'DD-Mon-YYYY HH24:MI:SS') || ' |'
+" FROM v$backup b;
+"PROMPT ___Macro_separator(3)___
+"SELECT '| ' ||
+"       r.file# || '|' ||
+"       "ONLINE" || ' |' ||
+"       r.error || ' | ' ||
+"       r.change# || '|' ||
+"       r.time || ' |'
+" FROM v$recover_file r;
+"PROMPT ___Macro_separator(4)___
+}
+if match($DATABASE_VERSION,'^(102$|11)')
+{append $sql
+ {SELECT '| ' ||
+ "       t.ts# || '|' ||
+ "       t.name || '|' ||
+ "       t.included_in_database_backup || '|' ||
+ "       t.bigfile || '|' ||
+ "       t.flashback_on || ' |' ||
+ "       t.encrypt_in_backup || ' |'
+ " FROM v$tablespace t;
+ }
+}
+elsif match($DATABASE_VERSION,'^10')
+{var $HDR[4] = '| *Ts*|*Name*|*Included*|*Bigfile*|*Flashback On*|'
+ append $sql
+ {SELECT '| ' ||
+ "       t.ts# || '|' ||
+ "       t.name || '|' ||
+ "       t.included_in_database_backup || '|' ||
+ "       t.bigfile || '|' ||
+ "       t.flashback_on || ' |'
+ " FROM v$tablespace t;
+ }
+}
+elsif match($DATABASE_VERSION,'^8')
+{var $HDR[4] = '| *Ts*|*Name*|'
+ append $sql
+ {SELECT '| ' ||
+ "       t.ts# || '|' ||
+ "       t.name || '|'
+ " FROM v$tablespace t;
+ }
+}
+else
+{var $HDR[4] = '| *Ts*|*Name*|*Included*|'
+ append $sql
+ {SELECT '| ' ||
+ "       t.ts# || '|' ||
+ "       t.name || '|' ||
+ "       t.included_in_database_backup || '|'
+ " FROM v$tablespace t;
+ }
+}
+append $sql
+{PROMPT ___Macro_separator(5)___
+"SELECT '| ' ||
+"       t.file# || '| ' ||
+"       t.creation_change# || '|' ||
+"       TO_CHAR(t.creation_time, 'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+"       t.ts# || '| ' ||
+"       t.rfile# || '|' ||
+"       t.status || '|' ||
+"       t.enabled || '|' ||
+"       t.bytes || '| ' ||
+"       t.blocks || '| ' ||
+"       t.create_bytes || '| ' ||
+"       t.block_size || '|' ||
+"       t.name || '|'
+" FROM v$tempfile t;
+}
+if match($DATABASE_VERSION,'^8')
+{var $HDR[6] = '| *Instance Number*|*Instance Name*|*Host Name*|*Version*|\
+                  *Startup Time*|*Status*|*Parallel*| *Thread*|*Archiver*|\
+                  *Log Switch Wait*|*Logins*|*Shutdown Pending*|\
+                  *Database Status*|*Instance Role*|'
+ append $sql
+ {PROMPT ___Macro_separator(6)___
+ "SELECT '| ' ||
+ "       instance_number || '|' ||
+ "       instance_name || ' |' ||
+ "       host_name || ' |' ||
+ "       version || ' |' ||
+ "       startup_time || ' |' ||
+ "       status || ' |' ||
+ "       parallel || ' | ' ||
+ "       thread# || '|' ||
+ "       archiver || ' |' ||
+ "       log_switch_wait || ' |' ||
+ "       logins || ' |' ||
+ "       shutdown_pending || ' |' ||
+ "       database_status || ' |' ||
+ "       instance_role || ' |'
+ " FROM v$instance;
+ }
+}
+else
+{var $HDR[6] = '| *Instance Number*|*Instance Name*|*Host Name*|*Version*|\
+                  *Startup Time*|*Status*|*Parallel*| *Thread*|*Archiver*|\
+                  *Log Switch Wait*|*Logins*|*Shutdown Pending*|\
+                  *Database Status*|*Instance Role*|*Active State*|'
+ append $sql
+ {PROMPT ___Macro_separator(6)___
+ "SELECT '| ' ||
+ "       instance_number || '|' ||
+ "       instance_name || ' |' ||
+ "       host_name || ' |' ||
+ "       version || ' |' ||
+ "       startup_time || ' |' ||
+ "       status || ' |' ||
+ "       parallel || ' | ' ||
+ "        thread# || '|' ||
+ "       archiver || ' |' ||
+ "       log_switch_wait || ' |' ||
+ "       logins || ' |' ||
+ "       shutdown_pending || ' |' ||
+ "       database_status || ' |' ||
+ "       instance_role || ' |' ||
+ "       active_state || ' |'
+ " FROM v$instance;
+ }
+}
+if match($DATABASE_VERSION,'^(10|11)')
+{var $HDR[7] = '| *DB ID*|*Name*|*Created*|*Open Mode*|*Log Mode*| \
+                  *Checkpoint Change#*|*Control File Type*| \
+                  *Control File Change#*|*Control File Time*| \
+                  *Resetlogs Change#*|*Resetlogs Time*|*Flashback On*|'
+ append $sql
+ {PROMPT ___Macro_separator(7)___
+ "SELECT '| ' ||
+ "       dbid || '|' ||
+ "       name || ' |' ||
+ "       TO_CHAR(created, 'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       open_mode || ' |' ||
+ "       log_mode || ' | ' ||
+ "       TO_CHAR(checkpoint_change#, '999999999999999') || '|' ||
+ "       controlfile_type || ' | ' ||
+ "       TO_CHAR(controlfile_change#, '999999999999999') || '|' ||
+ "       TO_CHAR(controlfile_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+ "       TO_CHAR(resetlogs_change#, '999999999999999') || '|' ||
+ "       TO_CHAR(resetlogs_time, 'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       flashback_on || ' |'
+ " FROM v$database;
+ }
+}
+else
+{var $HDR[7] = '| *DB ID*|*Name*|*Created*|*Open Mode*|*Log Mode*| \
+                  *Checkpoint Change#*|*Control File Type*| \
+                  *Control File Change#*|*Control File Time*| \
+                  *Resetlogs Change#*|*Resetlogs Time*|'
+ append $sql
+ {PROMPT ___Macro_separator(7)___
+ "SELECT '| ' ||
+ "       dbid || '|' ||
+ "       name || ' |' ||
+ "       TO_CHAR(created, 'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+ "       open_mode || ' |' ||
+ "       log_mode || ' | ' ||
+ "       TO_CHAR(checkpoint_change#, '999999999999999') || '|' ||
+ "       controlfile_type || ' | ' ||
+ "       TO_CHAR(controlfile_change#, '999999999999999') || '|' ||
+ "       TO_CHAR(controlfile_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+ "       TO_CHAR(resetlogs_change#, '999999999999999') || '|' ||
+ "       TO_CHAR(resetlogs_time, 'DD-Mon-YYYY HH24:MI:SS') || ' |'
+ " FROM v$database;
+ }
+}
+if match($DATABASE_VERSION,'^(10|11)')
+{append $sql
+ {PROMPT ___Macro_separator(8)___
+ "SELECT '|' ||
+ "       name || ' |' ||
+ "       space_limit || '| ' ||
+ "       space_used || '| ' ||
+ "       space_reclaimable || '| ' ||
+ "       number_of_files || '| '
+ " FROM v$recovery_file_dest;
+ }
+ if match($DATABASE_VERSION,'^(102$|11)')
+ {append $sql
+  {PROMPT ___Macro_separator(9)___
+  "SELECT '|' ||
+  "       f.file_type || ' | ' ||
+  "       ROUND(r.space_used * f.percent_space_used / 104857600,1) || '| ' ||
+  "       ROUND(r.space_reclaimable * f.percent_space_reclaimable /
+  "             104857600,1) || '| ' ||
+  "       f.number_of_files || '| '
+  " FROM v$recovery_file_dest r,v$flash_recovery_area_usage f;
+  }
+ }
+}
+append $sql
+{PROMPT ___Macro_separator(10)___
+"SELECT '| ' ||
+"       thread# || '| ' ||
+"       sequence# || '|' ||
+"       time || ' |' ||
+"       archive_name || ' |'
+" FROM v$recovery_log;
+}
+if getSetting('SQL_SYSDBA')
+{append $sql
+ {PROMPT ___Macro_separator(11)___
+ "SELECT '| ' ||
+ "       hxfil || '|' ||
+ "       hxfnm || ' | ' ||
+ "       fhtyp || '| ' ||
+ "       hxerr || '| ' ||
+ "       fhscn || '|' ||
+ "       fhtnm || ' | ' ||
+ "       fhsta || '| ' ||
+ "       fhrba_seq || '|'
+ " FROM x$kcvfh;
+ }
+}
+append $sql
+{PROMPT ___Macro_separator(12)___
+"SELECT '| ' ||
+"       group# || '| ' ||
+"       thread# || '| ' ||
+"       sequence# || '| ' ||
+"       members || '|' ||
+"       archived || ' |' ||
+"       status || ' | ' ||
+"       first_change# || '|'
+" FROM v$log;
+"PROMPT ___Macro_separator(13)___
+"SELECT '| ' ||
+"       group# || '|' ||
+"       member || ' |'
+" FROM v$logfile;
+"PROMPT ___Macro_separator(14)___
+"SELECT '| ' ||
+"       a.recid || '| ' ||
+"       a.thread# || '| ' ||
+"       a.sequence# || '|' ||
+"       a.name || ' |' ||
+"       a.archived || ' |' ||
+"       a.deleted || ' |' ||
+"       TO_CHAR(a.completion_time, 'DD-Mon-YYYY HH24:MI:SS') || ' |'
+" FROM v$archived_log a, v$log l
+" WHERE a.thread# = l.thread#
+"   AND a.sequence# = l.sequence#;
+"PROMPT ___Macro_separator(15)___
+"SELECT '| ' ||
+"       sequence# || '| ' ||
+"       thread# || '| ' ||
+"       first_change# || '| ' ||
+"       next_change# || '|'
+" FROM v$backup_redolog
+" ORDER BY sequence#;
+}
+
+call separator(1)
+call writeSql($sql,2)
+call separator(0,'Database Information')
+
+=head2 data_file - Datafile Information
+
+Gathers the information related to data files.
+
+=cut
+
+debug ' Inside BR module, gathering datafile information'
+report data_file
+var $TTL = undef
+var $TTL = '---+!! Datafile Information'
+var @TTL = ('',\
+            '---+ Active Datafile',\
+            '---+ Datafile (Not Online)',\
+            '---+ Datafile Header',\
+            '---+ Datafile Header Count',\
+            '---+ Datafile Status',\
+            '---+ Checkpoint Changes')
+var @HDR = ('',\
+            '|*Name*|*Status*| *Change#*|*Time*|',\
+            '|*Name*| *File#*|*Status*|*Enabled*| *Creation Change#*|\
+              *Creation Time*| *Checkpoint Change#*|*Checkpoint Time*| \
+              *Offline Change#*| *Online Change#*|*Online Time*| *Bytes*|',\
+            '|*Name*| *File#*|*Status*|*Error*| *Creation Change#*|\
+              *Creation Time*| *Checkpoint Change#*|*Checkpoint Time*| \
+              *Resetlogs Change#*|*Resetlogs Change Time*| *Bytes*|',\
+            '|*Status*| *Checkpoint Change#*|*Checkpoint Time*| *Count*|',\
+            '| *File No*|*Name*|*Status*|*Dfile Chkp Change*|\
+               *Dfile Hed Chkp Change*|*Recover*|*Fuzzy*|',\
+            '|*File Name*|*Recover*|*Fuzzy*| *Checkpoint Change#*|')
+set $sql
+{SELECT '|' ||
+"       f.name || ' |' ||
+"       b.status || ' | ' ||
+"       b.change# || '|' ||
+"       b.time || ' |'
+" FROM v$backup b, v$datafile f
+" WHERE b.file# = f.file#
+"   AND b.status = 'ACTIVE';
+"PROMPT ___Macro_separator(2)___
+"SELECT '|' ||
+"       name || ' | ' ||
+"       file# || '|' ||
+"       status || ' |' ||
+"       enabled || ' | ' ||
+"       creation_change# || '|' ||
+"       TO_CHAR(creation_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       checkpoint_change# || '|' ||
+"       TO_CHAR(checkpoint_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       offline_change# || '| ' ||
+"       online_change# || '|' ||
+"       TO_CHAR(online_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       TO_CHAR(bytes, '9,999,999,999,990') || '|'
+" FROM v$datafile
+" WHERE status <> 'ONLINE'
+"    OR checkpoint_change# <> (SELECT checkpoint_change# FROM v$database);
+"PROMPT ___Macro_separator(3)___
+"SELECT '|' ||
+"       name || ' | ' ||
+"       file# || '|' ||
+"       status || ' |' ||
+"       error || ' | ' ||
+"       creation_change# || '|' ||
+"       TO_CHAR(creation_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       checkpoint_change# || '|' ||
+"       TO_CHAR(checkpoint_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       resetlogs_change# || '|' ||
+"       TO_CHAR(resetlogs_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       TO_CHAR(bytes, '9,999,999,999,990') || '|'
+" FROM v$datafile_header
+" WHERE status <> 'ONLINE'
+"    OR checkpoint_change# <> (SELECT checkpoint_change# FROM v$database);
+"PROMPT ___Macro_separator(4)___
+"SELECT '|' ||
+"       status || ' | ' ||
+"       checkpoint_change# || '|' ||
+"       TO_CHAR(checkpoint_time, 'DD-Mon-YYYY HH24:MI:SS') || ' | ' ||
+"       COUNT(*) || '|'
+" FROM v$datafile_header
+" GROUP BY status, checkpoint_change#, checkpoint_time
+" ORDER BY status, checkpoint_change#, checkpoint_time;
+"PROMPT ___Macro_separator(5)___
+"SELECT '| ' ||
+"       dd.file# || '|' ||
+"       dd.name || ' |' ||
+"       dd.status || ' | ' ||
+"       dd.checkpoint_change# || '| ' ||
+"       dh.checkpoint_change# || '|' ||
+"       dh.recover || ' |' ||
+"       dh.fuzzy || ' |'
+" FROM v$datafile dd,v$datafile_header dh
+" WHERE dd.file# = dh.file#;
+"PROMPT ___Macro_separator(6)___
+"SELECT '|' ||
+"       name || ' |' ||
+"       recover || ' |' ||
+"       fuzzy || ' | ' ||
+"       checkpoint_change# || '|'
+" FROM v$datafile_header
+" ORDER BY checkpoint_change#;
+}
+call separator(1)
+call writeSql($sql,2)
+call separator(0,'Datafile Information')
+
+=head2 ctlfil_data - Backup to File
+
+Performs the backup of the control file to a file in a binary format when
+requested. Such a backup inserts a record in the Recovey Manager repository.
+
+=head2 ctlfil_trace - Backup to Trace
+
+Performs the backup of the control file to trace in a text format.
+
+=cut
+
+if getSetting('BR_BACKUP_CONTROL',1)
+{debug ' Inside BR module, backing up the control file'
+ if !isFiltered()
+ {toc '2:Backup of Control File'
+  data ctlfil_data
+  var $tmp = newTemp('control')
+  set $sql
+  {ALTER DATABASE BACKUP CONTROLFILE TO ':1';
+  }
+  if !isAbsolute($tmp)
+   var $tmp = getGroupFile('D_CWD',$tmp)
+  call loadSql(bindSql($sql,$tmp))
+  call writeData($tmp)
+  call unlinkTemp('control')
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][Backup to File]]'
+ }
+
+ report ctlfil_trace
+ set $sql
+ {oradebug setmypid
+ "oradebug unlimit
+ "ALTER DATABASE BACKUP CONTROLFILE TO TRACE;
+ "oradebug tracefile_name
+ }
+ var ($fil) = grepSql($sql,'\.trc\b','if')
+ prefix
+ {write '---+ Control File Backup'
+  write '---## Trace File: ',encode($fil)
+ }
+ call writeFile($fil)
+ if isCreated(true)
+ {write $TOP
+  toc '3:[[',getFile(),'][rda_report][Backup to Trace]]'
+ }
+}
+
+=head1 RECOVERY MANAGER REPORTS
+
+The following reports are generated only if RMAN is used for backup and
+recovery.
+
+=head2 rman_versions - Versions
+
+Provides the RDBMS versions of catalog database, catalog schema, and RMAN
+executables.
+
+=cut
+
+if $RMAN_IN_USE
+{toc '2:Recovery Manager (RMAN)'
+ debug ' Inside BR module, gathering RMAN versions'
+ report rman_versions
+ write '---+!! RMAN Versions'
+ write $TOC
+
+ if $RMAN_CATALOG
+ {prefix
+   write '---+ RMAN Catalog Schema: Tables'
+  set $sql
+  {SELECT '|*Version*|' ||version || ' |'
+  " FROM :1.rcver;
+  }
+  if grepSql(bindSql($sql,$RMAN_SCHEMA),'\*Version\*','f')
+   write last
+  if hasOutput(true)
+   write $TOP
+
+  prefix
+   write '---+ RMAN Catalog Schema: Packages'
+  set $sql
+  {SET serveroutput on
+  "DECLARE
+  " l_eoc BOOLEAN := FALSE;
+  " l_vsn VARCHAR2(20);
+  " l_ver VARCHAR2(20);
+  "BEGIN
+  " WHILE NOT l_eoc LOOP
+  "  l_vsn := SUBSTR(:1.dbms_rcvcat.getPackageVersion,1,20);
+  "  IF l_vsn IS NULL THEN
+  "   l_eoc := TRUE;
+  "  ELSE
+  "   l_ver := l_vsn;
+  "  END IF;
+  " END LOOP;
+  " dbms_output.put_line('|*Version*|' || l_ver || '|');
+  "END;
+  "/
+  }
+  loop $lin (grepSql(bindSql($sql,$RMAN_SCHEMA),'\*Version\*'))
+   write $lin
+  if hasOutput(true)
+   write $TOP
+ }
+
+ var $cmd = catCommand($ORACLE_HOME,'bin','rman')
+ var $tmp = createTemp('rman')
+ call writeTemp('rman','exit')
+ call closeTemp('rman')
+ var ($lin) = grepCommand(concat($cmd,' <',quote($tmp,'x')),'Release','f')
+ var ($ver) = match($lin,'Release\s+(\d+(\.\d+)*)\s')
+ if $ver
+ {write '---+ RMAN Executable'
+  write '|*Version*|',$ver,'|'
+  write $TOP
+ }
+ call unlinkTemp('rman')
+
+ toc '3:[[',getFile(),'][rda_report][Versions]]'
+
+=head2 rman_info - RMAN Database Information
+
+Gathers the important RMAN-specific information from the database.
+
+=cut
+
+ debug ' Inside BR module, about to gathering RMAN specific information'
+ report rman_info
+ var $TTL = '---+!! RMAN Information'
+ var @TTL = ('',\
+             '---+ V$BACKUP_SET Information',\
+             '---+ V$BACKUP_PIECE Information',\
+             '---+ V$BACKUP_DATAFILE Information',\
+             '---+ V$BLOCK_CHANGE_TRACKING Information',\
+             '---+ V$RESTORE_POINT Information',\
+             '---+ V$RMAN_CONFIGURATION Information',\
+             '---+ V$RMAN_STATUS Information',\
+             '---+ V$RMAN_BACKUP_JOB_DETAILS Information',\
+             '---+ V$RMAN_BACKUP_SUBJOB_DETAILS Information',\
+             '---+ V$BACKUP_REDOLOG Information',\
+             '---+ V$RMAN_OUTPUT Information')
+
+ var ($HDR[1],$col1) = getSqlColumns('RDA','','V$BACKUP_SET')
+ call clearSqlColumns('RDA')
+ if $col1
+ {set $sql
+  {SELECT :1
+  " FROM v$backup_set;
+  }
+ }
+ else
+ {set $sql
+  {PROMPT ___Macro_separator(1)___
+  }
+ }
+ var ($HDR[2],$col2) = getSqlColumns('RDA','','V$BACKUP_PIECE')
+ call clearSqlColumns('RDA')
+ if $col2
+ {append $sql
+  {PROMPT ___Macro_separator(2)___
+  "SELECT :2
+  " FROM v$backup_piece;
+  }
+ }
+ var ($HDR[3],$col3) = getSqlColumns('RDA','','V$BACKUP_DATAFILE')
+ call clearSqlColumns('RDA')
+ if $col3
+ {append $sql
+  {PROMPT ___Macro_separator(3)___
+  "SELECT :3
+  " FROM v$backup_datafile;
+  }
+ }
+ if match($DATABASE_VERSION,'^(10|11)')
+ {var ($HDR[4],$col4) = getSqlColumns('RDA','','V$BLOCK_CHANGE_TRACKING')
+  call clearSqlColumns('RDA')
+  if $col4
+  {append $sql
+   {PROMPT ___Macro_separator(4)___
+   "SELECT :4
+   " FROM v$block_change_tracking;
+   }
+  }
+ }
+ if match($DATABASE_VERSION,'^(102$|11)')
+ {var $HDR[5] = '|*Name* | *SCN*|*Time* |*Guarantee Flashback Database* |'
+  append $sql
+  {PROMPT ___Macro_separator(5)___
+  "SELECT '|' ||
+  "       name || ' | ' ||
+  "       scn || '|' ||
+  "       TO_CHAR(time,'DD-Mon-YYYY HH24:MI:SS') || ' |' ||
+  "       guarantee_flashback_database || ' |'
+  " FROM v$restore_point;
+  }
+ }
+ var ($HDR[6],$col6) = getSqlColumns('RDA','','V$RMAN_CONFIGURATION')
+ call clearSqlColumns('RDA')
+ if $col6
+ {append $sql
+  {PROMPT ___Macro_separator(6)___
+  "SELECT :5
+  " FROM v$rman_configuration;
+  }
+ }
+ if match($DATABASE_VERSION,'^(10|11)')
+ {var ($HDR[7],$col7) = getSqlColumns('RDA','','V$RMAN_STATUS')
+  call clearSqlColumns('RDA')
+  if $col7
+  {append $sql
+   {PROMPT ___Macro_separator(7)___
+   "SELECT :6
+   " FROM v$rman_status;
+   }
+  }
+ }
+ if match($DATABASE_VERSION,'^(102$|11)')
+ {var ($HDR[8],$col8) = getSqlColumns('RDA','','V$RMAN_BACKUP_JOB_DETAILS')
+  call clearSqlColumns('RDA')
+  if $col8
+  {append $sql
+   {PROMPT ___Macro_separator(8)___
+   "SELECT :7
+   " FROM v$rman_backup_job_details;
+   }
+  }
+  var ($HDR[9],$col9) = getSqlColumns('RDA','','V$RMAN_BACKUP_SUBJOB_DETAILS')
+  call clearSqlColumns('RDA')
+  if $col9
+  {append $sql
+   {PROMPT ___Macro_separator(9)___
+   "SELECT :8
+   " FROM v$rman_backup_subjob_details;
+   }
+  }
+ }
+ call separator(1)
+ call writeSql(bindSql($sql,$col1,$col2,$col3,$col4,$col6,$col7,$col8,$col9),2)
+ var ($HDR[10],$col) = getSqlColumns('RDA','','V$BACKUP_REDOLOG')
+ call clearSqlColumns('RDA')
+ if $col
+ {set $sql
+  {SELECT :1
+  " FROM v$backup_redolog;
+  }
+  output c,backup_redolog
+  var $rpt = ${CUR.LAST}
+  prefix $rpt
+   write {$rpt} $TTL[10]
+  call writeSql($rpt,bindSql($sql,$col))
+  if $rpt->is_created(true)
+  {call separator(10)
+   write concat('[[',$rpt->get_html(true),'][_blank][Details]]')
+  }
+  call $[OUT]->end_report($rpt)
+ }
+ if match($DATABASE_VERSION,'^(10|11)')
+ {var ($HDR[11],$col) = getSqlColumns('RDA','','V$RMAN_OUTPUT')
+  call clearSqlColumns('RDA')
+  if $col
+  {set $sql
+   {SELECT :1
+   " FROM v$rman_output;
+   }
+   output c,rman_output
+   var $rpt = ${CUR.LAST}
+   prefix $rpt
+    write {$rpt} $TTL[11]
+   call writeSql($rpt,bindSql($sql,$col))
+   if $rpt->is_created(true)
+   {call separator(11)
+    write concat('[[',$rpt->get_html(true),'][_blank][Details]]')
+   }
+   call $[OUT]->end_report($rpt)
+  }
+ }
+ call separator(0,'RMAN Database Information',3)
+
+=head2 debug_output - Debug Output
+
+Gathers the trace file information only if RMAN is started with the debug
+option.
+
+=cut
+
+ if getSetting('RMAN_DEBUG_ON')
+ {debug ' Inside BR Module, gathering the RMAN debug output information'
+  var $fil = getSetting('RMAN_TRACE_FILE')
+  report debug_output
+  prefix
+  {write '---+ Debug Output'
+   write '---## Information Taken from ',encode($fil)
+  }
+  call writeFile($fil)
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][Debug Output]]'
+ }
+
+=head2 channel_tracing - Channel Tracing
+
+Gathers the trace file information if channel tracing has been enabled.
+
+=cut
+
+ if getSetting('RMAN_TRACING_ON')
+ {debug ' Inside BR Module, gathering the RMAN channel tracing information'
+  var ($pat,$max) = (concat('^',$ORACLE_SID,'_ora_.*\.trc'),50)
+  loop $fil (grepDir($UDUMP_DIR,$pat,'ipt'))
+  {if grepFile($fil,'allocated device type:','f',1,1,$max)
+   {report channel_tracing
+    write '---+ Channel Tracing Information'
+    write '---## Information Taken from ',encode($fil)
+    call writeFile($fil)
+    write $TOP
+    toc '3:[[',getFile(),'][rda_report][Channel Tracing]]'
+    break
+   }
+  }
+ }
+
+=head2 Important RMAN Files
+
+Gathers the important RMAN files.
+
+=cut
+
+ debug ' Inside BR module, collecting important RMAN files'
+ pretoc '3:Important RMAN Files'
+ var @fil = grepDir($UDUMP_DIR,'^sbtio\.log$','ip')
+ var $num = getSetting('RMAN_LOGFILE_COUNT',0)
+ loop $fil (split('\|',getSetting('RMAN_LOG_FILES')))
+ {var $fil = catFile($fil)
+  if testFile('fr',$fil)
+   var @fil = (@fil,$fil)
+  elsif expr('>',$num,0)
+  {var ($cnt,$dir,$nam) = ($num,dirname($fil),basename($fil))
+   loop $pth (grepDir($dir,concat(quote($nam),'.*'),'pt'))
+   {next !testFile('fr',$pth)
+    var @fil = (@fil,$pth)
+    decr $cnt
+    break !$cnt
+   }
+  }
+ }
+ loop $fil (split('\|',getSetting('RMAN_MEDIA_FILES')))
+ {var $fil = catFile($fil)
+  if testFile('r',$fil)
+   var @fil = (@fil,$fil)
+ }
+ call sort_files(4,$TAIL,@fil)
+ unpretoc
+
+=head2 catalog - RMAN Catalog Export
+
+Exports the RMAN catalog schema.
+
+=cut
+
+ if and($RMAN_CATALOG,not(isFiltered()))
+ {var $usr = uc(getSetting('RMAN_EXPORT_USER'))
+  if $usr
+  {debug ' Inside BR module, exporting RMAN catalog'
+   if getSetting(concat('SQL_PASSWORD_',$usr))
+    var ($pwd) = unpack('u',last)
+   elsif getSetting(concat('SQL_PASSWORD__',uc($ORACLE_SID),'__',$usr))
+    var ($pwd) = unpack('u',last)
+   elsif getSetting('SQL_PASSWORD_RMAN_EXPORT_USER')
+    var ($pwd) = unpack('u',last)
+   else
+    var $pwd = askPassword(concat('Enter ',$usr,' user password:'))
+   var $log = getTemp('rman_log')
+   var $out = getTemp('rman_out')
+   var $dmp = getTemp('rman_dmp','.dmp')
+
+   # Execute the export providing a password through a pipe
+   var $cmd = concat('exp ',$usr,' owner=',$RMAN_SCHEMA,' file=',$dmp,' log=',\
+                     $log,' buffer=100000',' >',$out)
+   output | $cmd
+   write $pwd
+   close
+
+   # Check command completion
+   if and(grepFile($log,'Export terminated successfully'),\
+          not(grepFile($log,'EXP-00010')))
+   {data catalog
+    call writeData($dmp)
+   }
+   else
+   {report catalog
+    write '---+ RMAN Catalog Export Problem'
+    call writeFile($log)
+   }
+
+   # Remove Temp files
+   call unlinkTemp('rman_log')
+   call unlinkTemp('rman_out')
+   call unlinkTemp('rman_dmp')
+   toc '3:[[',getFile(),'][rda_report][RMAN Catalog Export]]'
+  }
+ }
+}
+
+# Disable the group title in next index
+if isTocCreated()
+ toc '-:RDBMS'
+
+=head1 SEE ALSO
+
+L<S200DB.def|modules::S200DB>, L<DBinfo.def|modules::DBinfo>,
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.1:  Noriyuki Kamei.
+
+=item RDA 4.4:  Rob Zijlstra.
+
+=item RDA 4.14:  Frank Kobylanski.
+
+=item RDA 4.17:  John OConnor.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

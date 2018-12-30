@@ -1,0 +1,54 @@
+# HCVEinit.def: Initializes Health Check/Validation Engine Evaluation Context
+# $Id: HCVEinit.def,v 2.6 2012/04/25 07:04:45 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/HCVEinit.def,v 2.6 2012/04/25 07:04:45 mschenke Exp $
+#
+# Change History
+# 20120423  MSC  Improve the credential management.
+
+=head1 NAME
+
+HCVEinit - Initializes the Health Check/Validation Engine Evaluation Context
+
+=head1 DESCRIPTION
+
+This persistent submodule contains the initialization of the evaluation
+context for all actions written in the data collection specification language.
+
+=cut
+
+# Define the global variables
+var ($OS_ARC,$OS_BIT,$OS_LVL,$OS_NAM,$OS_PLT,$OS_TYP,$OS_VER) = ()
+var ($PKG,@PKG,%PKG) = (true)
+keep $OS_ARC,$OS_BIT,$OS_LVL,$OS_NAM,$OS_PLT,$OS_TYP,$OS_VER,$PKG,@PKG,%PKG
+
+# Call the operating specific libraries
+run &{check(getOsName(),'aix',             'HCaix',\
+                        'darwin',          'HCdarwin',\
+                        'dec_osf',         'HCosf',\
+                        'dynixptx',        'HCptx',\
+                        'hpux',            'HChpux',\
+                        'linux',           'HClinux',\
+                        'solaris',         'HCsunos',\
+                         cond(isCygwin(),  'HCwin32',\
+                              isUnix(),    'HCunix',\
+                              isVms(),     'HCvms',\
+                              isWindows(), 'HCwin32'))}()
+
+=head1 SEE ALSO
+
+L<HCaix|modules::HCaix>, L<HCdarwin|modules::HCdarwin>,
+L<HChpux|modules::HChpux>, L<HClinux|modules::HClinux>,
+L<HCosf|modules::HCosf>, L<HCptx|modules::HCptx>,
+L<HCsunos|modules::HCsunos>, L<HCunix|modules::HCunix>,
+L<HCvms|modules::HCvms>, L<HCwin32|modules::HCwin32>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

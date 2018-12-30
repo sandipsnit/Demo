@@ -1,0 +1,1419 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!--  $Header: emas/sysman/admin/adml/domain-oracle_oam-11.0.xml /st_emasgc_11.1as/10 2010/12/03 16:43:45 sunilkum Exp $ -->
+<!-- 
+ Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved. 
+
+   NAME
+     domain-oracle-oam-11.0.xml - <one-line expansion of the name>
+
+   DESCRIPTION
+     <short description of component this file declares/defines>
+
+   NOTES
+     <other useful comments, qualifications, etc.>
+
+   MODIFIED   (MM/DD/YY)
+   sunilkum    12/02/10 - core token gen latency
+   sunilkum    11/16/10 - change collection interval
+   sunilkum    10/25/10 - token validation failure metrics rollup
+   sunilkum    10/19/10 - services metrics rollup
+   sunilkum    10/11/10 - Add support for services data
+   sunilkum    07/19/10 - combining rate tables
+   sunilkum    07/09/10 - parser warnings
+   sunilkum    04/30/10 - ADML parsing error
+   sunilkum    03/19/10 - OAM client auth metrics
+   sunilkum    02/10/10 - Application authz metrics
+   sunilkum    01/13/10 - table for rate metrics
+   sunilkum    10/21/09 - Add more handshake metrics
+   sunilkum    10/07/09 - Log viewer columns
+   sunilkum    10/02/09 - domain level metrics
+   sunilkum    10/02/09 - Creation
+
+-->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="domain_oracle_oam">
+      <Table Name="oam_controller_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidateCredentialsSuccess.count" Type="Double"/>
+            <ColumnDef Name="ValidateCredentials.completed" Type="Double"/>
+            <ColumnDef Name="AuthnProcess.time" Type="Double"/>
+            <ColumnDef Name="PreAuthnProcess.time" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.count" Type="Double"/>
+            <ColumnDef Name="AuthzSuccess.count" Type="Double"/>
+            <ColumnDef Name="Authz.completed" Type="Double"/>
+            <ColumnDef Name="Authz.time" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <Select Name="oam_controller_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_OAMController"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="AuthnRequests.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthnRequests.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentialsSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentialsSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentials.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentials.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnProcess.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthnProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="PreAuthnProcess.time" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="PreAuthnProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthzRequests.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthzSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="Authz.completed" Type="Double">
+                        <Aggregation Operator="Sum" Name="Authz.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="Authz.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="Authz.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+            </Select>
+            <Select Name="oam_controller_rollup_result">
+                  <TableFrom Name="oam_controller_rollup_result_1"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="AuthnRequests.count" Type="Double"/>
+                  <Column Name="ValidateCredentialsSuccess.count"
+                          Type="Double"/>
+                  <Column Name="ValidateCredentials.completed" Type="Double"/>
+                  <Column Name="AuthnProcess.time" Type="Double"/>
+                  <Column Name="PreAuthnProcess.time" Type="Double"/>
+                  <Column Name="AuthzRequests.count" Type="Double"/>
+                  <Column Name="Authz.completed" Type="Double"/>
+                  <Column Name="Authz.time" Type="Double"/>
+                  <Column Name="AuthzSuccess.count" Type="Double"/>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="ValidateCredentialsSuccess.count"/>
+                                    <ColumnFrom Name="ValidateCredentials.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <Expression Operator="Plus">
+                                    <ColumnFrom Name="AuthnProcess.time"/>
+                                    <ColumnFrom Name="PreAuthnProcess.time"/>
+                              </Expression>
+                              <ColumnFrom Name="AuthnRequests.count"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="Authz.time"/>
+                              <ColumnFrom Name="AuthzRequests.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="AuthzSuccess.count"/>
+                                    <ColumnFrom Name="AuthzRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="oam_controller_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.count" Type="Double"/>
+            <ColumnDef Name="AuthnRequests.count" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <Select Name="oam_controller_rollup_result_rate">
+                  <TableFrom Name="domain_oracle_oam:oam_controller_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="AuthnRequests.count" Type="Double"/>
+                  <Column Name="AuthzRequests.count" Type="Double"/>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double"/>
+                  <Column Name="AuthzLatency" Type="Double"/>
+                  <Column Name="AuthnLatency" Type="Double"/>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double"/>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="1000">
+                              <ColumnFrom Name="AuthnRequests.count"
+                                          Table="domain_oracle_oam:oam_controller_rollup"/>
+                        </Rate>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthzRequests.count"
+                                          Table="domain_oracle_oam:oam_controller_rollup"/>
+                        </Rate>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="log_operations_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="LogOps.count" Type="Double"/>
+            <ColumnDef Name="Log.time" Type="Double"/>
+            <ColumnDef Name="Log.completed" Type="Double"/>
+            <ColumnDef Name="LogOperationLatency" Type="Double"/>
+            <Select Name="log_operations_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_Diagnostic"/>
+                  <Column Type="String" Name="Name"/>
+                  <Column Name="LogOps.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="LogOps.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="Log.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="Log.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="Log.completed" Type="Double">
+                        <Aggregation Operator="Sum" Name="Log.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+            </Select>
+            <Select Name="log_operations_rollup_result">
+                  <TableFrom Name="log_operations_rollup_result_1"/>
+                  <Column Name="LogOps.count" Type="Double"/>
+                  <Column Name="Log.time" Type="Double"/>
+                  <Column Name="Log.completed" Type="Double"/>
+                  <Column Name="LogOperationLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="Log.time"/>
+                              <ColumnFrom Name="Log.completed"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="log_operations_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="LogOps.count" Type="Double"/>
+            <ColumnDef Name="LogOperationLatency" Type="Double"/>
+            <ColumnDef Name="LogOperations.persec" Type="Double"/>
+            <Select Name="log_operations_rollup_result_rate">
+                  <TableFrom Name="domain_oracle_oam:log_operations_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="LogOps.count" Type="Double"/>
+                  <Column Name="LogOperationLatency" Type="Double"/>
+                  <Column Name="LogOperations.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="LogOps.count"
+                                          Table="domain_oracle_oam:log_operations_rollup"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="audit_operations_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuditOps.count" Type="Double"/>
+            <ColumnDef Name="AuditProcess.time" Type="Double"/>
+            <ColumnDef Name="AuditProcess.completed" Type="Double"/>
+            <ColumnDef Name="AuditOperationLatency" Type="Double"/>
+            <Select Name="audit_operations_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_Diagnostic"/>
+                  <Column Type="String" Name="Name"/>
+                  <Column Name="AuditOps.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuditOps.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuditProcess.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuditProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuditProcess.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="AuditProcess.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+            </Select>
+            <Select Name="audit_operations_rollup_result">
+                  <TableFrom Name="audit_operations_rollup_result_1"/>
+                  <Column Name="AuditOps.count" Type="Double"/>
+                  <Column Name="AuditProcess.time" Type="Double"/>
+                  <Column Name="AuditProcess.completed" Type="Double"/>
+                  <Column Name="AuditOperationLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="AuditProcess.time"/>
+                              <ColumnFrom Name="AuditProcess.completed"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="audit_operations_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuditOps.count" Type="Double"/>
+            <ColumnDef Name="AuditOperationLatency" Type="Double"/>
+            <ColumnDef Name="AuditOperations.persec" Type="Double"/>
+            <Select Name="audit_operations_rollup_result_rate">
+                  <TableFrom Name="domain_oracle_oam:audit_operations_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="AuditOps.count" Type="Double"/>
+                  <Column Name="AuditOperationLatency" Type="Double"/>
+                  <Column Name="AuditOperations.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuditOps.count"
+                                          Table="domain_oracle_oam:audit_operations_rollup"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="access_clients_10g_OSSO_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.count" Type="Double"/>
+            <ColumnDef Name="AuthnProcess.time" Type="Double"/>
+            <ColumnDef Name="PreAuthnProcess.time" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="ValidateCredentialsSuccess.count" Type="Double"/>
+            <ColumnDef Name="ValidateCredentials.completed" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <Select Name="osso_operations_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_Server.OSSO_Agents"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="AuthnRequests.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthnRequests.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnProcess.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthnProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="PreAuthnProcess.time" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="PreAuthnProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentialsSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentialsSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentials.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentials.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+            </Select>
+            <Select Name="osso_operations_rollup_result">
+                  <TableFrom Name="osso_operations_rollup_result_1"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="AuthnRequests.count" Type="Double"/>
+                  <Column Name="AuthnProcess.time" Type="Double"/>
+                  <Column Name="PreAuthnProcess.time" Type="Double"/>
+                  <Column Name="ValidateCredentialsSuccess.count"
+                          Type="Double"/>
+                  <Column Name="ValidateCredentials.completed" Type="Double"/>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <Expression Operator="Plus">
+                                    <ColumnFrom Name="AuthnProcess.time"/>
+                                    <ColumnFrom Name="PreAuthnProcess.time"/>
+                              </Expression>
+                              <ColumnFrom Name="AuthnRequests.count"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="ValidateCredentialsSuccess.count"/>
+                                    <ColumnFrom Name="ValidateCredentials.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="access_clients_10g_OSSO_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.count" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <Select Name="access_clients_10g_OSSO_rollup_result_rate">
+                  <TableFrom Name="domain_oracle_oam:access_clients_10g_OSSO_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="AuthnRequests.count" Type="Double"/>
+                  <Column Name="AuthnLatency" Type="Double"/>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double"/>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthnRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="access_clients_10g_OAM_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="GetAuthnScheme.completed" Type="Double"/>
+            <ColumnDef Name="GetAuthnScheme.time" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="GetAuthnSchemeSuccess.count" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="ValidateCredentialsSuccess.count" Type="Double"/>
+            <ColumnDef Name="ValidateCredentials.completed" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.count" Type="Double"/>
+            <ColumnDef Name="AuthzProcessSuccess.count" Type="Double"/>
+            <ColumnDef Name="AuthzProcess.completed" Type="Double"/>
+            <ColumnDef Name="AuthzProcess.time" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <ColumnDef Name="AuthzSuccess.count" Type="Double"/>
+            <ColumnDef Name="NapHandshakeSuccess.count" Type="Double"/>
+            <ColumnDef Name="NapHandshakeSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="NapOperations.time" Type="Double"/>
+            <ColumnDef Name="NapHandshakeLatency" Type="Double"/>
+            <ColumnDef Name="NapNumberOfOpenConnections" Type="Double"/>
+            <ColumnDef Name="TotalNapOperations" Type="Double"/>
+            <Select Name="oam_operations_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_Server.OAM_Agents"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="GetAuthnScheme.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="GetAuthnScheme.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="GetAuthnSchemeSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="GetAuthnSchemeSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="GetAuthnScheme.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="GetAuthnScheme.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentialsSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentialsSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentials.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentials.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthzRequests.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzProcessSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="AuthnProcessSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzProcess.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="AuthzProcess.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzProcess.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthzProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="NapHandshakeSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="napHandshakeSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="TotalNapOperations" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="napOperations.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="NapOperations.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="napOperations.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="NapNumberOfOpenConnections" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="numberOfOpenConnections.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthzSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+            </Select>
+            <Select Name="oam_operations_rollup_result">
+                  <TableFrom Name="oam_operations_rollup_result_1"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="GetAuthnScheme.completed" Type="Double"/>
+                  <Column Name="GetAuthnScheme.time" Type="Double"/>
+                  <Column Name="GetAuthnSchemeSuccess.count" Type="Double"/>
+                  <Column Name="ValidateCredentialsSuccess.count"
+                          Type="Double"/>
+                  <Column Name="ValidateCredentials.completed" Type="Double"/>
+                  <Column Name="AuthzRequests.count" Type="Double"/>
+                  <Column Name="AuthzProcessSuccess.count" Type="Double"/>
+                  <Column Name="AuthzProcess.completed" Type="Double"/>
+                  <Column Name="AuthzProcess.time" Type="Double"/>
+                  <Column Name="TotalNapOperations" Type="Double"/>
+                  <Column Name="NapHandshakeSuccess.count" Type="Double"/>
+                  <Column Name="NapOperations.time" Type="Double"/>
+                  <Column Name="AuthzSuccess.count" Type="Double"/>
+                  <Column Name="NapNumberOfOpenConnections" Type="Double"/>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="GetAuthnScheme.time"/>
+                              <ColumnFrom Name="GetAuthnScheme.completed"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="GetAuthnSchemeSuccess.count"/>
+                                    <ColumnFrom Name="GetAuthnScheme.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="AuthzProcess.time"/>
+                              <ColumnFrom Name="AuthzProcess.completed"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="AuthzSuccess.count"/>
+                                    <ColumnFrom Name="AuthzRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="NapHandshakeLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="NapOperations.time"/>
+                              <ColumnFrom Name="TotalNapOperations"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="NapHandshakeSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="NapHandshakeSuccess.count"/>
+                                    <ColumnFrom Name="TotalNapOperations"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="access_clients_10g_OAM_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.count" Type="Double"/>
+            <ColumnDef Name="GetAuthnScheme.completed" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <ColumnDef Name="NapHandshakeSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="NapHandshakeLatency" Type="Double"/>
+            <ColumnDef Name="NapNumberOfOpenConnections" Type="Double"/>
+            <Select Name="oam_controller_rollup_result_rate">
+                  <TableFrom Name="domain_oracle_oam:access_clients_10g_OAM_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="GetAuthnScheme.completed" Type="Double"/>
+                  <Column Name="AuthzRequests.count" Type="Double"/>
+                  <Column Name="AuthnLatency" Type="Double"/>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double"/>
+                  <Column Name="AuthzLatency" Type="Double"/>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double"/>
+                  <Column Name="NapHandshakeLatency" Type="Double"/>
+                  <Column Name="NapHandshakeSuccessFailure.rate" Type="Double"/>
+                  <Column Name="NapNumberOfOpenConnections" Type="Double"/>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="1000">
+                              <ColumnFrom Name="GetAuthnScheme.completed"
+                                          Table="domain_oracle_oam:access_clients_10g_OAM_rollup"/>
+                        </Rate>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthzRequests.count"
+                                          Table="domain_oracle_oam:access_clients_10g_OAM_rollup"/>
+                        </Rate>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="access_client_applications_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidateCredentialsSuccess.count" Type="Double"/>
+            <ColumnDef Name="ValidateCredentials.completed" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthnProcess.time" Type="Double"/>
+            <ColumnDef Name="PreAuthnProcess.time" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthzProcessSuccess.count" Type="Double"/>
+            <ColumnDef Name="AuthzProcess.completed" Type="Double"/>
+            <ColumnDef Name="AuthzProcess.time" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <Select Name="access_client_applications_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_Applications"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="AuthnRequests.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthnRequests.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentialsSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentialsSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidateCredentials.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateCredentials.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnProcess.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthnProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="PreAuthnProcess.time" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="PreAuthnProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzProcessSuccess.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="AuthnProcessSuccess.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzProcess.completed" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="AuthzProcess.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzProcess.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="AuthzProcess.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+            </Select>
+            <Select Name="access_client_applications_rollup_result">
+                  <TableFrom Name="access_client_applications_rollup_result_1"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="AuthnRequests.count" Type="Double"/>
+                  <Column Name="ValidateCredentialsSuccess.count"
+                          Type="Double"/>
+                  <Column Name="ValidateCredentials.completed" Type="Double"/>
+                  <Column Name="AuthnProcess.time" Type="Double"/>
+                  <Column Name="PreAuthnProcess.time" Type="Double"/>
+                  <Column Name="AuthzProcessSuccess.count" Type="Double"/>
+                  <Column Name="AuthzProcess.completed" Type="Double"/>
+                  <Column Name="AuthzProcess.time" Type="Double"/>
+                  <Column Name="AuthnLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <Expression Operator="Plus">
+                                    <ColumnFrom Name="AuthnProcess.time"/>
+                                    <ColumnFrom Name="PreAuthnProcess.time"/>
+                              </Expression>
+                              <ColumnFrom Name="AuthnRequests.count"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="ValidateCredentialsSuccess.count"/>
+                                    <ColumnFrom Name="ValidateCredentials.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="AuthzProcess.time"/>
+                              <ColumnFrom Name="AuthzProcess.completed"/>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="AuthzProcessSuccess.count"/>
+                                    <ColumnFrom Name="AuthzProcess.completed"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="access_client_applications_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="AuthnRequests.persec" Type="Double"/>
+            <ColumnDef Name="AuthzProcess.completed" Type="Double"/>
+            <ColumnDef Name="AuthnRequests.count" Type="Double"/>
+            <ColumnDef Name="AuthnSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthnLatency" Type="Double"/>
+            <ColumnDef Name="AuthzSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="AuthzLatency" Type="Double"/>
+            <ColumnDef Name="AuthzRequests.persec" Type="Double"/>
+            <Select Name="access_client_applications_rollup_rate">
+                  <TableFrom Name="domain_oracle_oam:access_client_applications_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="AuthnRequests.count" Type="Double"/>
+                  <Column Name="AuthzProcess.completed" Type="Double"/>
+                  <Column Name="AuthnLatency" Type="Double"/>
+                  <Column Name="AuthnSuccessFailure.rate" Type="Double"/>
+                  <Column Name="AuthzLatency" Type="Double"/>
+                  <Column Name="AuthzSuccessFailure.rate" Type="Double"/>
+                  <Column Name="AuthnRequests.persec" Type="Double">
+                        <Rate Interval="1000">
+                              <ColumnFrom Name="AuthnRequests.count"
+                                          Table="domain_oracle_oam:access_client_applications_rollup"/>
+                        </Rate>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="AuthzRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="AuthzProcess.completed"
+                                          Table="domain_oracle_oam:access_client_applications_rollup"/>
+                        </Rate>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="user_identity_provider_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="TotalOperations.count" Type="Double"/>
+            <ColumnDef Name="TotalFailedOperations.count" Type="Double"/>
+            <ColumnDef Name="TotalOperations.time" Type="Double"/>
+            <ColumnDef Name="OperationsLatency" Type="Double"/>
+            <ColumnDef Name="OperationsSuccessFailure.rate" Type="Double"/>
+            <Select Name="user_identity_provider_result_1">
+                  <TableFrom Name="OAMS.OAM_UserIdentityProvider"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="TotalOperations.count" Type="Double">
+                        <Expression Operator="Plus">
+                              <Aggregation Operator="Sum"
+                                           Name="assignGroupToUser.count"/>
+                              <Expression Operator="Plus">
+                                    <Aggregation Operator="Sum"
+                                                 Name="authenticateUser.count"/>
+                                    <Expression Operator="Plus">
+                                          <Aggregation Operator="Sum"
+                                                       Name="createGroup.count"/>
+                                          <Expression Operator="Plus">
+                                                <Aggregation Operator="Sum"
+                                                             Name="createUser.count"/>
+                                                <Expression Operator="Plus">
+                                                      <Aggregation Operator="Sum"
+                                                                   Name="getGroups.count"/>
+                                                      <Expression Operator="Plus">
+                                                            <Aggregation Operator="Sum"
+                                                                         Name="getUserAttributes.count"/>
+                                                            <Expression Operator="Plus">
+                                                                  <Aggregation Operator="Sum"
+                                                                               Name="getUsers.count"/>
+                                                                  <Expression Operator="Plus">
+                                                                        <Aggregation Operator="Sum"
+                                                                                     Name="isUserAssignedToGroup.count"/>
+                                                                        <Expression Operator="Plus">
+                                                                              <Aggregation Operator="Sum"
+                                                                                           Name="removeGroup.count"/>
+                                                                              <Aggregation Operator="Sum"
+                                                                                           Name="removeUser.count"/>
+                                                                        </Expression>
+                                                                  </Expression>
+                                                            </Expression>
+                                                      </Expression>
+                                                </Expression>
+                                          </Expression>
+                                    </Expression>
+                              </Expression>
+                        </Expression>
+                  </Column>
+                  <Column Name="TotalFailedOperations.count" Type="Double">
+                        <Expression Operator="Plus">
+                              <Aggregation Operator="Sum"
+                                           Name="assignGroupToUserFailure.count"/>
+                              <Expression Operator="Plus">
+                                    <Aggregation Operator="Sum"
+                                                 Name="authenticateUserFailure.count"/>
+                                    <Expression Operator="Plus">
+                                          <Aggregation Operator="Sum"
+                                                       Name="createGroupFailure.count"/>
+                                          <Expression Operator="Plus">
+                                                <Aggregation Operator="Sum"
+                                                             Name="createUserFailure.count"/>
+                                                <Expression Operator="Plus">
+                                                      <Aggregation Operator="Sum"
+                                                                   Name="getGroupsFailure.count"/>
+                                                      <Expression Operator="Plus">
+                                                            <Aggregation Operator="Sum"
+                                                                         Name="getUserAttributesFailure.count"/>
+                                                            <Expression Operator="Plus">
+                                                                  <Aggregation Operator="Sum"
+                                                                               Name="getUsersFailure.count"/>
+                                                                  <Expression Operator="Plus">
+                                                                        <Aggregation Operator="Sum"
+                                                                                     Name="isUserAssignedToGroupFailure.count"/>
+                                                                        <Expression Operator="Plus">
+                                                                              <Aggregation Operator="Sum"
+                                                                                           Name="removeGroupFailure.count"/>
+                                                                              <Aggregation Operator="Sum"
+                                                                                           Name="removeUserFailure.count"/>
+                                                                        </Expression>
+                                                                  </Expression>
+                                                            </Expression>
+                                                      </Expression>
+                                                </Expression>
+                                          </Expression>
+                                    </Expression>
+                              </Expression>
+                        </Expression>
+                  </Column>
+                  <Column Name="TotalOperations.time" Type="Double">
+                        <Expression Operator="Plus">
+                              <Aggregation Operator="Sum"
+                                           Name="AssignGroupToUser.time"/>
+                              <Expression Operator="Plus">
+                                    <Aggregation Operator="Sum"
+                                                 Name="AuthenticateUser.time"/>
+                                    <Expression Operator="Plus">
+                                          <Aggregation Operator="Sum"
+                                                       Name="CreateGroup.time"/>
+                                          <Expression Operator="Plus">
+                                                <Aggregation Operator="Sum"
+                                                             Name="CreateUser.time"/>
+                                                <Expression Operator="Plus">
+                                                      <Aggregation Operator="Sum"
+                                                                   Name="GetGroups.time"/>
+                                                      <Expression Operator="Plus">
+                                                            <Aggregation Operator="Sum"
+                                                                         Name="GetUserAttributes.time"/>
+                                                            <Expression Operator="Plus">
+                                                                  <Aggregation Operator="Sum"
+                                                                               Name="GetUsers.time"/>
+                                                                  <Expression Operator="Plus">
+                                                                        <Aggregation Operator="Sum"
+                                                                                     Name="IsUserAssignedToGroup.time"/>
+                                                                        <Expression Operator="Plus">
+                                                                              <Aggregation Operator="Sum"
+                                                                                           Name="RemoveGroup.time"/>
+                                                                              <Aggregation Operator="Sum"
+                                                                                           Name="RemoveUser.time"/>
+                                                                        </Expression>
+                                                                  </Expression>
+                                                            </Expression>
+                                                      </Expression>
+                                                </Expression>
+                                          </Expression>
+                                    </Expression>
+                              </Expression>
+                        </Expression>
+                  </Column>
+                  <GroupBy Name="Name"/>
+            </Select>
+            <Select Name="user_identity_provider_result">
+                  <TableFrom Name="user_identity_provider_result_1"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="TotalOperations.count" Type="Double"/>
+                  <Column Name="TotalFailedOperations.count" Type="Double"/>
+                  <Column Name="TotalOperations.time" Type="Double"/>
+                  <Column Name="OperationsSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="TotalOperations.count"/>
+                                          <ColumnFrom Name="TotalFailedOperations.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="TotalOperations.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="OperationsLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="TotalOperations.time"/>
+                              <ColumnFrom Name="TotalOperations.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="user_identity_provider_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="TotalOperations.count" Type="Double"/>
+            <ColumnDef Name="TotalOperations.count.previous" Type="Double"/>
+            <ColumnDef Name="OperationsLatency" Type="Double"/>
+            <ColumnDef Name="OperationsSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="LDAPOperations.persec" Type="Double"/>
+            <Select Name="user_identity_provider_rollup_rate_result">
+                  <TableFrom Name="domain_oracle_oam:user_identity_provider_rollup"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="TotalOperations.count" Type="Double"/>
+                  <Column Name="OperationsLatency" Type="Double"/>
+                  <Column Name="OperationsSuccessFailure.rate" Type="Double"/>
+                  <Column Name="TotalOperations.count.previous" Type="Double">
+                        <Previous Interval="60000" Index="0">
+                              <ColumnFrom Name="TotalOperations.count"/>
+                              <Default>0</Default>
+                        </Previous>
+                  </Column>
+                  <Column Name="LDAPOperations.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="TotalOperations.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="token_request_rollup">
+            <ColumnDef Name="RequesterName" Type="Double" Key="true"/>
+            <ColumnDef Name="IssueRequests.count" Type="Double"/>
+            <ColumnDef Name="IssueRequests.time" Type="Double"/>
+            <ColumnDef Name="IssueRequestLatency" Type="Double"/>
+            <ColumnDef Name="IssueRequests.persec" Type="Double"/>
+            <ColumnDef Name="IssueRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestsSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestLatency" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.persec" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsSuccessFailure.rate"
+                       Type="Double"/>
+            <Select Name="token_request_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_Requests"/>
+                  <Column Name="RequesterName" Type="String">
+                        <ColumnFrom Name="OAMS.OAM_Requests"/>
+                  </Column>
+                  <Column Name="IssueRequests.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="IssueRequests.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateRequests.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="IssueRequests.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="IssueRequests.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.time" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateRequests.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="IssueRequestsFailure.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="IssueRequestsFailure.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateRequestsFailure.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="RequesterName"/>
+                  <Where>
+                        <Condition Type="String" Operator="EQ">
+                              <ColumnFrom Name="Name" />
+                              <Value>TotalEntries</Value>
+                        </Condition>
+                  </Where>
+            </Select>
+            <Select Name="token_request_rollup_result">
+                  <TableFrom Name="token_request_rollup_result_1"/>
+                  <Column Name="IssueRequests.count" Type="Double"/>
+                  <Column Name="IssueRequests.time" Type="Double"/>
+                  <Column Name="IssueRequestsFailure.count" Type="Double"/>
+                  <Column Name="IssueRequestsSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="IssueRequests.count"/>
+                                          <ColumnFrom Name="IssueRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="IssueRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="IssueRequestLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="IssueRequests.time"/>
+                              <ColumnFrom Name="IssueRequests.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double"/>
+                  <Column Name="ValidationRequests.time" Type="Double"/>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double"/>
+                  <Column Name="ValidationRequestsSuccessFailure.rate"
+                          Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="ValidationRequests.count"/>
+                                          <ColumnFrom Name="ValidationRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="ValidationRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequestLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="ValidationRequests.time"/>
+                              <ColumnFrom Name="ValidationRequests.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="token_request_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="IssueRequests.count" Type="Double"/>
+            <ColumnDef Name="IssueRequests.time" Type="Double"/>
+            <ColumnDef Name="IssueRequestLatency" Type="Double"/>
+            <ColumnDef Name="IssueRequests.persec" Type="Double"/>
+            <ColumnDef Name="IssueRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestsSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestLatency" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.persec" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsSuccessFailure.rate"
+                       Type="Double"/>
+            <Select Name="token_request_rollup_rate_result">
+                  <TableFrom Name="domain_oracle_oam:token_request_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="IssueRequests.count" Type="Double"/>
+                  <Column Name="IssueRequests.time" Type="Double"/>
+                  <Column Name="IssueRequestLatency" Type="Double"/>
+                  <Column Name="IssueRequestsFailure.count" Type="Double"/>
+                  <Column Name="IssueRequestsSuccessFailure.rate"
+                          Type="Double"/>
+                  <Column Name="IssueRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="IssueRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double"/>
+                  <Column Name="ValidationRequests.time" Type="Double"/>
+                  <Column Name="ValidationRequestLatency" Type="Double"/>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double"/>
+                  <Column Name="ValidationRequestsSuccessFailure.rate"
+                          Type="Double"/>
+                  <Column Name="ValidationRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="ValidationRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="core_token_generation_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="TokenCreation.count" Type="Double"/>
+            <ColumnDef Name="TokenCreation.time" Type="Double"/>
+            <ColumnDef Name="TokenCreation.persec" Type="Double"/>
+            <ColumnDef Name="TokenCreationLatency" Type="Double"/>
+            <Select Name="core_token_generation_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_TokenGeneration"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="TokenCreation.count" Type="Double">
+                        <Aggregation Operator="Sum" Name="Creation.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="TokenCreation.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="Creation.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+                  <Where>
+                        <Condition Type="String" Operator="NE">
+                              <ColumnFrom Name="Name" />
+                              <Value>TotalEntries</Value>
+                        </Condition>
+                  </Where>
+            </Select>
+            <Select Name="core_token_generation_rollup_result">
+                  <TableFrom Name="core_token_generation_rollup_result_1"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="TokenCreation.count" Type="Double"/>
+                  <Column Name="TokenCreation.time" Type="Double"/>
+                  <Column Name="TokenCreationLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="TokenCreation.time"/>
+                              <ColumnFrom Name="TokenCreation.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+            
+      </Table>
+      <Table Name="core_token_generation_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="TokenCreation.count" Type="Double"/>
+            <ColumnDef Name="TokenCreation.time" Type="Double"/>
+            <ColumnDef Name="TokenCreation.persec" Type="Double"/>
+            <ColumnDef Name="TokenCreationLatency" Type="Double"/>
+            <Select Name="core_token_generation_rollup_rate_result">
+                  <TableFrom Name="domain_oracle_oam:core_token_generation_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="TokenCreation.count" Type="Double"/>
+                  <Column Name="TokenCreation.time" Type="Double"/>
+                  <Column Name="TokenCreationLatency" Type="Double"/>
+                  <Column Name="TokenCreation.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="TokenCreation.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="core_token_validation_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="TokenValidation.count" Type="Double"/>
+            <ColumnDef Name="TokenValidation.time" Type="Double"/>
+            <ColumnDef Name="TokenValidation.persec" Type="Double"/>
+            <ColumnDef Name="TokenValidationLatency" Type="Double"/>
+            <ColumnDef Name="TokenFailure.count" Type="Double"/>
+            <ColumnDef Name="TokenFailure.rate" Type="Double"/>
+            <Select Name="core_token_validation_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_TokenValidation"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="TokenValidation.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="Validation.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="TokenValidation.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="Validation.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="TokenFailure.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidationFailure.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+                  <Where>
+                        <Condition Type="String" Operator="NE">
+                              <ColumnFrom Name="Name" />
+                              <Value>TotalEntries</Value>
+                        </Condition>
+                  </Where>
+            </Select>
+            <Select Name="core_token_validation_rollup_result">
+                  <TableFrom Name="core_token_validation_rollup_result_1"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="TokenValidation.count" Type="Double"/>
+                  <Column Name="TokenValidation.time" Type="Double"/>
+                  <Column Name="TokenValidationLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="TokenValidation.time"/>
+                              <ColumnFrom Name="TokenValidation.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="TokenFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <ColumnFrom Name="TokenFailure.count"/>
+                                    <ColumnFrom Name="TokenValidation.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="core_token_validation_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="TokenValidation.count" Type="Double"/>
+            <ColumnDef Name="TokenValidation.time" Type="Double"/>
+            <ColumnDef Name="TokenValidation.persec" Type="Double"/>
+            <ColumnDef Name="TokenValidationLatency" Type="Double"/>
+            <ColumnDef Name="TokenFailure.count" Type="Double"/>
+            <ColumnDef Name="TokenFailure.rate" Type="Double"/>
+            <Select Name="core_token_validation_rollup_rate_result">
+                  <TableFrom Name="domain_oracle_oam:core_token_validation_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="TokenValidation.count" Type="Double"/>
+                  <Column Name="TokenFailure.count" Type="Double"/>
+                  <Column Name="TokenValidation.time" Type="Double"/>
+                  <Column Name="TokenValidationLatency" Type="Double"/>
+                  <Column Name="TokenFailure.rate" Type="Double"/>
+                  <Column Name="TokenValidation.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="TokenValidation.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="partner_request_rollup">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="RequesterName" Type="String" Key="true"/>
+            <ColumnDef Name="IssueRequests.count" Type="Double"/>
+            <ColumnDef Name="IssueRequests.time" Type="Double"/>
+            <ColumnDef Name="IssueRequestLatency" Type="Double"/>
+            <ColumnDef Name="IssueRequests.persec" Type="Double"/>
+            <ColumnDef Name="IssueRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestsSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestLatency" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.persec" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsSuccessFailure.rate"
+                       Type="Double"/>
+            <Select Name="partner_request_rollup_result_1">
+                  <TableFrom Name="OAMS.OAM_Requests"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="RequesterName" Type="String">
+                        <ColumnFrom Name="OAMS.OAM_Requests"/>
+                  </Column>
+                  <Column Name="IssueRequests.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="IssueRequests.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateRequests.completed"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="IssueRequests.time" Type="Double">
+                        <Aggregation Operator="Sum" Name="IssueRequests.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.time" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateRequests.time"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="IssueRequestsFailure.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="IssueRequestsFailure.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double">
+                        <Aggregation Operator="Sum"
+                                     Name="ValidateRequestsFailure.count"/>
+                        <Default>0</Default>
+                  </Column>
+                  <GroupBy Name="Name"/>
+                  <GroupBy Name="RequesterName"/>
+                  <Where>
+                        <Condition Type="String" Operator="NE">
+                              <ColumnFrom Name="Name" />
+                              <Value>TotalEntries</Value>
+                        </Condition>
+                  </Where>
+            </Select>
+            <Select Name="partner_request_rollup_result">
+                  <TableFrom Name="partner_request_rollup_result_1"/>
+                  <Column Name="Name" Type="String"/>
+                  <Column Name="RequesterName" Type="String"/>
+                  <Column Name="IssueRequests.count" Type="Double"/>
+                  <Column Name="IssueRequests.time" Type="Double"/>
+                  <Column Name="IssueRequestsFailure.count" Type="Double"/>
+                  <Column Name="IssueRequestsSuccessFailure.rate" Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="IssueRequests.count"/>
+                                          <ColumnFrom Name="IssueRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="IssueRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="IssueRequestLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="IssueRequests.time"/>
+                              <ColumnFrom Name="IssueRequests.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double"/>
+                  <Column Name="ValidationRequests.time" Type="Double"/>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double"/>
+                  <Column Name="ValidationRequestsSuccessFailure.rate"
+                          Type="Double">
+                        <Expression Operator="Mult">
+                              <Expression Operator="Div">
+                                    <Expression Operator="Minus">
+                                          <ColumnFrom Name="ValidationRequests.count"/>
+                                          <ColumnFrom Name="ValidationRequestsFailure.count"/>
+                                    </Expression>
+                                    <ColumnFrom Name="ValidationRequests.count"/>
+                                    <Default>0</Default>
+                              </Expression>
+                              <Value>100</Value>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+                  <Column Name="ValidationRequestLatency" Type="Double">
+                        <Expression Operator="Div">
+                              <ColumnFrom Name="ValidationRequests.time"/>
+                              <ColumnFrom Name="ValidationRequests.count"/>
+                              <Default>0</Default>
+                        </Expression>
+                        <Default>0</Default>
+                  </Column>
+            </Select>
+      </Table>
+      <Table Name="partner_request_rollup_rate">
+            <ColumnDef Name="Name" Type="String" Key="true"/>
+            <ColumnDef Name="RequesterName" Type="String" Key="true"/>
+            <ColumnDef Name="IssueRequests.count" Type="Double"/>
+            <ColumnDef Name="IssueRequests.time" Type="Double"/>
+            <ColumnDef Name="IssueRequestLatency" Type="Double"/>
+            <ColumnDef Name="IssueRequests.persec" Type="Double"/>
+            <ColumnDef Name="IssueRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="IssueRequestsSuccessFailure.rate" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestLatency" Type="Double"/>
+            <ColumnDef Name="ValidationRequests.persec" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsFailure.count" Type="Double"/>
+            <ColumnDef Name="ValidationRequestsSuccessFailure.rate"
+                       Type="Double"/>
+            <Select Name="partner_request_rollup_rate_result">
+                  <TableFrom Name="domain_oracle_oam:partner_request_rollup"/>
+                  <Column Name="Name" Type="String">
+                        <ColumnFrom Name="Name"/>
+                  </Column>
+                  <Column Name="RequesterName" Type="String"/>
+                  <Column Name="IssueRequests.count" Type="Double"/>
+                  <Column Name="IssueRequests.time" Type="Double"/>
+                  <Column Name="IssueRequestLatency" Type="Double"/>
+                  <Column Name="IssueRequestsFailure.count" Type="Double"/>
+                  <Column Name="IssueRequestsSuccessFailure.rate"
+                          Type="Double"/>
+                  <Column Name="IssueRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="IssueRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+                  <Column Name="ValidationRequests.count" Type="Double"/>
+                  <Column Name="ValidationRequests.time" Type="Double"/>
+                  <Column Name="ValidationRequestLatency" Type="Double"/>
+                  <Column Name="ValidationRequestsFailure.count" Type="Double"/>
+                  <Column Name="ValidationRequestsSuccessFailure.rate"
+                          Type="Double"/>
+                  <Column Name="ValidationRequests.persec" Type="Double">
+                        <Rate Interval="60000">
+                              <ColumnFrom Name="ValidationRequests.count"/>
+                              <Default>0</Default>
+                        </Rate>
+                  </Column>
+            </Select>
+      </Table>
+</Adml>
+
+
+
+
+
+
+

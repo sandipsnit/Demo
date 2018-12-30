@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="US-ASCII" ?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+            xmlns="http://xmlns.oracle.com/sysman/connector/tt" 
+            targetNamespace="http://xmlns.oracle.com/sysman/connector/tt"
+            elementFormDefault="qualified">
+   <xsd:element name="EventModel" type="EMEventModel"/>
+<xsd:complexType name="EMEventModel">
+	<xsd:sequence>
+ 	  <xsd:element name="DetailedEvent" type="DetailedEventType" minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="TicketId" type="xsd:string" minOccurs="0" maxOccurs="1" />
+      	<xsd:element name="ConnectorId" type="xsd:string" minOccurs="1" maxOccurs="1" />
+      	<xsd:element name="EventId" type="EventIdType" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="TargetType" type="xsd:string" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="TargetName" type="xsd:string" minOccurs="1" maxOccurs="1" />
+        <xsd:element name="TargetProperties" type="TargetPropertiesType" minOccurs="0" maxOccurs="1"/>
+	<xsd:element name="MetricColumn" type="xsd:string" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="MetricName" type="xsd:string" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="KeyColumn" type="xsd:string" minOccurs="0" maxOccurs="1" />
+	<xsd:element name="KeyValues" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
+	<xsd:element name="Message" type="xsd:string" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="Severity" type="SeverityType" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="SeverityCode" type="SeverityCodeType" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="CollectionTime" type="xsd:dateTime" minOccurs="1" maxOccurs="1" />
+	<xsd:element name="EventPageURL" type="xsd:string" minOccurs="0" maxOccurs="1" />
+      	<xsd:element name="EMUser" type="xsd:string" minOccurs="1" maxOccurs="1" />
+      	<xsd:element name="HDUser" type="xsd:string" minOccurs="1" maxOccurs="1" />
+      	<xsd:element name="NotificationRuleName" type="xsd:string" minOccurs="0" maxOccurs="1" />
+      	<xsd:element name="TargetHost" type="xsd:string" minOccurs="1" maxOccurs="1" />
+      	<xsd:element name="GracePeriodCheckMade" type="xsd:string" minOccurs="0" maxOccurs="1" />
+        <xsd:element name="TargetTimezone" type="xsd:string" minOccurs="1" maxOccurs="1" />
+    </xsd:sequence>
+</xsd:complexType> 
+  <xsd:complexType name="EventIdType">
+    <xsd:sequence>
+      <xsd:element name="TargetId" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+      <xsd:element name="MetricId" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+      <xsd:element name="KeyId" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+    </xsd:sequence>
+  </xsd:complexType>
+<xsd:simpleType name="SeverityType">
+	<xsd:restriction base="xsd:string">
+	<xsd:enumeration value="Clear" />
+	<xsd:enumeration value="Info" />
+	<xsd:enumeration value="Warning" />
+	<xsd:enumeration value="Critical" />
+	<xsd:enumeration value="Agent Unreachable Clear" />
+      <xsd:enumeration value="Blackout End" />
+      <xsd:enumeration value="Blackout Start" />
+      <xsd:enumeration value="Metric Error End" />
+      <xsd:enumeration value="Metric Error Start" />
+      <xsd:enumeration value="Unknown" />
+	</xsd:restriction>
+</xsd:simpleType>
+<xsd:simpleType name="SeverityCodeType">
+	<xsd:restriction base="xsd:string">
+	<xsd:enumeration value="15" />
+	<xsd:enumeration value="18" />
+	<xsd:enumeration value="20" />
+	<xsd:enumeration value="25" />
+	<xsd:enumeration value="115" />
+      <xsd:enumeration value="125" />
+      <xsd:enumeration value="215" />
+      <xsd:enumeration value="225" />
+      <xsd:enumeration value="315" />
+      <xsd:enumeration value="325" />
+</xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="DetailedEventType">
+    <xsd:sequence>
+ 	  <xsd:element name="SystemAttributes" type="SystemAttributesType" minOccurs="1" maxOccurs="1"/>
+          <xsd:element name="EventTypeAttributes" type="EventTypeAttributesType" minOccurs="1" maxOccurs="1"/>  
+    </xsd:sequence>
+</xsd:complexType> 
+<xsd:complexType name="EventTypeAttributesType">
+      <xsd:sequence>
+        <xsd:element name="Attribute" type="EventTypeAttributeType" maxOccurs="unbounded"/>
+      </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="EventTypeAttributeType">
+    <xsd:sequence>
+        <xsd:element name="Name" type="xsd:string"/>
+        <xsd:element name="Value" type="xsd:string"/>
+    </xsd:sequence>
+</xsd:complexType>    
+<xsd:complexType name="SystemAttributesType">
+    <xsd:sequence>
+       <xsd:element name="EventType" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="EventTypeInternal" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="CreationTime" type="xsd:dateTime" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="SeverityLevel" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="Stateless" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="SourceObjectType" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="SourceObjectId" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="ObjectName" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="ObjectOwner" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+       <xsd:element name="EventInstanceId" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="EventId" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="ModifiedTime" type="xsd:dateTime" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="Priority" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="Owner" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="ResolutionState" type="ResolutionStateType" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="Escalation" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="AcknowledgedFlag" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="Severity" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="Annotation" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="EventMessage" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="EventActionMessage" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="HelpURL" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="TicketId" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="TicketURL" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="CAJobExecutionId" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="CAJobExecutionStatus" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="TargetGuid" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="TargetName" type="xsd:string" minOccurs="0" maxOccurs="1"/> 
+       <xsd:element name="TargetType" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="TargetProperties" type="TargetPropertiesType" minOccurs="0" maxOccurs="1"/>
+       <xsd:element name="ChangedAttributes" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="TargetPropertiesType">
+    <xsd:sequence>
+        <xsd:element name="Comment" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+        <xsd:element name="DeploymentType" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+        <xsd:element name="LineBusiness" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+        <xsd:element name="Location" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+        <xsd:element name="Contact" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+    </xsd:sequence>
+</xsd:complexType>
+  
+<xsd:simpleType name="ResolutionStateType">
+    <xsd:restriction base="xsd:string">
+        <xsd:enumeration value="New" />
+        <xsd:enumeration value="Closed" />
+    </xsd:restriction>
+</xsd:simpleType>
+</xsd:schema>
+

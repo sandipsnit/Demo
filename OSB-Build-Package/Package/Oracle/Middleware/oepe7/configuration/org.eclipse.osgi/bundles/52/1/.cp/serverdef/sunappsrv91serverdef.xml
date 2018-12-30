@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+/*******************************************************************************
+ * Copyright (c) 2007-2010 Oracle and/or its affiliates.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Oracle IDE Developers - initial API and implementation
+ *******************************************************************************/
+ -->
+
+<tns:ServerRuntime
+    xmlns:tns="http://eclipse.org/jst/server/generic/ServerTypeDefinition"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://eclipse.org/jst/server/generic/ServerTypeDefinition ServerTypeDefinitionSchema.xsd "
+    name="GlassFish v2" version="v0.1">
+    
+    
+    <property id="sunappserver.rootdirectory"  label="%sunappserver.rootdirectory"
+    type="directory"
+    context="runtime"
+    default="" />
+    
+    
+    <!-- don't really want to show a default here, but "" results in invalid path errors -->
+    <property id="sunappserver.domainpath"  label="%sunappserver.domainpath"
+    type="directory"
+    context="server"
+    default="${sunappserver.rootdirectory}/domains/domain1" />
+    
+
+    <property id="sunappserver.adminname"  label="%sunappserver.adminname"
+    type="string"
+    context="server"
+    default="admin" />
+    
+    <property id="sunappserver.adminpassword" label="%sunappserver.adminpassword"
+    type="string"
+    context="server"
+    default="adminadmin" />
+    
+
+
+ 
+
+    <module>
+        <type>jst.web</type>
+        <publishDir>${sunappserver.rootdirectory}/domains/${sunappserver.domainname}/autodeploy</publishDir>
+        <publisherReference>org.eclipse.jst.server.generic.antpublisher</publisherReference>
+    </module>
+
+    <module>
+        <type>jst.ejb</type>
+        <publishDir>${sunappserver.rootdirectory}/domains/${sunappserver.domainname}/autodeploy</publishDir>
+        <publisherReference>org.eclipse.jst.server.generic.antpublisher</publisherReference>
+    </module>
+
+    <module>
+        <type>jst.ear</type>
+        <publishDir>${sunappserver.rootdirectory}/domains/${sunappserver.domainname}/autodeploy</publishDir>
+        <publisherReference>org.eclipse.jst.server.generic.antpublisher</publisherReference>
+    </module>
+
+
+    <project>
+        <classpathReference>sunappsrv.project</classpathReference>
+    </project>
+	
+    <start>
+        <!-- This is not used at all, but if/when it is again, use of args (like -->
+        <!-- domain dir) should be re-examined -->
+        <external>${sunappserver.rootdirectory}/bin/asadmin start-domain --verbose=true ${sunappserver.domainname}</external>
+        <external os="Windows">${sunappserver.rootdirectory}/bin/asadmin.bat start-domain   --verbose=true ${sunappserver.domainname} </external>
+        <programArguments></programArguments>
+        <workingDirectory>${sunappserver.rootdirectory}</workingDirectory>
+        <debugPort>9009</debugPort>
+
+    </start>
+
+    <stop>
+        <!-- This is not used at all, but if/when it is again, use of args (like -->
+        <!-- domain dir) should be re-examined -->
+        <external>${sunappserver.rootdirectory}/bin/asadmin stop-domain ${sunappserver.domainname}</external>
+        <external os="Windows">${sunappserver.rootdirectory}/bin/asadmin.bat stop-domain ${sunappserver.domainname} </external>
+        <programArguments></programArguments>
+        <workingDirectory>${sunappserver.rootdirectory}</workingDirectory>
+    </stop>
+        
+    <publisher id="org.eclipse.jst.server.generic.antpublisher">
+        <publisherdata>
+            <dataname>build.file</dataname>
+            <datavalue>/serverdef/sunappsrv-ant.xml</datavalue>
+        </publisherdata>
+        <publisherdata>
+            <dataname>target.publish.jst.web</dataname>
+            <datavalue>deploy.j2ee.web</datavalue>
+        </publisherdata>
+        <publisherdata>
+            <dataname>target.publish.jst.ejb</dataname>
+            <datavalue>deploy.j2ee.ejb</datavalue>
+        </publisherdata>
+        <publisherdata>
+            <dataname>target.publish.jst.ear</dataname>
+            <datavalue>deploy.j2ee.ear</datavalue>
+        </publisherdata>
+        
+        <publisherdata>
+            <dataname>target.unpublish.jst.web</dataname>
+            <datavalue>undeploy.j2ee.web</datavalue>
+        </publisherdata>
+        <publisherdata>
+            <dataname>target.unpublish.jst.ejb</dataname>
+            <datavalue>undeploy.j2ee.ejb</datavalue>
+        </publisherdata>			
+        <publisherdata>
+            <dataname>target.unpublish.jst.ear</dataname>
+            <datavalue>undeploy.j2ee.ear</datavalue>
+        </publisherdata>
+    </publisher>
+
+
+
+    <classpath id="sunappsrv.server" >
+        <archive path="${sunappserver.rootdirectory}/lib/appserv-rt.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/appserv-admin.jar" />
+    </classpath>
+    <classpath id="sunappsrv.deploy" >
+        <archive path="${sunappserver.rootdirectory}/lib/appserv-rt.jar" />
+    </classpath>
+
+    <classpath id="sunappsrv.project" >
+        <archive path="${sunappserver.rootdirectory}/lib/appserv-rt.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/javaee.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/mail.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/webservices-rt.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/webservices-tools.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/appserv-jstl.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/appserv-tags.jar" />
+        <archive path="${sunappserver.rootdirectory}/lib/activation.jar" />
+        <!--  impl jar needed for tld files (html_basic and jsf_core) -->
+        <archive path="${sunappserver.rootdirectory}/lib/jsf-impl.jar" />
+        <!--  jar needed for integration with built in JPA (toplink) ddl generation -->
+        <!--  note that toplink essentials ships with this version of glassfish, so -->
+        <!--  it is intentially included here *before* eclipselink which would need -->
+        <!--  to be installed separately by a user -->
+        <archive path="${sunappserver.rootdirectory}/lib/toplink-essentials.jar" />
+        <!--  jars needed for integration with JPA tools (eclipselink) -->
+        <fileset dir="${sunappserver.rootdirectory}">
+            <include name="lib/appserv-admin.jar" />
+            <include name="lib/install/applications/jmsra/imqjmsra.jar" />
+            <include name="lib/eclipselink*.jar" />
+        </fileset>
+    </classpath>
+	
+    <!-- Note: This is not currently used, but it uses the property sunappserver.serveraddress -->
+    <!-- which does not come from the props above, but is set by synchronizing it with the value -->
+    <!-- from the generic server framework in SunAppServer.java -->
+    <jndiConnection>
+        <providerUrl>jnp://${sunappserver.serveraddress}:1099</providerUrl>
+        <initialContextFactory>org.jnp.interfaces.NamingContextFactory</initialContextFactory>
+        <jndiProperty>
+            <name></name>
+            <value></value>
+        </jndiProperty>
+    </jndiConnection>
+</tns:ServerRuntime>

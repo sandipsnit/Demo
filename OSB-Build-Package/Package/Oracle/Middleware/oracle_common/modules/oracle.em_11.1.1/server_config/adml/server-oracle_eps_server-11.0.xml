@@ -1,0 +1,426 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!-- Copyright (c) 2007, 2010, Oracle and/or its affiliates. 
+All rights reserved. -->
+<!--
+This is the configuration file for the MAS Metric Service metrics for DIP (oracle_eps_server).
+
+   MODIFIED    (MM/DD/YY)
+   akarkala     09/11/08 - Moved file from metricrules folder to current
+                           location
+   akarkala     09/11/08 - Adml file for DIP targets
+
+-->
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="oracle_eps_server">
+  
+  <Table Name="DIPHealth">
+    <!-- <ColumnDef Name="DIPServerName" Type="String" Key="true"/> -->
+    <ColumnDef Name="Name" Type="String" Key="true"/>
+    <ColumnDef Name="QuartzStatus" Type="String"/>
+    <ColumnDef Name="MBeanStatus" Type="String"/>
+    <ColumnDef Name="Host" Type="String"/>
+    <Select Name="DIPHealth_result">
+      <TableFrom Name="DIPServer"/>
+      <Column Name="Name" Type="String">
+        <ColumnFrom Name="Name"/>
+      </Column>
+      <Column Name="QuartzStatus" Type="String">
+        <ColumnFrom Name="SchedulerState.value"/>
+      </Column>
+      <Column Name="MBeanStatus" Type="String">
+        <ColumnFrom Name="MBeanState.value"/>
+      </Column>
+      <Column Name="Host" Type="String">
+        <ColumnFrom Name="Host"/>
+      </Column>
+    </Select>
+  </Table>
+  
+  <!-- The table for DIP Prov Profiles -->
+  <Table Name="DIPProvisioningProfiles">
+    <ColumnDef Name="DIPProvProfileName" Type="String" Key="true"/>
+    <ColumnDef Name="Host" Type="String"/>
+    <ColumnDef Name="Name" Type="String"/>
+    <ColumnDef Name="ReportingComponentNodeID" Type="Integer"/>
+    <Select Name="DIPProvisioningProfiles_result">
+      <TableFrom Name="DIPProv"/>
+      <Column Name="DIPProvProfileName" Type="String">
+        <ColumnFrom Name="DIPProf"/>
+      </Column>
+      <Column Name="Host" Type="String">
+        <ColumnFrom Name="Host"/>
+      </Column>
+      <Column Name="Name" Type="String">
+        <ColumnFrom Name="Name"/>
+      </Column>
+      <Column Name="ReportingComponentNodeID" Type="String">
+        <ColumnFrom Name="ServerName"/>
+      </Column>
+      <!-- ADML Warnings fix
+      <GroupBy Name="DIPProvProfileName"/>
+      -->
+    </Select>
+  </Table>
+  
+  
+  <!-- The table for DIP Sync Profiles -->
+  <Table Name="DIPSyncProfiles">
+    <ColumnDef Name="DIPSyncProfileName" Type="String" Key="true"/>
+    <ColumnDef Name="Host" Type="String"/>
+    <ColumnDef Name="Name" Type="String"/>
+    <ColumnDef Name="ReportingComponentNodeID" Type="String"/>
+    <Select Name="DIPSyncProfiles_result">
+      <TableFrom Name="DIPSync"/>
+      <Column Name="DIPSyncProfileName" Type="String">
+        <ColumnFrom Name="DIPProf"/>
+      </Column>
+      <Column Name="Host" Type="String">
+        <ColumnFrom Name="Host"/>
+      </Column>
+      <Column Name="Name" Type="String">
+        <ColumnFrom Name="Name"/>
+      </Column>
+      <Column Name="ReportingComponentNodeID" Type="String">
+        <ColumnFrom Name="ServerName"/>
+      </Column>
+      <!-- ADML Warning Fix
+      <GroupBy Name="DIPSyncProfileName"/>
+      -->
+    </Select>
+  </Table>
+  
+  <!-- Consolidated DIP Profiles with the important metric columns -->
+  <Table Name="dip_all_profiles_key_columns">
+    <ColumnDef Name="Name" Type="String" Key="true"/>
+    <ColumnDef Name="Host" Type="String"/>
+    <ColumnDef Name="Process" Type="String"/>
+    <ColumnDef Name="lastExecTm.value" Type="String"/>
+    <ColumnDef Name="lastSuccessExecTm.value" Type="String"/>
+    <ColumnDef Name="lastExecErr.value" Type="String"/>
+    <ColumnDef Name="ReportingComponentNodeID" Type="String"/>
+    <ColumnDef Name="processProfile.avg" Type="Integer"/>
+    <ColumnDef Name="processProfile.maxTime" Type="Integer"/>
+    <ColumnDef Name="processProfile.minTime" Type="Integer"/>
+    <!-- temp columns for aggregation -->
+    <ColumnDef Name="processProfile.time" Type="Integer"/>
+    <!-- Total process time -->
+    <ColumnDef Name="processProfile.completed" Type="Integer"/>
+    <!-- total number of completed operations -->
+    <ColumnDef Name="processProfile.totalAttempted" Type="Integer"/>
+    <!-- total number of attempted operations -->
+    <ColumnDef Name="writeLDAP.avg" Type="Integer"/>
+    <!-- avg ldap write time -->
+    <ColumnDef Name="searchLDAP.avg" Type="Integer"/>
+    <!-- avg ldap search time -->
+    <ColumnDef Name="processProfile.qrtzStatus" Type="String"/>
+    <ColumnDef Name="lastSyncStatus.value" Type="String"/>
+    <ColumnDef Name="lastChangeKey.value" Type="String"/>
+    <!-- The state of the qrtz job -->    
+    <!-- For later use if we need to add any new columns to this table -->
+    <!--
+    <ColumnDef Name="" Type="" />
+    -->
+    <Select Name="dip_all_profiles_key_columns_result">
+      <TableFrom Name="DIPProf"/>
+      <Column Name="Name" Type="String">
+        <ColumnFrom Name="Name"/>
+      </Column>
+      <Column Name="Host" Type="String">
+        <ColumnFrom Name="Host"/>
+      </Column>
+      <Column Name="Process" Type="String">
+        <ColumnFrom Name="Process"/>
+      </Column>
+      <Column Name="lastExecTm.value" Type="String">
+        <ColumnFrom Name="lastExecTm.value"/>
+        <Default>-</Default>
+      </Column>
+      <Column Name="lastSuccessExecTm.value" Type="String">
+        <ColumnFrom Name="lastSuccessExecTm.value"/>
+        <Default>-</Default>
+      </Column>
+      <Column Name="lastExecErr.value" Type="String">
+        <ColumnFrom Name="lastExecErr.value"/>
+        <Default>-</Default>
+      </Column>
+      <Column Name="ReportingComponentNodeID" Type="String">
+        <ColumnFrom Name="ReportingComponentNodeID"/>
+      </Column>
+      <Column Name="processProfile.avg" Type="Integer">
+        <ColumnFrom Name="processProfile.avg"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="processProfile.maxTime" Type="Integer">
+        <ColumnFrom Name="processProfile.maxTime"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="processProfile.minTime" Type="Integer">
+        <ColumnFrom Name="processProfile.minTime"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="processProfile.time" Type="Integer">
+        <ColumnFrom Name="processProfile.time"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="processProfile.completed" Type="Integer">
+        <ColumnFrom Name="processProfile.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="processProfile.totalAttempted" Type="Integer">
+        <!-- This is not yet implemented so we hardcode the value to something-->
+        <Value>20</Value>
+      </Column>
+      <Column Name="writeLDAP.avg" Type="Integer">
+        <ColumnFrom Name="writeLDAP.avg"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="searchLDAP.avg" Type="Integer">
+        <ColumnFrom Name="searchLDAP.avg"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="processProfile.qrtzStatus" Type="String">
+        <ColumnFrom Name="state.value"/>
+      </Column>
+      <Column Name="lastSyncStatus.value" Type="String">
+        <ColumnFrom Name="lastSyncStatus.value"/>
+      </Column>
+      <Column Name="lastChangeKey.value" Type="String">
+        <ColumnFrom Name="lastChangeKey.value"/>
+      </Column>
+      <!-- <GroupBy Name="Name"/> -->
+    </Select>
+  </Table>
+ 
+  <!-- The DIP performance and load metrics .. these will be aggregated for all the profiles -->
+  <Table Name="dip_aggregated_metrics">
+    <ColumnDef Name="ReportingComponentNodeID" Type="String" Key="true"/>
+    <ColumnDef Name="Ld_TotalChangesAttempted" Type="Integer"/>
+    <ColumnDef Name="Ld_TotalSuccessfulChanges" Type="Integer"/>
+    <ColumnDef Name="Pf_AvgProfileExecTime" Type="Integer"/>
+    <ColumnDef Name="Pf_AvgLDAPWriteTime" Type="Integer"/>
+    <ColumnDef Name="Pf_AvgLDAPSearchTime" Type="Integer"/>
+    <!-- lets define the query for this table -->
+    <Select Name="dip_aggregated_metrics_result">
+      <TableFrom Name="oracle_eps_server:dip_all_profiles_key_columns"/>
+      <Column Name="ReportingComponentNodeID" Type="String">
+        <ColumnFrom Name="ReportingComponentNodeID"/>
+      </Column>
+      <Column Name="Ld_TotalChangesAttempted" Type="Integer">
+        <Aggregation Operator="Sum" Name="processProfile.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="Ld_TotalSuccessfulChanges" Type="Integer">
+        <Aggregation Operator="Sum" Name="processProfile.completed"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="Pf_AvgProfileExecTime" Type="Integer">
+        <Aggregation Operator="Avg" Name="processProfile.avg"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="Pf_AvgLDAPWriteTime" Type="Integer">
+        <Aggregation Operator="Avg" Name="writeLDAP.avg"/>
+        <Default>0</Default>
+      </Column>
+      <Column Name="Pf_AvgLDAPSearchTime" Type="Integer">
+        <Aggregation Operator="Avg" Name="searchLDAP.avg"/>
+        <Default>0</Default>
+      </Column>
+      <GroupBy Name="ReportingComponentNodeID"/>
+    </Select>
+    
+  </Table>
+  
+  <!-- Operational metrics for Prov profiles -->
+  <Table Name="dip_prov_operations">
+    <ColumnDef Name="Name" Type="String" Key="true"/>
+    <ColumnDef Name="ReportingComponentNodeID" Type="String"/>
+    <ColumnDef Name="pass_createGroup.count" Type="Integer"/>
+    <ColumnDef Name="pass_createIdentity.count" Type="Integer"/>
+    <ColumnDef Name="pass_createSubscription.count" Type="Integer"/>
+    <ColumnDef Name="pass_createUser.count" Type="Integer"/>
+    <ColumnDef Name="pass_deleteGroup.count" Type="Integer"/>
+    <ColumnDef Name="pass_deleteIdentity.count" Type="Integer"/>
+    <ColumnDef Name="pass_deleteSubscription.count" Type="Integer"/>
+    <ColumnDef Name="pass_deleteUser.count" Type="Integer"/>
+    <ColumnDef Name="pass_updateGroup.count" Type="Integer"/>
+    <ColumnDef Name="pass_updateIdentity.count" Type="Integer"/>
+    <ColumnDef Name="pass_updateUser.count" Type="Integer"/>
+    <ColumnDef Name="fail_createGroup.count" Type="Integer"/>
+    <ColumnDef Name="fail_createIdentity.count" Type="Integer"/>
+    <ColumnDef Name="fail_createSubscription.count" Type="Integer"/>
+    <ColumnDef Name="fail_createUser.count" Type="Integer"/>
+    <ColumnDef Name="fail_deleteGroup.count" Type="Integer"/>
+    <ColumnDef Name="fail_deleteIdentity.count" Type="Integer"/>
+    <ColumnDef Name="fail_deleteSubscription.count" Type="Integer"/>
+    <ColumnDef Name="fail_deleteUser.count" Type="Integer"/>
+    <ColumnDef Name="fail_updateGroup.count" Type="Integer"/>
+    <ColumnDef Name="fail_updateIdentity.count" Type="Integer"/>
+    <ColumnDef Name="fail_updateUser.count" Type="Integer"/>
+  <!-- Now lets query the two tables to get the data -->
+    <Select Name="prov_profiles_operation_data_result">
+      <TableFrom Name="DIPProvSuccess" OuterJoined="true"/>
+      <TableFrom Name="DIPProvFailure" OuterJoined="true"/>
+      <Column Name="Name" Type="String">
+        <ColumnFrom Name="DIPProf" Table="DIPProvSuccess"/>
+	<Default>-</Default>
+      </Column>
+      <Column Name="ReportingComponentNodeID" Type="String">
+        <ColumnFrom Name="ReportingComponentNodeID" Table="DIPProvSuccess"/>
+      </Column>
+      <Column Name="pass_createGroup.count" Type="String">
+        <ColumnFrom Name="createGroup.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_createIdentity.count" Type="String">
+        <ColumnFrom Name="createIdentity.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_createSubscription.count" Type="String">
+        <ColumnFrom Name="createSubscription.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_createUser.count" Type="String">
+        <ColumnFrom Name="createUser.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_deleteGroup.count" Type="String">
+        <ColumnFrom Name="deleteGroup.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_deleteIdentity.count" Type="String">
+        <ColumnFrom Name="deleteIdentity.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_deleteSubscription.count" Type="String">
+        <ColumnFrom Name="deleteSubscription.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_deleteUser.count" Type="String">
+        <ColumnFrom Name="deleteUser.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_updateGroup.count" Type="String">
+        <ColumnFrom Name="updateGroup.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_updateIdentity.count" Type="String">
+        <ColumnFrom Name="updateIdentity.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_updateUser.count" Type="String">
+        <ColumnFrom Name="updateUser.count" Table="DIPProvSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_createGroup.count" Type="String">
+        <ColumnFrom Name="createGroup.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_createIdentity.count" Type="String">
+        <ColumnFrom Name="createIdentity.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_createSubscription.count" Type="String">
+        <ColumnFrom Name="createSubscription.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_createUser.count" Type="String">
+        <ColumnFrom Name="createUser.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_deleteGroup.count" Type="String">
+        <ColumnFrom Name="deleteGroup.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_deleteIdentity.count" Type="String">
+        <ColumnFrom Name="deleteIdentity.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_deleteSubscription.count" Type="String">
+        <ColumnFrom Name="deleteSubscription.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_deleteUser.count" Type="String">
+        <ColumnFrom Name="deleteUser.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_updateGroup.count" Type="String">
+        <ColumnFrom Name="updateGroup.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_updateIdentity.count" Type="String">
+        <ColumnFrom Name="updateIdentity.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_updateUser.count" Type="String">
+        <ColumnFrom Name="updateUser.count" Table="DIPProvFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Where>
+           <Condition Operator="EQ" Type="String">
+             <ColumnFrom Name="DIPProf" Table="DIPProvSuccess"/>
+             <ColumnFrom Name="DIPProf" Table="DIPProvFailure"/>
+           </Condition>
+
+     </Where>
+    </Select>
+  </Table>
+  <!-- DIP sync profiles operational data -->
+  <Table Name="dip_sync_operations">
+    <ColumnDef Name="Name" Type="String" Key="true"/>
+    <ColumnDef Name="ReportingComponentNodeID" Type="String"/>
+    <ColumnDef Name="pass_addEntry.count" Type="Integer"/>
+    <ColumnDef Name="pass_deleteEntry.count" Type="Integer"/>
+    <ColumnDef Name="pass_modifyEntry.count" Type="Integer"/>
+    <ColumnDef Name="fail_addEntry.count" Type="Integer"/>
+    <ColumnDef Name="fail_deleteEntry.count" Type="Integer"/>
+    <ColumnDef Name="fail_modifyEntry.count" Type="Integer"/>
+    <ColumnDef Name="Skipped.count" Type="Integer"/>
+  <!-- Now lets query the two tables to get the data -->
+    <Select Name="sync_profiles_operation_data_result">
+      <TableFrom Name="DIPSyncSuccess" OuterJoined="true"/>
+      <TableFrom Name="DIPSyncFailure" OuterJoined="true"/>
+      <Column Name="Name" Type="String">
+        <ColumnFrom Name="DIPProf" Table="DIPSyncSuccess"/>
+	<Default>-</Default>
+      </Column>
+      <Column Name="ReportingComponentNodeID" Type="String">
+        <ColumnFrom Name="ReportingComponentNodeID" Table="DIPSyncSuccess"/>
+      </Column>
+      <Column Name="pass_addEntry.count" Type="String">
+        <ColumnFrom Name="addEntry.count" Table="DIPSyncSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_deleteEntry.count" Type="String">
+        <ColumnFrom Name="deleteEntry.count" Table="DIPSyncSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="pass_modifyEntry.count" Type="String">
+        <ColumnFrom Name="modifyEntry.count" Table="DIPSyncSuccess"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_addEntry.count" Type="String">
+        <ColumnFrom Name="addEntry.count" Table="DIPSyncFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_deleteEntry.count" Type="String">
+        <ColumnFrom Name="deleteEntry.count" Table="DIPSyncFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="fail_modifyEntry.count" Type="String">
+        <ColumnFrom Name="modifyEntry.count" Table="DIPSyncFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Column Name="Skipped.count" Type="String">
+        <ColumnFrom Name="Skipped.count" Table="DIPSyncFailure"/>
+	<Default>0</Default>
+      </Column>
+      <Where>
+           <Condition Operator="EQ" Type="String">
+             <ColumnFrom Name="DIPProf" Table="DIPSyncSuccess"/>
+             <ColumnFrom Name="DIPProf" Table="DIPSyncFailure"/>
+           </Condition>
+     </Where>
+    </Select>
+  </Table>
+</Adml>

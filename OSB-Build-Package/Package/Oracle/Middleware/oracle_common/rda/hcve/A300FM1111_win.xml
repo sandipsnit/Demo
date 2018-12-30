@@ -1,0 +1,1453 @@
+<sdp_diaglet family="Cygwin,Windows" product="FM1111" set="A300FM1111_win" title="Oracle Fusion Middleware 11g R1 (11.1.1) Preinstall (Windows)" type="A">
+<sdp_meta id="$Id: A300FM1111_win.xml,v 2.11 2012/09/14 13:17:46 mschenke Exp $" type="version"/>
+<sdp_meta author="JCR" change="Improve memory and Monitor Colors checks" date="20120911" type="history"/>
+<sdp_content set="A300FM1111_win" title="Oracle Fusion Middleware 11g R1 (11.1.1) Preinstall (Windows)" type="check">
+
+<sdp_group exec="0">
+<sdp_rule id="A00001" mode="RECORD" name="Middleware Home">
+<sdp_command default="$MIDDLEWARE_HOME" type="PROMPT" variable="$MIDDLEWARE_HOME"><![CDATA[Planned Middleware home location]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts for the planned Middleware home.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A13000" mode="RECORD" name="OS Type">
+<sdp_command type="RDA"><![CDATA[call setHcveResult(getOsName())]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system type.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A13001" mode="RECORD" name="OS Platform">
+<sdp_command type="RDA"><![CDATA[import $OS_PLT
+call setHcveResult($OS_PLT)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the hardware architecture.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A13002" mode="RECORD" name="OS Name">
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('$OS_FNM')
+var $OS_FNM = trim(field(':',1,grepCommand('systeminfo','OS Name','if')))
+call setHcveResult($OS_FNM)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system name.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A13003" mode="RECORD" name="OS Bit">
+<sdp_command type="RDA"><![CDATA[import $OS_BIT
+call setHcveResult($OS_BIT)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the word size at operating system level.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A13004" mode="RECORD" name="OS Level">
+<sdp_command type="RDA"><![CDATA[import $OS_LVL
+call setHcveResult($OS_LVL)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the operating system level (service pack).]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A13005" mode="RECORD" name="OS Version">
+<sdp_command type="RDA"><![CDATA[import $OS_VER
+call setHcveResult($OS_VER)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the system version.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A01002" mode="RECORD" name="Database User Id">
+<sdp_command default="SYS" type="PROMPT" variable="$USERID"><![CDATA[User identifier to connect to the database]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user to enter the user identifier for connecting to the database.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A01003" mode="RECORD" name="SYSDBA">
+<sdp_dependencies>
+<sdp_dependency condition="!~" id="A01002" minimum="^(/|[Ss][Yy][Ss])$" result="PASSED" value="Y">Y</sdp_dependency>
+</sdp_dependencies>
+<sdp_command default="Y" type="PROMPT" variable="$SYSDBA"><![CDATA[Whether the user will log in as SYSDBA (Y/N)]]></sdp_command>
+<sdp_description><![CDATA[This rule prompts the user to enter whether the specified user will connect to the Oracle Database with SYSDBA privileges.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A01004" mode="RECORD" name="Default Tablespace">
+<sdp_command default="" type="PROMPT" variable="$DFT_TSP"><![CDATA[Default tablespace of a schema when created from RCU]]></sdp_command>
+<sdp_description><![CDATA[The rule prompts the user to enter the default tablespace for a schema created by the Repository Creation Utility (RCU).]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A01005" mode="RECORD" name="Temporary Tablespace">
+<sdp_command default="" type="PROMPT" variable="$TMP_TSP"><![CDATA[Temporary tablespace for a schema when created from RCU]]></sdp_command>
+<sdp_description><![CDATA[The rule prompts the user to enter the temporary tablespace for a schema created by the Repository Creation Utility (RCU).]]></sdp_description>
+</sdp_rule>
+</sdp_group>
+
+<sdp_group exec="1">
+<sdp_rule id="A11000" mode="RECORD" name="Physical Memory (KB)">
+<sdp_command type="RDA"><![CDATA[var ($MEM,@SYS) = ()
+call setHcveVariable('$MEM','@SYS')
+if !findCommand('systeminfo')
+ return setHcveResult('Cannot access systeminfo')
+var @SYS = command('systeminfo')
+var $lin = field(':',1,grep(@SYS,'Total Physical Memory:','f'))
+if !$lin
+ return setHcveResult('Cannot determine Physical Memory')
+if match($lin,'\s*(.*)\s*([KGM]B)$')
+ var ($MEM,$unt) = (last)
+else
+ return setHcveResult('Cannot determine Physical Memory')
+var $MEM = replace($MEM,'\D','',true)
+if compare('eq',$unt,'MB')
+ var $MEM = expr('*',$MEM,1024)
+elsif compare('eq',$unt,'GB')
+ var $MEM = expr('*',$MEM,1048576)
+call setHcveResult($MEM)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the physical memory size, measured in KB.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A11011" mode="VERIFY" name="Physical Memory Required?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A11000" result="FAILED" value="Memory size required"><![CDATA[Requires the physical memory size.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  expr('>=',$MEM,2097152),'Available',\
+                          'Need at least 2 GB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient physical memory to install Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 2 GB" result="FAILED" syntax="wiki"><![CDATA[Increase the memory to 2 GB or more to install Oracle Fusion Middleware 11g Release 1 (11.1.1). For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11021" mode="VERIFY" name="JDev Physical Memory Required?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A11000" result="FAILED" value="Memory size required"><![CDATA[Requires the physical memory size.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  expr('>=',$MEM,2097152),'Available',\
+                          'Need at least 2 GB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient physical memory to install Oracle JDeveloper 11g Release 1 (11.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install Oracle JDeveloper 11g Release 1 (11.1.1).]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 2 GB" result="FAILED" syntax="wiki"><![CDATA[Increase the memory to 2 GB or more to install Oracle JDeveloper 11g Release 1 (11.1.1). For more information, see ''Oracle Fusion Middleware Installation Guide for Oracle JDeveloper 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11022" mode="VERIFY" name="WLS Physical Memory Required?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A11000" result="FAILED" value="Memory size required"><![CDATA[Requires the physical memory size.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MEM
+call setHcveResult(cond(\
+  expr('>=',$MEM,1048576),'Available',\
+                          'Need at least 1 GB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient physical memory to install Oracle WebLogic Server (WLS) 11g Release 1 (10.3.x).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough memory to install Oracle WebLogic Server 11g Release 1 (10.3.x). The minimum required is 1 GB, but Oracle recommends 2 GB.]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 1 GB" result="FAILED" syntax="wiki"><![CDATA[Increase the memory to 1 GB or more to install Oracle WebLogic Server 11g Release 1 (10.3.x). For more information, see ''Oracle Fusion Middleware Installation Guide for Oracle WebLogic Server 11g Release 1 (10.3.x)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11100" mode="RECORD" name="Available Memory (KB)">
+<sdp_command type="RDA"><![CDATA[import @SYS
+var $FRE = undef
+call setHcveVariable('$FRE')
+if !@SYS
+ return setHcveResult('Cannot access systeminfo')
+var $lin = field(':',1,grep(@SYS,'Available Physical Memory:','f'))
+if !$lin
+ return setHcveResult('Cannot determine Available Memory')
+if match($lin,'\s*(.*)\s*([KGM]B)$')
+ var ($FRE,$unt) = (last)
+else
+ return setHcveResult('Cannot determine Available Memory')
+var $FRE = replace($FRE,'\D','',true)
+if compare('eq',$unt,'MB')
+ var $FRE = expr('*',$FRE,1024)
+elsif compare('eq',$unt,'GB')
+ var $FRE = expr('*',$FRE,1048576)
+call setHcveResult($FRE)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the size of available physical memory, measured in KB.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A11111" mode="VERIFY" name="Available Memory Required?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A11100" result="FAILED" value="Available memory size required"><![CDATA[Requires the available memory size.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $FRE
+call setHcveResult(cond(\
+  expr('>=',$FRE,1048576),'Available',\
+                          'Need at least 1 GB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient available memory to install Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough available memory to install Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 1 GB" result="FAILED" syntax="wiki"><![CDATA[Increase the available memory to 1 GB or more to install Oracle Fusion Middleware 11g Release 1 (11.1.1). For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11121" mode="VERIFY" name="SOA Available Memory?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A11100" result="FAILED" value="Available memory size required"><![CDATA[Requires the available memory size.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $FRE
+call setHcveResult(cond(\
+  expr('>=',$FRE,4194304),'Available',\
+                          'Need at least 4 GB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient available memory to install Oracle SOA.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough available memory to install Oracle SOA.]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 4 GB" result="FAILED" syntax="wiki"><![CDATA[Increase the available memory to 4 GB or more to install Oracle SOA. For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A11122" mode="VERIFY" name="BAM Available Memory?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A11100" result="FAILED" value="Available memory size required"><![CDATA[Requires the available memory size.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $FRE
+call setHcveResult(cond(\
+  expr('>=',$FRE,4194304),'Available',\
+                          'Need at least 4 GB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that your system has sufficient available memory to install Oracle BAM.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough available memory to install Oracle BAM.]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 4 GB" result="FAILED" syntax="wiki"><![CDATA[Increase the available memory to 4 GB or more to install Oracle BAM. For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A12000" mode="RECORD" name="tmp Space (KB)">
+<sdp_command type="RDA"><![CDATA[
+var $dir = nvl(getEnv('TMP'),getEnv('TMPDIR'))
+var $TMP = undef
+call setHcveVariable('$TMP')
+if !testDir('d',$dir)
+ return setHcveResult('Cannot access tmp directory')
+var $TMP = get_df($dir)
+call setHcveResult($TMP)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the space available in the temporary directory, measured in KB.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A12011" mode="VERIFY" name="Space in tmp?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A12000" result="FAILED" value="Temporary space required"><![CDATA[Requires the available temporary space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $TMP
+call setHcveResult(cond(\
+  expr('>=',$TMP,153600),'Available',\
+                         'Need at least 150 MB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that there is sufficient space available for storing temporary files during the Oracle Fusion Middleware 11g Release 1 (11.1.1) installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has sufficient temporary space available to install Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 150 MB" result="FAILED" syntax="wiki"><![CDATA[Increase the available temporary space to 150 MB or more to install Oracle Fusion Middleware 11g Release 1 (11.1.1). For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A12021" mode="VERIFY" name="OIM Space in tmp?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A12000" result="FAILED" value="Temporary space required"><![CDATA[Requires the available temporary space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $TMP
+call setHcveResult(cond(\
+  expr('>=',$TMP,81920),'Available',\
+                        'Need at least 80 MB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that there is sufficient space available for storing temporary files during the Oracle Identity Management 11g Release 1 (11.1.1) installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has sufficient temporary space available to install Oracle Identity Management 11g Release 1 (11.1.1).]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 80 MB" result="FAILED" syntax="wiki"><![CDATA[Increase the available temporary space to 80 MB or more to install Oracle Identity Management 11g Release 1 (11.1.1). For more information, see ''Oracle Fusion Middleware Installation Guide for Oracle Identity Management 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A12100" mode="RECORD" name="Swap Space (KB)">
+<sdp_command type="RDA"><![CDATA[import @SYS
+var $SWP = undef
+call setHcveVariable('$SWP')
+if !@SYS
+ return setHcveResult('Cannot access systeminfo')
+var $lin = field(':',2,grep(@SYS,'(Virtual Memory|Page File): Max Size:','f'))
+if !$lin
+ return setHcveResult('Cannot determine Phyical Memory')
+if match($lin,'\s*(.*)\s*([KGM]B)$')
+ var ($SWP,$unt) = (last)
+else
+ return setHcveResult('Cannot determine Phyical Memory')
+var $SWP = replace($SWP,'\D','',true)
+if compare('eq',$unt,'MB')
+ var $SWP = expr('*',$SWP,1024)
+elsif compare('eq',$unt,'GB')
+ var $SWP = expr('*',$SWP,1048576)
+call setHcveResult($SWP)]]></sdp_command>
+<sdp_description><![CDATA[This rule retrieves the available swap space, measured in KB.]]></sdp_description>
+</sdp_rule>
+
+<sdp_rule id="A12111" mode="VERIFY" name="Swap Space?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A12100" result="FAILED" value="Swap space required"><![CDATA[Requires the available swap space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $SWP
+call setHcveResult(cond(\
+  expr('>=',$SWP,524288),'Available',\
+                         'Need at least 512 MB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that there is sufficient swap available for the Oracle Fusion Middleware 11g Release 1 (11.1.1) installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough swap to install Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 512 MB" result="FAILED" syntax="wiki"><![CDATA[Increase the swap to 512 MB or more to install Oracle Fusion Middleware 11g Release 1 (11.1.1). For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A12121" mode="VERIFY" name="OIM Swap Space?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A12100" result="FAILED" value="Swap space required"><![CDATA[Requires the available swap space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $SWP
+call setHcveResult(cond(\
+  expr('>=',$SWP,153600),'Available',\
+                         'Need at least 150 MB'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that there is sufficient swap available for the Oracle Identity Management 11g Release 1 (11.1.1) installation.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Available" result="PASSED"><![CDATA[The system has enough swap to install Oracle Identity Management 11g Release 1 (11.1.1).]]></sdp_action>
+<sdp_action condition="=~" minimum="Need at least 150 MB" result="FAILED" syntax="wiki"><![CDATA[Increase the swap to 150 MB or more to install Oracle Identity Management 11g Release 1 (11.1.1). For more information, see ''Oracle Fusion Middleware Installation Guide for Oracle Identity Management 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A12311" mode="VERIFY" name="Monitor Colors">
+<sdp_command type="RDA"><![CDATA[var $DPT = undef
+call setHcveVariable('$DPT')
+macro get_device
+{var ($dft) = @arg
+ loop $key (grepRegValue('HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\\
+   Hardware Profiles\UnitedVideo\CONTROL\VIDEO','DefaultSettings.BitsPerPel'))
+ {if match($key,'\\0000$')
+   return $key
+ }
+ return $dft
+}
+
+# Get the device key
+var $dft = 'HKLM\SYSTEM\ControlSet001\Hardware Profiles\0001\System\\
+            CurrentControlSet\SERVICES\IALM\DEVICE0'
+if ?getRegValue('HKLM\HARDWARE\DEVICEMAP\VIDEO','\Device\Video0')
+ var $dev = replace(last,'^\\(REGISTRY|Registry)\\Machine\\','HKLM\')
+else
+ var $dev = $dft
+
+# Check the color resolution
+if !?nvl(getRegValue($dev,'DefaultSettings.BitsPerPel'),\
+         getRegValue($dev = get_device($dft),'DefaultSettings.BitsPerPel'))
+ return setHcveResult('No color resolution')
+else
+ var $DPT = hex2dec(last)
+if !$DPT
+ return setHcveResult('Not found')
+return setHcveResult(cond(expr('>=',$DPT,8),'Adequate',\
+                                            'Need at least 256 colors'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the monitor has sufficient colors required for installing Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The monitor has enough colors.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 256 colors|Use a display with 256 colors.|
+|Not found|Information not found in the registry|
+For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A12321" mode="VERIFY" name="JDev Monitor Colors">
+<sdp_command type="RDA"><![CDATA[import $DPT
+if !$DPT
+ return setHcveResult('Not found')
+return setHcveResult(cond(expr('>=',$DPT,16),'Adequate',\
+                                             'Need at least 65536 colors'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the monitor has sufficient colors required for installing Oracle JDeveloper 11g Release 1 (11.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The monitor has enough colors.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 65536 colors|Use a display with 65536 colors.|
+|Not found|Information not found in the registry|
+For more information, see ''Oracle Fusion Middleware Installation Guide for Oracle JDeveloper 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A12322" mode="VERIFY" name="TPCS Monitor Colors">
+<sdp_command type="RDA"><![CDATA[import $DPT
+if !$DPT
+ return setHcveResult('Not found')
+return setHcveResult(cond(expr('>=',$DPT,16),'Adequate',\
+                                             'Need at least 65536 colors'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the monitor has sufficient colors required for installing Oracle Team Productivity Center Server 11g Release 1 (11.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The monitor has enough colors.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|Need at least 65536 colors|Use a display with 65536 colors.|
+|Not found|Information not found in the registry|
+For more information, see ''Oracle Fusion Middleware Installation Guide for Oracle JDeveloper 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A13101" mode="VERIFY" name="OS Certified?">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A13001" minimum="Windows" result="SKIPPED" value="Not on Windows"><![CDATA[Not a Windows operating system]]></sdp_dependency>
+<sdp_dependency id="A13002"/>
+<sdp_dependency id="A13003"/>
+<sdp_dependency id="A13004"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_FNM,$OS_LVL
+var $ver = nvl(field('\s+',2,$OS_LVL),0)
+if match($OS_FNM,'2003')
+ return setHcveResult(cond(expr('>=',$ver,2),'Certified',\
+                                             'Needs service pack 2 or later'))
+if match($OS_FNM,'2008')
+{if match($OS_FNM,'R2')
+  return setHcveResult('Certified only for FMW 11.1.1.3+')
+ return setHcveResult(cond(expr('>=',$ver,1),'Certified',\
+                                             'Needs service pack 1 or later'))
+}
+return setHcveResult('Not certified')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the correct version of Windows required for installing all installation types of Oracle Fusion Middleware 11g Release 1 (11.1.1).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Certified" result="PASSED"><![CDATA[The correct version of Windows is installed on your server.]]></sdp_action>
+<sdp_action condition="=~" minimum="Needs service pack" result="FAILED" syntax="wiki"><![CDATA[You are not at an adequate service pack level. For the required service pack level, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)'' and My Oracle Support.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[!!SHOWSTOPPER!!
+You do not have the correct version of Windows installed on your server for all installation types. For the certified versions of Windows, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)'' and My Oracle Support.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A13102" mode="VERIFY" name="Classic OS Certified?">
+<sdp_dependencies>
+<sdp_dependency condition="=~" id="A13001" minimum="Windows" result="SKIPPED" value="Not on Windows"><![CDATA[Not a Windows operating system]]></sdp_dependency>
+<sdp_dependency id="A13002"/>
+<sdp_dependency id="A13003"/>
+<sdp_dependency id="A13004"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $OS_BIT,$OS_FNM,$OS_LVL
+var $ver = nvl(field('\s+',2,$OS_LVL),0)
+if match($OS_FNM,'2003')
+ return setHcveResult(cond(expr('<',$ver,2),     'Needs service pack 2',\
+                           expr('==',$OS_BIT,32),'Certified',\
+                                                 'Not fully supported'))
+if match($OS_FNM,'2008')
+{if match($OS_FNM,'R2')
+  return setHcveResult('Not fully supported and only for FMW 11.1.1.3+')
+ return setHcveResult(cond(expr('<',$ver,1),     'Needs service pack 1',\
+                           expr('==',$OS_BIT,32),'Certified',\
+                                                 'Not fully supported'))
+}
+if !expr('==',$OS_BIT,32)
+ return setHcveResult('Not certified for Classic')
+if match($OS_FNM,'7')
+ return setHcveResult('Restricted support and only for FMW 11.1.1.2+')
+if match($OS_FNM,'XP.*Professional',true)
+ return setHcveResult(cond(expr('<',$ver,3),'Needs service pack 3',\
+                                            'Restricted support'))
+if match($OS_FNM,'Vista',true)
+ return setHcveResult(cond(expr('<',$ver,1),'Needs service pack 1',\
+                                            'Restricted support'))
+return setHcveResult('Not certified for Classic')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies the correct version of Windows required for installing Oracle Forms Builder, Reports Builder, Discoverer Administrator, and Discover Desktop.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Certified" result="PASSED"><![CDATA[The correct version of Windows is installed on your server.]]></sdp_action>
+<sdp_action condition="=~" minimum="Needs service pack" result="FAILED" syntax="wiki"><![CDATA[You are not at an adequate service pack level. For the required service pack level, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)'' and My Oracle Support.]]></sdp_action>
+<sdp_action condition="=~" minimum="Not fully supported" result="FAILED"><![CDATA[The version of Windows is not supported for Oracle Forms Builder and Report Builder. It is supported for Discoverer Administrator and Discover Desktop.]]></sdp_action>
+<sdp_action condition="=~" minimum="Restricted support" result="FAILED"><![CDATA[The version of Windows is only supported the applications for a single user in a development environment. It is not supported in a production environment.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[!!SHOWSTOPPER!!
+You do not have the correct version of Windows required for installing Oracle Forms Builder, Reports Builder, Discoverer Administrator and Discover Desktop on your server. For the certified versions of Windows, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)'' and My Oracle Support.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A14001" mode="VERIFY" name="Supported JVM?">
+<sdp_command type="RDA"><![CDATA[call setHcveVariable('$MAX_VER')
+if !findCommand('java')
+ return setHcveResult('No JVM')
+call loadCommand(concat(last,' -version 2>&1'))
+var ($str) = grepLastFile('java version "(.*)"','f1')
+var $ver = version(replace($str,'[\-\_]','.',true))
+if !$ver
+ call setHcveResult('No version')
+
+if grepLastFile('JRockit','f')
+ var @tbl = (['11.1.1.1','1.6.0.05'],\
+             ['11.1.1.2','1.6.0.14'],\
+             ['11.1.1.3','1.6.0.17'],\
+             ['11.1.1.4','1.6.0.22'],\
+             ['11.1.1.5','1.6.0.24'])
+else
+ var @tbl = (['11.1.1.1','1.6.0.11'],\
+             ['11.1.1.2','1.6.0.14'],\
+             ['11.1.1.3','1.6.0.18'],\
+             ['11.1.1.4','1.6.0.21'],\
+             ['11.1.1.5','1.6.0.24'])
+
+var $txt = concat('[',$str,'] too old')
+loop $rec (@tbl)
+{if !compare('valid',$ver,$rec->[1])
+  return setHcveResult($txt)
+ var $txt = concat('[',$str,'] valid for ',$MAX_VER = $rec->[0],' and earlier')
+}
+return setHcveResult('Adequate')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks whether the Java Virtual Machine (JVM) found in the execution path is supported.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="No JVM" result="SKIPPED"><![CDATA[No Java Virtual Machine detected in the execution path]]></sdp_action>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[No action required]]></sdp_action>
+<sdp_action condition="=~" minimum=" valid for " result="WARNING"><![CDATA[The JVM installed is only supported for Fusion Middleware version ${MAX_VER} and earlier.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too old|Make sure that the minimum required version or later for the Fusion Middleware version you wish to install is used.|
+|No version|Cannot verify the version of the Java Virtual Machine. Make sure that the minimum required version or later for the Fusion Middleware version you wish to install is used.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A15001" mode="VERIFY" name="Processor Type">
+<sdp_dependency condition="=~" id="A13001" minimum="Windows" result="SKIPPED" value="Not on Windows"><![CDATA[Not a Windows operating system]]></sdp_dependency>
+<sdp_command type="RDA"><![CDATA[var $CNT = undef
+var $old = 'a'
+loop $key (grepRegValue('HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor',\
+           '.*'))
+{if compare('ne',$key,$old)
+ {incr $CNT
+  var $old = $key
+ }
+}
+var $reg = 'HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0'
+var $CPU = getRegValue($reg,'Identifier')
+call setHcveResult($CPU)
+var $MHZ = hex2dec(getRegValue($reg,'~MHz'))
+call setHcveVariable('$CPU','$MHZ','$CNT')]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the processor type. The minimum requirement for SOA and BAM installation type is a dual-core Pentium and a Pentium IV for Oracle JDeveloper.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^Cannot access" result="FAILED" syntax="wiki"><![CDATA[Grant read permissions on ``/proc/cpuinfo`` to the user who is logged in.]]></sdp_action>
+<sdp_action condition="==" minimum="Model name not found" result="FAILED" syntax="wiki"><![CDATA[HCVE did not succeed to extract the information from ``/proc/cpuinfo``. Please report that ``/proc/cpuinfo`` variant if that must be fixed.]]></sdp_action>
+<sdp_action result="PASSED"><![CDATA[No action is required.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A15011" mode="VERIFY" name="SOA Processor Count?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A15001" minimum="PASSED" result="FAILED" value="Processor type required"><![CDATA[Requires the processor type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $CNT
+call setHcveResult($CNT)]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the processor count for an SOA installation type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="2" result="PASSED" syntax="wiki"><![CDATA[No action required]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The minimum requirement for an SOA installation type is a dual-core Pentium.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A15012" mode="VERIFY" name="BAM Processor Count?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A15001" minimum="PASSED" result="FAILED" value="Processor type required"><![CDATA[Requires the processor type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $CNT
+call setHcveResult($CNT)]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the processor count for a BAM installation type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="2" result="PASSED" syntax="wiki"><![CDATA[No action required]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The minimum requirement for a BAM installation type is a dual-core Pentium.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A15501" mode="VERIFY" name="SOA Processor Speed?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A15001" minimum="PASSED" result="FAILED" value="Processor type required"><![CDATA[Requires the processor type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MHZ
+call setHcveResult($MHZ)]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor speed for SOA installation type. The minimum requirement for the processor speed is 1.5 GHz.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="1500" result="PASSED"><![CDATA[The minimum requirement for the processor speed is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The processor speed must be 1.5 GHz or faster.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A15502" mode="VERIFY" name="BAM Processor Speed?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A15001" minimum="PASSED" result="FAILED" value="Processor type required"><![CDATA[Requires the processor type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MHZ
+call setHcveResult($MHZ)]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor speed for the BAM installation type. The minimum requirement for the processor speed is 1.5 GHz.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="1500" result="PASSED"><![CDATA[The minimum requirement for the processor speed is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The processor speed must be 1.5 GHz or faster.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A15503" mode="VERIFY" name="WLS Processor Speed?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A15001" minimum="PASSED" result="FAILED" value="Processor type required"><![CDATA[Requires the processor type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MHZ
+call setHcveResult($MHZ)]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor speed for the Oracle WebLogic Server (WLS) installation type. The minimum requirement for the processor speed is 1 GHz.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="1000" result="PASSED"><![CDATA[The minimum requirement for the processor speed is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The processor speed must be 1 GHz or faster.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A15504" mode="VERIFY" name="JDev Processor Speed?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A15001" minimum="PASSED" result="FAILED" value="Processor type required"><![CDATA[Requires the processor type.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MHZ
+call setHcveResult($MHZ)]]></sdp_command>
+<sdp_description><![CDATA[This rule checks for the processor speed for Oracle JDeveloper installation type. The minimum requirement for the processor speed is 2 GHz or faster.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="2000" result="PASSED"><![CDATA[The minimum requirement for the processor speed is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The processor speed must be 2 GHz or faster.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A17001" mode="VERIFY" name="JDev JDK Version">
+<sdp_command type="RDA"><![CDATA[
+if !getEnv('JAVA_HOME')
+ return setHcveResult('No JAVA_HOME')
+if !findCommand('javac')
+ return setHcveResult('No JDK')
+var $str = field('\s+',1,command(concat(last,' -version 2>&1')))
+if version(replace($str,'[\-\_]','.',true))
+ call setHcveResult(cond(compare('valid',last,'1.6.0.11'),\
+                    'Adequate',\
+                    concat('[',$str,'] too old')))
+else
+ call setHcveResult('No version')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks that the Java Development Kit version used is 6.0 Update 11 or later. This is required for products like Oracle JDeveloper.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[No action required]]></sdp_action>
+<sdp_action condition="=~" minimum="No (JAVA_HOME|JDK)" result="SKIPPED"><![CDATA[``JAVA_HOME`` is not set or the Java Development Kit compiler is not in the execution path.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too old|Make sure that Java Development Kit 6.0 Update 11 or later is used.|
+|No version|Cannot verify the version. Make sure that Java Development Kit 6.0 Update 11 or later is used.|]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A18000" mode="VERIFY" name="Disk Space (KB)">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A00001" minimum="RECORD" result="FAILED"><![CDATA[Requires Middleware home.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $MIDDLEWARE_HOME
+if !length($MIDDLEWARE_HOME)
+ return setHcveResult('NotSpecified')
+if !testDir('d',$MIDDLEWARE_HOME)
+ return setHcveResult('NoAccess')
+var $DSK = get_df($MIDDLEWARE_HOME)
+call setHcveResult($DSK)
+var $DSK = expr('/',$DSK,1024)
+call setHcveVariable('$DSK')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule determines the amount of disk space available in the Middleware home directory.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="N" result="PASSED"><![CDATA[HCVE can determine the available space in the Middleware home. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="NotSpecified" result="PASSED"><![CDATA[No Middleware home specified]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[HCVE cannot determine the free space because ``${MIDDLEWARE_HOME}`` is not a valid directory.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A18001" mode="VERIFY" name="SOA Disk Space?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A18000" result="SKIPPED" value="Disk space required"><![CDATA[Requires disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DSK
+call setHcveResult(cond(expr('>=',$DSK,15360),'Adequate',\
+                                              'NoSpace'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the amount of disk space in the Middleware home directory is sufficient for installing Oracle SOA install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The Middleware home has sufficient disk space to install an Oracle SOA install type. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Installing an Oracle SOA install type requires 15 MB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A18002" mode="VERIFY" name="BAM Disk Space?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A18000" result="SKIPPED" value="Disk space required"><![CDATA[Requires disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DSK
+call setHcveResult(cond(expr('>=',$DSK,15360),'Adequate',\
+                                              'NoSpace'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the amount of disk space in the Middleware home directory is sufficient for installing an Oracle BAM install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The Middleware home has sufficient disk space to install an Oracle BAM install type. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Installing an Oracle SOA install type requires 15 MB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A18003" mode="VERIFY" name="JDev Disk Space?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A18000" result="SKIPPED" value="Disk space required"><![CDATA[Requires disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DSK
+call setHcveResult(cond(expr('>=',$DSK,2560),'Adequate',\
+                        expr('>=',$DSK,73),  'JavaEdition',\
+                                             'NoSpace'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the amount of disk space in the Middleware home directory is sufficient for installing an Oracle JDeveloper install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The Middleware home has sufficient disk space to install an Oracle JDeveloper install type. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="JavaEdition" result="PASSED"><![CDATA[The Middleware home has sufficient disk space to install an Oracle JDeveloper Java edition install type but not for a Studio edition.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Installing an Oracle JDeveloper install type requires 2.5 MB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A18004" mode="VERIFY" name="PFRD Disk Space?">
+<sdp_dependencies>
+<sdp_dependency condition="N" id="A18000" result="SKIPPED" value="Disk space required"><![CDATA[Requires disk space.]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[import $DSK
+call setHcveResult(cond(expr('>=',$DSK,15728640),'Adequate',\
+                                                 'NoSpace'))]]></sdp_command>
+<sdp_description><![CDATA[This rule verifies that the amount of disk space in the Middleware home directory is sufficient for installing a Portal, Forms, Reports, and Discoverer install type.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The Middleware home has sufficient disk space to install a Portal, Forms, Reports, and Discoverer install type. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[Installing a Portal, Forms, Reports, and Discoverer install type requires 15 GB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A20000" mode="RECORD" name="RCU Connect String">
+<sdp_command default="-" type="PROMPT" variable="$ORACLE_SID"><![CDATA[Enter "-" to skip database checks or enter [hostname]:[DB port number]::[DB service name] to connect to the database where the Repository Creation Utility (RCU) will create the schemas.]]></sdp_command>
+<sdp_command type="RDA"><![CDATA[import $ORACLE_SID
+if !match($ORACLE_SID,'^\s*\-?\s*$')
+ call setHcveParameter('CHECK.DB',true)
+call setHcveResult($ORACLE_SID)
+]]></sdp_command>
+<sdp_command type="GROUP" exec="CHECK.DB">DBChecks</sdp_command>
+<sdp_description><![CDATA[This rule prompts the user to enter the connect string for the database where the Repository Creation Utility (RCU) will create the schemas.]]></sdp_description>
+</sdp_rule>
+</sdp_group>
+
+<sdp_group exec="0" id="DBChecks" name="Database Checks">
+<sdp_rule id="A21000" mode="VERIFY" name="Database Access">
+<sdp_dependencies>
+<sdp_dependency id="A01002"/>
+<sdp_dependency id="A01003"/>
+<sdp_dependency id="A01004"/>
+<sdp_dependency id="A01005"/>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+import $ORACLE_SID,$USERID,$SYSDBA,$DFT_TSP,$TMP_TSP
+
+var $sid = $ORACLE_SID
+var $usr = $USERID
+if compare('eq',$usr,'/')
+ var ($usr,$pwd,$dba) = ('','',1)
+else
+{if compare('eq',$SYSDBA,'N')
+  var $dba = false
+ else
+  var $dba = true
+ if hasSqlPassword($usr,$sid)
+  var $pwd = undef
+ else
+  var $pwd = askPassword(concat('Enter ',$usr,'@',$sid,' user password:'))
+}
+call setSqlLogin($usr,$pwd,$sid,$dba)
+if testSql()
+ call setHcveResult(concat('Connection error: [',getSqlMessage(),']'))
+else
+{set $sql
+ {SELECT 'Banner=' || banner
+ " FROM v$version
+ " WHERE banner like '%Oracle%';
+ "SELECT 'Version=' || version
+ " FROM v$instance;
+ "SELECT lower(name) || '=' || value
+ " FROM v$parameter
+ " WHERE lower(name) IN ('aq_tm_processes',
+ "                       'db_block_size',
+ "                       'db_recovery_file_dest_size',
+ "                       'dml_locks',
+ "                       'job_queue_processes',
+ "                       'max_commit_propagation_delay',
+ "                       'open_cursors',
+ "                       'processes',
+ "                       'remote_login_passwordfile',
+ "                       'sga_max_size',
+ "                       'sga_target',
+ "                       'shared_pool_size',
+ "                       'sessions',
+ "                       'session_cached_cursors',
+ "                       'session_max_open_files',
+ "                       'undo_management');
+ "SELECT 'CharacterSet=' || value
+ " FROM nls_database_parameters
+ " WHERE upper(parameter) = 'NLS_CHARACTERSET';
+ }
+ if match($DFT_TSP,'^[A-Za-z0-9][\w\$\#]{0,29}$')
+ {append $sql
+  {SELECT 'DefaultSpace=' || SUM(bytes)
+  " FROM dba_free_space
+  " WHERE tablespace_name = UPPER(':1')
+  " GROUP BY tablespace_name;
+  }
+ }
+ if match($TMP_TSP,'^[A-Za-z0-9][\w\$\#]{0,29}$')
+ {append $sql
+  {SELECT 'TempSpace=' || SUM(x)
+  " FROM (SELECT bytes_cached x
+  "        FROM v$temp_extent_pool
+  "        WHERE tablespace_name = UPPER(':2')
+  "       UNION
+  "       SELECT bytes_free x
+  "        FROM v$temp_space_header
+  "        WHERE tablespace_name = UPPER(':2')
+  "      );
+  }
+ }
+ call setHcveResult(cond(loadSql(bindSql($sql,$DFT_TSP,$TMP_TSP)),'OK',\
+                         concat('Load error: [',getSqlMessage(),']')))
+}
+]]></sdp_command>
+<sdp_description><![CDATA[This rule gets the database information.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="OK" result="PASSED"><![CDATA[HCVE has loaded the required information from the database. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Take appropriate actions to fix the reported error.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A21001" mode="VERIFY" name="Database Edition?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $str = value(grepLastSql('Banner=','f'))
+if match($str,'enterprise',true)
+ call setHcveResult('Enterprise')
+elsif match($str,'standard',true)
+ call setHcveResult('Standard')
+else
+ call setHcveResult(concat('[',$str,'] not a certified edition'))]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database edition.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="^(Enterprise|Standard)$" result="PASSED"><![CDATA[The database edition is certified. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The database edition is not certified. The Repository Creation Utility requires that the database is an Enterprise or a Standard edition.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A21002" mode="VERIFY" name="Database Version?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $ver = value(grepLastSql('Version=','f'))
+if compare('OLDER',$ver,'11')
+{if compare('older',$ver,'10.2.0.4')
+  call setHcveResult(concat('[',$ver,'] too old'))
+ else
+  call setHcveResult('Adequate')
+}
+else
+{if compare('older',$ver,'11.1.0.7')
+  call setHcveResult(concat('[',$ver,'] too old'))
+ else
+  call setHcveResult('Adequate')
+}
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database version.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The database version is certified. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The database version is not certified. The Repository Creation Utility requires the database version to be 10.2.0.4 or 11.1.0.7 or later.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A21003" mode="VERIFY" name="Database Character Set?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+call setHcveResult(value(grepLastSql('CharacterSet=','f')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database character set.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="AL32UTF8" result="PASSED"><![CDATA[The database character set is certified. No action required.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The Repository Creation Utility requires ``AL32UTF8``as database character set.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A21004" mode="VERIFY" name="Shared Pool Size?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $tgt = value(grepLastSql('sga_target=','f'))
+if expr('>',$tgt,0)
+{var $siz = value(grepLastSql('shared_pool_size=','f'))
+ if expr('>',$siz,0)
+ {if expr('>',$siz,150994944)
+   call setHcveResult('Adequate')
+  else
+   call setHcveResult(concat('[',$siz,'] too small'))
+ }
+ else
+  call setHcveResult('InternallyDetermined')
+}
+else
+ call setHcveResult('NoSGATarget')
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the shared pool size.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="=~" minimum="Adequate|InternallyDetermined" result="PASSED"><![CDATA[The shared pool size is set to a correct value or is determined internally. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="NoSGATarget" result="FAILED"><![CDATA[The target size of the shared global area (SGA) is not set. In this case, the default value for SGA size is 32 MB for 32-bit platforms and 84 MB for 64-bit platforms. This is less than the required value. See the respective Oracle Database reference guide for taking an appropriate action.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[Increase the ``shared_pool_size`` to 147456 KB or more.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A21005" mode="VERIFY" name="SGA Maximum Size?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+call setHcveResult(value(grepLastSql('sga_max_size=','f')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the maximum size of the shared global area (SGA).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="150994944" result="PASSED"><![CDATA[The minimum requirement for the maximum size of the shared global area is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The minimum requirement for the maximum size of the shared global area is 147456 KB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A21006" mode="VERIFY" name="Block Size?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+call setHcveResult(value(grepLastSql('db_block_size=','f')))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the database blocks size.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition=">=" minimum="8192" result="PASSED"><![CDATA[The minimum requirement for the database block size is met.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[The minimum requirement for the database block size is 8 KB.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22101" mode="VERIFY" name="Metadata Services Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for Metadata Services.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for Metadata Services. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for Metadata Services.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22105" mode="VERIFY" name="Metadata Services Temp Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('TempSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the temporary tablespace space available for Metadata Services.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The temporary tablespace has sufficient free space for Metadata Services. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the temporary tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the temporary tablespace is 50 MB for Metadata Services.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22121" mode="VERIFY" name="BAM Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for BAM.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for BAM. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for BAM.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22125" mode="VERIFY" name="BAM Temp Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('TempSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,20971520)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the temporary tablespace space available for BAM.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The temporary tablespace has sufficient free space for BAM. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the temporary tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the temporary tablespace is 20 MB for BAM.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22141" mode="VERIFY" name="SOA Infrastructure Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for SOA Infrastructure.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for SOA Infrastructure. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for SOA Infrastructure.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22145" mode="VERIFY" name="SOA Infrastructure Temp Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('TempSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,20971520)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the temporary tablespace space available for SOA Infrastructure.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The temporary tablespace has sufficient free space for SOA Infrastructure. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the temporary tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the temporary tablespace is 20 MB for SOA Infrastructure.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22151" mode="VERIFY" name="SOA Infrastructure Init Parameters?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+macro check_min
+{var (\@tbl,$nam,$min) = @arg
+ var $val = value(grepLastSql(concat($nam,'='),'f'))
+ if !expr('>=',$val,$min)
+  call push(@tbl,concat('[',$val,'] too low for ',$nam))
+}
+
+call check_min(\@tbl,'processes',200)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the init parameters for SOA Infrastructure.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The init parameters are set correctly. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too low for processes|Set the value of ``processes`` to 200 or higher.|
+For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22161" mode="VERIFY" name="Audit Services Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for Audit Services.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for Audit Services. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for Audit Services.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22165" mode="VERIFY" name="Audit Services Temp Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('TempSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the temporary tablespace space available for Audit Services.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The temporary tablespace has sufficient free space for Audit Services. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the temporary tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the temporary tablespace is 50 MB for Audit Services.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22191" mode="VERIFY" name="OID Init Parameters?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+macro check_min
+{var (\@tbl,$nam,$min) = @arg
+ var $val = value(grepLastSql(concat($nam,'='),'f'))
+ if !expr('>=',$val,$min)
+  call push(@tbl,concat('[',$val,'] too low for ',$nam))
+}
+
+var @tbl = ()
+call check_min(\@tbl,'processes',500)
+call check_min(\@tbl,'open_cursors',500)
+call check_min(\@tbl,'session_cached_cursors',100)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the init parameters for Oracle Internet Directory (OID).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The init parameters are set correctly. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too low for processes|Set the value of ``processes`` to 500 or higher.|
+|... too low for open_cursors|Set the value of ``open_cursors`` to 500 or higher.|
+|... too low for session_cached_cursors|Set the value of ``session_cached_cursors`` to 100 or higher.|
+For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22211" mode="VERIFY" name="OIF Init Parameters?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+macro check_min
+{var (\@tbl,$nam,$min) = @arg
+ var $val = value(grepLastSql(concat($nam,'='),'f'))
+ if !expr('>=',$val,$min)
+  call push(@tbl,concat('[',$val,'] too low for ',$nam))
+}
+
+var @tbl = ()
+call check_min(\@tbl,'processes',500)
+call check_min(\@tbl,'open_cursors',500)
+call check_min(\@tbl,'session_cached_cursors',100)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the init parameters for Oracle Identity Federation (OIF).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The init parameters are set correctly. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too low for processes|Set the value of ``processes`` to 500 or higher.|
+|... too low for open_cursors|Set the value of ``open_cursors`` to 500 or higher.|
+|... too low for session_cached_cursors|Set the value of ``session_cached_cursors`` to 100 or higher.|
+For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22221" mode="VERIFY" name="WebCenter Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for WebCenter.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for WebCenter. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for WebCenter.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22225" mode="VERIFY" name="WebCenter Temp Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('TempSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,20971520)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the temporary tablespace space available for WebCenter.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The temporary tablespace has sufficient free space for WebCenter. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the temporary tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the temporary tablespace is 20 MB for WebCenter.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22231" mode="VERIFY" name="WebCenter Init Parameters?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+macro check_min
+{var (\@tbl,$nam,$min) = @arg
+ var $val = value(grepLastSql(concat($nam,'='),'f'))
+ if !expr('>=',$val,$min)
+  call push(@tbl,concat('[',$val,'] too low for ',$nam))
+}
+
+call check_min(\@tbl,'processes',300)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the init parameters for WebCenter.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The init parameters are set correctly. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too low for processes|Set the value of ``processes`` to 300 or higher.|
+For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22241" mode="VERIFY" name="Discussions Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for Discussions.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for Discussions. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for Discussions.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22245" mode="VERIFY" name="Discussions Temp Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('TempSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,20971520)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the temporary tablespace space available for Discussions.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The temporary tablespace has sufficient free space for Discussions. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the temporary tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the temporary tablespace is 20 MB for Discussions.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22261" mode="VERIFY" name="Wiki/Blog Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for Wiki/Blog.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for Wiki/Blog. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for Wiki/Blog.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22265" mode="VERIFY" name="Wiki/Blog Temp Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('TempSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,20971520)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the temporary tablespace space available for Wiki/Blog.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The temporary tablespace has sufficient free space for Wiki/Blog. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the temporary tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the temporary tablespace is 20 MB for Wiki/Blog.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22301" mode="VERIFY" name="Discoverer (Relational) Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for Discoverer (Relational).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for Discoverer (Relational). No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for Discoverer (Relational).]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22321" mode="VERIFY" name="Discoverer (OLAP) Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for Discoverer (OLAP).]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for Discoverer (OLAP). No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for Discoverer (OLAP).]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22341" mode="VERIFY" name="Content Server Default Tablespace?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+var $val = value(grepLastSql('DefaultSpace=\s*\d','f'))
+if !?$val
+ call setHcveResult('Not found')
+elsif expr('>=',$val,52428800)
+ call setHcveResult('Adequate')
+else
+ call setHcveResult(concat('[',$val,'] too small'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the default tablespace space available for Content Server.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The default tablespace has sufficient free space for Content Server. No action required.]]></sdp_action>
+<sdp_action condition="==" minimum="Not found" result="FAILED"><![CDATA[Check the validity of the default tablespace name provided.]]></sdp_action>
+<sdp_action result="FAILED"><![CDATA[The minimum free space required for the default tablespace is 50 MB for Content Server.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22355" mode="VERIFY" name="Content Server Init Parameters?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+macro check_min
+{var (\@tbl,$nam,$min) = @arg
+ var $val = value(grepLastSql(concat($nam,'='),'f'))
+ if !expr('>=',$val,$min)
+  call push(@tbl,concat('[',$val,'] too low for ',$nam))
+}
+macro check_val
+{var (\@tbl,$nam,$ref) = @arg
+ var $val = value(grepLastSql(concat($nam,'='),'f'))
+ if !compare('eq',$val,$ref)
+  call push(@tbl,concat('[',$val,'] invalid for ',$nam))
+}
+
+var @tbl = ()
+call check_min(\@tbl,'aq_tm_processes',1)
+call check_min(\@tbl,'db_recovery_file_dest_size',2147483648)
+call check_min(\@tbl,'dml_locks',200)
+call check_min(\@tbl,'job_queue_processes',10)
+call check_val(\@tbl,'max_commit_propagation_delay',0)
+call check_min(\@tbl,'open_cursors',400)
+call check_min(\@tbl,'processes',250)
+call check_val(\@tbl,'remote_login_passwordfile','EXCLUSIVE')
+call check_min(\@tbl,'session_max_open_files',50)
+call check_min(\@tbl,'sessions',40)
+call check_val(\@tbl,'undo_management','AUTO')
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the init parameters for Content Server.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The init parameters are set correctly. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too low for aq_tm_processes|Set the value of ``aq_tm_processes`` to 1 or higher.|
+|... too low for db_recovery_file_dest_size|Set the value of ``db_recovery_file_dest_size`` to 2147483648 or higher.|
+|... too low for dml_locks|Set the value of ``dml_locks`` to 200 or higher.|
+|... too low for job_queue_processes|Set the value of ``job_queue_processes`` to 10 or higher.|
+|... invalid for max_commit_propogation_delay|Set the value of ``max_commit_propogation_delay`` to ``0``.|
+|... too low for open_cursors|Set the value of ``open_cursors`` to 400 or higher.|
+|... too low for processes|Set the value of ``processes`` to 250 or higher.|
+|... invalid for remote_login_passwordfile|Set the value of ``remote_login_passwordfile`` to ``EXCLUSIVE``.|
+|... too low for session_max_open_files|Set the value of ``session_max_open_files`` to 50 or higher.|
+|... too low for sessions|Set the value of ``sessions`` to 40 or higher.|
+|... invalid for undo_managements|Set the value to ``AUTO``.|
+For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+
+<sdp_rule id="A22371" mode="VERIFY" name="OIM Init Parameters?">
+<sdp_dependencies>
+<sdp_dependency condition="IS" id="A21000" minimum="PASSED" result="SKIPPED" value="No database access"><![CDATA[No database access]]></sdp_dependency>
+</sdp_dependencies>
+<sdp_command type="RDA"><![CDATA[
+macro check_min
+{var (\@tbl,$nam,$min) = @arg
+ var $val = value(grepLastSql(concat($nam,'='),'f'))
+ if !expr('>=',$val,$min)
+  call push(@tbl,concat('[',$val,'] too low for ',$nam))
+}
+
+call check_min(\@tbl,'processes',500)
+call setHcveResult(cond(scalar(@tbl),join("\012",@tbl),'Adequate'))
+]]></sdp_command>
+<sdp_description><![CDATA[This rule checks the init parameters for Oracle Identity Management.]]></sdp_description>
+<sdp_actions>
+<sdp_action condition="==" minimum="Adequate" result="PASSED"><![CDATA[The init parameters are set correctly. No action required.]]></sdp_action>
+<sdp_action result="FAILED" syntax="wiki"><![CDATA[|*Return Value*|*Action*|
+|... too low for processes|Set the value of ``processes`` to 500 or higher.|
+For more information, see ''Oracle Fusion Middleware Installation Planning Guide 11g Release 1 (11.1.1)''.]]></sdp_action>
+</sdp_actions>
+</sdp_rule>
+</sdp_group>
+
+</sdp_content>
+</sdp_diaglet>

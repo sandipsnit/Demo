@@ -1,0 +1,147 @@
+# M280SMF.def: Collects Solaris Service Management Facility Information
+# $Id: M280SMF.def,v 1.7 2012/06/05 08:50:11 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/M280SMF.def,v 1.7 2012/06/05 08:50:11 mschenke Exp $
+#
+# Change History
+# 20120605  JGS  Extend the do_remote macro.
+
+=head1 NAME
+
+M280SMF - Collects Solaris Service Management Facility Information
+
+=head1 DESCRIPTION
+
+This module collects information about Solaris Service Management Facility
+(SMF).
+
+=cut
+
+use Mrc
+
+# Initialization
+var $VALIDATE = true
+keep $VALIDATE
+
+section begin
+
+var $ERR = '---## Associated Errors'
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+var $WRN = '* Links point to files that have been collected in their original \
+              format. Opening them directly in your browser can present risks. \
+              To prevent them, access the file outside the browser or use the \
+              link to save them and use an adequate viewer.'
+
+run XPLRlib('smfextended')
+
+#------------------------------------------------------------------------------
+# XPLR_smf section
+#------------------------------------------------------------------------------
+
+section XPLR_smf
+
+# Validate the execution context
+call log_run('Processing SMF sections ...')
+if !expr('>=',get_osv(),10)
+ return log_info('The operating system version must be 5.10 or later')
+
+pretoc '2:Service Management Facility (SMF)'
+
+# Perform the collection
+loop $rec (get_zones(true))
+{if defined($nam = $rec->[0])
+  var ($ttl,$pre,$exe) = (concat('From Zone ',$nam),\
+                          concat('zones/',$nam),\
+                          concat('/usr/sbin/zlogin ',$nam))
+ else
+  var ($ttl,$pre,$exe) = ('From Global Zone')
+ var $top = $rec->[1]
+
+ pretoc '3:',$ttl
+ debug ' Inside SMF collection, collecting from ',nvl($nam,'global'),' zone'
+
+=head2 Administrative Customizations
+
+Gathers the administrative customizations present in each zones using the
+C</usr/sbin/svccfg listcust> command.
+
+=cut
+
+ if compare('VALID',$rec->[2],'5.11')
+ {var ($ver) = grepCommand(join(' ',$exe,'/usr/bin/pkg list -H entire'),\
+                          '^[^\-]*\-[^\.\-]*\.(\d+)','f1')
+  if expr('>=',$ver,169)
+  {report concat('smf_svc_custom_z_',nvl($nam,'global'))
+   do_remote($pre,$exe,$top,['sysconfig/svccfg-listcust',\
+                             '/usr/sbin/svccfg','listcust',\
+                             '---+ Administrative Customizations'])
+   if isCreated(true)
+   {write $TOP
+    toc '4:[[',getFile(),'][rda_report][Administrative Customizations]]'
+   }
+  }
+ }
+
+=head2 Service Files
+
+Gathers all files from the F</var/svc>, F</lib/svc/manifest>, and
+F</etc/svc/profile> directories from each zone.
+
+=cut
+
+ report concat('smf_svc_files_z_',nvl($nam,'global'))
+ prefix
+ {write '---+!! Service Files'
+  write $WRN
+  write '|*File Path*| *Size*|*Last Modified Date*|'
+ }
+ call do_collect_rem($pre,$top,\
+   ['B','var/svc',         '/var/svc',         true],\
+   ['B','lib/svc/manifest','/lib/svc/manifest',true],\
+   ['B','etc/svc/profile', '/etc/svc/profile', true])
+ if isCreated(true)
+ {write $TOP
+  toc '4:[[',getFile(),'][rda_report][Service Files]]'
+ }
+
+=head2 Log Files
+
+Gathers the log files from the F</etc/svc/volatile> directory from each zone.
+
+=cut
+
+ report concat('smf_log_files_z_',nvl($nam,'global'))
+ prefix
+ {write '---+!! Log Files'
+  write $WRN
+  write '|*File Path*| *Size*|*Last Modified Date*|'
+ }
+ call do_collect_rem($pre,$top,\
+   ['B','etc/svc/volatile','/etc/svc/volatile',undef,undef,'\.log$'])
+ if isCreated(true)
+ {write $TOP
+  toc '4:[[',getFile(),'][rda_report][Log Files]]'
+ }
+
+ # Adjust the table of content
+ unpretoc
+}
+
+# Adjust the table of content
+unpretoc
+
+=head1 SEE ALSO
+
+L<S150XPLR.def|modules::S150XPLR>,
+L<XPLRlib.def|modules::XPLRlib>
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

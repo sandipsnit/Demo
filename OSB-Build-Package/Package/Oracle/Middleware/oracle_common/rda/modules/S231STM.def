@@ -1,0 +1,1553 @@
+# S231STM.def: Collects Streams Monitoring Information
+# $Id: S231STM.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S231STM.def,v 2.5 2012/01/03 13:34:44 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S231STM - Collects Streams Monitoring Information
+
+=head1 DESCRIPTION
+
+This module collects Streams activity information occurring within an Oracle
+database. The following reports can be generated and are regrouped under
+C<Streams Monitoring>:
+
+=cut
+
+if !getSetting('DATABASE_INSTALLED')
+ return
+
+echo tput('bold'),'Processing STM module ...',tput('off')
+
+# Initialization
+var $COUNT    = getSetting('STM_COUNT',5)
+var $DEBUG    = getSetting('STM_DEBUG')
+var $LONG     = getSetting('STM_LONG')
+var $SYSDBA   = getSetting('SQL_SYSDBA')
+var $INTERVAL = getSetting('STM_INTERVAL',3)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '1:Streams Monitoring'
+
+# Load the common macros
+run DBinfo()
+
+# Obtain the database version
+var $VERSION = get_db_version()
+
+=head2 no_setup - No Streams Monitor Setup
+
+Versions earlier than Oracle 9i Release 2 do not have the Streams Monitoring
+option.
+
+=cut
+
+if !match($VERSION,'^(92$|10|11)')
+{report no_setup
+ write '**Error:** Oracle version ',nvl($VERSION,'?'),' did not have Streams \
+        or the database is not running.'
+ toc '2:[[',getFile(),'][rda_report][No Streams Monitor Setup]]'
+ return
+}
+var $VERSION10  = match($VERSION,'^(10|11)')
+var $VERSION102 = match($VERSION,'^(102|11)')
+
+# Define the formating macros
+macro fmt_bytes
+{var ($val) = @arg
+
+ if expr('<',$val,1024)
+  return sprintf(' %d&nbsp;B',$val)
+ if expr('<',$val,1048576)
+  return sprintf(' %1.3f&nbsp;KiB',expr('/',$val,1024))
+ if expr('<',$val,1073741824)
+  return sprintf(' %1.3f&nbsp;MiB',expr('/',$val,1048576))
+ return sprintf(' %1.3f&nbsp;GiB',expr('/',$val,1073741824))
+}
+
+macro fmt_latency
+{var ($val) = @arg
+
+ if expr('<',$val,0)
+  return ' -'
+ if expr('<',$val,60)
+  return sprintf(' %d&nbsp;sec',$val)
+ if expr('<',$val,3600)
+  return sprintf(' %1.3f&nbsp;min',expr('/',$val,60))
+ if expr('<',$val,86400)
+  return sprintf(' %1.3f&nbsp;hr',expr('/',$val,3600))
+ if expr('<',$val,2592000)
+  return sprintf(' %1.3f&nbsp;day',expr('/',$val,86400))
+ if expr('<',$val,31557600)
+  return sprintf(' %1.3f&nbsp;mon',expr('/',$val,2592000))
+ return sprintf(' %1.3f&nbsp;yr',expr('/',$val,31557600))
+}
+
+macro fmt_row
+{var (\%tbl,@key) = @arg
+ var @tbl = ()
+
+ loop $key (@key)
+ {if match($key,'^\*')
+   var @tbl = (@tbl,nvl($tbl{substr($key,1)},' - '))
+  else
+   var @tbl = (@tbl,nvl($tbl{$key},' -'))
+ }
+ return @tbl
+}
+
+macro push_value
+{var (\%tbl,$key,$num,$fmt) = @arg
+
+ if $fmt
+  var $num = sprintf($fmt,$num)
+ else
+  var $num = concat(' ',$num)
+ var $tbl{$key} = join('%BR%',$tbl{$key},$num)
+}
+
+macro push_string
+{var (\%tbl,$key,$nam) = @arg
+ var $nam = concat($nam,' ')
+ var $tbl{$key} = join('%BR%',$tbl{$key},$nam)
+}
+
+# --- Macros to get database information sample ------------------------------
+macro get_ref_data
+{import $sql,$LONG,$SYSDBA,$VERSION10
+
+ # Get a database time stamp
+ set $sql
+ {SET serverout on size 100000
+ "BEGIN
+ " dbms_output.put_line('tps=''' ||
+ "                      TO_CHAR(SYSDATE,'DD-Mon-YYYY HH24:MI:SS') ||
+ "                      '''');
+ " dbms_output.put_line('dif=' ||
+ "  TO_CHAR(86400 * NVL(SYSDATE - TO_DATE(:1,'DD-Mon-YYYY HH24:MI:SS'),0)));
+ "END;
+ "/
+ }
+
+ # Get the log stats
+ if $SYSDBA
+ {append $sql
+  {SELECT 'lscn=' ||
+  "       TO_CHAR(last_write_scn_bas+4294967296*last_write_scn_wrp)
+  " FROM x$kcrfws;
+  "SELECT 'lblk=' ||
+  "       value
+  " FROM v$sysstat
+  " WHERE name = 'redo blocks written';
+  }
+ }
+
+ # Get network stats
+ append $sql
+ {SELECT 'ncl=' ||
+  "       SUM(value)
+  " FROM v$sysstat
+  " WHERE name LIKE 'bytes%client';
+  "SELECT 'ndb=' ||
+  "       SUM(value)
+  " FROM v$sysstat
+  " WHERE name LIKE 'bytes%dblink';
+ }
+
+ # Get capture stats
+ if $VERSION10
+ {append $sql
+  {SELECT 'cp=' ||
+  "       c.sid || '|' ||
+  "       c.capture# || '|' ||
+  "       c.capture_name || '|' ||
+  "       NVL(c.total_messages_captured,0) || '|' ||
+  "       NVL(c.capture_message_number,0) || '|' ||
+  "       NVL(c.total_messages_enqueued,0) || '|' ||
+  "       NVL(c.enqueue_message_number,0) || '|' ||
+  "       NVL((c.capture_time -
+  "            c.capture_message_create_time) * 86400,-1) || '|' ||
+  "       l.read_scn || '|' ||
+  "       c.elapsed_pause_time
+  " FROM v$streams_capture c,v$logmnr_session l
+  " WHERE c.capture_name = l.session_name
+  " ORDER BY 1;
+  }
+ }
+ else
+ {append $sql
+  {SELECT 'cp=' ||
+  "       c.sid || '|' ||
+  "       c.capture# || '|' ||
+  "       c.capture_name|| '|' ||
+  "       NVL(c.total_messages_captured,0) || '|' ||
+  "       NVL(c.capture_message_number,0) || '|' ||
+  "       NVL(c.total_messages_enqueued,0) || '|' ||
+  "       NVL(c.enqueue_message_number,0) || '|' ||
+  "       NVL((c.capture_time -
+  "            c.capture_message_create_time) * 86400,-1)
+  " FROM v$streams_capture c
+  " ORDER BY 1;
+  }
+ }
+
+ # Get queue stats
+ if $VERSION10
+ {append $sql
+  {SELECT 'q=' ||
+  "        queue_id || '|' ||
+  "        queue_name || '|' ||
+  "        queue_schema || '|' ||
+  "        NVL(cnum_msgs,0) || '|' ||
+  "        NVL(cspill_msgs,0) || '|' ||
+  "        NVL(num_msgs,0)
+  " FROM v$buffered_queues;
+  }
+ }
+ else
+ {append $sql
+  {SELECT 'q=' ||
+  "       dq.qid || '|' ||
+  "       dq.owner || '|' ||
+  "       dq.queue_table
+  " FROM dba_queues dq,dba_queue_tables dqt
+  " WHERE dq.owner not in ('SYS','SYSTEM')
+  "   AND dq.QUEUE_TYPE = 'NORMAL_QUEUE'
+  "   AND dq.owner = dqt.owner
+  "   AND dq.queue_table = dqt.queue_table
+  "   AND dqt.object_type = 'SYS.ANYDATA';
+  }
+ }
+
+ # Get the apply stats
+ if $LONG
+ {append $sql
+  {SELECT 'ap=' ||
+  "       ar.sid || '|' ||
+  "       ac.apply# || '|' ||
+  "       ac.apply_name  || '|' ||
+  "       ar.total_messages_dequeued || '|' ||
+  "       ac.total_received || '|' ||
+  "       ac.total_assigned || '|' ||
+  "       ac.total_applied || '|' ||
+  "       NVL(ac.hwm_message_number,0) || '|' ||
+  "       NVL((ac.hwm_time - hwm_message_create_time) * 86400,-1) || '|' ||
+  "       NVL(ar.dequeued_message_number,0) || '|' ||
+  "       NVL((ar.dequeue_time -
+  "            ar.dequeued_message_create_time) * 86400,-1)
+  " FROM v$streams_apply_coordinator ac,v$streams_apply_reader ar
+  " WHERE ac.apply# = ar.apply#
+  " ORDER BY 1;
+  }
+ }
+ else
+ {append $sql
+  {SELECT 'ap=' ||
+  "       ac.apply# || '|' ||
+  "       ac.apply_name || '|' ||
+  "       ac.total_received || '|' ||
+  "       ac.total_assigned || '|' ||
+  "       ac.total_applied || '|' ||
+  "       NVL((ac.hwm_time - ac.hwm_message_create_time) * 86400,-1) || '|' ||
+  "       SUM(aps.total_messages_applied)
+  " FROM v$streams_apply_coordinator ac,v$streams_apply_server aps
+  " WHERE ac.apply# = aps.apply#
+  " GROUP BY ac.apply#,
+  "          ac.apply_name,
+  "          ac.hwm_time,
+  "          ac.hwm_message_create_time,
+  "          ac.total_assigned,
+  "          ac.total_received,
+  "          ac.total_applied
+  " ORDER BY 1;
+  }
+ }
+
+ # Get the memory stats
+ if and($SYSDBA,$VERSION10)
+ {append $sql
+  {SELECT 'mem=' || frused_kwqbpmt
+  " FROM x$kwqbpmt;
+  " SELECT 'siz=' || TO_CHAR(ROUND(current_size / 1048576,2))
+  " FROM v$sga_dynamic_components
+  " WHERE component = 'streams pool';
+  }
+ }
+
+ # Execute the SQL statements
+ return loadSql(bindSql($sql,'NULL'))
+}
+
+macro get_smp_data
+ return loadSql(bindSql(@arg))
+
+# Add code to get apply session identifiers
+macro add_sql_app_sid
+{var ($id) = @arg
+ import $sql,$LONG
+ keep $sql,$LONG
+
+ if $LONG
+ {set $req
+  {SELECT 'asid_:1=' ||
+  "       sid
+  " FROM v$streams_apply_server
+  " WHERE apply# = :1
+  " ORDER BY sid;
+  }
+ }
+ else
+ {set $req
+  {SELECT 'asid_:1=' ||
+  "        sid || '|4'
+  " FROM v$streams_apply_reader
+  " WHERE apply#=:1
+  "UNION
+  "SELECT 'asid_:1=' ||
+  "       sid || '|5'
+  " FROM v$streams_apply_server
+  " WHERE apply# = :1;
+  }
+ }
+ var $req = bindSql($req,$id)
+ var $sql = join("\012",$sql,$req)
+ return $req
+}
+
+# Add code to get event information
+macro add_sql_evt
+{var ($id) = @arg
+ import $sql
+ keep $sql
+
+ set $req
+ {SELECT 'evt=' ||
+ "       sid || '|' ||
+ "       event || '|' ||
+ "       time_waited_micro
+ " FROM v$session_event
+ " WHERE sid IN (:1)
+ " ORDER BY sid;
+ }
+ var $req = bindSql($req,$id)
+ var $sql = join("\012",$sql,$req)
+ return $req
+}
+
+# Add code to get propagation receiver information
+macro add_sql_prr
+{var ($qid,$sch,$cnt) = @arg
+ import $sql,%tb_gpr
+ keep $sql,%tb_gpr
+
+ if $cnt
+ {set $req
+  {SELECT 'prr_:1=' ||
+  "       src_queue_name || '|' ||
+  "       src_queue_schema || '|' ||
+  "       total_msgs || '|' ||
+  "       elapsed_enqueue_time || '|' ||
+  "       src_dbname || '|'
+  " FROM  v$propagation_receiver
+  " WHERE (dst_queue_name = ':1' OR dst_queue_name is NULL)
+  "   AND (dst_queue_schema = ':2' OR dst_queue_schema is NULL);
+  }
+ }
+ else
+ {set $req
+  {SELECT 'prr_:1=' ||
+  "       src_queue_name || '|' ||
+  "       src_queue_schema || '|' ||
+  "       total_msgs || '|' ||
+  "       elapsed_enqueue_time || '|' ||
+  "       src_dbname || '|'
+  " FROM v$propagation_receiver
+  " WHERE dst_queue_name = ':1'
+  "   AND dst_queue_schema = ':2';
+  }
+ }
+ var $req = bindSql($req,$qid,$sch)
+ var $sql = join("\012",$sql,$req)
+ var $tb_gpr{$qid} = 1
+ return $req
+}
+
+# Add code to get propagation receiver session identifiers
+macro add_sql_prr_sid
+{var ($qnm,$qsn,$snm,$ssm,$sdb) = @arg
+ import $sql
+ keep $sql
+
+ set $req
+ {SELECT 'prsid_:1_:2=' ||
+ "       KWQPDSID
+ " FROM x$kwqpd
+ " WHERE KWQPDDQN = :1
+ "   AND KWQPDDQS = :2
+ "   AND (KWQPDSQN IS NULL OR KWQPDSQN = :3)
+ "   AND (KWQPDSQS IS NULL OR KWQPDSQS = :4)
+ "   AND (KWQPDDBN IS NULL OR KWQPDDBN = :5);
+ }
+ var $req = bindSql($req,$qnm,$qsn,$snm,$ssm,$sdb)
+ var $sql = join("\012",$sql,$req)
+ return $req
+}
+
+# Add code to get propagation sender information
+macro add_sql_prs
+{var ($qid) = @arg
+ import $sql,%tb_gps,$VERSION102
+ keep $sql,%tb_gps,$VERSION102
+
+ if $VERSION102
+ {set $req
+  {SELECT 'prs_:1=' ||
+  "       dq.name || '|' ||
+  "       dq.owner || '|' ||
+  "       dqs.total_number || '|' ||
+  "       dqs.total_time || '|' ||
+  "       dqs.total_bytes || '|' ||
+  "       dqs.destination
+  " FROM dba_queue_schedules dqs, dba_queues dq
+  " WHERE dqs.schema = dq.owner
+  "   AND dqs.qname = dq.name
+  "   AND dq.qid = :1
+  "   AND dqs.message_delivery_mode = 'BUFFERED'
+  " ORDER BY dqs.destination;
+  }
+ }
+ else
+ {set $req
+  {SELECT 'prs_:1=' ||
+  "       dq.name || '|' ||
+  "       dq.owner || '|' ||
+  "       dqs.total_number || '|' ||
+  "       dqs.total_time || '|' ||
+  "       dqs.total_bytes || '|' ||
+  "       dqs.destination
+  " FROM dba_queue_schedules dqs, dba_queues dq
+  " WHERE dqs.schema = dq.owner
+  "   AND dqs.qname = dq.name
+  "   AND dq.qid = :1
+  " ORDER BY dqs.destination;
+  }
+ }
+ var $req = bindSql($req,$qid)
+ var $sql = join("\012",$sql,$req)
+ var $tb_gps{$qid} = 1
+ return $req
+}
+
+# Add code to get propagation sender session identifiers
+macro add_sql_prs_sid
+{var ($qnm,$qsn) = @arg
+ import $sql
+ keep $sql
+
+ set $req
+ {SELECT 'pssid_:1=' ||
+ "       KWQPSSID
+ " FROM x$kwqps
+ " WHERE KWQPSQID=:1
+ "   AND (KWQPSDBN=:2 OR KWQPSDQN=:2);
+ }
+ var $req = bindSql($req,$qnm,$qsn)
+ var $sql = join("\012",$sql,$req)
+ return $req
+}
+
+# Add code to get queue data
+macro add_sql_qn
+{var ($qid) = @arg
+ import $sql,%tb_gqn
+ keep $sql,%tb_gqn
+
+ set $req
+ {SELECT 'qn_:1=' || bufqm_nmsg
+ " FROM x$bufqm
+ " WHERE bufqm_qid = :1;
+ }
+ var $req = bindSql($req,$qid)
+ var $sql = join("\012",$sql,$req)
+ var $tb_gqn{$qid} = 1
+
+ return $req
+}
+
+# Add code to get an object count
+macro add_sql_qs
+{var ($obj) = @arg
+ import $sql,%tb_gqs
+ keep $sql,%tb_gqs
+
+ set $req
+ {SELECT 'qs_:1=' || COUNT(*)
+ " FROM :1;
+ }
+ var $req = bindSql($req,$obj)
+ var $sql = join("\012",$sql,$req)
+ var $tb_gqs{$obj} = 1
+
+ return $req
+}
+
+# --- Macro to generate the table heading ------------------------------------
+
+macro write_heading
+{import $LONG,$SYSDBA,$VERSION10,$VERSION102,%ref
+
+ var @top =('* *')
+ var @hdr =('*Time Stamp*')
+
+ # Add log contribution
+ if $SYSDBA
+ {if $LONG
+  {var @top = (@top,' *Log* ','')
+   var @hdr = (@hdr,' *Last Write SCN*',' *Redo Blocks Written*')
+  }
+  else
+  {var @top = (@top,' *Log* ')
+   var @hdr = (@hdr,' *Redo Generated per sec*')
+  }
+ }
+
+ # Add net contribution
+ if $LONG
+ {var @top = (@top,' *Net* ','')
+  var @hdr = (@hdr,' *Client Bytes*',' *DB Link Bytes*')
+ }
+ else
+ {var @top = (@top,' *Net* ','')
+  var @hdr = (@hdr,' *Client Bytes per sec*',' *DB Link Bytes per sec*' )
+ }
+
+ # Add capture contribution
+ var @top = (@top,' *Capture* ','','','')
+ var @hdr = (@hdr,' *C#*')
+ if $LONG
+ {if $VERSION10
+  {var @top = (@top,'')
+   var @hdr = (@hdr,' *Read SCN*')
+  }
+  var @top = (@top,'','')
+  var @hdr = (@hdr,' *Msgs Captured*',' *Capture SCN*',\
+                   ' *Msgs Enqueued*',' *Enqueue SCN*')
+ }
+ else
+  var @hdr = (@hdr,' *LCRs Captured per sec*',' *LCRs Enqueued per sec*')
+ var @hdr = (@hdr,' *Capture Latency*')
+ if $VERSION10
+ {var @top = (@top,'')
+  var @hdr = (@hdr,' *F/B* ')
+ }
+
+ # Add capture wait event
+ if $VERSION10
+ {var @top = (@top,'','','')
+  var @hdr = (@hdr,' *C Idle Event (%)*',' *C Flow Control Event (%)*',\
+                   ' *C Max Event (%)*')
+  if $LONG
+  {var @top = (@top,'')
+   var @hdr = (@hdr,'*C Max Event Name* ')
+  }
+ }
+
+ # Add progagation receiver contribution
+ if $VERSION102
+ {if $LONG
+  {var @top = (@top,' *Propagation Receiver* ','','')
+   var @hdr = (@hdr,' *ID/PR#* ',' *Number Received*',' *PR Total Time*')
+  }
+  else
+  {var @top = (@top,' *Propagation Receiver* ','')
+   var @hdr = (@hdr,' *ID/PR#* ',' *Msgs Received per sec*')
+  }
+ }
+
+ if and($VERSION102,$SYSDBA)
+ {var @top = (@top,'','','')
+  var @hdr = (@hdr,' *PR Idle Event (%)*',' *PR Flow Control Event (%)*',\
+                   ' *PR Max Event (%)*')
+  if $LONG
+  {var @top = (@top,'')
+   var @hdr = (@hdr,'*PR Max Event Name* ')
+  }
+ }
+
+ # Add queue contribution
+ if $VERSION10
+ {if $LONG
+  {var @top = (@top,' *Queue* ','','','')
+   var @hdr = (@hdr,' *ID* ',' *Outstanding Msgs*',' *Cumulative Msgs*',\
+                    ' *Cumulative Spilled*')
+  }
+  else
+  {var @top = (@top,' *Queue* ','','')
+   var @hdr = (@hdr,' *ID* ',\
+                    ' *Msgs Enqueued per sec*',' *Msgs Spilled per sec*')
+  }
+ }
+ elsif $LONG
+ {var @top = (@top,' *Queue* ','')
+  var @hdr = (@hdr,' *ID* ')
+  if $SYSDBA
+  {var @top = (@top,'')
+   var @hdr = (@hdr,' *Outstanding Msgs*')
+  }
+  var @hdr = (@hdr,' *Currently Spilled*')
+ }
+
+ # Add progagation contribution
+ if $LONG
+ {var @top = (@top,' *Propagation Sender* ','','','')
+  var @hdr = (@hdr,' *ID/PS#* ',' *Number Propagated*',' *PS Total Bytes*',\
+                   ' *PS Total Time*')
+ }
+ else
+ {var @top = (@top,' *Propagation Sender* ','','')
+  var @hdr = (@hdr,' *ID/PS#* ',' *LCRs Propagated per sec*',\
+                   ' *Bytes Propagated per sec*')
+ }
+
+ if and($VERSION102,$SYSDBA)
+ {var @top = (@top,'','','')
+  var @hdr = (@hdr,' *PS Idle Event (%)*',' *PS Flow Control Event (%)*',\
+                   ' *PS Max Event (%)*')
+  if $LONG
+  {var @top = (@top,'')
+   var @hdr = (@hdr,'*PS Max Event Name* ')
+  }
+ }
+
+ # Add apply contribution
+ if $LONG
+ {var @top = (@top,' *Apply* ','','','','','','','','','')
+  var @hdr = (@hdr,' *A#*',' *Msgs Dequeued*',' *Dequeue SCN*',\
+                   ' *Dequeue Latency*',' *Txns Received*',' *Txns Assigned*',\
+                   ' *Txns Applied*',' *HWm SCN*',' *HWm Latency*',' *B*')
+ }
+ else
+ {var @top = (@top,' *Apply* ','','','','')
+  var @hdr = (@hdr,' *A#*',' *LCRs Applied per sec*',' *Txns Applied per sec*',\
+                   ' *Dequeue Latency*',' *B* ')
+ }
+
+ # Add apply reader wait event
+ if $VERSION10
+ {var @top = (@top,'','','')
+  var @hdr = (@hdr,' *AR Idle Event (%)*',' *AR Flow Control Event (%)*',\
+                   ' *AR Max Event (%)*')
+  if $LONG
+  {var @top = (@top,'')
+   var @hdr = (@hdr,'*AR Max Event Name* ')
+  }
+ }
+
+ # Add apply server wait event
+ if $VERSION10
+ {var @top = (@top,'','','','')
+  var @hdr = (@hdr,' *Apply Server#*',' *AS Idle Event (%)*',\
+                   ' *AS Flow Control Event (%)*',' *AS Max Event (%)*')
+  if $LONG
+  {var @top = (@top,'')
+   var @hdr = (@hdr,'*AS Max Event Name* ')
+  }
+ }
+
+ # Add memory contribution
+ if and($SYSDBA,$VERSION10)
+ {var @top = (@top,' *Memory* ','')
+  var @hdr = (@hdr,' *Used (%)*',' *Pool Size*')
+ }
+
+ # Insert the heading in the report
+ write '|',join('|',@top),'|'
+ write '|',join('|',@hdr),'|'
+}
+
+# --- Macros to extract the event information ---------------------------------
+
+macro get_event_info
+{var ($cnt) = @arg
+ import %tb_sid,%tb_evtn,%tb_evto,%tb_evti
+
+ # Collect all the sids
+ var $sid = join(',',values(%tb_sid))
+
+ if expr('==',$cnt,1)
+  var @lin = grepSql(add_sql_evt($sid),'^evt=')
+ else
+  var @lin = grepLastSql('^evt=')
+
+ loop $lin (@lin)
+ {var ($evt{'sid'},$evt{'nam'},$evt{'tim'}) = split('\|',value($lin))
+  var $key = concat($evt{'sid'},'_',$evt{'nam'})
+  if exists($tb_evtn{$key})
+  {if expr('>',$cnt,$tb_evti{$key})
+   {var $tb_evto{$key} = $tb_evtn{$key}
+    var $tb_evtn{$key} = $evt{'tim'}
+    var $tb_evti{$key} = $cnt
+   }
+   elsif expr('==',$cnt,$tb_evti{$key})  #multiple apply servers
+    var $tb_evtn{$key} =  expr('+',$tb_evtn{$key},$evt{'tim'})
+  }
+  else
+  {var $tb_evto{$key} = 0
+   var $tb_evtn{$key} = $evt{'tim'}
+   var $tb_evti{$key} = $cnt
+  }
+ }
+}
+
+macro treat_event
+{var (\%tbl,$sid,$typ,$cnt) = @arg
+ import $LONG,%tb_evtn,%tb_evto,%tb_evtp,%smp
+ keep %tb_evtp
+
+ var ($tot,$max,$idl,$flw,$evt) = (100,0,0,0,'')
+ var $dur = expr('*',$smp{'dif'},10000)
+ if compare('eq',$typ,'aps')
+  var $tot = expr('*',$cnt,100)
+ var @key = keys(%tb_evtn)
+ var $sid = replace($sid,',','|',1)
+
+ loop $key (grep(@key,$sid))
+ {var $dif = $tb_evtn{$key}
+  decr $dif,$tb_evto{$key}
+  if match($key,$tb_evtp{concat($typ,'_idl')})
+   incr $idl,$dif
+  elsif match($key,$tb_evtp{concat($typ,'_flw')})
+   incr $flw,$dif
+  elsif expr('>',$dif,$max)
+  {var (undef,$evt) = split('_',$key,2)
+   var $max = $dif
+  }
+ }
+
+ var $idl = expr('/',$idl,$dur)
+ var $flw = expr('/',$flw,$dur)
+ var $max = expr('/',$max,$dur)
+ var $sum = $max
+ incr $sum,$idl
+ incr $sum,$flw
+ if expr('>',$sum,$tot)
+ {var $idl = expr('/',expr('*',$idl,$tot),$sum)
+  var $flw = expr('/',expr('*',$flw,$tot),$sum)
+  var $max = expr('/',expr('*',$max,$tot),$sum)
+ }
+
+ if $LONG
+ {var $tbl{concat($typ,'_','idl')} = sprintf(' %02u',$idl)
+  var $tbl{concat($typ,'_','flw')} = sprintf(' %02u',$flw)
+  if expr('<',$max,1)
+  {var $tbl{concat($typ,'_','max')} = ' -'
+   var $tbl{concat($typ,'_','mnm')} = '-'
+  }
+  else
+  {var $tbl{concat($typ,'_','max')} = sprintf(' %02u',$max)
+   var $tbl{concat($typ,'_','mnm')} = $evt
+  }
+ }
+ else
+ {var $tbl{concat($typ,'_','idl')} = sprintf(' %02u',$idl)
+  var $tbl{concat($typ,'_','flw')} = sprintf(' %02u',$flw)
+  if expr('<',$max,5)
+   var $tbl{concat($typ,'_','max')} = ' -'
+  else
+   var $tbl{concat($typ,'_','max')} = sprintf(' %02u',$max)
+ }
+}
+
+# --- Macro to extract the reference information ------------------------------
+macro get_ref_info
+{import $sql,%ref,%tb_app,%tb_cap,%tb_prs,%tb_prr,%tb_que,%tb_sid
+ import $LONG,$SYSDBA,$VERSION10,$VERSION102
+
+ var $ref{'tps'} = value(grepLastSql('^tps=','f'))
+
+ # Prepare log stats
+ if $SYSDBA
+ {var $ref{'scn'} = value(grepLastSql('^lscn=','f'))
+  var $ref{'blk'} = value(grepLastSql('^lblk=','f'))
+ }
+
+ # Prepare network stats
+ var $ref{'ncl'} = value(grepLastSql('^ncl=','f'))
+ var $ref{'ndb'} = value(grepLastSql('^ndb=','f'))
+
+ # Prepare capture stats
+ loop $lin (grepLastSql('^cp='))
+ {var ($cap{'sid'},$cap{'num'},$nam,$cap{'ctot'},$cap{'cscn'},$cap{'etot'},\
+       $cap{'escn'},$cap{'clat'},$cap{'rscn'},$cap{'tim'}) = \
+       split('\|',value($lin))
+
+  var $tb_cap{concat('flw_',$nam)} = false
+  var $tb_cap{concat('ctot_',$nam)} = $cap{'ctot'} # total_captured
+  var $tb_cap{concat('etot_',$nam)} = $cap{'etot'} # total_enqueued
+  if defined($cap{'rscn'})
+   var $tb_cap{concat('rscn_',$nam)} = $cap{'rscn'} # read_scn
+  if defined($cap{'tim'})
+   var $tb_cap{concat('tim_',$nam)} = $cap{'tim'} # elapsed_pause_time
+  var $tb_sid{$cap{'sid'}} = $cap{'sid'}
+ }
+
+ # Prepare queue stats
+ var $cnt = 0
+ loop $lin (grepLastSql('^q='))
+ {if !$VERSION10
+  {var ($nam,$que{'own'},$que{'tbl'}) = split('\|',value($lin))
+
+   if $SYSDBA
+    call add_sql_qn($nam)
+   call add_sql_qs(concat($que{'own'},'.AQ$_',$que{'tbl'},'_P'))
+  }
+  elsif $LONG
+   var ($nam,$qnm,$qsn) = split('\|',value($lin),4)
+  else
+  {var ($nam,$qnm,$qsn,$que{'cnmsg'},$que{'csmsg'}) = \
+    split('\|',value($lin))
+   var $tb_que{concat('cnmsg_',$nam)} = $que{'cnmsg'} # cnummsgs
+   var $tb_que{concat('csmsg_',$nam)} = $que{'csmsg'} # cspillmsgs
+  }
+
+  # Prepare the propagation receiver stats
+  if $VERSION102
+  {loop $lin (grepSql(add_sql_prr($qnm,$qsn,$cnt),concat('^prr_',quote($nam))))
+   {var ($prr{'prq'},$prr{'prs'},$prr{'prn'},$prr{'prt'},$prr{'sdb'}) = \
+         split('\|',value($lin))
+    var $tb_prr{concat($nam,'|',$prr{'sdb'},'|','prn')} = $prs{'prn'}
+    incr $cnt
+
+    # Get session identifiers
+    if $SYSDBA
+    {var @tmp = ()
+     loop $lin (grepSql(\
+       add_sql_prr_sid($qnm,$qsn,$prr{'prq'},$prr{'prs'},$prr{'sdb'}),\
+       concat('^prsid_',$qnm,'_',$qsn,'=')))
+      var @tmp = (@tmp,value($lin))
+     var $tb_sid{concat('prsid_',$qnm,'_',$qsn)} = join(',',@tmp)
+    }
+   }
+  }
+
+  # Prepare the propagation sender stats
+  loop $lin (grepSql(add_sql_prs($nam),concat('^prs_',quote($nam))))
+  {var ($prs{'psq'},$prs{'pss'},$prs{'psn'},$prs{'pst'},$prs{'psv'},\
+        $prs{'psd'}) = split('\|',value($lin))
+   var $tb_prs{concat($nam,'|',$prs{'psd'},'|','psn')} = $prs{'psn'}
+   var $tb_prs{concat($nam,'|',$prs{'psd'},'|','psv')} = $prs{'psv'}
+   incr $cnt
+
+   # Get session identifiers
+   if and($VERSION102,$SYSDBA)
+   {var @tmp = ()
+    loop $lin (grepSql(add_sql_prs_sid($prs{'psq'},$prs{'psd'}),\
+                       concat('^pssid_',$prs{'psq'},'=')))
+     var @tmp = (@tmp,value($lin))
+    var $tb_sid{concat('pssid_',$prs{'psq'})} = join(',',@tmp)
+   }
+  }
+ }
+
+ # Prepare apply stats
+ loop $lin (grepLastSql('^ap='))
+ {if $VERSION10
+  {if !$LONG
+   {var ($app{'num'},$nam,$app{'rec'},$app{'ass'},$app{'app'},$app{'hlat'},\
+         $app{'tot'}) = split('\|',value($lin))
+    var $tb_app{concat('tot_',$nam)} = $app{'tot'} # total_applied
+    var $tb_app{concat('app_',$nam)} = $app{'app'} # txns_applied
+
+    var $tb_sid{concat('rsid_',$app{'num'})} = ''
+    var $tb_sid{concat('ssid_',$app{'num'})} = ''
+    var $tb_app{concat('snum_',$app{'num'})} = 0
+    var (@stmp,@rtmp) = ()
+
+    loop $lin (grepSql(add_sql_app_sid($app{'num'}),\
+                       concat('^asid_',$app{'num'},'=')))
+    {var ($app{'sid'},$app{'typ'}) = split('\|',value($lin))
+     if expr('==',$app{'typ'},5)    # apply server
+     {var @stmp = (@stmp,$app{'sid'})
+      incr $tb_app{concat('snum_',$app{'num'})}
+     }
+     else
+      var @rtmp = (@rtmp,$app{'sid'})
+    }
+    var $tb_sid{concat('ssid_',$app{'num'})} = join(',',@stmp)
+    var $tb_sid{concat('rsid_',$app{'num'})} = join(',',@rtmp)
+   }
+   else
+   {var ($app{'rsid'},$app{'num'},$nam,$app{'dmsg'},$app{'rec'},$app{'ass'},\
+         $app{'app'},$app{'hscn'},$app{'hlat'},$app{'dscn'},$app{'dlat'}) = \
+         split('\|',value($lin))
+
+    var $tb_sid{concat('rsid_',$app{'num'})} = ''
+    var $tb_sid{concat('ssid_',$app{'num'})} = ''
+    var $tb_app{concat('snum_',$app{'num'})} = 0
+    var @stmp = ()
+
+    # Collect session identifiers for wait event
+    var $tb_sid{concat('rsid_',$app{'num'})} = $app{'rsid'}
+    loop $lin (grepSql(add_sql_app_sid($app{'num'}),\
+                       concat('^asid_',$app{'num'},'=')))
+    {var @stmp = (@stmp,value($lin))
+     incr $tb_app{concat('snum_',$app{'num'})}
+    }
+    var $tb_sid{concat('ssid_',$app{'num'})} = join(',',@stmp)
+   }
+  }
+  elsif !$LONG
+  {var ($app{'num'},$nam,$app{'rec'},$app{'ass'},$app{'app'},$app{'hlat'},\
+        $app{'tot'}) = split('\|',value($lin))
+   var $tb_app{concat('tot_',$nam)} = $app{'tot'} # total_applied
+   var $tb_app{concat('app_',$nam)} = $app{'app'} # txns_applied
+  }
+ }
+}
+
+# --- Macro to get propagation receiver information ------------------------
+
+macro get_prr_info
+{var (\%res,$nam,$qnm,$qsn,\$cnt) = @arg
+ import %ref,%smp,%tb_gpr,%tb_prr,$LONG,$SYSDBA
+ keep %ref,%smp,%tb_gpr,%tb_prr,$LONG,$SYSDBA
+
+ if !$VERSION102
+  return
+
+ if exists($tb_gpr{$nam})
+  var @lin = grepLastSql(concat('^prr_',quote($nam)))
+ else
+  var @lin = grepSql(add_sql_prr($qnm,$qsn,$cnt),concat('^prr_',quote($nam)))
+
+ loop $lin (@lin)
+ {var ($prr{'prq'},$prr{'prs'},$prr{'prn'},$prr{'prt'},$prr{'sdb'})\
+          = split('\|',value($lin))
+  incr $cnt
+
+  # Collect session identifiers
+  var $key = concat($nam,'|',$prr{'sdb'})
+  if and(missing($tb_prr{concat($key,'|','prn')}),$SYSDBA)
+  {var @tmp = ()
+   loop $lin (grepSql(\
+     add_sql_prr_sid($qnm,$qsn,$prr{'prq'},$prr{'prs'},$prr{'sdb'}),\
+     concat('^prsid_',$qnm,'_',$qsn,'=')))
+    var @tmp = (@tmp,value($lin))
+
+   var $tb_sid{concat('prsid_',$qnm,'_',$qsn)} = join(',',@tmp)
+  }
+
+  if $LONG
+  {call push_value(\%res,'prd',sprintf('%s/%02d ',$nam,$cnt))
+   call push_value(\%res,'prq',$prr{'prq'})
+   call push_value(\%res,'prs',$prr{'prs'})
+   call push_value(\%res,'prn',$prr{'prn'})
+   call push_value(\%res,'prt',$prr{'prt'})
+   call push_value(\%res,'sdb',$prr{'sdb'})
+  }
+  else
+  {if expr('>=',$prr{'prn'},$tb_prr{concat($key,'|','prn')})
+   {call push_value(\%res,'prd',sprintf('%s/%02d ',$nam,$cnt))
+    call push_value(\%res,'prat',\
+                    expr('/',expr('-',$prr{'prn'},\
+                    $tb_prr{concat($key,'|','prn')}),$smp{'dif'}),' %1.4f')
+   }
+   var $tb_prr{concat($key,'|','prn')} = $prr{'prn'}
+  }
+
+  # Print wait event stats
+  if $SYSDBA
+  {call treat_event(\%tb_prr,$tb_sid{concat('prsid_',$qnm,'_',$qsn)},'prr')
+   call push_value(\%res,'pridl',$tb_app{'prr_idl'})
+   call push_value(\%res,'prflw',$tb_app{'prr_flw'})
+   call push_value(\%res,'prmax',$tb_app{'prr_max'})
+   if $LONG
+    call push_string(\%res,'prmnm',$tb_app{'prr_mnm'})
+  }
+ }
+}
+
+# --- Macro to get propagation sender information ---------------------------
+
+macro get_prs_info
+{var (\%res,$nam,\$cnt) = @arg
+ import %ref,%smp,%tb_gps,%tb_prs,$LONG,$SYSDBA,$VERSION102
+ keep %ref,%smp,%tb_gps,%tb_prs,$LONG,$SYSDBA,$VERSION102
+
+ if exists($tb_gps{$nam})
+  var @lin = grepLastSql(concat('^prs_',quote($nam)))
+ else
+  var @lin = grepSql(add_sql_prs($nam),concat('^prs_',quote($nam)))
+
+ loop $lin (@lin)
+ {var ($prs{'psq'},$prs{'pss'},$prs{'psn'},$prs{'pst'},$prs{'psv'},$prs{'psd'})\
+       = split('\|',value($lin))
+  incr $cnt
+
+  # Get session identifiers
+  var $key = concat($nam,'|',$prs{'psd'})
+  if and($SYSDBA,$VERSION102,missing($tb_prs{concat($key,'|','psn')}))
+  {var @tmp = ()
+   loop $lin (grepSql(add_sql_prs_sid($prs{'psq'},$prs{'psd'}),\
+                       concat('^pssid_',$prs{'psq'},'=')))
+    var @tmp = (@tmp,value($lin))
+   var $tb_sid{concat('pssid_',$prs{'psq'})} = join(',',@tmp)
+  }
+
+  if $LONG
+  {call push_value(\%res,'pid',sprintf('%s/%02d ',$nam,$cnt))
+   call push_value(\%res,'psq',$prs{'psq'})
+   call push_value(\%res,'pss',$prs{'pss'})
+   call push_value(\%res,'psn',$prs{'psn'})
+   call push_value(\%res,'pst',$prs{'pst'})
+   call push_value(\%res,'psv',$prs{'psv'})
+  }
+  else
+  {if expr('>=',$prs{'psn'},$tb_prs{concat($key,'|','psn')})
+   {call push_value(\%res,'pid',sprintf('%s/%02d ',$nam,$cnt))
+    call push_value(\%res,'psat',\
+                    expr('/',expr('-',$prs{'psn'},\
+                         $tb_prs{concat($key,'|','psn')}),$smp{'dif'}),' %1.4f')
+    call push_value(\%res,'pssb',\
+                    expr('/',expr('-',$prs{'psv'},\
+                         $tb_prs{concat($key,'|','psv')}),$smp{'dif'}),' %1.4f')
+   }
+   var $tb_prs{concat($key,'|','psn')} = $prs{'psn'}
+   var $tb_prs{concat($key,'|','psv')} = $prs{'psv'}
+  }
+
+  # Print wait event stats
+  if and($SYSDBA,$VERSION102)
+  {call treat_event(\%tb_prs,$tb_sid{concat('pssid_',$prs{'psq'})},'prs')
+   call push_value(\%res,'psidl',$tb_app{'prs_idl'})
+   call push_value(\%res,'psflw',$tb_app{'prs_flw'})
+   call push_value(\%res,'psmax',$tb_app{'prs_max'})
+   if $LONG
+    call push_string(\%res,'psmnm',$tb_app{'prs_mnm'})
+  }
+ }
+}
+
+# --- Macros to treat a sample ----------------------------------------------
+
+macro get_smp_info
+{var ($itr) = @arg
+ import %ref,%smp,%tb_app,%tb_cap,%tb_gpr,%tb_gps,%tb_gqn,%tb_gqs,%tb_prs,\
+        %tb_que,%tb_sid,$LONG,$SYSDBA,$VERSION10,$VERSION102
+ keep %ref,%smp,%tb_app,%tb_cap,%tb_gpr,%tb_gps,%tb_gqn,%tb_gqs,%tb_prs,\
+      %tb_que,$LONG,$SYSDBA,$VERSION10,$VERSION102
+
+ var $smp{'tps'} = value(grepLastSql('^tps=','f'))
+ var $smp{'dif'} = value(grepLastSql('^dif=','f'))
+ var @tbl = (replace(trim($smp{'tps'},"'"),' ','&nbsp;',true))
+
+ # Collect event data
+ call get_event_info($itr)
+
+ # Perform log stats
+ if $SYSDBA
+ {var $smp{'scn'} = value(grepLastSql('^lscn=','f'))
+  var $smp{'blk'} = value(grepLastSql('^lblk=','f'))
+  if $LONG
+   var @tbl = (@tbl,$smp{'scn'},$smp{'blk'})
+  elsif expr('<',$smp{'blk'},$ref{'blk'})
+   var @tbl = (@tbl,' -')
+  else
+  {var $rat = expr('/',expr('*',512,\
+                                expr('-',$smp{'blk'},$ref{'blk'})),\
+                       $smp{'dif'})
+   var @tbl = (@tbl,concat(fmt_bytes($rat),'ps'))
+  }
+ }
+
+ # Perform network stats
+ var $smp{'ncl'} = value(grepLastSql('^ncl=','f'))
+ var $smp{'ndb'} = value(grepLastSql('^ndb=','f'))
+
+ if $LONG
+  var @tbl = (@tbl,concat(' ',$smp{'ncl'}),concat(' ',$smp{'ndb'}))
+ elsif defined(or($ref{'ncl'},$ref{'ndb'}))
+ {var $clb = expr('/',expr('-',$smp{'ncl'},$ref{'ncl'}),\
+                       $smp{'dif'})
+  var $dbb = expr('/',expr('-',$smp{'ndb'},$ref{'ndb'}),\
+                       $smp{'dif'})
+  var @tbl = (@tbl,fmt_bytes($clb),fmt_bytes($dbb))
+ }
+
+ # Perform capture stats
+ var %res = ()
+ loop $lin (grepLastSql('^cp='))
+ {var $cap{'flw'} = false
+  var ($cap{'sid'},$cap{'num'},$nam,$cap{'ctot'},$cap{'cscn'},$cap{'etot'},\
+       $cap{'escn'},$cap{'clat'},$cap{'rscn'},$cap{'tim'}) = \
+       split('\|',value($lin))
+
+  if exists($tb_cap{concat('flw_',$nam)})
+  {call push_value(\%res,'num',$cap{'num'},' %02d')
+   call push_value(\%res,'clat',fmt_latency($cap{'clat'})) # capture_latency
+   if $LONG
+   {call push_value(\%res,'ctot',$cap{'ctot'}) # total_captured
+    call push_value(\%res,'cscn',$cap{'cscn'}) # captured_scn
+    call push_value(\%res,'etot',$cap{'etot'}) # total_enqueued
+    call push_value(\%res,'escn',$cap{'escn'}) # enqueued_scn
+    if $VERSION10
+     call push_value(\%res,'rscn',$cap{'rscn'}) # read_scn
+   }
+   else
+   {if expr('>=',$cap{'ctot'},$tb_cap{concat('ctot_',$nam)})
+    {call push_value(\%res,'crat',\
+                     expr('/',expr('-',$cap{'ctot'},\
+                                       $tb_cap{concat('ctot_',$nam)}),\
+                              $smp{'dif'}),' %1.4f') # total_captured per sec
+     call push_value(\%res,'erat',\
+                     expr('/',expr('-',$cap{'etot'},\
+                                       $tb_cap{concat('etot_',$nam)}),\
+                              $smp{'dif'}),' %1.4f') # total_enqueued per sec
+    }
+    else
+    {call push_value(\%res,'crat','-') # total_captured per sec
+     call push_value(\%res,'erat','-') # total_enqueued per sec
+    }
+   }
+   if $VERSION10
+   {var $typ = '- '
+    if expr('>',$cap{'tim'},$tb_cap{concat('tim_',$nam)})
+     var ($typ,$cap{'flw'}) = ('F ',true)
+    elsif and(expr('<',$cap{'cscn'},$tb_cap{concat('rscn_',$nam)}),\
+              or(not($tb_cap{concat('flw_',$nam)}),\
+                 and($tb_cap{concat('flw_',$nam)},expr('>',$smp{'dif'},60))))
+     var $typ = 'B '
+    call push_value(\%res,'typ',$typ)
+   }
+  }
+
+  # Update the capture record
+  var $tb_cap{concat('flw_',$nam)} = $cap{'flw'}
+  var $tb_cap{concat('ctot_',$nam)} = $cap{'ctot'} # total_captured
+  var $tb_cap{concat('etot_',$nam)} = $cap{'etot'} # total_enqueued
+  if defined($cap{'rscn'})
+   var $tb_cap{concat('rscn_',$nam)} = $cap{'rscn'} # read_scn
+  if defined($cap{'tim'})
+   var $tb_cap{concat('ptim_',$nam)} = $cap{'tim'} # elapsed_pause_time
+  var $tb_sid{$cap{'sid'}} = $cap{'sid'}
+
+  if $VERSION10
+  {call treat_event(\%tb_cap,$cap{'sid'},'cap')
+   call push_value(\%res,'cidl',$tb_cap{'cap_idl'})
+   call push_value(\%res,'cflw',$tb_cap{'cap_flw'})
+   call push_value(\%res,'cmax',$tb_cap{'cap_max'})
+   if $LONG
+    call push_string(\%res,'cmnm',$tb_cap{'cap_mnm'})
+  }
+ }
+ if $LONG
+ {if $VERSION10
+   var @tbl = (@tbl,fmt_row(\%res,'num','rscn','ctot','cscn','etot','escn',\
+                                  'clat','*typ','cidl','cflw','cmax','cmnm'))
+  else
+   var @tbl = (@tbl,fmt_row(\%res,'num','ctot','cscn','etot','escn','clat'))
+ }
+ else
+ {if $VERSION10
+   var @tbl = (@tbl,fmt_row(\%res,'num','crat','erat','clat','*typ','cidl',\
+                                  'cflw','cmax'))
+  else
+   var @tbl = (@tbl,fmt_row(\%res,'num','crat','erat','clat'))
+ }
+
+ # Perform queue stats
+ var %res = ()
+ var $cnt = 0
+ loop $lin (grepLastSql('^q='))
+ {if $VERSION10
+  {var ($nam,$qnm,$qsn,$que{'cnmsg'},$que{'csmsg'},$que{'nmsg'}) = \
+   split('\|',value($lin))
+
+   #Perform propagation receiver stats
+   call get_prr_info(\%res,$nam,$qnm,$qsn,\$cnt)
+
+   if $LONG
+   {call push_value(\%res,'num',$nam)
+    call push_value(\%res,'nmsg',$que{'nmsg'})   # nummsgs
+    call push_value(\%res,'cnmsg',$que{'cnmsg'}) # cnummsgs
+    call push_value(\%res,'csmsg',$que{'csmsg'}) # cspillmsgs
+   }
+   else
+   {if exists($tb_que{concat('cnmsg_',$nam)})
+    {call push_value(\%res,'num',$nam)
+     call push_value(\%res,'cnrat',\
+                     expr('/',expr('-',$que{'cnmsg'},\
+                                       $tb_que{concat('cnmsg_',$nam)}),\
+                              $smp{'dif'}),' %1.4f') # cnummsgs per sec
+     call push_value(\%res,'csrat',\
+                     expr('/',expr('-',$que{'csmsg'},\
+                                       $tb_que{concat('csmsg_',$nam)}),\
+                              $smp{'dif'}),' %1.4f') # cspillmsgs per sec
+    }
+
+    var $tb_que{concat('cnmsg_',$nam)} = $que{'cnmsg'} # cnummsgs
+    var $tb_que{concat('csmsg_',$nam)} = $que{'csmsg'} # cspillmsgs
+   }
+  }
+  else
+  {var ($nam,$que{'own'},$que{'tbl'}) = split('\|',value($lin))
+
+   if $LONG
+   {call push_value(\%res,'num',$nam)
+
+    if $SYSDBA
+    {var $val = '-'
+     if exists($tb_gqn{$nam})
+     {loop $lin (grepLastSql(concat('^qn_',quote($nam),'=')))
+       var $val = value($lin)
+     }
+     else
+     {loop $lin (grepSql(add_sql_qn($nam),concat('^qn_',quote($nam),'=')))
+       var $val = value($lin)
+     }
+     call push_value(\%res,'nmsg',$val)
+    }
+
+    var $key = concat($que{'own'},'.AQ$_',$que{'tbl'},'_P')
+    var $val = '-'
+    if exists($tb_gqs{$key})
+    {loop $lin (grepLastSql(concat('^qs_',quote($key),'=')))
+      var $val = value($lin)
+    }
+    else
+    {loop $lin (grepSql(add_sql_qs($key),concat('^qs_',quote($key),'=')))
+      var $val = value($lin)
+    }
+    call push_value(\%res,'smsg',$val)
+   }
+  }
+
+  # Perform propagation sender stats
+  call get_prs_info(\%res,$nam,\$cnt)
+ }
+
+ if $LONG
+ {if $VERSION102
+  {var @tbl = (@tbl,fmt_row(\%res,'*prd','prn','prt'))
+   if $SYSDBA
+    var @tbl = (@tbl,fmt_row(\%res,'pridl','prflw','prmax','prmnm'))
+  }
+  if $VERSION10
+   var @tbl = (@tbl,fmt_row(\%res,'num','nmsg','cnmsg','csmsg'))
+  elsif $SYSDBA
+   var @tbl = (@tbl,fmt_row(\%res,'num','nmsg','smsg'))
+  else
+   var @tbl = (@tbl,fmt_row(\%res,'num','smsg'))
+  var @tbl = (@tbl,fmt_row(\%res,'*pid','psn','psv','pst'))
+  if and($VERSION102,$SYSDBA)
+   var @tbl = (@tbl,fmt_row(\%res,'psidl','psflw','psmax','psmnm'))
+ }
+ else
+ {if $VERSION102
+  {var @tbl = (@tbl,fmt_row(\%res,'*prd','prat'))
+   if $SYSDBA
+    var @tbl = (@tbl,fmt_row(\%res,'pridl','prflw','prmax'))
+  }
+  if $VERSION10
+   var @tbl = (@tbl,fmt_row(\%res,'num','cnrat','csrat'))
+  var @tbl = (@tbl,fmt_row(\%res,'*pid','psat','pssb'))
+  if and($VERSION102,$SYSDBA)
+   var @tbl = (@tbl,fmt_row(\%res,'psidl','psflw','psmax'))
+ }
+
+
+ # Perform apply stats
+ var %res = ()
+ loop $lin (grepLastSql('^ap='))
+ {if $LONG
+  {var ($app{'rsid'},$app{'num'},$nam,$app{'dmsg'},$app{'rec'},$app{'ass'},\
+        $app{'app'},$app{'hscn'},$app{'hlat'},$app{'dscn'},$app{'dlat'}) = \
+        split('\|',value($lin))
+
+   call push_value(\%res,'num',$app{'num'},' %02d')
+   call push_value(\%res,'dmsg',$app{'dmsg'})              # msgs_deqd
+   call push_value(\%res,'dscn',$app{'dscn'})              # dequeue_scn
+   call push_value(\%res,'dlat',fmt_latency($app{'dlat'})) # dequeue_latency
+   call push_value(\%res,'rec',$app{'rec'})                # txns_recvd
+   call push_value(\%res,'ass',$app{'ass'})                # txns_assigned
+   call push_value(\%res,'app',$app{'app'})                # txns_applied
+   call push_value(\%res,'hscn',$app{'hscn'})              # hwm_scn
+   call push_value(\%res,'hlat',fmt_latency($app{'hlat'})) # hwm_latency
+   if expr('>',expr('-',$app{'rec'},$app{'ass'}),10)
+    var $typ = 'B '
+   else
+    var $typ = '- '
+   call push_value(\%res,'typ',$typ)
+
+   # Collect sids for wait event
+   if and($VERSION10,missing($tb_app{concat('app_',$nam)}))
+   {var $tb_sid{concat('ssid_',$app{'num'})} = ''
+    var $tb_app{concat('snum_',$app{'num'})} = 0
+    var @stmp = ()
+
+    var $tb_sid{concat('rsid_',$app{'num'})} = $app{'rsid'}
+    loop $lin (grepLastSql(concat('^asid_',$app{'num'},'=')))
+    {var @stmp = (@stmp,value($lin))
+     incr $tb_app{concat('snum_',$app{'num'})}
+    }
+    var $tb_sid{concat('ssid_',$app{'num'})} = join(',',@stmp)
+   }
+
+   if $VERSION10
+   {call treat_event(\%tb_app,$tb_sid{concat('ssid_',$app{'num'})},'aps',\
+                     $tb_app{concat('snum_',$app{'num'})})
+    call push_value(\%res,'snum',$tb_app{concat('snum_',$app{'num'})})
+    call push_value(\%res,'sidl',$tb_app{'aps_idl'})
+    call push_value(\%res,'sflw',$tb_app{'aps_flw'})
+    call push_value(\%res,'smax',$tb_app{'aps_max'})
+    call push_string(\%res,'smnm',$tb_app{'aps_mnm'})
+
+    call treat_event(\%tb_app,$tb_sid{concat('rsid_',$app{'num'})},'apr')
+    call push_value(\%res,'ridl',$tb_app{'apr_idl'})
+    call push_value(\%res,'rflw',$tb_app{'apr_flw'})
+    call push_value(\%res,'rmax',$tb_app{'apr_max'})
+    call push_string(\%res,'rmnm',$tb_app{'apr_mnm'})
+   }
+  }
+  else
+  {var ($app{'num'},$nam,$app{'rec'},$app{'ass'},$app{'app'},$app{'hlat'},\
+        $app{'tot'}) = split('\|',value($lin))
+
+   if expr('>=',$app{'app'},$tb_app{concat('app_',$nam)})
+   {call push_value(\%res,'num',$app{'num'},' %02d')
+    call push_value(\%res,'tot',\
+                     expr('/',expr('-',$app{'tot'},\
+                                       $tb_app{concat('tot_',$nam)}),\
+                              $smp{'dif'}),' %1.4f') # total_applied per sec
+    call push_value(\%res,'app',\
+                     expr('/',expr('-',$app{'app'},\
+                                       $tb_app{concat('app_',$nam)}),\
+                              $smp{'dif'}),' %1.3f') # txns_applied per sec
+    call push_value(\%res,'hlat',fmt_latency($app{'hlat'})) # hwm_latency
+    if expr('>',expr('-',$app{'rec'},$app{'ass'}),10)
+     var $typ = 'B '
+    else
+     var $typ = '- '
+
+    call push_value(\%res,'typ',$typ)
+    if $VERSION10
+    {call treat_event(\%tb_app,$tb_sid{concat('ssid_',$app{'num'})},'aps',\
+                      $tb_app{concat('snum_',$app{'num'})})
+     call push_value(\%res,'snum',$tb_app{concat('snum_',$app{'num'})})
+     call push_value(\%res,'sidl',$tb_app{'aps_idl'})
+     call push_value(\%res,'sflw',$tb_app{'aps_flw'})
+     call push_value(\%res,'smax',$tb_app{'aps_max'})
+
+     call treat_event(\%tb_app,$tb_sid{concat('rsid_',$app{'num'})},'apr')
+     call push_value(\%res,'ridl',$tb_app{'apr_idl'})
+     call push_value(\%res,'rflw',$tb_app{'apr_flw'})
+     call push_value(\%res,'rmax',$tb_app{'apr_max'})
+    }
+   }
+
+   # Collect apply session identifiers
+   if and($VERSION10,missing($tb_app{concat('app_',$nam)}))
+   {var $tb_app{concat('snum_',$app{'num'})} = 0
+    var (@stmp,@rtmp) = ()
+
+    loop $lin (grepLastSql(concat('^asid_',$app{'num'},'=')))
+    {var ($app{'sid'},$app{'typ'}) = split('\|',value($lin))
+     if expr('==',$app{'typ'},5)
+     {var @stmp = (@stmp,$app{'sid'})
+      incr $tb_app{concat('snum_',$app{'num'})}
+     }
+     else
+      var @rtmp = (@rtmp,$app{'sid'})
+    }
+    var $tb_sid{concat('ssid_',$app{'num'})} = join(',',@stmp)
+    var $tb_sid{concat('rsid_',$app{'num'})} = join(',',@rtmp)
+   }
+  }
+
+  # Update the apply record
+  var $tb_app{concat('tot_',$nam)} = $app{'tot'} # total_applied
+  var $tb_app{concat('app_',$nam)} = $app{'app'} # txns_applied
+ }
+
+ if $LONG
+  var @tbl = (@tbl,fmt_row(\%res,'num','dmsg','dscn','dlat','rec','ass',\
+                                 'app','hscn','hlat','*typ'))
+ else
+  var @tbl = (@tbl,fmt_row(\%res,'num','tot','app','hlat','*typ'))
+ if $VERSION10
+ {if $LONG
+   var @tbl = (@tbl,fmt_row(\%res,'ridl','rflw','rmax','rmnm','snum','sidl',\
+                                 'sflw','smax','smnm'))
+  else
+  var @tbl = (@tbl,fmt_row(\%res,'ridl','rflw','rmax','snum','sidl','sflw',\
+                                 'smax'))
+ }
+
+ # Perform memory stats
+ if and($SYSDBA,$VERSION10)
+ {var $smp{'mem'} = value(grepLastSql('^mem=','f'))
+  var $smp{'siz'} = value(grepLastSql('^siz=','f'))
+  var @tbl = (@tbl,concat(' ',$smp{'mem'}),fmt_bytes($smp{'siz'}))
+ }
+
+ # Generate the data raw
+ write '|',join('|',@tbl),'|'
+
+ # Save the sample as new reference
+ var %ref = %smp
+}
+
+=head2 monitor - Monitor Results
+
+Monitors database streams.
+
+=cut
+
+report monitor
+write '---+!! Streams Monitor'
+write $TOC
+
+# Print the header
+debug ' Inside STM module, gathering initial data'
+write '---+ Parameters'
+write '|*Count*|',$COUNT,'|'
+write '|*Interval*|',$INTERVAL,' sec|'
+write '|*Logon User*|',getSetting('SQL_LOGIN'),'|'
+write '|*Database Instance Name*|',getSetting('ORACLE_SID'),'|'
+set $sql
+{SELECT 'version=' || version
+" FROM v$instance;
+}
+if $VERSION10
+{append $sql
+ {SELECT 'siz=' || TO_CHAR(ROUND(current_size / 1048576,2))
+ " FROM v$sga_dynamic_components
+ " WHERE component = 'streams pool';
+ }
+}
+call loadSql($sql)
+if grepLastSql('version=')
+ write '|*Database Version*|',value(last),' |'
+if grepLastSql('siz=')
+ write '|*Streams Pool Size*|',value(last),' MiB|'
+write $TOP
+
+# Get the reference data
+macro debug_data
+{write '<verbatim>'
+ write $arg[0]
+ write '</verbatim>'
+ write '---'
+ write '<verbatim>'
+ call writeLastSql()
+ write '</verbatim>'
+}
+
+var ($sql,%ref,%tb_app,%tb_cap,%tb_gpr,%tb_gps,%tb_gqn,%tb_gqs,%tb_prs,\
+     %tb_que,%tb_evtn,%tb_evto,%tb_sid,%tb_evti) = ()
+var %tb_evtp = (\
+  'apr_idl','Streams AQ: waiting for messages in the queue|\
+              queue messages|knlqdeq',\
+  'apr_flw','rdbms ipc message',\
+  'aps_idl','rdbms ipc message',\
+  'aps_flw',undef,\
+  'cap_flw','Streams capture: waiting for subscribers to catch up|\
+             Streams capture: resolve low memory condition|\
+             waiting for subscribers to catch up',\
+  'cap_idl','LogMiner: client waiting for transaction|\
+             events in waitclass Other|\
+             Streams capture: waiting for archive log|\
+             wait for transaction|\
+             STREAMS capture process waiting for archive log',\
+  'prr_flw','Streams AQ: enqueue blocked on low memory|\
+             Streams AQ: enqueue blocked due to flow control',\
+  'prr_idl','SQL*Net more data from client|\
+             SQL*Net message from client|\
+             Streams AQ: qmn slave idle wait',\
+  'prs_flw','SQL*Net more data to dblink|\
+             SQL*Net message from dblink',\
+  'prs_idl','wait for unread message on broadcast channel|\
+             jobq slave wait')
+
+call get_ref_data()
+ if $DEBUG
+ call debug_data($sql)
+call get_ref_info()
+
+# Monitor the Streams
+write '---+ Streams Monitor Output'
+call write_heading()
+for $cnt (1,$COUNT)
+{# Sleep between iterations
+ debug ' Inside STM module, sleeping ',$INTERVAL,' seconds'
+ sleep $INTERVAL
+
+ # Get the iteration data
+ debug ' Inside STM module, gathering sample ',$cnt,' of ',$COUNT
+ var %smp = ()
+ call get_smp_data($sql,$ref{'tps'})
+ if $DEBUG
+  call debug_data($sql)
+ call get_smp_info($cnt)
+}
+write $TOP
+
+# Print the legend
+write '---+ Legend'
+write '|*Abbreviation*|*Description*|'
+write '|A#|Apply process number|'
+if $VERSION10
+{write '|AR|Apply reader|'
+ write '|AS|Apply server|'
+}
+write '|B|Potential bottleneck|'
+write '|C|Capture|'
+write '|C#|Capture process number|'
+write '|DB|Database|'
+write '|F|Flow control in effect|'
+if $LONG
+ write '|HWm|High Watermark|'
+write '|ID|Queue Identifier|'
+write '|LCRs|Logical Change Records|'
+write '|Msgs|Messages|'
+if $VERSION102
+{write '|PR|Propagation Receiver|'
+ write '|PR#|Propagation Receiver process number|'
+}
+write '|PS|Propagation Sender|'
+write '|PS#|Propagation Sender process number|'
+if $LONG
+ write '|SCN|System Change Number|'
+write '|Txns|Transactions|'
+write $TOP
+
+toc '2:[[',getFile(),'][rda_report][Monitor Results]]'
+
+=head1 SEE ALSO
+
+L<DBinfo.def|modules::DBinfo>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.4:  Malcolm Mckellar, James Mullaney.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

@@ -1,0 +1,954 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+
+<!--
+This is the configuration file for the MAS Metric Service metrics for OHS.
+
+   MODIFIED    (MM/DD/YY)
+   rummadi      12/04/07 - 
+   vaudinar     09/18/07  - 
+   rummadi      05/17/07 -  There is a new requirement . All metric columns that can be used as filters must be specified in the where clause of the ADML metric definition. Adding 'where' condition for the metrics ohs_server,ohs_module and ohs_virtualHost.
+   pmalakar     05/03/07 - 
+   rsaraswa     01/31/07 - 
+   klmichae     11/17/06 - Creation
+
+-->
+
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="ohs">
+<!-- start rummadi -->
+ 
+<!-- start table ohs_module -->
+<Table Name="ohs_module">
+  <ColumnDef Name="ServerName" Type="String" Key="true"/>
+  <ColumnDef Name="name" Type="String" Key="true"/>
+  <ColumnDef Name="Host" Type="String" />
+  <ColumnDef Name="Process" Type="String" />
+  <ColumnDef Name="ohs_server" Type="String" />
+  <ColumnDef Name="decline.count" Type="Integer" />
+  <ColumnDef Name="handle.completed" Type="Integer" />
+  <ColumnDef Name="handle.time" Type="Double" />
+  <ColumnDef Name="handle.active" Type="Integer" />
+  <ColumnDef Name="handle.avg" Type="Double" />
+  <ColumnDef Name="handle.minTime" Type="Double" />
+  <ColumnDef Name="handle.maxTime" Type="Double" />  
+  <ColumnDef Name="handle.currentThroughput" Type="Double"/>
+  <ColumnDef Name="handle.currentProcessingTime" Type="Double"/>
+  <ColumnDef Name="handle.currentProcessingTimeInMilliSec" Type="Double"/>
+  <ColumnDef Name="Parent" Type="String" />
+  <ColumnDef Name="decline.maxValue" Type="Integer" />
+  <ColumnDef Name="decline.minValue" Type="Integer" />
+  <ColumnDef Name="ohs_moduleSet" Type="String" />
+
+<Select Name="ohs_module_result">
+  <TableFrom Name="ohs_module"/>
+   <Column Name="ServerName" Type="String"/>
+   <Column Name="name" Type="String">
+    <ColumnFrom Name="Name"/>
+   </Column>
+    <Column Name="Host" Type="String"/>
+    <Column Name="Process" Type="String"/>
+    <Column Name="ohs_server" Type="String"/>
+    <Column Name="decline.count" Type="Integer">
+		<ColumnFrom Name="decline.value"/>
+    </Column>
+    <Column Name="handle.completed" Type="Integer"/>
+    <Column Name="handle.time" Type="Double"/>
+    <Column Name="handle.active" Type="Integer"/>
+    <Column Name="handle.avg" Type="Double"/>
+    <Column Name="handle.minTime" Type="Double"/>
+    <Column Name="handle.maxTime" Type="Double"/>
+    <!--<Column Name="request.throughput" Type="Double">
+      <Rate Interval="300000">
+        <ColumnFrom Name="handle.completed"/>
+        <Default>0</Default>
+      </Rate>
+   </Column> -->
+<Column Name="handle.currentThroughput" Type="Double">
+<Rate Interval="300000">
+  <ColumnFrom Name="handle.completed"/>
+   <Default>0</Default>
+</Rate>
+</Column>
+<Column Name="handle.currentProcessingTime" Type="Double">
+    <Expression Operator="Div">
+	    <Rate Interval="300000">
+	     <ColumnFrom Name="handle.time"/>
+	     <ColumnFrom Name="handle.completed"/>
+	     <Default>0</Default>
+	    </Rate>
+	    <Value>1000000</Value>	
+     </Expression>
+     <Default>0</Default>
+   </Column>
+<Column Name="handle.currentProcessingTimeInMilliSec" Type="Double">
+    <Expression Operator="Div">
+            <Rate Interval="300000">
+             <ColumnFrom Name="handle.time"/>
+             <ColumnFrom Name="handle.completed"/>
+             <Default>0</Default>
+            </Rate>
+            <Value>1000</Value>
+     </Expression>
+     <Default>0</Default>
+   </Column>
+  <Column Name="Parent" Type="String" />
+  <Column Name="decline.maxValue" Type="Integer" />
+  <Column Name="decline.minValue" Type="Integer" />
+  <Column Name="ohs_moduleSet" Type="String" />
+
+<!-- where conditon is needed to handle the requests which pass parameters to filter data -->
+<Where>
+    <And>
+      <Or>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="ServerName"/>
+       <Value Name="ServerNames.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <Value Name="ServerNames.parameter"
+              xsi:nil="true"/>
+       <Null/>
+      </Condition>
+     </Or>
+     <Or>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="name"/>
+       <Value Name="name.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <Value Name="name.parameter"
+              xsi:nil="true"/>
+       <Null/>
+      </Condition>
+     </Or>
+    </And>
+   </Where>
+
+</Select>
+</Table>
+<!-- end table ohs_module -->
+
+<Table Name="ohs_virtualHost">
+	<ColumnDef Name="ServerName" Type="String" Key="true"/>
+	<ColumnDef Name="name" Type="String" Key="true"/>
+	<ColumnDef Name="Host" Type="String" />
+	<ColumnDef Name="Parent" Type="String"/>
+	<ColumnDef Name="Process" Type="String"/>
+	<ColumnDef Name="ohs_server" Type="String"/>
+	<ColumnDef Name="ohs_vhostSet" Type="String"/>
+	<ColumnDef Name="vhostType.value" Type="String"/>
+	<ColumnDef Name="vhostAP.value" Type="String" />
+	<ColumnDef Name="vhostEP.value" Type="String" />
+	<ColumnDef Name="vhostHost.value" Type="String" />
+<!--	<ColumnDef Name="vhostName.value" Type="String"  Key="true" /> -->
+	<ColumnDef Name="vhostPort.value" Type="Integer" />
+	<ColumnDef Name="request.active" Type="Integer"/>
+	<ColumnDef Name="request.avg" Type="Double"/>
+	<ColumnDef Name="request.maxTime" Type="Integer"/>
+	<ColumnDef Name="request.minTime" Type="Integer"/>
+	<ColumnDef Name="request.time" Type="Integer"/>
+	<ColumnDef Name="responseSize.value" Type="Integer"/>
+	<ColumnDef Name="request.currentThroughput" Type="Double"/>
+	<ColumnDef Name="request.currentProcessingTime" Type="Double"/>
+	<ColumnDef Name="request.currentProcessingTimeInMilliSec" Type="Double"/>
+	<ColumnDef Name="responseData.currentSize" Type="Double"/>
+	<ColumnDef Name="responseData.currentThroughput" Type="Double"/>
+	<ColumnDef Name="request.completed" Type="Integer"/>
+	
+	<Select Name="ohs_virtualHost_result">
+  		<TableFrom Name="ohs_virtualHost"/>
+   			<Column Name="ServerName" Type="String"/>
+			<Column Name="name" Type="String">
+				<ColumnFrom Name="Name"/>
+			</Column>
+			<Column Name="Host" Type="String" />
+			<Column Name="Parent" Type="String"/>
+			<Column Name="Process" Type="String"/>
+			<Column Name="ohs_server" Type="String"/>
+			<Column Name="ohs_vhostSet" Type="String"/>
+			<Column Name="vhostType.value" Type="String"/>
+			<Column Name="vhostAP.value" Type="String" />
+			<Column Name="vhostEP.value" Type="String" />
+			<Column Name="vhostHost.value" Type="String" />
+		<!--	<Column Name="vhostName.value" Type="String" /> -->
+			<Column Name="vhostPort.value" Type="Integer" />
+			<Column Name="request.active" Type="Integer"/>
+			<Column Name="request.avg" Type="Double"/>
+			<Column Name="request.maxTime" Type="Integer"/>
+			<Column Name="request.minTime" Type="Integer"/>
+			<Column Name="request.time" Type="Integer"/>
+			<Column Name="request.completed" Type="Integer"/>
+			<Column Name="responseSize.value" Type="Integer"/>
+			<Column Name="request.currentThroughput" Type="Double">
+				<Rate Interval="300000">
+				<ColumnFrom Name="request.completed"/>
+				<Default>0</Default>
+				</Rate>
+			</Column>
+			<Column Name="request.currentProcessingTime" Type="Double">
+				<Expression Operator="Div">
+					<Rate Interval="300000">
+					<ColumnFrom Name="request.time"/>
+					<ColumnFrom Name="request.completed"/>
+					<Default>0</Default>
+					</Rate>
+					<Value>1000000</Value>	
+				</Expression>
+     				<Default>0</Default>
+   			</Column>
+ 			<Column Name="request.currentProcessingTimeInMilliSec" Type="Double">
+                                <Expression Operator="Div">
+                                        <Rate Interval="300000">
+                                        <ColumnFrom Name="request.time"/>
+                                        <ColumnFrom Name="request.completed"/>
+                                        <Default>0</Default>
+                                        </Rate>
+                                        <Value>1000</Value>
+                                </Expression>
+                                <Default>0</Default>
+                        </Column>
+
+			<Column Name="responseData.currentSize" Type="Double">
+				<Expression Operator="Div">
+					<Rate Interval="300000">
+					<ColumnFrom Name="responseSize.value"/>
+					<ColumnFrom Name="request.completed"/>
+					<Default>0</Default>
+					</Rate>
+					<Value>1024</Value>	
+				</Expression>
+     				<Default>0</Default>
+   			</Column>
+			<Column Name="responseData.currentThroughput" Type="Double">
+    				<Expression Operator="Div">
+					<Rate Interval="300000">
+					<ColumnFrom Name="responseSize.value"/>
+					<Default>0</Default>
+					</Rate>
+	    				<Value>1024</Value>	
+     				</Expression>
+     				<Default>0</Default>
+ 			</Column>			
+<!-- where conditon is needed to handle the requests which pass parameters to filter data -->
+ <Where>
+	<And>
+      <Or>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="ServerName"/>
+       <Value Name="ServerNames.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <Value Name="ServerNames.parameter"
+              xsi:nil="true"/>
+       <Null/>
+      </Condition>
+     </Or>
+     <Or>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="name"/>
+       <Value Name="name.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <Value Name="name.parameter"
+              xsi:nil="true"/>
+       <Null/>
+      </Condition>
+     </Or>
+	</And>
+   </Where>
+
+	</Select>
+</Table>
+
+<!-- start table ohs-server -->
+
+<Table Name="ohs_server">
+  <ColumnDef Name="ServerName" Type="String" Key="true"/>
+  <ColumnDef Name="name" Type="String" />
+  <ColumnDef Name="request.completed" Type="Integer" />
+  <ColumnDef Name="request.throughput" Type="Double"/>
+  <ColumnDef Name="data.throughput" Type="Double"/>
+   <!--
+  <ColumnDef Name="processingTime.avg" Type="Double"/>
+  <ColumnDef Name="responseSize.avg" Type="Double"/>
+  -->
+  <ColumnDef Name="request.active" Type="Integer"/>
+  <ColumnDef Name="connection.active" Type="Integer"/>
+  <ColumnDef Name="error.rate" Type="Double"/>
+  <ColumnDef Name="error.count" Type="Integer"/>
+  <ColumnDef Name="error.currentPercentage" Type="Double"/>
+  <ColumnDef Name="request.currentProcessingTime" Type="Double"/>
+  <ColumnDef Name="request.currentProcessingTimeInMilliSec" Type="Double"/>
+  <ColumnDef Name="request.currentThroughput" Type="Double"/>
+  <ColumnDef Name="connection.currentTime" Type="Double"/>
+  <ColumnDef Name="connection.currentTimeInMilliSec" Type="Double"/>
+   <ColumnDef Name="responseData.currentSize" Type="Double"/>
+    <ColumnDef Name="responseData.currentThroughput" Type="Double"/>
+    <ColumnDef Name="busyProcesses.currentPercentage" Type="Double"/>
+  <ColumnDef Name="Host" Type="String"/>
+  <ColumnDef Name="Parent" Type="String"/>
+  <ColumnDef Name="Process" Type="String"/>
+  <ColumnDef Name="busyChildren.value" Type="Integer"/>
+  <ColumnDef Name="busyThreads.value" Type="Integer"/>
+  <ColumnDef Name="connection.avg" Type="Double"/>
+  <ColumnDef Name="connection.completed" Type="Integer"/>
+  <ColumnDef Name="connection.maxTime" Type="Double"/>
+  <ColumnDef Name="connection.minTime" Type="Double"/>
+  <ColumnDef Name="connection.time" Type="Double"/>
+  <ColumnDef Name="get.count" Type="Integer"/>
+  <ColumnDef Name="handle.active" Type="Integer"/>
+  <ColumnDef Name="handle.avg" Type="Double"/>
+  <ColumnDef Name="handle.completed" Type="Integer"/>
+  <ColumnDef Name="handle.maxTime" Type="Double"/>
+  <ColumnDef Name="handle.minTime" Type="Double"/>
+  <ColumnDef Name="handle.time" Type="Double"/>
+  <ColumnDef Name="mpm.value" Type="String"/>
+  <ColumnDef Name="numMods.value" Type="Integer"/>
+  <ColumnDef Name="numChildren.value" Type="Integer"/>
+  <ColumnDef Name="numThreads.maxValue" Type="Integer"/>
+  <ColumnDef Name="numThreads.minValue" Type="Integer"/>
+  <ColumnDef Name="numThreads.value" Type="Integer"/>
+  <ColumnDef Name="post.count" Type="Integer"/>
+  <ColumnDef Name="request.avg" Type="Double"/>
+  <ColumnDef Name="request.maxTime" Type="Double"/>
+  <ColumnDef Name="request.minTime" Type="Double"/>
+  <ColumnDef Name="request.time" Type="Integer"/>
+  <ColumnDef Name="responseSize.value" Type="Integer"/>
+  <ColumnDef Name="readyChildren.value" Type="Integer"/>
+  
+  <Select Name="ohs_server_result">
+  <TableFrom Name="ohs_server"/>
+   <Column Name="ServerName" Type="String"/>
+   <Column Name="name" Type="String">
+    <ColumnFrom Name="Name"/>
+   </Column>
+    <Column Name="request.completed" Type="Integer"/>
+    <Column Name="request.throughput" Type="Double">
+      <Rate Interval="300000">
+        <ColumnFrom Name="request.completed"/>
+        <Default>0</Default>
+      </Rate>
+   </Column>
+   <!-- data collected in the current interval -->
+   <Column Name="data.throughput" Type="Double">
+      <Rate Interval="300000">
+        <ColumnFrom Name="responseSize.value"/>
+        <Default>0</Default>
+      </Rate>
+   </Column>
+<!-- 'processingTime.avg' and 'responseSize.av' are
+ not defined in 10plus metric tables. So removing here also. -->
+<!--
+  <Column Name="processingTime.avg" Type="Double">
+    <Expression Operator="Div">
+      <Expression Operator="Div">
+        <Aggregation Operator="Sum" Name="request.time"/>
+        <Value Name="milli_to_second">1000</Value>
+      </Expression>
+      <Aggregation Operator="Sum" Name="request.completed"/>
+    </Expression>
+    <Default>0</Default>
+   </Column>
+
+  <Column Name="responseSize.avg" Type="Double">
+    <Expression Operator="Div">
+      <Expression Operator="Div">
+        <Aggregation Operator="Sum" Name="responseSize.value"/>
+        <Value Name="milli_to_second">1000</Value>
+      </Expression>
+      <Aggregation Operator="Sum" Name="request.completed"/>
+    </Expression>
+    <Default>0</Default>
+   </Column>
+-->
+  <Column Name="request.active" Type="Integer"/>
+  <Column Name="connection.active" Type="Integer"/>
+  <Column Name="error.count" Type="Integer"/>
+  <Column Name="error.rate" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="error.count"/>
+     <ColumnFrom Name="request.completed"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+   
+   <!-- 
+    <ColumnDescriptor NAME='error.currentPercentage' TYPE='NUMBER' IS_KEY='FALSE'
+ COLUMN_NAME='error.currentPercentage'
+ COMPUTE_EXPR="((_error.count > error.count) 
+ ? error.count : (error.count-_error.count))*100 
+ / ((_request.completed > request.completed) ? request.completed : (request.completed-_request.completed))">
+   -->
+  <Column Name="error.currentPercentage" Type="Double">
+    <Expression Operator="Mult">	
+	<ColumnFrom Name="error.rate"/>       
+       	<Value>100</Value>	
+  	</Expression>
+	<Default>0</Default>
+  </Column>
+ <!--<Column Name="request.deltaCompleted" Type="Double">
+  	<Expression Operator="Mult">
+		<Expression Operation="Minus">	
+			<ColumnFrom Name="request.completed"/>       
+			<Previous index='1'>
+				<ColumnFrom Name="request.completed"/>       
+			</Previous>			
+		</Expression>			
+		<Value>1000000</Value>	
+  	</Expression>
+	<Default>0</Default>
+  </Column> -->
+  
+  <!-- Required to be validated - Temporary Computation for this metric is not complete yet-->
+  <Column Name="request.currentProcessingTime" Type="Double">
+  	<Expression Operator="Div">
+		<Rate Interval="300000">
+		<ColumnFrom Name="request.time"/>
+		<ColumnFrom Name="request.completed"/>
+		<Default>0</Default>
+		</Rate>
+		<Value>1000000</Value>	
+  	</Expression>
+	<Default>0</Default>
+ </Column>
+ <Column Name="request.currentProcessingTimeInMilliSec" Type="Double">
+        <Expression Operator="Div">
+                <Rate Interval="300000">
+                <ColumnFrom Name="request.time"/>
+                <ColumnFrom Name="request.completed"/>
+                <Default>0</Default>
+                </Rate>
+                <Value>1000</Value>
+        </Expression>
+        <Default>0</Default>
+ </Column>
+
+ 
+ <Column Name="request.currentThroughput" Type="Double">
+<Rate Interval="300000">
+  <ColumnFrom Name="request.completed"/>
+   <Default>0</Default>
+</Rate>
+</Column>
+ <!-- in seconds -->
+ <Column Name="connection.currentTime" Type="Double">
+    <Expression Operator="Div">
+	    <Rate Interval="300000">
+	     <ColumnFrom Name="connection.time"/>
+	     <ColumnFrom Name="connection.completed"/>
+	     <Default>0</Default>
+	    </Rate>
+            <Value>1000000</Value>	
+     </Expression>
+     <Default>0</Default>
+  </Column>
+ <Column Name="connection.currentTimeInMilliSec" Type="Double">
+    <Expression Operator="Div">
+            <Rate Interval="300000">
+             <ColumnFrom Name="connection.time"/>
+             <ColumnFrom Name="connection.completed"/>
+             <Default>0</Default>
+            </Rate>
+            <Value>1000</Value>
+     </Expression>
+     <Default>0</Default>
+  </Column>
+
+
+   <Column Name="responseData.currentSize" Type="Double">
+    <Expression Operator="Div">
+	    <Rate Interval="300000">
+	     <ColumnFrom Name="responseSize.value"/>
+	     <ColumnFrom Name="request.completed"/>
+	     <Default>0</Default>
+	    </Rate>
+	    <Value>1024</Value>	
+     </Expression>
+     <Default>0</Default>
+   </Column>
+   
+    <Column Name="responseData.currentThroughput" Type="Double">
+    <Expression Operator="Div">
+	    <Rate Interval="300000">
+	     <ColumnFrom Name="responseSize.value"/>
+	     <Default>0</Default>
+	    </Rate>
+	    <Value>1024</Value>	
+     </Expression>
+     <Default>0</Default>
+  </Column>
+ <Column Name="busyProcesses.currentPercentage" Type="Double">
+    <Expression Operator="Mult">	    
+    	<Expression Operator="Div">
+		<ColumnFrom Name="busyProcesses.value"/>
+		<ColumnFrom Name="numProcesses.value"/>
+	</Expression>
+	 <Value>100</Value>	
+     </Expression>
+     <Default>0</Default>
+  </Column>
+  <!-- Idle Processse -->
+  <Column Name="readyChildren.value" Type="Integer">
+    <Expression Operator="Minus">	    
+    		<ColumnFrom Name="numProcesses.value"/>
+		<ColumnFrom Name="busyProcesses.value"/>		
+	</Expression>	 
+     <Default>0</Default>
+  </Column>
+  <Column Name="Host" Type="String"/>
+  <Column Name="Parent" Type="String"/>
+  <Column Name="Process" Type="String"/>
+  <Column Name="busyChildren.value" Type="Integer">
+	<ColumnFrom Name="busyProcesses.value"/>
+  </Column>
+  <Column Name="busyThreads.value" Type="Integer"/>
+  <Column Name="connection.avg" Type="Double"/>
+  <Column Name="connection.completed" Type="Integer"/>
+  <Column Name="connection.maxTime" Type="Double"/>
+  <Column Name="connection.minTime" Type="Double"/>
+  <Column Name="connection.time" Type="Double"/>
+  <Column Name="get.count" Type="Integer"/>
+  <Column Name="handle.active" Type="Integer"/>
+  <Column Name="handle.avg" Type="Double"/>
+  <Column Name="handle.completed" Type="Integer"/>
+  <Column Name="handle.maxTime" Type="Double"/>
+  <Column Name="handle.minTime" Type="Double"/>
+  <Column Name="handle.time" Type="Double"/>
+  <Column Name="mpm.value" Type="String"/>
+  <Column Name="numMods.value" Type="Integer"/>
+  <Column Name="numChildren.value" Type="Integer">
+	<ColumnFrom Name="numProcesses.value"/>
+  </Column>
+  <Column Name="numThreads.maxValue" Type="Integer"/>
+  <Column Name="numThreads.minValue" Type="Integer"/>
+  <Column Name="numThreads.value" Type="Integer"/>
+  <Column Name="post.count" Type="Integer"/>
+  <Column Name="request.avg" Type="Double"/>
+  <Column Name="request.maxTime" Type="Double"/>
+  <Column Name="request.minTime" Type="Double"/>
+  <Column Name="request.time" Type="Integer"/>
+  <Column Name="responseSize.value" Type="Integer"/>
+<!-- where conditon is needed to handle the requests which pass parameters to filter data -->
+ <Where>
+     <Or>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="ServerName"/>
+       <Value Name="ServerNames.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <Value Name="ServerNames.parameter"
+              xsi:nil="true"/>
+       <Null/>
+      </Condition>
+     </Or>
+   </Where>
+
+ 
+</Select>
+</Table>
+
+<!-- END TABLE OHS-SERVER -->
+
+<!-- START TABLE OHS_SERVER_DELTA -->
+
+<Table Name="ohs_server_delta">
+  
+<ColumnDef Name="ServerName" Type="String" Key="true"/>
+  <ColumnDef Name="responseSize.value" Type="Integer" />
+  <ColumnDef Name="request.completed" Type="Integer" />
+  <ColumnDef Name="request.time" Type="Double" />
+  <ColumnDef Name="request.currentProcessingTime" Type="Double" />
+  <ColumnDef Name="responseData.currentSize" Type="Integer" />
+<!--Number of HTTP Requests Processed by OHS during The Last Interval -->
+  <ColumnDef Name="request.count" Type="Integer" />
+  
+  <Select Name="ohs_server_delta_result">
+  <TableFrom Name="ohs_server"/>
+   <Column Name="ServerName" Type="String"/>
+   <Column Name="responseSize.value" Type="String"/>
+   <Column Name="request.completed" Type="String"/>
+   <Column Name="request.time" Type="String"/>
+   <Column Name="request.currentProcessingTime" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="request.time"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+  <Column Name="responseData.currentSize" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="responseSize.value"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+  <Column Name="request.count" Type="Double">
+    <Rate Interval="300000">
+     <ColumnFrom Name="request.completed"/>
+     <Default>0</Default>
+    </Rate>
+   </Column>
+
+</Select>
+</Table>
+<!-- END TABLE OHS_SERVER_DELTA -->
+<!-- end rummadi -->
+
+<!-- start akmahesh -->
+<!-- START TABLE OHS_RESPONSES -->
+
+<Table Name="ohs_responses">
+
+	<ColumnDef Name="ServerName" Type="String" Key="true"/>
+	<ColumnDef Name="name" Type="String" />
+	<ColumnDef Name="Host" Type="String" />
+	<ColumnDef Name="Process" Type="String" />
+
+	<ColumnDef Name="Info_Continue_100.count" Type="Long" />
+	<ColumnDef Name="Info_ProtoSwitch_101.count" Type="Long" />
+	<ColumnDef Name="Info_Processing_102.count" Type="Long" />
+	<ColumnDef Name="Success_OK_200.count" Type="Long" />
+	<ColumnDef Name="Success_Created_201.count" Type="Long" />
+	<ColumnDef Name="Success_Accepted_202.count" Type="Long" />
+	<ColumnDef Name="Success_NonAuthInfo_203.count" Type="Long" />
+	<ColumnDef Name="Success_NoContent_204.count" Type="Long" />
+	<ColumnDef Name="Success_ResetContent_205.count" Type="Long" />
+	<ColumnDef Name="Success_PartialContent_206.count" Type="Long" />
+	<ColumnDef Name="Success_Multi-Status_207.count" Type="Long" />
+
+	<ColumnDef Name="Redirect_MultiChoice_300.count" Type="Long" />
+	<ColumnDef Name="Redirect_Moved_301.count" Type="Long" />
+	<ColumnDef Name="Redirect_Found_302.count" Type="Long" />
+	<ColumnDef Name="Redirect_SeeOther_303.count" Type="Long" />
+	<ColumnDef Name="Redirect_NotModified_304.count" Type="Long" />
+	<ColumnDef Name="Redirect_UseProxy_305.count" Type="Long" />
+	<ColumnDef Name="Redirect_Temporary_307.count" Type="Long" />
+
+	<ColumnDef Name="CltErr_Bad_Request_400.count" Type="Long" />
+	<ColumnDef Name="CltErr_Authorization_Required_401.count" Type="Long" />
+	<ColumnDef Name="CltErr_Payment_Required_402.count" Type="Long" />
+	<ColumnDef Name="CltErr_Forbidden_403.count" Type="Long" />
+	<ColumnDef Name="CltErr_Not_Found_404.count" Type="Long" />
+	<ColumnDef Name="CltErr_Method_Not_Allowed_405.count" Type="Long" />
+	<ColumnDef Name="CltErr_Not_Acceptable_406.count" Type="Long" />
+	<ColumnDef Name="CltErr_ProxyAuthReq_407.count" Type="Long" />
+	<ColumnDef Name="CltErr_Timeout_408.count" Type="Long" />
+	<ColumnDef Name="CltErr_Conflict_409.count" Type="Long" />
+	<ColumnDef Name="CltErr_Gone_410.count" Type="Long" />
+	<ColumnDef Name="CltErr_LengthRequired_411.count" Type="Long" />
+	<ColumnDef Name="CltErr_PreCondFail_412.count" Type="Long" />
+	<ColumnDef Name="CltErr_ReqEntityTooLarge_413.count" Type="Long" />
+	<ColumnDef Name="CltErr_URITooLarge_414.count" Type="Long" />
+	<ColumnDef Name="CltErr_UnsuppMediaType_415.count" Type="Long" />
+	<ColumnDef Name="CltErr_BadRange_416.count" Type="Long" />
+	<ColumnDef Name="CltErr_ExpectFailed_417.count" Type="Long" />
+	<ColumnDef Name="CltErr_Unprocessable_Entity_422.count" Type="Long" />
+	<ColumnDef Name="CltErr_Locked_423.count" Type="Long" />
+	<ColumnDef Name="CltErr_Failed_Dependency_424.count" Type="Long" />
+
+	<ColumnDef Name="SvrErr_InternalError_500.count" Type="Long" />
+	<ColumnDef Name="SvrErr_NotImplemented_501.count" Type="Long" />
+	<ColumnDef Name="SvrErr_BadGateway_502.count" Type="Long" />
+	<ColumnDef Name="SvrErr_SvcUnavail_503.count" Type="Long" />
+	<ColumnDef Name="SvrErr_GtwyTimeout_504.count" Type="Long" />
+	<ColumnDef Name="SvrErr_VersionNotSupp_505.count" Type="Long" />
+	<ColumnDef Name="SvrErr_Variant_Also_Negotiates_506.count" Type="Long" />
+	<ColumnDef Name="SvrErr_Insufficient_Storage_507.count" Type="Long" />
+	<ColumnDef Name="SvrErr_Not_Extended_510.count" Type="Long" />
+
+	<ColumnDef Name="ohs_server" Type="String" />
+
+	<ColumnDef Name="HTTP4xx.total" Type="Long" />
+	<ColumnDef Name="HTTP5xx.total" Type="Long" />
+
+	<ColumnDef Name="HTTP4xx.count" Type="Long" />
+	<ColumnDef Name="HTTP5xx.count" Type="Long" />
+
+<Select Name="ohs_responses_result">
+  <TableFrom Name="ohs_responses"/>
+	<Column Name="ServerName" Type="String" />
+	<Column Name="name" Type="String" >
+		<ColumnFrom Name="Name"/>	
+	</Column>
+	<Column Name="Host" Type="String" />
+	<Column Name="Process" Type="String" />
+	<Column Name="Info_Continue_100.count" Type="Long" />
+	<Column Name="Info_ProtoSwitch_101.count" Type="Long" />
+	<Column Name="Info_Processing_102.count" Type="Long" />
+	<Column Name="Success_OK_200.count" Type="Long" />
+	<Column Name="Success_Created_201.count" Type="Long" />
+	<Column Name="Success_Accepted_202.count" Type="Long" />
+	<Column Name="Success_NonAuthInfo_203.count" Type="Long" />
+	<Column Name="Success_NoContent_204.count" Type="Long" />
+	<Column Name="Success_ResetContent_205.count" Type="Long" />
+	<Column Name="Success_PartialContent_206.count" Type="Long" />
+	<Column Name="Success_Multi-Status_207.count" Type="Long" />
+
+	<Column Name="Redirect_MultiChoice_300.count" Type="Long" />
+	<Column Name="Redirect_Moved_301.count" Type="Long" />
+	<Column Name="Redirect_Found_302.count" Type="Long" />
+	<Column Name="Redirect_SeeOther_303.count" Type="Long" />
+	<Column Name="Redirect_NotModified_304.count" Type="Long" />
+	<Column Name="Redirect_UseProxy_305.count" Type="Long" />
+	<Column Name="Redirect_Temporary_307.count" Type="Long" />
+
+	<Column Name="CltErr_Bad_Request_400.count" Type="Long" />
+	<Column Name="CltErr_Authorization_Required_401.count" Type="Long" />
+	<Column Name="CltErr_Payment_Required_402.count" Type="Long" />
+	<Column Name="CltErr_Forbidden_403.count" Type="Long" />
+	<Column Name="CltErr_Not_Found_404.count" Type="Long" />
+	<Column Name="CltErr_Method_Not_Allowed_405.count" Type="Long" />
+	<Column Name="CltErr_Not_Acceptable_406.count" Type="Long" />
+	<Column Name="CltErr_ProxyAuthReq_407.count" Type="Long" />
+	<Column Name="CltErr_Timeout_408.count" Type="Long" />
+	<Column Name="CltErr_Conflict_409.count" Type="Long" />
+	<Column Name="CltErr_Gone_410.count" Type="Long" />
+	<Column Name="CltErr_LengthRequired_411.count" Type="Long" />
+	<Column Name="CltErr_PreCondFail_412.count" Type="Long" />
+	<Column Name="CltErr_ReqEntityTooLarge_413.count" Type="Long" />
+	<Column Name="CltErr_URITooLarge_414.count" Type="Long" />
+	<Column Name="CltErr_UnsuppMediaType_415.count" Type="Long" />
+	<Column Name="CltErr_BadRange_416.count" Type="Long" />
+	<Column Name="CltErr_ExpectFailed_417.count" Type="Long" />
+	<Column Name="CltErr_Unprocessable_Entity_422.count" Type="Long" />
+	<Column Name="CltErr_Locked_423.count" Type="Long" />
+	<Column Name="CltErr_Failed_Dependency_424.count" Type="Long" />
+
+	<Column Name="SvrErr_InternalError_500.count" Type="Long" />
+	<Column Name="SvrErr_NotImplemented_501.count" Type="Long" />
+	<Column Name="SvrErr_BadGateway_502.count" Type="Long" />
+	<Column Name="SvrErr_SvcUnavail_503.count" Type="Long" />
+	<Column Name="SvrErr_GtwyTimeout_504.count" Type="Long" />
+	<Column Name="SvrErr_VersionNotSupp_505.count" Type="Long" />
+	<Column Name="SvrErr_Variant_Also_Negotiates_506.count" Type="Long" />
+	<Column Name="SvrErr_Insufficient_Storage_507.count" Type="Long" />
+	<Column Name="SvrErr_Not_Extended_510.count" Type="Long" />
+
+	<Column Name="ohs_server" Type="String" />
+
+	<Column Name="HTTP4xx.total" Type="Long" >
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Bad_Request_400.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Authorization_Required_401.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Payment_Required_402.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Forbidden_403.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Not_Found_404.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Method_Not_Allowed_405.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Not_Acceptable_406.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_ProxyAuthReq_407.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Timeout_408.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Conflict_409.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Gone_410.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_LengthRequired_411.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_PreCondFail_412.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_ReqEntityTooLarge_413.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_URITooLarge_414.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_UnsuppMediaType_415.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_BadRange_416.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_ExpectFailed_417.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Unprocessable_Entity_422.count"/>
+<Expression Operator="Plus">
+<ColumnFrom Name="CltErr_Locked_423.count.count"/>
+<ColumnFrom Name="CltErr_Failed_Dependency_424.count"/>
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+<Default>0</Default>
+	</Column> 
+
+	<Column Name="HTTP5xx.total" Type="Long" >
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_InternalError_500.count"  />
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_NotImplemented_501.count"  />
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_BadGateway_502.count"  />
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_SvcUnavail_503.count"  />
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_GtwyTimeout_504.count"  />
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_VersionNotSupp_505.count"  />
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_Variant_Also_Negotiates_506.count"  />
+<Expression Operator="Plus">
+	<ColumnFrom Name="SvrErr_Insufficient_Storage_507.count"  />
+	<ColumnFrom Name="SvrErr_Not_Extended_510.count"  />
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+</Expression> 
+<Default>0</Default>
+	</Column> 
+	
+	
+	<Column Name="HTTP4xx.count" Type="Long">
+		<Expression Operator="Minus">	
+			<ColumnFrom Name="ohs:ohs_responses.HTTP4xx.total"/>       
+			<Previous Interval="300000" Index="0" Archiving="OnDemand">
+				<ColumnFrom Name="ohs:ohs_responses.HTTP4xx.total"/>       
+				<Default>0</Default>
+			</Previous>			
+		</Expression>			
+		<Default>0</Default>
+	</Column>
+	<Column Name="HTTP5xx.count" Type="Long">
+		<Expression Operator="Minus">	
+			<ColumnFrom Name="ohs:ohs_responses.HTTP5xx.total"/>       
+			<Previous Interval="300000" Index="0" Archiving="OnDemand">
+				<ColumnFrom Name="ohs:ohs_responses.HTTP4xx.total"/>       
+				<Default>0</Default>
+			</Previous>			
+		</Expression>		
+		<Default>0</Default>	
+	</Column>		
+<!--
+<GroupBy Name="ServerName" />
+-->
+ <Where>
+     <Or>
+      <Condition Type="String" Operator="EQ">
+       <ColumnFrom Name="ServerName"/>
+       <Value Name="ServerNames.parameter"/>
+      </Condition>
+      <Condition Type="String" Operator="EQ">
+       <Value Name="ServerNames.parameter"
+              xsi:nil="true"/>
+       <Null/>
+      </Condition>
+     </Or>
+   </Where>
+
+</Select>
+
+
+</Table>
+
+<!-- END TABLE OHS_RESPONSES -->
+<!-- start table dms_cProcessInfo -->
+<Table Name="dms_cProcessInfo">
+  <ColumnDef Name="ServerName" Type="String" Key="true"/>
+  <ColumnDef Name="name" Type="String" Key="true"/>
+  <ColumnDef Name="Host" Type="String" />
+  <ColumnDef Name="Process" Type="String" />  
+  <ColumnDef Name="Parent" Type="String" />
+  <ColumnDef Name="cpuTime.value" Type="Long" />
+  <ColumnDef Name="heapMB.value" Type="Long" />
+  <ColumnDef Name="startTime.value" Type="Long" />
+  <ColumnDef Name="upTime.value" Type="Long" />
+  <ColumnDef Name="pid.value" Type="String" />
+  <ColumnDef Name="host.value" Type="String" />
+
+<Select Name="dms_cProcessInfo_result">
+  <TableFrom Name="dms_cProcessInfo"/>
+   <Column Name="ServerName" Type="String"/>
+   <Column Name="name" Type="String">
+    <ColumnFrom Name="Name"/>
+   </Column>
+    <Column Name="Host" Type="String"/>
+    <Column Name="Process" Type="String"/>
+    <Column Name="Parent" Type="String" />
+    <Column Name="cpuTime.value" Type="Long" />
+  <Column Name="heapMB.value" Type="Long" >
+	<ColumnFrom Name ="heapSize.value"/>
+  </Column>
+  <Column Name="startTime.value" Type="Long" />
+  <Column Name="upTime.value" Type="Long" />
+  <Column Name="pid.value" Type="String" />
+  <Column Name="host.value" Type="String" />
+  
+</Select>
+</Table>
+
+<Table Name="ResourceUsage">
+
+  <ColumnDef Name="ComponentName" Type="String" Key="true"/>
+  <ColumnDef Name="CPUTime" Type="Long" />
+  <ColumnDef Name="MemoryUsed" Type="Long" />
+  <ColumnDef Name="StartTime" Type="Long" />
+
+  <Select Name="Response_result_by_component">
+   <TableFrom Name="opmn_process"/>
+
+   <Column Name="ComponentName" Type="String">
+    <Expression Operator="Concat">
+     <Expression Operator="Concat">
+      <Value>/</Value>
+      <ColumnFrom Name="opmn_ias_instance"/>
+     </Expression>
+     <Expression Operator="Concat">
+      <Value>/</Value>
+      <ColumnFrom Name="opmn_ias_component"/>
+     </Expression>
+    </Expression>
+   </Column>
+
+<Column Name="CPUTime" Type="Long" >
+	<ColumnFrom Name="cpuTime.value"/>
+</Column>
+<Column Name="MemoryUsed" Type="Long" >
+    <ColumnFrom Name="memoryUsed.value"/>
+</Column>
+<Column Name="StartTime" Type="Long" >
+    <ColumnFrom Name="startTime.value"/>
+</Column>
+   <!-- Look for the specified component -->
+  <Where>
+        <Or>
+          <Condition Type="String" Operator="EQ">
+            <ColumnFrom Name="ComponentName"/>
+            <Value Name="ServerNames.parameter"/>
+          </Condition>
+          <Condition Type="String" Operator="EQ">
+            <Value Name="ServerNames.parameter" 
+                   xsi:nil="true"/>
+            <Null/>
+          </Condition>
+        </Or>
+  </Where>
+  </Select>
+
+ </Table>
+
+
+</Adml>
+
+

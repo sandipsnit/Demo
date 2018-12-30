@@ -1,0 +1,498 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+
+<!-- Copyright (c) 2007, 2010, Oracle and/or its affiliates. 
+All rights reserved. -->
+
+<!--
+     These are the metric rules for any OPMN managed component
+     
+     MODIFIED   (MM/DD/YY)
+        cmrozien 04/21/10 - fix memory math & missing pids
+        cmrozien 04/07/10 - fix parsing error flagged by new admlvalidator
+        cmrozien 10/06/09 - check specifically for Alive cause other values may
+                            now exist
+        cmrozien 01/12/09 - handle missing opmn_process table
+        cmrozien 11/07/08 - opmn_process heap & sharedMemory cols gone
+        cmrozien 09/18/08 - add ResourceUsage tables
+        cmrozien 09/05/08 - Created
+-->
+
+<Adml xmlns="http://www.oracle.com/iAS/aggregator"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      TableSpace="opmn_component">
+
+<!-- Response Metric Tables -->
+
+ <Table Name="Response_opmn_component">
+
+  <ColumnDef Name="ComponentNameFound" Type="String" Key="true"/>
+
+  <Select Name="Response_opmn_component_result">
+   <TableFrom Name="opmn_process"/>
+
+   <Column Name="ComponentNameFound" Type="String">
+    <Expression Operator="Concat">
+     <Expression Operator="Concat">
+      <Value>/</Value>
+      <ColumnFrom Name="opmn_ias_instance"/>
+     </Expression>
+     <Expression Operator="Concat">
+      <Value>/</Value>
+      <ColumnFrom Name="opmn_ias_component"/>
+     </Expression>
+    </Expression>
+   </Column>
+
+   <Where>
+    <Condition Type="String" Operator="EQ">
+     <ColumnFrom Name="status.value"/>
+     <Value>Alive</Value>
+    </Condition>
+   </Where>
+
+  </Select>
+ </Table>
+
+ <Table Name="Response">
+
+  <ColumnDef Name="QueryComponentName" Type="String" Key="true"/>
+  <ColumnDef Name="ComponentNameFound" Type="String" Key="true"/>
+  <ColumnDef Name="Status" Type="Integer"/>
+
+  <Select Name="Response_result_by_component">
+   <TableFrom Name="opmn_component:Response_opmn_component"/>
+
+   <Column Name="ComponentNameFound" Type="String"/>
+
+  </Select>
+
+  <Select Name="Response_result">
+   <TableFrom Name="Response_result_by_component"/>
+
+   <Column Name="QueryComponentName" Type="String">
+    <Value Name="ServerNames.parameter"/>
+   </Column>
+
+   <Column Name="ComponentNameFound" Type="String"/>
+
+   <Column Name="numRows" Type="Integer">
+    <Aggregation Operator="Count"/>
+    <Default>0</Default>
+   </Column>
+
+   <Column Name="Status" Type="Integer">
+    <If>
+     <Condition Operator="GT">
+      <ColumnFrom Name="numRows"/>
+      <Value>0</Value>
+     </Condition>
+
+     <Then>
+      <Value>1</Value>
+     </Then>
+
+     <Else>
+      <Value>0</Value>
+     </Else>
+    </If>
+    <Default>0</Default>
+   </Column>
+
+   <GroupBy Name="QueryComponentName"/>
+   <GroupBy Name="ComponentNameFound"/>   
+
+   <!-- Look for the specified component -->
+   <Where>
+    <Condition Type="String" Operator="EQ">
+     <ColumnFrom Name="ComponentNameFound"/>
+     <Value Name="ServerNames.parameter"/>
+    </Condition>
+   </Where>
+
+  </Select>
+
+ </Table>
+
+<!-- Resource Usage Metric Tables -->
+
+<Table Name="ResourceUsage_no_rate">
+
+  <ColumnDef Name="ComponentName" Type="String" Key="true"/>
+  <ColumnDef Name="pid.value" Type="Integer" Key="true"/>
+  <ColumnDef Name="cpuTime.value" Type="Long"/>
+  <ColumnDef Name="upTime.value" Type="Long"/>
+  <ColumnDef Name="startTime.value" Type="Long"/>
+  <ColumnDef Name="memoryUsed.value" Type="Long"/>
+  <ColumnDef Name="numberOfCpu.value" Type="Integer"/>
+  <ColumnDef Name="cpuIdleTime.value" Type="Long"/>
+  <ColumnDef Name="timeStamp.value" Type="Long"/>
+  <ColumnDef Name="totalPhysicalMemory.value" Type="Long"/>
+  <ColumnDef Name="freePhysicalMemory.value" Type="Long"/>
+  <ColumnDef Name="status" Type="Integer"/>
+
+  <!-- Get cpu and memory information for each process -->
+  <Select Name="ResourceUsage_by_process">
+   <TableFrom Name="opmn_process"/>
+
+   <Column Name="ComponentName" Type="String">
+    <Expression Operator="Concat">
+     <Expression Operator="Concat">
+      <Value>/</Value>
+      <ColumnFrom Name="opmn_ias_instance"/>
+     </Expression>
+     <Expression Operator="Concat">
+      <Value>/</Value>
+      <ColumnFrom Name="opmn_ias_component"/>
+     </Expression>
+    </Expression>
+   </Column>
+
+   <!-- The row exists, so the process is up -->
+   <Column Name="status" Type="Integer">
+    <Value>1</Value>
+   </Column>
+
+   <Column Name="pid.value" Type="Integer" Key="true"/>
+   <Column Name="cpuTime.value" Type="Long"/>
+   <Column Name="upTime.value" Type="Long"/>
+   <Column Name="startTime.value" Type="Long"/>
+   <Column Name="memoryUsed.value" Type="Long"/>
+
+   <Where>
+    <Condition Type="String" Operator="EQ">
+     <ColumnFrom Name="status.value"/>
+     <Value>Alive</Value>
+    </Condition>
+   </Where>
+   
+  </Select>
+  
+  <!-- Add in the Host statistics -->  
+  <Select Name="ResourceUsage_by_process_with_host_stats">
+   <TableFrom Name="ResourceUsage_by_process"/>
+   <TableFrom Name="opmn_host_statistics"/>
+
+   <Column Name="ComponentName" Type="String" Table="ResourceUsage_by_process"/>
+   <Column Name="status" Type="Integer" Table="ResourceUsage_by_process"/>
+   <Column Name="pid.value" Type="Integer" Table="ResourceUsage_by_process"/>
+   <Column Name="cpuTime.value" Type="Long" Table="ResourceUsage_by_process"/>
+   <Column Name="upTime.value" Type="Long" Table="ResourceUsage_by_process"/>   
+   <Column Name="startTime.value" Type="Long" Table="ResourceUsage_by_process"/>   
+   <Column Name="memoryUsed.value" Type="Long" Table="ResourceUsage_by_process"/>
+
+   <Column Name="cpuIdleTime.value" Type="Long" Table="opmn_host_statistics">
+    <ColumnFrom Name="cpuIdle.value"/>
+   </Column>
+   <Column Name="numberOfCpu.value" Type="Integer" Table="opmn_host_statistics">
+    <ColumnFrom Name="numProcessors.value"/>
+   </Column>
+   <Column Name="timeStamp.value" Type="Long" Table="opmn_host_statistics">
+    <ColumnFrom Name="timestamp.value"/>
+   </Column>
+   <Column Name="freePhysicalMemory.value" Type="Long" Table="opmn_host_statistics">
+    <ColumnFrom Name="freePhysicalMem.value"/>
+   </Column>
+   <Column Name="totalPhysicalMemory.value" Type="Long" Table="opmn_host_statistics">
+    <ColumnFrom Name="totalPhysicalMem.value"/>
+   </Column>
+
+  </Select>
+
+ </Table>
+
+ <Table Name="ResourceUsage_by_component">
+
+  <ColumnDef Name="ComponentName" Type="String" Key="true"/>
+  <ColumnDef Name="cpu.component" Type="Double"/>
+  <ColumnDef Name="cpu.other" Type="Double"/>
+  <ColumnDef Name="cpu.idle" Type="Double"/>
+  <ColumnDef Name="memory.component" Type="Double"/>
+  <ColumnDef Name="memory.other" Type="Double"/>
+  <ColumnDef Name="memory.free" Type="Double"/>
+  <ColumnDef Name="memoryPercentage.component" Type="Double"/>
+  <ColumnDef Name="memoryPercentage.other" Type="Double"/>
+  <ColumnDef Name="memoryPercentage.free" Type="Double"/>
+  <ColumnDef Name="memory.total" Type="Double"/>
+  <ColumnDef Name="upTime.value" Type="Long"/>
+  <ColumnDef Name="startTime.value" Type="Long"/>
+  <ColumnDef Name="status" Type="Integer"/>
+
+  <Select Name="ResourceUsage_by_process_plus_rates">
+   <TableFrom Name="opmn_component:ResourceUsage_no_rate"/>
+
+   <Column Name="ComponentName" Type="String"/>
+
+   <!-- CPU time used during the last period.  -->
+    <Column Name="cpuUsage.value" Type="Double">
+      <Expression Operator="Div">
+       <Expression Operator="Mult">
+        <Rate Interval="300000">
+         <ColumnFrom Name="cpuTime.value"/>
+         <ColumnFrom Name="upTime.value"/>
+         <Default>0</Default>
+        </Rate>
+        <Value>100</Value>
+       </Expression>
+       <ColumnFrom Name="numberOfCpu.value"/>
+      </Expression>
+   </Column>
+
+   <!-- CPU idle time during the last period -->
+    <Column Name="cpuIdle.value" Type="Double">
+     <Expression Operator="Div">
+      <Expression Operator="Mult">
+       <Rate Interval="300000">
+        <ColumnFrom Name="cpuIdleTime.value"/>
+        <ColumnFrom Name="timeStamp.value"/>
+        <Default>0</Default>
+       </Rate>
+       <Value>100</Value>
+      </Expression>
+      <ColumnFrom Name="numberOfCpu.value"/>
+     </Expression>
+   </Column>
+   
+   <Column Name="status" Type="Integer"/>
+   <Column Name="upTime.value" Type="Long"/>   
+   <Column Name="startTime.value" Type="Long"/>   
+   <Column Name="memoryUsed.value" Type="Long"/>
+   <Column Name="freePhysicalMemory.value" Type="Long"/>
+   <Column Name="totalPhysicalMemory.value" Type="Long"/>
+
+  </Select>
+
+  <!-- Sum the CPU and memory for all processes -->
+  <Select Name="ResourceUsage_plus_rates">
+   <TableFrom Name="ResourceUsage_by_process_plus_rates"/>
+
+   <Column Name="ComponentName" Type="String"/>
+   
+   <!-- If any process is up, the component is up -->
+   <Column Name="status" Type="Integer">
+    <Aggregation Operator="Max" Name="status"/>
+    <Default>0</Default>
+   </Column>
+
+   <!-- Sum the CPU time for all processes -->
+   <Column Name="cpuUsage.value" Type="Double">
+    <Aggregation Operator="Sum" Name="cpuUsage.value"/>
+   </Column>
+
+   <!-- Average the idle time, since this value is listed once per process -->
+   <Column Name="cpuIdle.value" Type="Double">
+    <Aggregation Operator="Avg" Name="cpuIdle.value"/>
+   </Column>
+
+   <!-- Get the upTime for the process that has been up the longest -->
+   <Column Name="upTime.value" Type="Long">
+    <Aggregation Operator="Max" Name="upTime.value"/>
+    <Default>0</Default>
+   </Column>
+   
+   <!-- Get the start time for the process that was started the earliest -->
+   <Column Name="startTime.value" Type="Long">
+    <Aggregation Operator="Min" Name="startTime.value"/>
+    <Default>0</Default>
+   </Column>
+   
+  <!-- Sum the memory used for all component rows and convert to MB -->
+  <Column Name="memoryUsed.value" Type="Double">
+   <Aggregation Operator="Sum" Name="memoryUsed.value"/>
+   <Default>0</Default>
+  </Column>
+  <Column Name="memory.component" Type="Double">
+   <Expression Operator="Div">
+     <ColumnFrom Name="memoryUsed.value"/>
+    <Value>1024</Value>
+   </Expression>
+  </Column>
+  
+   <!-- Average the host statistics, since they are the same for all the rows -->
+   <Column Name="freePhysicalMemory.value" Type="Long">
+    <Aggregation Operator="Avg" Name="freePhysicalMemory.value"/>
+   </Column>
+   <Column Name="totalPhysicalMemory.value" Type="Long">
+    <Aggregation Operator="Avg" Name="totalPhysicalMemory.value"/>
+   </Column>
+
+   <GroupBy Name="ComponentName"/>
+  
+  </Select>
+
+  <!-- Compute the remaining CPU and memory statistics -->
+  <Select Name="ResourceUsage_results">
+   <TableFrom Name="ResourceUsage_plus_rates"/>
+
+   <Column Name="ComponentName" Type="String"/>
+   <Column Name="status" Type="Integer"/>
+   <Column Name="upTime.value" Type="Long"/>   
+   <Column Name="startTime.value" Type="Long"/>   
+
+   <!-- Get the component CPU -->
+   <Column Name="cpu.component" Type="Double">
+    <ColumnFrom Name="cpuUsage.value"/>
+   </Column>
+   
+   <!-- Compute Idle CPU time.  Make sure that total CPU does not exceed 100 -->
+   <Column Name="cpu.componentIdle" Type="Double">
+     <Expression Operator="Plus">
+      <ColumnFrom Name="cpu.component"/>
+      <ColumnFrom Name="cpuIdle.value"/>
+    </Expression>
+   </Column>
+   <Column Name="cpu.idle" Type="Double">
+    <If>
+     <Condition Operator="GT">
+      <ColumnFrom Name="cpu.componentIdle"/>
+      <Value>100</Value>
+     </Condition>
+    <Then>
+     <Expression Operator="Minus">
+      <Value>100</Value>
+      <ColumnFrom Name="cpu.component"/>
+    </Expression>
+    </Then>
+    <Else>
+     <ColumnFrom Name="cpuIdle.value"/>
+    </Else>
+    </If>
+   </Column>
+
+   <!-- Compute the rest of the CPU time -->
+   <Column Name="cpu.other" Type="Double">
+    <Expression Operator="Minus">
+     <Expression Operator="Minus">
+      <Value>100</Value>
+      <ColumnFrom Name="cpu.component"/>
+     </Expression>
+     <ColumnFrom Name="cpu.idle"/>
+    </Expression>
+   </Column>
+
+   <!-- Convert the memory numbers from Bytes to MB -->
+   <Column Name="freeMemoryMB.value" Type="Double">
+    <Expression Operator="Div">
+     <ColumnFrom Name="freePhysicalMemory.value"/>
+     <Value>1024</Value>
+    </Expression>
+   </Column>
+   <Column Name="memory.total" Type="Double">
+    <Expression Operator="Div">
+     <ColumnFrom Name="totalPhysicalMemory.value"/>
+     <Value>1024</Value>
+    </Expression>
+   </Column>
+   
+   <!-- Compute the memory percentage used by the component -->
+   <Column Name="memory.component" Type="Double"/>
+   <Column Name="memoryPercentage.component" Type="Double">
+    <Expression Operator="Mult">
+     <Expression Operator="Div">
+      <ColumnFrom Name="memory.component"/>
+      <ColumnFrom Name="memory.total"/>
+     </Expression>
+     <Value>100</Value>
+    </Expression>
+   </Column>
+   
+   <!-- Compute the free memory -->
+   <Column Name="memory.componentFree" Type="Double">
+     <Expression Operator="Plus">
+      <ColumnFrom Name="memory.component"/>
+      <ColumnFrom Name="freeMemoryMB.value"/>
+    </Expression>
+   </Column>
+   <Column Name="memory.free" Type="Double">
+    <If>
+     <Condition Operator="GT">
+      <ColumnFrom Name="memory.componentFree"/>
+      <ColumnFrom Name="memory.total"/>
+     </Condition>
+    <Then>
+     <Expression Operator="Minus">
+      <ColumnFrom Name="memory.total"/>
+      <ColumnFrom Name="memory.component"/>
+    </Expression>
+    </Then>
+    <Else>
+     <ColumnFrom Name="freeMemoryMB.value"/>
+    </Else>
+    </If>
+   </Column>
+   <Column Name="memoryPercentage.free" Type="Double">
+    <Expression Operator="Mult">
+     <Expression Operator="Div">
+      <ColumnFrom Name="memory.free"/>
+      <ColumnFrom Name="memory.total"/>
+     </Expression>
+     <Value>100</Value>
+    </Expression>
+   </Column>
+   
+   <!-- Compute the other memory usage -->
+   <Column Name="memory.other" Type="Double">
+    <Expression Operator="Minus">
+     <Expression Operator="Minus">
+      <ColumnFrom Name="memory.total"/>
+      <ColumnFrom Name="memory.component"/>
+     </Expression>
+     <ColumnFrom Name="memory.free"/>
+    </Expression>
+   </Column>
+   <Column Name="memoryPercentage.other" Type="Double">
+    <Expression Operator="Mult">
+     <Expression Operator="Div">
+      <ColumnFrom Name="memory.other"/>
+      <ColumnFrom Name="memory.total"/>
+     </Expression>
+     <Value>100</Value>
+    </Expression>
+   </Column>
+  
+  </Select>
+
+ </Table>
+ 
+ <Table Name="ResourceUsage">
+
+  <ColumnDef Name="ComponentName" Type="String" Key="true"/>
+  <ColumnDef Name="cpu.component" Type="Double"/>
+  <ColumnDef Name="cpu.other" Type="Double"/>
+  <ColumnDef Name="cpu.idle" Type="Double"/>
+  <ColumnDef Name="memory.component" Type="Double"/>
+  <ColumnDef Name="memory.other" Type="Double"/>
+  <ColumnDef Name="memory.free" Type="Double"/>
+  <ColumnDef Name="memoryPercentage.component" Type="Double"/>
+  <ColumnDef Name="memoryPercentage.other" Type="Double"/>
+  <ColumnDef Name="memoryPercentage.free" Type="Double"/>
+  <ColumnDef Name="memory.total" Type="Double"/>
+  <ColumnDef Name="upTime.value" Type="Long"/>
+  <ColumnDef Name="startTime.value" Type="Long"/>
+
+  <Select Name="ResourceUsage_Result">
+   <TableFrom Name="opmn_component:ResourceUsage_by_component"/>
+
+   <Column Name="ComponentName" Type="String"/>
+   <Column Name="cpu.component" Type="Double"/>
+   <Column Name="cpu.other" Type="Double"/>
+   <Column Name="cpu.idle" Type="Double"/>
+   <Column Name="memory.component" Type="Double"/>
+   <Column Name="memory.other" Type="Double"/>
+   <Column Name="memory.free" Type="Double"/>
+   <Column Name="memoryPercentage.component" Type="Double"/>
+   <Column Name="memoryPercentage.other" Type="Double"/>
+   <Column Name="memoryPercentage.free" Type="Double"/>
+   <Column Name="memory.total" Type="Double"/>
+   <Column Name="upTime.value" Type="Long"/>
+   <Column Name="startTime.value" Type="Long"/>
+
+   <Where>
+    <Condition Type="String" Operator="EQ">
+     <ColumnFrom Name="ComponentName"/>
+     <Value Name="ServerNames.parameter"/>
+    </Condition>
+   </Where>
+  </Select>
+ </Table>
+  
+</Adml>

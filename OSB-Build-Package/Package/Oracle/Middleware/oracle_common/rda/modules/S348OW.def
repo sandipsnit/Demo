@@ -1,0 +1,156 @@
+# S348OW.def: Collects Oracle Waveset Information
+# $Id: S348OW.def,v 1.2 2012/01/10 13:56:58 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S348OW.def,v 1.2 2012/01/10 13:56:58 mschenke Exp $
+#
+# Change History
+# 20120110  KRA  Improve functionality.
+
+=head1 NAME
+
+S348OW - Collects Oracle Waveset Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Waveset-related information.
+
+The following reports can be generated and are regrouped under C<Oracle
+Waveset>:
+
+=head1 REPORTS
+
+=cut
+
+echo tput('bold'),'Processing OW module ...',tput('off')
+
+# Initialization
+var $WAS_PATH = getSetting('OW_WAS_PATH','')
+var $WAS_TYPE = getSetting('OW_WAS_TYPE')
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+toc '%TITLE("1:Oracle Waveset")%'
+
+# Load common macros
+run library()
+
+# Set the current target
+call setCurrent(addTarget('SYS_OW',{}))
+var %tbl = (JBS => '$JBOSS',\
+            TOM => '$TOMCAT',\
+            WLS => '$DOM',\
+            WSP => '$PROFILE')
+if missing($tbl{$WAS_TYPE})
+ echo 'Invalid Web server type'
+elsif testDir('d',$WAS_PATH)
+ call setSymbol($tbl{$WAS_TYPE},$WAS_PATH)
+
+=head2 abbr_used - Abbreviations
+
+Displays the RDA abbreviations defined for Oracle Waveset collection.
+
+=cut
+
+report abbr_used
+prefix
+{write '---+ Oracle Waveset Abbreviations'
+ write '|*Abbreviation*|*Location*|'
+}
+var %hsh = getSymbols()
+loop $abr (keys(%hsh))
+ write '|',$abr,' |',catDir(@{$hsh{$abr}}),' |'
+if isCreated(true)
+ toc '%TITLE("2:[[',getFile(),'][rda_report][Abbreviations]]")%'
+
+=head2 JBoss Server Log Files
+
+Collects JBoss server log files.
+
+=cut
+
+if testDir('d',$WAS_PATH)
+{if compare('eq',$WAS_TYPE,'JBS')
+ {debug ' Inside OW module, collecting the JBoss log files'
+  pretoc '2:JBoss Server Log Files'
+  call sort_files(3,0,catFile($WAS_PATH,'server','default','log','server.log'))
+  unpretoc
+ }
+
+=head2 Tomcat Server Log Files
+
+Collects Tomcat server log files.
+
+=cut
+
+ elsif compare('eq',$WAS_TYPE,'TOM')
+ {debug ' Inside OW module, collecting the Tomcat log files'
+  pretoc '2:Tomcat Server Log Files'
+  call sort_files(3,0,catFile($WAS_PATH,'logs','catalina.out'))
+  unpretoc
+ }
+
+=head2 Oracle Weblogic Server Log Files
+
+Collects Oracle Weblogic server log files from the specified servers.
+
+=cut
+
+ elsif compare('eq',$WAS_TYPE,'WLS')
+ {debug ' Inside OW module, collecting the Weblogic log files'
+  pretoc '2:Oracle WebLogic Server Log Files'
+  loop $srv (split('\|',getSetting('OW_WLS_SERVERS','')))
+  {pretoc "3:'",$srv,"' Server"
+   call sort_files(4,0,\
+     grepDir(catDir($WAS_PATH,'servers',$srv,'logs'),\
+             concat('^',quote($srv),'\.log$'),'p'))
+   unpretoc
+  }
+  unpretoc
+ }
+
+=head2 IBM WebSphere Server Log Files
+
+Collects IBM WebSphere server log files from the specified servers.
+
+=cut
+
+ elsif compare('eq',$WAS_TYPE,'WSP')
+ {debug ' Inside OW module, collecting the Websphere log files'
+  pretoc '2:IBM WebSphere Server Log Files'
+  loop $srv (split('\|',getSetting('OW_WSP_SERVERS','')))
+  {pretoc "3:'",$srv,"' Server"
+   call sort_files(4,0,\
+     grepDir(catDir($WAS_PATH,'logs',$srv),'^System(Err|Out)\.log$','p'))
+   unpretoc
+  }
+  unpretoc
+ }
+}
+toc '%UNTITLE2%'
+
+# Restore the default target
+call setCurrent()
+
+=head1 SEE ALSO
+
+L<library.def|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.27: Chris Conner.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

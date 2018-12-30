@@ -1,0 +1,168 @@
+# S490UIM.def: Collects Oracle Communications UIM Information
+# $Id: S490UIM.def,v 1.7 2012/01/03 13:34:47 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S490UIM.def,v 1.7 2012/01/03 13:34:47 mschenke Exp $
+#
+# Change History
+# 20120103  MSC  Change the copyright notice.
+
+=head1 NAME
+
+S490UIM - Collects Oracle Communications UIM Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle Communications Unified Inventory Management-related
+information. The following reports can be generated and are regrouped under
+C<Unified Inventory Management>:
+
+=cut
+
+echo tput('bold'),'Processing UIM module ...',tput('off')
+
+# Initialization
+var $UIM_DOMAIN = getSetting('UIM_DOMAIN','')
+var $UIM_LIMIT  = getSetting('UIM_LIMIT',5000)
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+toc '1:Unified Inventory Management'
+
+=head2 domain_directories - Domain Directory Listing
+
+Lists the content of the domain.
+
+=cut
+
+# Define the directory analysis macro
+macro stat_tree
+{var ($dir) = @arg
+ import $TOP
+ keep $TOP
+
+ prefix
+ {
+ }
+ call statDir('n',$dir)
+ if hasOutput(true)
+  write $TOP
+
+ loop $pth (grepDir($dir,'^\.+$','npv'))
+ {if testFile('dr',$pth)
+  {next testFile('l',$pth)
+   call stat_tree($pth)
+  }
+ }
+}
+
+debug ' Inside UIM module, listing domain directory structure'
+report domain_directories
+write '---+ Adminserver Domain Listing'
+write '---## Recursively Searched from ',encode($UIM_DOMAIN)
+call stat_tree($UIM_DOMAIN)
+toc '2:[[',getFile(),'][rda_report][Domain Directory Listing]]'
+
+=head2 Inventory.ear Information
+
+Gets information from the C<inventory*ear> files.
+
+=cut
+
+debug ' Inside UIM module, getting inventory.ear file information'
+report inventory_ear_details
+var $fmt = '%d-%b-%Y&nbsp;%H:%M:%S'
+var $jar = findCommand('jar')
+prefix
+{write '---+!! Inventory.ear File'
+ write $TOC
+}
+loop $fil (grepDir($UIM_DOMAIN,'inventory.*ear$','dr'))
+{if testFile('fr',$fil)
+ {# Take a copy of the ear file
+  var $lnk = encode($fil)
+  suspend report
+  output B,'ear'
+  if writeData($fil)
+   var $lnk = concat('[[',getFile('.'),'][_blank][',$lnk,']]')
+  resume report
+
+  # Report the ear file details
+  write '---++ From ',$fil
+  write '|*File*|',$lnk,'|'
+  write '|*Size*|',getSize($fil),'|'
+  write '|*Last Inode Change*|',getLastChange($fil,$fmt),'|'
+  write '|*Last Modify*|',getLastModify($fil,$fmt),'|'
+  write '|*Last Access*|',getLastAccess($fil,$fmt),'|'
+  if $jar
+  {debug ' Inside UIM module, getting inventory.ear content'
+   write '---+++!! Contents'
+   call writeCommand(concat($jar,' tvf ',$fil))
+  }
+ }
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Inventory.ear Information]]'
+
+=head2 domain_logs - Domain Log Files
+
+Collects domain log files.
+
+=cut
+
+debug ' Inside UIM module, getting domain log files'
+report domain_logs
+
+write '---+!! Domain Log Files (',$UIM_LIMIT,' lines of each type)'
+write '---## From ',$UIM_DOMAIN
+write $TOC
+
+loop $fil (grepDir($UIM_DOMAIN,'log$','np'))
+{prefix
+ {if isCreated()
+   write '---'
+  write '---+' , encode($fil)
+ }
+ call writeTail($fil, $UIM_LIMIT)
+ if hasOutput(true)
+  write $TOP
+}
+
+loop $dir (grepDir($UIM_DOMAIN,'logs','dr'))
+{loop $log (grepDir($dir,'log$','dr'))
+ {var $max = $UIM_LIMIT
+  loop $fil (grepDir(dirname($log),concat('^',quote(basename($log))),'tr'))
+  {break expr('<=',$max,0)
+   prefix
+   {if isCreated()
+     write '---'
+    write '---+',encode($fil)
+   }
+   call writeTail($fil,$max)
+   decr $max,getWriteLength()
+   if hasOutput(true)
+    write $TOP
+  }
+ }
+}
+toc '2:[[',getFile(),'][rda_report][Domain Log Files]]'
+
+=begin credits
+
+=over 10
+
+=item RDA 4.19: Robert Finley
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

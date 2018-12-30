@@ -1,0 +1,930 @@
+# S235TTEN.def: Collects Oracle TimesTen In-Memory Database Information
+# $Id: S235TTEN.def,v 2.12 2012/02/23 15:31:21 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S235TTEN.def,v 2.12 2012/02/23 15:31:21 mschenke Exp $
+#
+# Change History
+# 20120223  KRA  Improve dsmap command find.
+
+=head1 NAME
+
+S235TTEN - Collects Oracle TimesTen In-Memory Database Information
+
+=head1 DESCRIPTION
+
+This module collects Oracle TimesTen-related diagnostic information. The
+following reports can be generated and are regrouped under C<Oracle TimesTen>:
+
+=cut
+
+echo tput('bold'),'Processing Oracle TimesTen module ...',tput('off')
+
+# Initialization
+var $TTEN_HOME  = getSetting('TTEN_HOME','')
+var $DS_COLLECT = getSetting('TTEN_DS_COLLECT')
+var $DS_NAME    = getSetting('TTEN_DS_NAME','-')
+var $DS_PATH    = getSetting('TTEN_DS_PATH')
+var $LOG_DIR    = getSetting('TTEN_LOG')
+var $RUNTIME    = getSetting('TTEN_RUNTIME')
+var $UID        = getSetting('TTEN_UID')
+
+var $USER_HOME   = getEnv('HOME')
+var $INI_ODBC    = getEnv('ODBCINI')
+var $INI_SYSODBC = getEnv('SYSODBCINI')
+var $INI_SYSTTC  = getEnv('SYSTTCONNECTINI')
+var $INI_SNMP    = getEnv('TT_SNMP_INI')
+var $pwd         = true
+
+var $DFT_HOME = '/var/TimesTen'
+
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+var $TST = cond(isWindows(),'fr',isCygwin(),'f','fx')
+pretoc '1:Oracle TimesTen'
+
+# Load the common library
+run library()
+
+# Define common macros
+macro dsp_dir
+{var ($dir,$lnk,$chk) = @arg
+ import $TOC,$TOP
+ keep $TOC,$TOP
+
+ prefix
+ {write '---+!! Information about ',encode($dir),' Directory'
+  write $TOC
+ }
+ if testDir('d',$dir)
+ {# When requested, check the free space
+  if ?$chk
+  {if or(isUnix(),isCygwin())
+   {write '---+ Disk Free Space'
+    write '---## Using command df -k'
+    call writeCommand(concat('df -k ',$dir))
+    write $TOP
+   }
+   write '---+ Directory Content'
+  }
+
+  # Display the directory structure content
+  loop $pth ($dir,grepDir($dir,'^\.+$','drv'))
+  {if testDir('d',$pth)
+   {write '---++ Contents of ',encode($pth)
+    call statDir('an',$pth)
+    write $TOP
+   }
+  }
+ }
+ if isCreated(true)
+  toc '3:[[',getFile(),'][rda_report][',$lnk,']]'
+}
+
+=head2 version - Version Information
+
+Collects the version information.
+
+=cut
+
+debug ' Inside TimesTen module, getting the version information'
+if grepDir(catDir($TTEN_HOME,'bin'),'^ttVersion(\.exe)?$','p')
+{var ($cmd) = catCommand(last)
+ report version
+ prefix
+ {write '---+!! Version Information'
+  write $TOC
+  write '---+ Version'
+  write '---## Using: ttVersion'
+ }
+ call writeCommand($cmd)
+ if hasOutput(true)
+ {write $TOP
+
+  if loadCommand(concat($cmd,' -m'))
+  {var $DAEMON_HOME = nvl(value(grepLastFile('^effective_daemonhome=','f')),\
+                         '/var/TimesTen')
+   if grepLastFile('^access_control=0','f')
+    var $pwd = false
+   write '---+ Machine Readable Version Information'
+   write '---## Using: ttVersion -m'
+   call writeLastFile()
+   write $TOP
+  }
+  toc '2:[[',getFile(),'][rda_report][Version Information]]'
+ }
+}
+
+
+=head2 status - Status Information
+
+Collects the status information.
+
+=cut
+
+debug ' Inside TimesTen module, getting the status information'
+if grepDir(catDir($TTEN_HOME,'bin'),'^ttStatus(\.exe)?$','p')
+{var ($cmd) = catCommand(last)
+ report status
+ prefix
+ {write '---+!! Status Information'
+  write $TOC
+  write '---+ Status'
+  write '---## Using: ttStatus'
+ }
+ if loadCommand($cmd)
+ {call writeLastFile()
+  var ($flg,$dsn) = (false)
+  loop $lin (grepLastFile('^(Data |There |Shared |-)'))
+  {if $flg
+   {if match($lin,'^Data store (.*)$')
+     var $dsn = nvl($dsn,cond(isUnix(),first(last),lc(last)))
+    elsif match($lin,'^There are no')
+     var $flg = false
+    elsif match($lin,'^There are \d+ connections to the data store$')
+     var $tb_opn{$dsn} = true
+    elsif match($lin,'^Shared Memory KEY \S+ ID (\d+)$')
+     var ($flg,$tb_shm{$dsn}) = (false,last)
+    elsif match($lin,'^-+$')
+     var $dsn = undef
+   }
+   elsif match($lin,'^-+$')
+    var ($flg,$dsn) = (true)
+  }
+ }
+ if hasOutput(true)
+ {write $TOP
+  write '---+ Detailed Status Information'
+  write '---## Using: ttStatus -v'
+  call writeCommand(concat($cmd,' -v'))
+  write $TOP
+  toc '2:[[',getFile(),'][rda_report][Status Information]]'
+ }
+}
+
+=head2 invalid_dspath - Data Store Path not Valid
+
+Reports whether the data store path is not valid.
+
+=head1 DATA STORE INFORMATION
+
+=cut
+
+if $DS_COLLECT
+{# Check if the paths have be extracted or not
+ if compare('ne',$DS_NAME,'-')
+ {if isUnix()
+  {# Define the macro to get dspath and logdir
+   macro get_dspath
+   {var ($fil) = @arg
+    import $DS_NAME,$DS_PATH,$LOG_DIR
+    keep $DS_NAME,$DS_PATH,$LOG_DIR
+
+    var $flg = false
+    if createBuffer('TTEN','R',$fil)
+    {if grepBuffer('TTEN',concat('\[',quote($DS_NAME),'\]'),'fi')
+     {while
+      {var ($lin) = grepBuffer('TTEN','(^(datastore|logdir)=|\[.*\])','fir')
+       if match($lin,'^datastore=',true)
+        var ($flg,$DS_PATH) = (true,value($lin))
+       elsif match($lin,'^logdir=',true)
+        var $LOG_DIR = value($lin)
+       elsif and(match($lin,'^driver=',true),isUnix())
+        var $DRIVER = value($lin)
+       else
+        break
+      }
+     }
+     call deleteBuffer('TTEN')
+    }
+    return $flg
+   }
+
+   # Get the datastore path and transaction log directory
+   call or(get_dspath($INI_ODBC),\
+           get_dspath(catFile($USER_HOME,'.odbc.ini')),\
+           get_dspath($INI_SYSODBC),\
+           get_dspath(catFile($DAEMON_HOME,'sys.odbc.ini')),\
+           get_dspath(catFile($DFT_HOME,'sys.odbc.ini')))
+  }
+  elsif or(isCygwin(),isWindows())
+   var ($DS_PATH,$LOG_DIR) = (\
+     getRegValue(concat('HKLM\SOFTWARE\ODBC\ODBC.INI\',$DS_NAME),'DataStore'),\
+     getRegValue(concat('HKLM\SOFTWARE\ODBC\ODBC.INI\',$DS_NAME),'LogDir'))
+ }
+ 
+ # When the datastore path is valid, collect the data store information
+ debug ' Inside TimesTen module, collecting the data store information'
+ if and(defined($DS_PATH),\
+        testFile('f',concat($DS_PATH,'.ds0')),\
+        testFile('f',concat($DS_PATH,'.ds1')))
+ {pretoc '2:Data Store Information'
+  var $DS_KEY = cond(isUnix(),$DS_PATH,lc($DS_PATH))
+  var $dir = dirname($DS_PATH)
+
+=head2 inval - Invalidation Information
+
+Collects invalidation information for the data store.
+
+=cut
+
+  report inval
+  var $fil = concat($DS_PATH,'.inval')
+  prefix
+  {write '---+!! Invalidation Information'
+   write '---## Information Taken from ',encode($fil)
+  }
+  call writeFile($fil)
+  if isCreated(true)
+   toc '3:[[',getFile(),concat('][rda_report][Invalidation Information]]')
+
+=head2 trace - Trace Information
+
+Collects trace information for the data store.
+
+=cut
+
+  report trace
+  var $fil = concat($DS_PATH,'.trace')
+  prefix
+  {write '---+!! Trace Information'
+   write '---## Information Taken from ',encode($fil)
+  }
+  call writeFile($fil)
+  if isCreated(true)
+   toc '3:[[',getFile(),concat('][rda_report][Trace Information]]')
+
+=head2 dspath - Data Store Path Information
+
+Lists contents of the data store directory structure.
+
+=cut
+
+  report dspath
+  dsp_dir($dir,'Data Store Path Information',$dir)
+
+=head2 logdir - Log Directory Information
+
+Lists contents of the data store F<log> directory structure.
+
+=cut
+
+  if and(defined($LOG_DIR),not(sameDir($dir,$LOG_DIR)))
+  {report logdir
+   call dsp_dir($LOG_DIR,'Log Directory Information',$LOG_DIR)
+  }
+
+=head2 dsmap - Data Store Attributes
+
+Collects first connect and data store attributes.
+
+=cut
+
+  if grepDir(catDir($TTEN_HOME,'support'),'^dsmap(\.exe)?$','p')
+   var ($DSMAP) = last
+  elsif grepDir(catDir($TTEN_HOME,'unsupported'),'^dsmap(\.exe)?$','p')
+   var ($DSMAP) = last
+  else
+   var $DSMAP = undef
+  if testFile($TST,$DSMAP)
+  {var $cmd = catCommand($DSMAP)
+   report dsmap
+   prefix
+   {write '---+!! First Connect and Data Store Attributes'
+    write $TOC
+   }
+   write '---+ ds0'
+   write '---## Using: dsmap -connectOptions -hdr -dsname "',$DS_PATH,'.ds0"'
+   call writeCommand(concat($cmd,' -connectOptions -hdr -dsname "',$DS_PATH,\
+                            '.ds0"'))
+   write '---+ ds1'
+   write '---## Using: dsmap -connectOptions -hdr -dsname "',$DS_PATH,'.ds1"'
+   call writeCommand(concat($cmd,' -connectOptions -hdr -dsname "',$DS_PATH,\
+                            '.ds1"'))
+   if isCreated(true)
+    toc '3:[[',getFile(),concat('][rda_report][Data Store Attributes]]')
+  }
+
+  # Get the driver is not identified
+  if !$DRIVER
+  {if isUnix()
+    var $DRIVER = catFile($TTEN_HOME,'lib','libtten.so')
+   elsif or(isCygwin(),isWindows())
+   {if getRegValue(\
+         'HKLM\SOFTWARE\ODBC\ODBC.INI\ODBC Data Sources',\
+         basename($DS_PATH))
+     var $DRIVER = concat('{',last,'}')
+   }
+  }
+     
+  # Collect schema when requested, Data Store is loaded, driver found
+  if and($RUNTIME,$tb_opn{$DS_KEY},$DRIVER)
+  {# Get the password if needed
+   if $pwd
+   {if getSetting('SQL_PASSWORD_TTEN_UID')
+     var ($pas) = unpack('u',last)
+    else
+     var $pas = askPassword(concat('Enter ',$UID,' user password:'))
+    if length($pwd)
+     var $CONNECT = concat('"UID=',$UID,';DataStore=',$DS_PATH,\
+                           ';Driver=',$DRIVER,';PWD=',$pas,';"')
+   }
+   else
+   {var $CONNECT = concat('"UID=',$UID,';DataStore=',$DS_PATH,\
+                          ';Driver=',$DRIVER,';"')
+   }
+  }
+
+=head2 schema - Data Store Schema
+
+Collects the data store schema.
+
+=cut
+
+  if $CONNECT
+  {debug ' Inside TimesTen module, getting the schema objects'
+   if grepDir(catDir($TTEN_HOME,'bin'),'^ttSchema(\.exe)?$','p')
+   {var ($cmd) = catCommand(last)
+    report schema
+    prefix
+    {write '---+!! Schema Information'
+     write '---## Using: ttSchema'
+    }
+    var $cmd = concat($cmd,' -connStr ',$CONNECT)
+    call writeCommand($cmd)
+   }
+   if isCreated(true)
+    toc '3:[[',getFile(),concat('][rda_report][Data Store Schema]]')
+
+=head2 shm - Shared Memory Information
+
+Collects shared memory information.
+
+=cut
+
+   debug ' Inside TimesTen module, getting shared memory information'
+   if ?$tb_shm{$DS_KEY}
+   {if ?$DSMAP
+    {var $cmd = catCommand($DSMAP)
+     report shm
+     prefix
+     {write '---+!! Shared Memory Information'
+      write '---## Using: dsmap -hdr -shmid "',$tb_shm{$DS_KEY}
+     }
+     call writeCommand(concat($cmd,' -hdr -shmid ',$tb_shm{$DS_KEY}))
+     if isCreated(true)
+      toc '3:[[',getFile(),concat('][rda_report][Shared Memory Information]]')
+    }
+   }
+
+=head2 latch - Latch Information
+
+Collects latch information.
+
+=cut
+
+   debug ' Inside TimesTen module, getting latch information'
+   if grepDir(catDir($TTEN_HOME,'bin'),'^ttXactAdmin(\.exe)?$','p')
+   {var ($cmd) = catCommand(last)
+    report latch
+    prefix
+    {write '---+!! Latch Information'
+     write '---## Using: ttXactAdmin -latch'
+    }
+    call writeCommand(concat($cmd,' -latch -connStr ',$CONNECT))
+    if isCreated(true)
+     toc '3:[[',getFile(),concat('][rda_report][Latch Information]]')
+   }
+
+=head2 admin - Administration Information
+
+Collects administration information.
+
+=cut
+
+   debug ' Inside TimesTen module, getting administration information'
+   if grepDir(catDir($TTEN_HOME,'bin'),'^ttAdmin(\.exe)?$','p')
+   {var ($cmd) = catCommand(last)
+    report admin
+    prefix
+    {write '---+!! Administration Information'
+     write $TOC
+     write '---## Using: ttAdmin'
+    }
+    call writeCommand(concat($cmd,' -connStr ',$CONNECT))
+    if isCreated(true)
+     toc '3:[[',getFile(),concat('][rda_report][Administration Information]]')
+   }
+
+=head2 ttisql - ttIsql Information
+
+Collects the following F<ttIsql> commands:
+
+=over 3
+
+=item o C<monitor>
+
+=item o C<ttCkptConfig>
+
+=item o C<ttCkptHistory>
+
+=item o C<ttBlockInfo>
+
+=item o C<ttLogHolds>
+
+=item o C<ttAgingLRUConfig>
+
+=item o C<ttReplicationStatus>
+
+=back
+
+=cut
+
+   debug ' Inside TimesTen module, getting ttIsql Information'
+   if grepDir(catDir($TTEN_HOME,'bin'),'^ttIsql(\.exe)?$','p')
+   {var ($cmd) = catCommand(last)
+    report ttisql
+    prefix
+    {write '---+!! ttIsql Information'
+     write $TOC
+    }
+    var $flg = false
+    var %ttl = (\
+      ttCkptConfig        => 'Checkpointer Configuration Parameters',\
+      ttCkptHistory       => 'Last Eight Checkpoints',\
+      ttBlockInfo         => 'Block-Level Fragmentation ',\
+      ttLogHolds          => 'Log Holds Information',\
+      ttAgingLRUConfig    => 'LRU Aging Attribute Settings',\
+      ttReplicationStatus => 'Replication Peer Data Store Status')
+    loop $lin (grepCommand(concat($cmd,\
+      ' -e "monitor;CALL ttCkptConfig;CALL ttCkptHistory;CALL ttBlockInfo;\
+            CALL ttLogHolds;CALL ttAgingLRUConfig;CALL ttReplicationStatus;\
+            exit;" -connStr ',$CONNECT),'\S'))
+    {break match($lin,'^exit;$')
+     if $flg
+     {if match($lin,'^CALL (tt.*);$')
+      {var ($req) = last
+       write '</verbatim>'
+       write $TOP
+       write '---+ ',nvl($ttl{$req},$req)
+       write '---## Using ',$lin
+       write '<verbatim>'
+      }
+      else
+       write $lin
+     }
+     elsif match($lin,'^monitor;$')
+     {write '---+ SYS.MONITOR Table Contents'
+      write '---## Using ',$lin
+      write '<verbatim>'
+      var $flg = true
+     }
+    }
+   }
+   if isCreated(true)
+   {write '</verbatim>'
+    write $TOP
+    toc '3:[[',getFile(),concat('][rda_report][ttIsql Information]]')
+   }
+  }
+  unpretoc
+ }
+ else
+ {report invalid_dspath
+  write '---+!! Data Store Path Not Valid'
+  write 'Data store path ', encode($DS_PATH),' is not valid.'
+  toc '2:[[',getFile(),'][rda_report][Data Store Path not Valid]]'
+ }
+}
+
+=head2 compiler - Compiler Information
+
+Collects the compiler information.
+
+=cut
+
+debug ' Inside TimesTen module, getting the compiler information'
+report compiler
+prefix
+{write '---+!! Compiler Information'
+ write $TOC
+}
+var $osn = getOsName()
+if match($osn,'aix')
+ var %cmd = (cc_r => undef,\
+             java => 'java -version')
+elsif match($osn,'dec_osf')
+ var %cmd = (cc   => 'cc -V',\
+             java => 'java -version')
+elsif match($osn,'hpux')
+ var %cmd = (gcc  => 'gcc -v',\
+             java => 'java -version')
+elsif match($osn,'linux')
+ var %cmd = (gcc  => ['gcc -v','/lib','^libc'],\
+             java => 'java -version')
+elsif match($osn,'solaris')
+ var %cmd = (cc   => 'cc -V',\
+             gcc  => 'gcc -v',\
+             java => 'java -version')
+elsif isCygwin()
+ var %cmd = (gcc  => ['gcc -v','/lib','^libc'],\
+             java => 'java -version')
+elsif isUnix()
+ var %cmd = (cc   => 'cc -V',\
+             java => 'java -version')
+elsif isWindows()
+ var %cmd = (java => 'java -version')
+else
+ var %cmd = ()
+loop $pgm (keys(%cmd))
+{var ($cmd,$dir) = ($cmd{$pgm})
+ if ref($cmd)
+  var ($cmd,$dir,$pat) = @{$cmd}
+ write '---+ Using: ',encode(nvl($cmd,$pgm))
+ write '---## Location: ',findCommand($pgm,true)
+ if ?$cmd
+  call writeCommand(concat($cmd,' 2>&1'))
+ if ?$dir
+  call statFile('p',grepDir($dir,$pat,'np'))
+ write $TOP
+}
+if isCreated(true)
+ toc '2:[[',getFile(),'][rda_report][Compiler Information]]'
+
+=head2 clusterini - Cluster Initialization File
+
+Collects the F<cluster.oracle.ini> from Daemon Home directory.
+
+=cut
+
+if testFile('r',catFile($DAEMON_HOME,'cluster.oracle.ini'))
+{var $fil = lastFile()
+ debug ' Inside TimesTen module, getting the cluster initialization file'
+ report clusterini
+ write '---+ Cluster Initialization File'
+ write '---## Information Taken from ',encode($fil)
+ call writeFile($fil)
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Cluster Initialization File]]'
+}
+
+=head2 crs - CRS Information
+
+Collects the CRS information.
+
+=cut
+
+if testFile('r',catFile($DAEMON_HOME,'ttcrsagent.options'))
+{debug ' Inside TimesTen module, getting the status information'
+ var $fil = catFile($DAEMON_HOME,'ttcrsagent.options')
+ report crs
+ prefix
+ {write '---+!! CRS Information'
+  write $TOC
+ }
+ loop $lin (grepFile($fil,'crshome','i'))
+ {next match($lin,'grep')
+  var (undef,$CRS_HOME) = split('\s',$lin,2)
+  break
+ }
+ var ($cmd) = grepDir(catDir($CRS_HOME,'bin'),'^ocrcheck(\.exe)?$','ip')
+ if testFile($TST,$cmd)
+ {write '---+ Using: ',encode($cmd)
+  call writeCommand($cmd)
+  write $TOP
+ }
+ var ($cmd) = grepDir(catDir($CRS_HOME,'bin'),'^crsctl(\.exe)?$','ip')
+ if testFile($TST,$cmd)
+ {write '---+ Using: ',encode($cmd),' check crs'
+  call writeCommand(concat($cmd,' check crs'))
+  write $TOP
+  write '---+ Using: ',encode($cmd),' check cluster'
+  call writeCommand(concat($cmd,' check cluster'))
+  write $TOP
+ }
+ var ($cmd) = grepDir(catDir($CRS_HOME,'bin'),'^crs_stat(\.exe)?$','ip')
+ if testFile($TST,$cmd)
+ {write '---+ Using: ',encode($cmd),' -p'
+  call writeCommand(concat($cmd,' -p'))
+  write $TOP
+ }
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][CRS Information]]'
+}
+
+=head2 registry - Registry Information
+
+For Windows, collects TimesTen, system, and user ODBC Registry information.
+
+=cut
+
+if or(isWindows(),isCygwin())
+{debug ' Inside TimesTen module, gathering registry information'
+ report registry
+ write '---+!! Registry information'
+ write $TOC
+ write '---+ Oracle TimesTen Registry information'
+ call writeRegistry('HKLM\SOFTWARE\TimesTen')
+ write $TOP
+ write '---+ ODBC Registry information'
+ call writeRegistry('HKLM\SOFTWARE\ODBC')
+ write $TOP
+ write '---+ Current User ODBC Registry information'
+ call writeRegistry('HKCU\SOFTWARE\ODBC')
+ write $TOP
+ toc '2:[[',getFile(),'][rda_report][Registry Information]]'
+}
+
+=head1 INSTALLATION INFORMATION
+
+=cut
+
+debug ' Inside TimesTen module, collecting the installation information'
+pretoc '2:Installation Information'
+
+=head2 installs - Installations Overview 
+
+Collects the F</etc/TimesTen/instance_info> file.
+
+=cut
+
+if testFile('r','/etc/TimesTen/instance_info')
+{debug ' Inside TimesTen module, getting the all installs information'
+ report installs
+ write '---+!! Installation Overview'
+ write '---## Information Taken from /etc/TimesTen/instance_info'
+ call writeFile('/etc/TimesTen/instance_info')
+ toc '3:[[',getFile(),'][rda_report][Installation Overview]]'
+}
+
+=head2 bin - Contents of TimesTen bin Directory
+
+Lists contents of TimesTen F<bin> directory structure.
+
+=cut
+
+report bin
+call dsp_dir(catDir($TTEN_HOME,'bin'),'Contents of TimesTen bin Directory')
+
+=head2 lib - Contents of TimesTen lib Directory
+
+Lists contents of TimesTen F<lib> directory structure.
+
+=cut
+
+report lib
+call dsp_dir(catDir($TTEN_HOME,'lib'),'Contents of TimesTen lib Directory')
+
+=head2 jdbc - Contents of TimesTen jdbc Directory
+
+For Windows, lists contents of TimesTen F<jdbc> directory structure.
+
+=cut
+
+if or(isWindows(),isCygwin())
+{report jdbc
+ call dsp_dir(catDir($TTEN_HOME,'jdbc'),'Contents of TimesTen jdbc Directory')
+
+=head2 srv - Contents of TimesTen srv Directory
+
+For Windows, lists contents of TimesTen F<srv> directory structure.
+
+=cut
+
+ report srv
+ call dsp_dir(catDir($TTEN_HOME,'srv'),'Contents of TimesTen srv Directory')
+}
+
+=head2 daemon - Contents of Daemon Home Directory
+
+Lists contents of daemon home directory structure.
+
+=cut
+
+report daemon
+call dsp_dir($DAEMON_HOME,'Contents of Daemon Home Directory')
+
+=head2 var - Contents of /var/TimesTen Directory
+
+Lists contents of F</var/TimesTen> directory structure.
+
+=cut
+
+report var
+call dsp_dir($DFT_HOME,concat('Contents of ',encode($DFT_HOME),' Directory'))
+
+=head2 Initialisation Files
+
+Collects the following files when present:
+
+=over 3
+
+=item o The file referenced by the C<ODBCINI> environment variable
+
+=item o The file referenced by the C<SYSODBCINI> environment variable
+
+=item o The file referenced by the C<SYSTTCONNECTINI> environment variable
+
+=item o The file referenced by the C<TT_SNMP_INI> environment variable
+
+=item o F<.odbc.ini> from the user home directory
+
+=item o F<snmp.ini> from the daemon home directory
+
+=item o F<sys.odbc.ini> from the daemon home directory
+
+=item o F<sys.snmp.ini> from the daemon home directory
+
+=item o F<sys.ttconnect.ini> from the daemon home directory
+
+=item o F<ttcrsagent.options> from the daemon home directory
+
+=item o F<ttendaemon.options> from the daemon home directory
+
+=item o F</var/TimesTen/sys.odbc.ini>
+
+=item o F</var/TimesTen/sys.snmp.ini>
+
+=item o F</var/TimesTen/sys.ttconnect.ini>
+
+=back
+
+=cut
+
+pretoc '3:Initialisation Files'
+debug ' Inside TimesTen module, getting initialisation files'
+call sort_files(4,0,$INI_ODBC,\
+                    $INI_SYSODBC,\
+                    $INI_SYSTTC,\
+                    $INI_SNMP,\
+                    catFile($USER_HOME,'.odbc.ini'),\
+                    catFile($DAEMON_HOME,'sys.odbc.ini'),\
+                    catFile($DAEMON_HOME,'sys.ttconnect.ini'),\
+                    catFile($DAEMON_HOME,'sys.snmp.ini'),\
+                    catFile($DAEMON_HOME,'snmp.ini'),\
+                    catFile($DAEMON_HOME,'ttendaemon.options'),\
+                    catFile($DAEMON_HOME,'ttcrsagent.options'),\
+                    catFile($DFT_HOME,'sys.odbc.ini'),\
+                    catFile($DFT_HOME,'sys.ttconnect.ini'),\
+                    catFile($DFT_HOME,'sys.snmp.ini'))
+unpretoc
+
+=head2 install_log - Installation Log
+
+Collects the installation log.
+
+=cut
+
+report install_log
+var $fil = catFile($DAEMON_HOME,'.install_log')
+prefix
+ write '---+!! Contents of ',encode($fil)
+call writeFile($fil)
+if isCreated(true)
+ toc '3:[[',getFile(),concat('][rda_report][Installation Log]]')
+
+unpretoc 2
+
+=head1 LOG FILES
+
+=cut
+
+if getSetting('TTEN_LOG_COLLECT')
+{debug ' Inside TimesTen module, collecting the log files'
+ pretoc '2:Log Files'
+
+ macro write_logs
+ {var ($rpt,$ttl,$dir,$pat) = @arg
+  report $rpt
+  prefix
+  {write '---+ ',$ttl
+   write '   * Links point to files that have been collected in their original \
+               format. Opening them directly in your browser can present \
+               risks. To prevent them, access the file outside the browser \
+               browser or use the link to save them and use an adequate viewer.'
+   write '|*File Name*| *Size*|*Date Modified*|'
+  }
+  loop $fil (grepDir($dir,$pat,'p'))
+  {output d,concat('log_',basename($fil))
+   if ${CUR.LAST}->write_data($fil)
+    write '|[[',${CUR.LAST}->get_file,'][_blank][',encode($fil),']]| ',\
+          getSize($fil),'|',getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   call $[OUT]->end_report(${CUR.LAST})
+  }
+  if isCreated(true)
+   toc '3:[[',getFile(),'][rda_report][',$ttl,']]'
+ }
+
+=head2 suplogs - Support Logs 
+
+Collects the support logs from the location specified in F<ttendaemon.options>.
+
+=cut
+
+ if testFile('r',catFile($DAEMON_HOME,'ttendaemon.options'))
+ {var $fil = lastFile()
+  debug ' Inside TimesTen module, getting support logs'
+  var $dir = $DAEMON_HOME
+  if grepFile($fil,'^\s*-supportlog\s*(-f\s*)?.*')
+  {if match(last,'^\s*-supportlog\s*(-f\s*)?(.*)')
+   {var (undef,$loc) = last
+    var $dir = dirname($loc)
+   }
+  }
+  call write_logs('suplogs','Support Logs',$dir,'^ttmesg')
+ }
+
+=head2 userlogs - User Logs 
+
+Collects the user logs from the location specified in F<ttendaemon.options>.
+
+=cut
+
+ if testFile('r',catFile($DAEMON_HOME,'ttendaemon.options'))
+ {var $fil = lastFile()
+  debug ' Inside TimesTen module, getting user logs'
+  var ($dir,$flg) = ($DAEMON_HOME,false)
+  if grepFile($fil,'^\s*-userlog\s*.*')
+  {if match(last,'^\s*-userlog\s*(.*)')
+   {var ($loc) = last
+    if match($loc,'^\[syslog\]$',true)
+     var $flg = true
+    else
+     $dir = dirname($loc)
+   }
+  }
+  if $flg
+  {report userlogs
+   write  '---+ User Logs'
+   if or(isWindow(),isCygwin()) 
+    write 'User log output is sent to Event Log.'
+   else
+    write 'User log output is sent to System Log.'
+   toc '3:[[',getFile(),'][rda_report][User Logs]]'
+  }
+  else
+   call write_logs('userlogs','User Logs',$dir,'^tterror')
+ }
+
+=head2 awtlog - Asynchronous Writethrough Log
+
+Collects the asynchronous writethrough log from the datastore directory.
+
+=cut
+
+ report awtlog
+ var $fil = concat($DS_PATH,'.awterr')
+ prefix
+ {write '---+!! Asynchronous Writethrough Log'
+  write '---## Information Taken from ',encode($fil)
+ }
+ call writeFile($fil)
+ if isCreated(true)
+  toc '3:[[',getFile(),concat('][rda_report][Asynchronous Writethrough Log]]')
+
+=head2 cwsuplogs - Clusterware Support Logs 
+
+Collects the clusterware support logs.
+
+=cut
+
+ var $dir = catDir($DAEMON_HOME,'ttcwerror')
+ call write_logs('cwsuplogs','Clusterware Support Logs',$dir,'^ttcwmesg')
+
+=head2 cwuserlogs - Clusterware User Logs 
+
+Collects the clusterware user logs.
+
+=cut
+
+ call write_logs('cwuserlogs','Clusterware User Logs',$DAEMON_HOME,'^ttcwerror')
+
+ unpretoc
+}
+
+=head1 SEE ALSO
+
+L<library|modules::library>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.18: Markus Kemper, Munukutla Murty, Khaled Mustafa, Adam Whitter.
+
+=item RDA 4.19: Markus Kemper, Munukutla Murty.
+
+=item RDA 4.27: Jim Tong.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

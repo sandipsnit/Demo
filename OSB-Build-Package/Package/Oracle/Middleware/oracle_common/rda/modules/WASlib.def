@@ -1,0 +1,328 @@
+# WASlib.def: Defines Common Macros for Web Application Server
+# $Id: WASlib.def,v 1.9 2012/05/31 10:31:46 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/WASlib.def,v 1.9 2012/05/31 10:31:46 mschenke Exp $
+#
+# Change History
+# 20120531  KRA  Improve write_latest_incidents macro.
+
+=head1 NAME
+
+WASlib - Defines Common Macros for Web Application Server
+
+=head1 DESCRIPTION
+
+This persistent submodule regroups macros that are common to several Web
+application server related-modules.
+
+The following macros are available:
+
+=cut
+
+# Make the module persistent and share macros
+keep $KEEP_BLOCK,@SHARE_MACROS
+var @SHARE_MACROS = ('get_app_conf','get_app_log','get_conf','sort_all_files',\
+                     'sort_results','write_latest_incidents')
+
+=head2 S<get_app_conf(\@tbl,$dir,$nam,@sub)>
+
+This macro collects the application configuration files related to Web
+application servers.
+
+=cut
+
+macro get_app_conf
+{var (\@tbl,$dir,$nam,@sub) = @arg
+
+ if compare('eq',$nam,'ldap')
+  call push(@tbl,grepDir(catDir($dir,@sub,$nam),'\.ldif$','ip'))
+ elsif compare('eq',$nam,'nodemanager')
+  call push(@tbl,grepDir(catDir($dir,@sub,$nam),'\.(state|url)$','ip'))
+ elsif compare('eq',$nam,'portal')
+ {call push(@tbl,grepDir(\
+   catDir($dir,@sub,$nam,$nam,'configuration'),'\.conf$','ip'))
+ }
+ elsif compare('eq',$nam,'OIF')
+ {loop $sub (grepDir(catDir($dir,@sub,$nam),'^\d+(\.\d+){4}$','np'))
+   call push(@tbl,grepDir(catDir($sub,'OIF','web.war'),'\.jsp$','ip'))
+ }
+ elsif compare('eq',$nam,'formsapp')
+ {loop $sub (grepDir(catDir($dir,@sub,$nam),'^\d+(\.\d+){2}$','np'))
+   call push(@tbl,grepDir(catDir($sub,'formsapp','config'),'^\.+$','pv'))
+ }
+ elsif compare('eq',$nam,'reports')
+ {call push(@tbl,grepDir(\
+   catDir($dir,@sub,$nam,$nam,'configuration'),'^\.+$','pv'))
+ }
+}
+
+=head2 S<get_app_log(\@tbl,$dir,$nam,[$pat,$opt])>
+
+This macro collects the application log files related to Web application
+servers.
+
+=cut
+
+macro get_app_log
+{var (\@tbl,$dir,$nam,$pat,$opt) = @arg
+
+ var $pat = nvl($pat,'^[^\.]')
+ var $opt = nvl($opt,'dir')
+ if compare('eq',$nam,'formsapp')
+  call push(@tbl,grepDir($dir,$pat,$opt))
+ elsif compare('eq',$nam,'reports')
+  call push(@tbl,grepDir(catDir($dir,$nam),$pat,$opt))
+ elsif compare('eq',$nam,'sdp')
+  call push(@tbl,grepDir(catDir($dir,$nam),$pat,$opt))
+ elsif compare('eq',$nam,'wlcs')
+  call push(@tbl,grepDir(catDir($dir,$nam),$pat,$opt))
+ elsif compare('eq',$nam,'wsp')
+  call push(@tbl,grepDir($dir,$pat,$opt))
+}
+
+=head2 S<get_conf($dir,[$pat[,$opt]])>
+
+This macro collects the configuration files related to Web application servers.
+
+=cut
+
+macro get_conf
+{var (\@tbl,$dir,$pat,$opt) = @arg
+
+ var $pat = nvl($pat,'^\.+$')
+ var $opt = nvl($opt,'drv')
+ call push(@tbl,grepDir($dir,$pat,$opt))
+}
+
+=head2 S<sort_all_files($lvl,$lgt,@fil)>
+
+This macro uses the unsorted file list to generate links in the RDA menu
+structure for each directory and the files located in that directory.
+
+=cut
+
+macro sort_all_files
+{var ($lvl,$lgt,@fil) = @arg
+ import $TOP,%DUP
+ keep $TOP,%DUP
+
+ # Filter the file list
+ loop $fil (@fil)
+ {var ($dir,$bas) = parseFile($fil)
+  if testFile('frT',$fil)
+  {var $fil{$dir,$bas} = $fil
+   var $tbl{$dir,$bas} = $fil
+  }
+  elsif testFile('frB',$fil)
+  {var $dat{$dir,$bas} = $fil
+   var $tbl{$dir,$bas} = $fil
+  }
+ }
+
+ # Generate the reports and related index links
+ var $det = $lvl
+ incr $det
+ loop $grp (keys(%tbl))
+ {# Start a new section
+  toc $lvl,':',encode(addSymbol($grp)),' '
+
+  # Treat each file
+  loop $nam (keys($tbl{$grp}))
+  {var $fil = $tbl{$grp,$nam}
+
+   debug '  Inside sort_all_files, getting ',$fil
+   if missing($DUP{$fil})
+   {output F,concat('log_',$nam)
+    if exists($fil{$grp,$nam})
+    {if $lgt
+      write '---+ Last ',$cnt,' Lines of ',encode($nam),' File'
+     else
+      write '---+ Display of ',encode($nam),' File'
+     write '---## Information Taken from ',encode($fil)
+     call statFile('b',$fil)
+     if $lgt
+      call writeTail($fil,$lgt)
+     else
+      call writeFile($fil)
+     write $TOP
+    }
+    elsif exists($dat{$grp,$nam})
+    {write '---+ Display of ',encode($nam),' File'
+     write '   * Links point to files that have been collected in their \
+                 original format. Opening them directly in your browser can \
+                 present risks. To prevent them, access the file outside the \
+                 browser or use the link to save them and use an adequate \
+                 viewer.'
+     write '|*File Name*| *Size*|*Last Modified Date*|'
+     var $lnk = encode($fil)
+     if $siz = getSize($fil)
+     {output b,concat('dat_',$nam)
+      if ${CUR.LAST}->write_data($fil)
+       var $lnk = concat('[[',${CUR.LAST}->get_raw(true),'][_blank][',$lnk,']]')
+      end ${CUR.LAST}
+     }
+     write '|',$lnk,' | ',$siz,'|',\
+               getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+    }
+    var $DUP{$fil} = getFile()
+   }
+   if $DUP{$fil}
+    toc $det,':[[',last,'][rda_report][',encode($nam),']]'
+  }
+ }
+}
+
+=head2 S<sort_results($lvl,$lgt,$pre,$abr,@fil)>
+
+This macro uses the unsorted file list to generate links in the RDA menu
+structure for each directory and the files located in that directory.
+
+=cut
+
+macro sort_results
+{var ($lvl,$lgt,$pre,$abr,@fil) = @arg
+ import $TOP,%DUP
+ keep $TOP,%DUP
+
+ # Filter the file list
+ loop $fil (@fil)
+ {next !testFile('frT',$fil)
+  next match($fil,'\.(bmp|exe|gif|jar|jpe?g|wav|wbmp)$',true)
+  var $fil{join("\001",dirname($fil),basename($fil))} = $fil
+ }
+
+ # Generate the reports and related index links
+ var $lst = ''
+ var $det = $lvl
+ incr $det
+ loop $fil (keys(%fil))
+ {var $fil = $fil{$fil}
+
+  # Create the report associated with the file
+  if missing($DUP{$fil})
+  {# Check for a new section
+   var $grp = dirname($fil)
+   if compare('ne',$grp,$lst)
+   {debug '  Inside sort_results, getting files in ',$grp
+    var $lst = $grp
+    toc $lvl,':',encode(replace($grp,quote($pre),$abr)),' '
+   }
+
+   var $nam = basename($fil)
+   debug '   - ',$nam
+   output F,concat('log_',$nam)
+   if match($nam,'^USData.xml$',true)
+   {write '---+ Display of ',encode($nam),' File'
+    write '---## Information Taken from ',encode($fil)
+    call statFile('b',$fil)
+    write '**File was not collected, because of the file size.**%BR%'
+   }
+   elsif match($fil,'(logs?[\/\\]|log$)',true)
+   {if exists($LOG{$fil})
+     var $cnt = $LOG{$fil}
+    else
+     var $cnt = $lgt
+    if $cnt
+     write '---+ Last ',$cnt,' Lines of ',encode($nam),' File'
+    else
+     write '---+ Display of ',encode($nam),' File'
+    write '---## Information Taken from ',encode($fil)
+    call statFile('b',$fil)
+    if $cnt
+     call writeTail($fil,$cnt)
+    else
+     call writeFile($fil)
+    write $TOP
+   }
+   else
+   {write '---+ Display of ',encode($nam),' File'
+    write '---## Information Taken from ',encode($fil)
+    call statFile('b',$fil)
+    call writeFile($fil)
+    write $TOP
+   }
+   var $rpt = getFile()
+   if $abr
+    var $DUP{$fil} = $rpt
+   if isCreated()
+    toc $det,':[[',$rpt,'][rda_report][',encode($nam),']]'
+  }
+ }
+}
+
+=head2 S<write_latest_incidents($bas,$hom,$rpt,$txt,$lvl)>
+
+This macro gathers files generated by the latest incidents and writes to the
+report.
+
+=cut
+
+macro write_latest_incidents
+{var ($bas,$hom,$rpt,$txt,$lvl) = @arg
+ import $INCIDENT_FILES,$TOC,$TOP
+ keep $INCIDENT_FILES,$TOC,$TOP
+
+ var $dir = catDir($bas,$hom,'incident')
+ var %tbl = ()
+ loop $pth (grepDir($dir,'^incdir_\d+$','p'))
+ {if testDir('d',$pth)
+   var $tbl{first(match($pth,'incdir_(\d+)$'))} = $pth
+ }
+ var $cnt = nvl($INCIDENT_FILES,5)
+ output F,concat($rpt,'_incident_files')
+ loop $num (keys(%tbl,'ID'))
+ {prefix
+  {if !isCreated()
+   {write '---+!! Files from Latest Incidents'
+    write '   * Links point to files that have been collected in their \
+                original format. Opening them directly in your browser can \
+                present security risks. To prevent them, access the file \
+                outside the browser or use the link to save them and use an \
+                adequate viewer.'
+    write '   * Collection of files is including files generated by \
+                incidents. It may collect other files present in incident \
+                directory.'
+    write $TOC
+   }
+   write '---+ Contents of Incident ',$num
+   write '|*File Name*| *Size*|*Last Modification*|'
+  }
+  loop $pth (grepDir($tbl{$num},'^\.+$','pv'))
+  {next !testDir('f',$pth)
+   output d,concat($rpt,'_',$num,'_',$fil = basename($pth))
+   if ${CUR.LAST}->write_data($pth)
+    write '|[[',${CUR.LAST}->get_file,'][_blank][',encode($fil),']]| ',\
+          getSize($pth),'|',getLastModify($pth,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   call $[OUT]->end_report(${CUR.LAST})
+  }
+  if hasOutput(true)
+  {write $TOP
+   decr $cnt
+   break !$cnt
+  }
+ }
+ if isCreated(true)
+  toc $lvl,':[[',getFile(),'][rda_report][',$txt,']]'
+}
+
+=begin credits
+
+=over 10
+
+=item RDA 4.25:  Greg Cook, Andrew Salt.
+
+=item RDA 4.26:  Maria Salzberger.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

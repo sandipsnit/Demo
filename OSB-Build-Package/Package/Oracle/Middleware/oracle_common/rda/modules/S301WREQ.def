@@ -1,0 +1,1561 @@
+# S301WREQ.def: Handles the Oracle WebLogic Server Collection Requests
+# $Id: S301WREQ.def,v 1.48 2012/07/31 07:55:44 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/S301WREQ.def,v 1.48 2012/07/31 07:55:44 mschenke Exp $
+#
+# Change History
+# 20120731  KRA  Fix Java collection.
+
+=head1 NAME
+
+S301WREQ - Handles the Oracle WebLogic Server Collection Requests
+
+=head1 DESCRIPTION
+
+This module collects information for Oracle WebLogic Server domain homes.
+
+=cut
+
+echo tput('bold'),'Processing WREQ module ...',tput('off')
+
+# Initialization
+var $GET_INCIDENT    = getSetting('RDA_GET_INCIDENT',true)
+var $INCIDENT_FILES  = getSetting('WREQ_INCIDENT_FILES',5)
+var $LOG_AGE         = getSetting('WREQ_LOG_AGE',15)
+var $MAX             = getSetting('WREQ_INCIDENTS',10)
+var $ROTATED_LOGS    = getSetting('WREQ_ROTATED_LOGS',2)
+var $RPT_DIRECTORY   = getSetting('RPT_DIRECTORY')
+var $TAIL            = getSetting('RDA_TAIL',1000)
+var $THREAD_DUMP     = getSetting('WREQ_THREAD_DUMP',10)
+var $THREAD_DUMP_INT = getSetting('WREQ_THREAD_DUMP_INTERVAL',5000)
+var $TIMEOUT         = getSetting('WREQ_IMAGE_TIMEOUT',90)
+var $TYPE            = uc(getSetting('WLS_TYPE','OFF'))
+
+if !isAbsolute($RPT_DIRECTORY)
+ var $RPT_DIRECTORY = getGroupDir('D_CWD',$RPT_DIRECTORY)
+
+var $ABR = setAbbr()
+var $CHK = cond(isWindows(),'f',isCygwin(),'f','fx')
+var $TOC = '%TOC%'
+var $TOP = '[[#Top][Back to top]]'
+
+var $WL_HOME = ''
+var $WLS_TOP = ''
+var $PLUGIN  = {}
+var %DOMAINS
+var %LOGIN
+var %URL
+
+# Define global variables
+var %DUP
+
+# Load the common macros
+run INSTinfo()
+run library()
+run WASlib()
+run WLSlib()
+
+# Load the plugin information
+loop $fil (grepDir(${GRP.D_RDA_CODE},'^FMW\w+\.def$'))
+ run &{concat(substr($fil,0,-4),'-Init')}($PLUGIN)
+
+# Define a macro to check if a focus area is applicable for the current target
+macro chk_area
+{var ($nam,$lst) = @arg
+ import $ABR
+ keep $ABR
+
+ if @tid = getFocus($nam,$lst)
+ {var $abr = setAbbr($ABR)
+  call switchToc(@tid)
+  call setAbbr($abr)
+  return true
+ }
+ return false
+}
+
+# Analyze the domain home collection requests
+loop $key (grepSetting('_REQ_DOMAIN$'))
+{var $tid = substr($key,0,-11)
+ var $dom = getSetting($key)
+ next !testDir('d',$dom)
+
+ if missing($DOMAINS{$dom})
+  var $DOMAINS{$dom} = addTarget('DOM_Req$$',{DOMAIN_HOME=>$dom})
+ var $tgt = $DOMAINS{$dom}
+ call $tgt->set_focus($tid,getSetting(concat($tid,'_FOCUS')))
+ call $tgt->set_server($tid,getSetting(concat($tid,'_WLS_SERVERS')))
+ if ?$par = $tgt->get_wl_home
+ {var $tid = replace($tid,'_DOM','_TOP')
+  call $par->set_focus($tid,getSetting(concat($tid,'_FOCUS')))
+ }
+}
+
+# Get the WebLogic connection details
+loop $key (keys(%DOMAINS))
+{# Skip when not requested
+ call setCurrent($tgt = $DOMAINS{$key})
+ next !getFocus('WLST')
+ var @tid = last
+
+ var ($ADMIN,$OVERRIDE_PORT,$hst,$prt,$ssl) = ('',0,'',undef,0)
+
+ # Get the domain name
+ var $dom = basename($top = getDomain('.'))
+
+ # Determine the WLST collection mode
+ var $MODE = $TYPE
+ loop $tid (@tid)
+ {if !match($tid,'^WLS_DOM')
+   var $MODE = 'ON'
+ }
+
+ # Get the host and port
+ if testFile('fr',catFile($top,'config','config.xml'))
+ {var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'BCDEPR'))
+  if match(xmlData(xmlFind($obj,'domain/name')),quote($dom),true)
+  {var $ADMIN = xmlData(xmlFind($obj,'domain/admin-server-name'))
+   if match(xmlData(xmlFind($obj,\
+       'domain/administration-port-enabled')),'true',true)
+    var $OVERRIDE_PORT = xmlData(xmlFind($obj,'domain/administration-port'))
+   loop $xml (xmlFind($obj,'domain/server'))
+   {if compare('eq',xmlData(xmlFind($xml,'name')),$ADMIN)
+    {var $hst = xmlData(xmlFind($xml,'listen-address'))
+     var $prt = cond(\
+      $OVERRIDE_PORT,$OVERRIDE_PORT,xmlData(xmlFind($xml,'listen-port')))
+     if xmlFind($xml,'ssl')
+     {var ($nod) = last
+      if match(xmlData(xmlFind($nod,'enabled')),'true',true)
+      {if $OVERRIDE_PORT
+        var $ssl = $OVERRIDE_PORT
+       elsif !length($ssl = xmlData(xmlFind($nod,'listen-port')))
+        var $ssl = 7002
+      }
+     }
+     break
+    }
+   }
+  }
+ }
+
+ # Still host and port not found
+ while hasDomainAttr()
+ {# Validate the configuration settings
+  break compare('eq',$MODE,'OFF')
+  if !length($hst)
+  {var $hst = getDomainAttr('SERVER_HOST')
+   if !length($hst)
+   {echo "Missing host for a Oracle WebLogic Server connection under '",\
+          $dom,"' domain"
+    break
+   }
+  }
+  if !match($hst,'^[\w\-\.]+$')
+  {echo "Invalid Oracle WebLogic Server host under '",$dom,"' domain"
+   break
+  }
+  if !match($prt,'^\d+$')
+  {var $prt = getDomainAttr('SERVER_PORT')
+   if !match($prt,'^\d+$')
+    var $prt = 7001
+  }
+  var $URL{$top} = [concat($hst,':',$prt)]
+  if $ssl
+   var $URL{$top} = [concat('t3s://',$hst,':',$ssl),@{$URL{$top}}]
+  break
+ }
+
+ # Check the connection to the WLS
+ if compare('ne',$MODE,'OFF')
+ {# Load known users and passwords
+  var (@pwd,@usr,%pwd) = ()
+  loop $tid (@tid)
+  {if length($usr = getSetting(concat($tid,'_WLS_USER'),''))
+   {if hasPassword('wls',$dom,$usr)
+    {var $pwd{$usr} = true
+     call push(@pwd,$usr)
+    }
+    else
+     call push(@usr,$usr)
+   }
+  }
+
+  # Check for the "best" candidate
+  var $dft = getDomainAttr('DOMAIN_USER')
+  if exists($pwd{$dft})
+   var $LOGIN{$top} = $dft
+  elsif @pwd
+   var $LOGIN{$top} = $pwd[0]
+  elsif @usr
+  {call setPassword('wls',$dom,$usr[0],askPassword(\
+     concat("Enter '",$usr[0],"' user password for '",$dom,"' domain:")))
+   var $LOGIN{$top} = $usr[0]
+  }
+  elsif match($dft,'^\w+$')
+  {call setPassword('wls',$dom,$dft,askPassword(\
+     concat("Enter '",$dft,"' user password for '",$dom,"' domain:")))
+   var $LOGIN{$top} = $dft
+  }
+ }
+}
+
+=head1 MIDDLEWARE HOME COLLECTIONS
+
+Performs the following collections on all requested Middleware homes:
+
+=cut
+
+var $CNT = 0
+loop $oid (listTargets('WH'))
+{var $tgt = getTarget($oid)
+
+ # Skip when not existing or not requested
+ next !testDir('d',$WLS_TOP = $tgt->get_mw_home('.'))
+ next !testDir('d',$WL_HOME = $tgt->get_wl_home('.'))
+ next !$tgt->get_focus
+ call switchToc(last)
+ call setCurrent($tgt)
+ call setAbbr($abr = concat($ABR,'_o',incr($CNT)))
+ var $WLST_DIR = catDir($WL_HOME,'common')
+
+=head2 abbr - Abbreviations
+
+Displays the RDA abbreviations defined for the Middleware home collection.
+
+=cut
+
+ report abbr
+ prefix
+ {write '---+ Middleware Home Abbreviations'
+  write '|*Abbreviation*|*Location*|'
+ }
+ var %hsh = getSymbols()
+ loop $key (keys(%hsh))
+  write '|',$key,' |',catDir(@{$hsh{$key}}),' |'
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Abbreviations]]'
+
+=head2 product_info - Product Information
+
+Gathers the product information.
+
+=cut
+
+ if chk_area('Generic')
+ {if testDir('d',catDir($WL_HOME,'inventory'))
+  {debug ' Inside WREQ module, processing Product Information (can take time)'
+   report product_info
+   prefix
+   {write '---+!! Oracle WebLogic Server Home Product Information'
+    write $TOC
+   }
+   call inventory_details(lastDir(),true)
+   if isCreated(true)
+    toc '2:[[',getFile(),'][rda_report][Product Information]]'
+  }
+
+=head2 wls_version - Oracle WebLogic Server Version
+
+Gets the Oracle WebLogic Server version.
+
+=cut
+
+  debug ' Inside WREQ module, gathering Oracle WebLogic Server version'
+  report wls_version
+  call source(getNativePath(catFile($WL_HOME,'server','bin',\
+                                    ${AS.CMD:'setWLSEnv'})),true)
+  var $cmd = findCommand('java',true)
+  prefix
+  {write '---+ Oracle WebLogic Server Version Information'
+   write '---## Gathered by running: ',encode($cmd),' weblogic.version -verbose'
+  }
+  call writeCommand(concat(catCommand($cmd),' weblogic.version -verbose 2>&1'))
+  if isCreated(true)
+  {write $TOP
+   toc '2:[[',getFile(),'][rda_report][Oracle WebLogic Server Version]]'
+  }
+
+=head2 Install and Configuration
+
+Gathers the Oracle WebLogic Server configuration and installation log files.
+
+=cut
+
+  debug ' Inside WREQ module, gathering install and configuration information'
+  pretoc '2:Installation and Configuration'
+  call sort_files(3,0,catFile($WLS_TOP,'license.bea'),\
+                      catFile($WLS_TOP,'registry.xml'),\
+                      catFile($WLS_TOP,'logs','log.txt'))
+  unpretoc
+ }
+
+=head2 WLS and WLST Admin Scripts
+
+Gathers the Oracle WebLogic Server and Oracle WebLogic Scripting Tool-related
+admin scripts.
+
+=head2 wlst_cmd_list - WLST Command Files List
+
+Lists the Oracle WebLogic Scripting Tool-related command files.
+
+=cut
+
+ debug ' Inside WREQ module, collecting the WLST startup scripts'
+ var @tbl = ()
+ if chk_area('Basic')
+  call push(@tbl,grepDir(catDir($WLST_DIR,'bin'),\
+    '^(commEnv|config|startManagedWebLogic|wlscontrol)\.','p'))
+ elsif chk_area('Generic')
+  call push(@tbl,grepDir(catDir($WLST_DIR,'bin'),'.','p'))
+ pretoc '2:WLS and WLST Admin Scripts'
+ call sort_files(3,0,@tbl)
+ unpretoc
+
+ if chk_area('Generic')
+ {debug ' Inside WREQ module, listing the WLST command files'
+  var $dir = catDir($WLST_DIR,'wlst')
+  report wlst_cmd_list
+  prefix
+  {write '---+ List of WLST Command Files'
+   write '---## Information Taken from ',encode($dir)
+  }
+  call statFile('b',grepDir($dir,'\.py$','p'))
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][WLST Command Files List]]'
+
+=head2 patch_list - Applied Patch List
+
+Lists the applied Oracle WebLogic Server patches.
+
+=cut
+
+  if grepDir($WLS_TOP,'^patch_(weblogic|wls)\d*$','p')
+  {var ($dir) = (last)
+   if testDir('r',catDir($dir,'patch_jars'))
+   {debug ' Inside WREQ module, list the applied patches'
+    report patch_list
+    var $sub = lastDir()
+    prefix
+    {write '---+ List of Patches Applied'
+     write '---## Information Taken from ',encode($sub)
+    }
+    call statFile('b',grepDir($sub,'^(bug|CR)\d{6,}_?\d*.*?\.jar$','ipt'))
+    if isCreated(true)
+     toc '2:[[',getFile(),'][rda_report][Applied Patch List]]'
+   }
+
+=head2 patch_registry - Patch Registry
+
+Displays the F<patch-registry.xml> file.
+
+=cut
+
+   if testFile('r',catFile($dir,'registry','patch-registry.xml'))
+   {debug ' Inside WREQ module, gathering patch registry'
+    report patch_registry
+    var $fil = lastFile()
+    prefix
+    {write '---+ Patch Registry Details'
+     write '---## Information Taken from ',encode($fil)
+    }
+    call statFile('b',$fil)
+    call writeFile($fil)
+    if isCreated(true)
+     toc '2:[[',getFile(),'][rda_report][Patch Registry]]'
+   }
+  }
+
+=head2 Node Manager Information
+
+Gathers the Node Manager configuration and log files information.
+
+=cut
+
+  debug ' Inside WREQ module, gathering node manager config and log files'
+  pretoc '2:Node Manager Information'
+  if testFile('fr',\
+   catFile($WL_HOME,'common','nodemanager','nodemanager.properties'))
+  {report node_config
+   write '---+ Nodemanager Configuration'
+   write '---## Information Taken from ',encode(lastFile())
+   if match(value(grepFile(lastFile(),'^StartScriptEnabled','fi')),\
+            '^true$',true)
+    write '   * ``StartScriptEnabled`` property is set to ``true``.'
+   else
+   {write '   * ``StartScriptEnabled`` property is set to ``false``.'
+    if isUnix()
+     write 'Note: Set the property value to ``true`` using ``setNMProps.sh`` \
+                  script.%BR%'
+   }
+   toc '3:[[',getFile(),'][rda_report][Node Configuration]]'
+  }
+  pretoc '3:Configuration and Log Files'
+  loop $sub (grepDir(catDir($WL_HOME,'common'),'nodemanager$'))
+  {if testDir('d',catDir($WL_HOME,'common',$sub))
+    call sort_files(4,$TAIL,grepDir(lastDir(),'\.log\.','npv'))
+  }
+  unpretoc 2
+ }
+
+=head2 Manifest Information
+
+Gathers the Middleware home manifest information.
+
+=cut
+
+ if chk_area('Manifest')
+ {debug ' Inside WREQ module, getting middleware home manifest information \
+          (can take time)'
+  pretoc '2:Manifest Information'
+  loop $dir (catDir($WLS_TOP,'modules'),$WL_HOME)
+   call dsp_manifest(3,$dir)
+  unpretoc
+ }
+
+ # Restore module abbreviation
+ call setAbbr($ABR)
+}
+
+=head1 DOMAIN HOME COLLECTIONS
+
+Performs the following collections on all requested domain homes:
+
+=cut
+
+var $CNT = 0
+loop $key (keys(%DOMAINS))
+{# Skip when not requested
+ call setCurrent($tgt = $DOMAINS{$key})
+ next !getFocus()
+ call switchToc(@tid = last)
+ call setAbbr($abr = concat($ABR,'_d',incr($CNT)))
+
+ # Get the domain name
+ var $dom = basename($top = getDomain('.'))
+ debug ' Inside WREQ module, analyzing domain ',$dom
+
+ # Oracle home initialization
+ var $ORACLE_HOME = nvl(getHome('.'),'')
+
+ # Execute the product-specific initialisation code
+ loop $prd (keys($PLUGIN->{'WLS','ini'}))
+  run &{$PLUGIN->{'WLS','ini',$prd}}($top,$dom)
+
+=head2 abbr - Abbreviations
+
+Displays the RDA abbreviations defined for the domain home collection.
+
+=cut
+
+ report abbr
+ prefix
+ {write '---+ Domain Home Abbreviations'
+  write '|*Abbreviation*|*Location*|'
+ }
+ var %hsh = getSymbols()
+ loop $key (keys(%hsh))
+  write '|',$key,' |',catDir(@{$hsh{$key}}),' |'
+ if isCreated(true)
+  toc '2:[[',getFile(),'][rda_report][Abbreviations]]'
+
+=head2 Startup Scripts
+
+Gathers the Oracle WebLogic Server-related startup scripts.
+
+=cut
+
+ debug '  - Inside WREQ module, collecting the startup scripts'
+ pretoc '2:Startup Scripts'
+ call sort_files(3,0,grepDir(catDir($top,'bin'),'\.(cmd|sh)$','p'))
+ unpretoc
+
+=head2 WLS and WLST Administration Scripts
+
+Gathers the Oracle WebLogic Server and Oracle WebLogic Scripting Tool-related
+administration scripts.
+
+=head2 wlst_cmd_list - WLST Command Files List
+
+Lists the Oracle WebLogic Scripting Tool-related command files.
+
+=cut
+
+ if $tgt->get_wlst(true)
+ {var $WLST_DIR = catDir(last,'common')
+  call setWasType('WLS',catCommand($WLST_DIR,'bin',${AS.CMD:'wlst'}))
+
+  if chk_area('ExtDomCfg')
+  {debug '  - Inside WREQ module, collecting the administration scripts'
+   pretoc '2:WLS and WLST Administration Scripts'
+   call sort_files(3,0,grepDir(catDir($WLST_DIR,'bin'),'\.(cmd|sh)$','p'))
+   unpretoc
+
+   debug '  - Inside WREQ module, listing the WLST command files'
+   var $dir = catDir($WLST_DIR,'wlst')
+   report wlst_cmd_list
+   prefix
+   {write '---+ List of WLST Command Files'
+    write '---## Information Taken from ',encode($dir)
+   }
+   call statFile('b',grepDir($dir,'\.py$','p'))
+   if isCreated(true)
+   {write $TOP
+    toc '2:[[',getFile(),'][rda_report][WLST Command Files List]]'
+   }
+  }
+ }
+ else
+  call setWasType('WLS')
+
+=head2 Common Configuration Files
+
+Gathers domain-wide Oracle WebLogic Server-related configuration files from the
+F<$DOMAIN_HOME> and the F<$DOMAIN_HOME/config> directory structures.
+
+=cut
+
+ # Collect common configuration, product specific details
+ debug '  - Inside WREQ module, collecting domain configuration files'
+ loop $cfg ('domcfg','domext','domprd')
+ {loop $fcs (keys($PLUGIN->{'WLS',$cfg}))
+  {if chk_area($fcs)
+    run &{$PLUGIN->{'WLS',$cfg,$fcs}}($top)
+  }
+ }
+
+=head2 Local Log Files
+
+Gathers domain-wide Oracle WebLogic Server-related log files from the
+F<$DOMAIN_HOME> directory structure.
+
+=cut
+
+ # Collect the product specific details
+ loop $fcs (keys($PLUGIN->{'WLS','domlog'}))
+ {if chk_area($fcs)
+   run &{$PLUGIN->{'WLS','domlog',$fcs}}($top,$TAIL)
+ }
+
+=head2 WLST Collections
+
+Collects Oracle WebLogic domain runtime-related information.
+
+=head3 Clusters
+
+Collects domain-wide cluster management objects information (such as the number
+of C<Servers> managed under the cluster).
+
+=head3 Domain Configuration
+
+Collects domain-wide configuration management objects information (such as
+C<JDBCSystemResources>, C<JMSServers>, C<JMSSystemResources>, C<Log>,
+C<LogFilters>, and C<VirtualHosts>).
+
+=head3 Domain Runtime
+
+Collects domain-wide runtime management objects information (such as
+C<ClusterRuntime>, C<DomainServices>, C<JDBCServiceRuntime>, C<JMSRuntime>,
+C<JVMRuntime>, and C<LogRuntime>).
+
+It requires the availability of the Oracle WebLogic Scripting Tool (WLST).
+
+=cut
+
+ if chk_area('WLST')
+ {pretoc '2:WLST Collections'
+
+  # Determine the WLST collection mode
+  var $MODE = $TYPE
+  loop $tid (@tid)
+  {if !match($tid,'^WLS_DOM')
+    var $MODE = 'ON'
+  }
+
+  # Identify the AdminServer
+  if testFile('fr',catFile($top,'config','config.xml'))
+  {var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'BCDEPR'))
+   if match(xmlData(xmlFind($obj,'domain/name')),quote($dom),true)
+    var $ADMIN = xmlData(xmlFind($obj,'domain/admin-server-name'))
+  }
+
+  # Try identifying AdminServer for second attempt
+  while hasDomainAttr()
+  {if !length($ADMIN)
+    var $ADMIN = getDomainAttr('SERVER_NAME')
+   break
+  }
+
+  # Check the connection to the WLS
+  var $wls = false
+  if compare('ne',$MODE,'OFF')
+  {debug '  - Inside WREQ module, checking connection to Oracle WebLogic \
+              server'
+
+   # Test the connection
+   output F,wls_error
+   if $URL{$top}
+   {loop $url (@{last})
+    {call sharePassword('wls',$dom,'wls',$url)
+     if setWasLogin($LOGIN{$top},undef,$url)
+     {write '**Missing access to WLST**'
+      break
+     }
+     var $out = newTemp('out')
+     var $err = newTemp('err')
+     call requestWas(undef,undef,$out,$err)
+     if grepFile($out,'Successfully connected ','f')
+      var $wls = true
+     else
+     {write "**Error encountered when connecting to the Oracle WebLogic Server \
+               from the '",$dom,"' domain using: ",$url,'**'
+      write
+      if testFile('s',$err)
+       call writeFile($err,['C','wlst (stderr)'])
+      else
+       call writeFile($out,['C','wlst (stdout)'])
+     }
+     call unlinkTemp('out')
+     call unlinkTemp('err')
+     break $wls
+    }
+   }
+   else
+    write '**No connection URLs identified**'
+   if !$wls
+   {echo "Error encountered when connecting to the Oracle WebLogic Server \
+          from the '",$dom,"' domain"
+    toc '3:[[',getFile(),\
+        '][rda_report][Oracle WebLogic Server Connection Error]]'
+   }
+  }
+
+  # Load the library on first usage
+  if !isImplemented('col_log_exports')
+   run WLSrun()
+
+  if $wls
+  {# Collect the cluster details
+   call col_cluster($dom)
+
+   # Collect the domain configuration details
+   call col_dom_config($dom,$PLUGIN)
+
+   # Collect the domain runtime details
+   call col_dom_runtime($dom,$PLUGIN)
+  }
+  unpretoc 2
+ }
+
+=head1 SERVER HOME COLLECTIONS
+
+Performs the following collections on all requested server homes:
+
+=cut
+
+ loop $srv (grepDir(catDir($top,'servers'),'^[^\.]','n'))
+ {next !testDir('d',catDir($top,'servers',$srv,'logs'))
+
+  # Skip not requested servers
+  next !chk_area(undef,[@fcs = getServer($srv)])
+
+  # Initialize the server collections
+  debug '  - Inside WREQ module, analyzing server ',$srv
+  call setSymbol('$SH',catDir($top,'servers',$srv))
+  pretoc '%SPLIT%'
+  pretoc "1++:'",$srv,"' Server"
+
+=head2 abbr - Abbreviations
+
+Displays the RDA abbreviations defined for the server home collection.
+
+=cut
+
+  output F,abbr
+  prefix
+  {write '---+ Server Home Abbreviations'
+   write '|*Abbreviation*|*Location*|'
+  }
+  var %hsh = getSymbols()
+  loop $key (keys(%hsh))
+   write '|',$key,' |',catDir(@{$hsh{$key}}),' |'
+  if isCreated(true)
+   toc '2:[[',getFile(),'][rda_report][Abbreviations]]'
+
+=head2 jrf_config - JRF Configuration
+
+Gathers the Java Required Files (JRF)-related configuration information.
+
+=cut
+
+  if chk_area('ExtSrvCfg',[@fcs])
+  {debug '   - Checking JRF configuration'
+   output F,jrf_config
+   if testFile('fr',catFile($top,'config','config.xml'))
+   {var $obj = xmlLoadFile(lastFile(),xmlDisable(xmlParser(),'BCDEPR'))
+    if match(xmlData(xmlFind($obj,'domain/name')),quote($dom),true)
+    {loop $xml (xmlFind($obj,'domain/app-deployment'))
+     {if match(xmlData(xmlFind($xml,'name')),'^DMS Application',true)
+      {write '---+ JRF Configuration Information'
+       write '---## Information Taken from ',encode(lastFile())
+       var $lst = xmlData(xmlFind($xml,'target'))
+       if match($lst,quote($srv),true)
+        write "   * '**",$srv,"**' server is configured with JRF."
+       else
+       {write "   * '**",$srv,"**' server is not configured with JRF."
+        var $NO_JRF = true
+       }
+       if $NO_JRF
+        write 'Note: Use ``applyJRF`` WLST command to configure JRF.%BR%'
+       toc '2:[[',getFile(),'][rda_report][JRF Configuration]]'
+       break
+      }
+     }
+    }
+   }
+  }
+
+=head2 Common Configuration Files
+
+Gathers server-wide Oracle WebLogic Server-related configuration files from
+the F<$DOMAIN_HOME/config/servers> and the F<$DOMAIN_HOME/servers> directory
+structures. It collects product-specific configuration files on request.
+
+=cut
+
+  # Collect common configuration, product specific details
+  debug '   - Collecting server configuration files'
+  var $dir = catDir($top,'servers',$srv)
+  loop $fcs (keys($PLUGIN->{'WLS','srvcfg'}))
+  {if chk_area($fcs,[@fcs])
+    run &{$PLUGIN->{'WLS','srvcfg',$fcs}}(catDir($top,'config'),$srv)
+  }
+  loop $cfg ('srvext','srvprd')
+  {loop $fcs (keys($PLUGIN->{'WLS',$cfg}))
+   {if chk_area($fcs,[@fcs])
+     run &{$PLUGIN->{'WLS',$cfg,$fcs}}($dir,$top,$srv)
+   }
+  }
+
+=head2 Log Files
+
+Gathers server-wide Oracle WebLogic Server-related log files.
+
+=head3 JDK Information from Log Files
+
+Gathers the JDK-related information found in the C<AdminServer> server log
+files since the last startup.
+
+=head3 Patches from Log Files
+
+Displays the patches found in the server log files since the last startup and
+lists the server log files.
+
+=cut
+
+  macro search_patches
+  {var (\$beg,\%inf,\%ptc,$fil,$flg) = @arg
+
+   if createBuffer('LOG','R',$fil)
+   {var %cur = ()
+
+    # Macro to extract patch list from log line
+    macro add_patch
+    {var (\%cur,$lin) = @arg
+     var ($str,undef,undef,undef,$dat) = \
+       match($lin,'((CR)?\d{6,}(,\s*(CR)?\d{6,})*)\s+(.*)$',true)
+     loop $itm (split(',\s*',$str))
+      var $cur{uc($itm)} = $dat
+     return -1
+    }
+
+    # Parse the log file
+    call parseReset()
+    call parsePattern('TOP',\
+      'Temporary Patch for ([Cc][Rr])?\d{6,}',\
+       add_patch(\%cur,line),\
+      '^#{4}<(.*?)>.*?<(Starting )?WebLogic Server',\
+       eval(($beg,%cur) = parseHit(0),-1),\
+      '^(WebLogic Server.*?)\s*\(c\)',\
+       eval($inf{'ver'} = parseHit(0),-1),\
+      '^java\.class\.path\s*=\s*(.*)',\
+       eval($inf{'cls'} = parseHit(0),-1),\
+      '^java\.library\.path\s*=\s*(.*)',\
+       eval($inf{'lib'} = parseHit(0),-1))
+    if $flg
+     call parsePattern('TOP',\
+       '^java\.vendor\s*=\s*(.*)',\
+        eval($inf{'ven'} = parseHit(0),-1),\
+       '^java\.version\s*=\s*(.*)',\
+        eval($inf{'jver'} = parseHit(0),-1),\
+       '^java\.vm\.name\s*=\s*(.*)',\
+        eval($inf{'vm'} = parseHit(0),-1),\
+       '^sun\.arch\.data\.model\s*=\s*(.*)',\
+        eval($inf{'arc'} = parseHit(0),-1))
+    call parse('LOG')
+    call deleteBuffer('LOG')
+
+    # Accumulate the patches
+    loop $key (keys(%cur))
+    {if missing($ptc{$key})
+      var $ptc{$key} = $cur{$key}
+    }
+   }
+   return $beg
+  }
+
+  pretoc '2:Log Files'
+  if grepDir(catDir(\
+    $top,'servers',$srv,'logs'),concat('^',quote($srv),'\.log\d*'),'ipt')
+  {var @log = last
+
+   # Search for last start and patches
+   debug '   - Analyzing the server log files'
+   var ($beg,$flg,%inf,%ptc) = (false,compare('eq',lc($srv),'adminserver'))
+   loop $fil (@log)
+   {if testFile('fr',$fil)
+     break search_patches(\$beg,\%inf,\%ptc,$fil,$flg)
+   }
+
+   # Report the java information
+   if $flg
+   {debug '   - Gathering java information from the server log files'
+    output F,java_info
+    prefix
+     write '---+ Java Information'
+    if ?$inf{'ven'}
+     write '|*Vendor*|',last,' |'
+    if ?$inf{'jver'}
+     write '|*Version*|',last,' |'
+    if ?$inf{'vm'}
+     write '|*Virtual Machine Name*|',last,' |'
+    if ?$inf{'arc'}
+     write '|*Architecture*|',last,' |'
+    if isCreated(true)
+     toc '3:[[',getFile(),'][rda_report][JDK Information from Log Files]]'
+   }
+
+   # List the patches found
+   debug '   - Gathering patches from server log files'
+   output F,server_log
+   title "---+!! '",$srv,"' Server Patches"
+   title $TOC
+   prefix
+    write '---+ WebLogic Server Information'
+   if ?$inf{'ver'}
+    write '|*Version*|',last,' |'
+   if ?$inf{'cls'}
+    write '|*java.class.path*|',last,' |'
+   if ?$inf{'lib'}
+    write '|*java.library.path*|',last,' |'
+   if hasOutput(true)
+    write $TOP
+
+   var $ttl = '---+ Patch Information'
+   if $beg
+   {prefix
+    {write '---+ Patches Found in Server Logs'
+     write '---## Server Last Startup: ',$beg
+     write '|*Patch*|*Patch Date*|'
+    }
+    loop $ptc (keys(%ptc))
+     write '|',$ptc,'|',$ptc{$ptc},'|'
+    if hasOutput(true)
+     write $TOP
+    else
+    {write $ttl
+     write '** No patches found since last start ** %BR%'
+     write $TOP
+    }
+   }
+   else
+   {write $ttl
+    write '** No recent start found ** %BR%'
+    write $TOP
+   }
+
+   # List the server logs found
+   prefix
+   {write '---+ Candidate Files'
+    write '|*File Name*| *Size*|*Last Modification*|'
+   }
+   loop $fil (@log)
+   {if testFile('f',$fil)
+     write '|',encode($fil),' | ',getSize($fil),'|',\
+           getLastModify($fil,'%d-%b-%Y&nbsp;%H:%M:%S'),' |'
+   }
+   if hasOutput(true)
+    write $TOP
+   toc '3:[[',getFile(),'][rda_report][Patches from Log Files]]'
+
+=head3 server_errors - Errors/Warnings Information
+
+Displays the important errors and warnings found in the latest server log file.
+
+=cut
+
+   debug '   - Gathering important errors/warnings from server log file'
+   if createBuffer('LOG','R',$log[0])
+   {var (%err,%cnt) = ()
+
+    # Define the code block to handle errors / warnings from the log line
+    code add_error = -1
+    {var @hit = last
+     incr $cnt{@hit}
+     if missing($err{@hit})
+     {if match(line,\
+        '<(BEA|IAM|JMX|JPS|MDS|OWS|PKR|SOA|TOPLINK)-\d{4,9}>\s+<(.*?)>?$')
+       var (undef,$err{@hit}) = last
+     }
+    }
+
+    # Parse the log file
+    call parseReset()
+    call parsePattern('TOP',\
+      '<(Error|Warning)>.*?\
+       <((BEA|IAM|JMX|JPS|MDS|OWS|PKR|SOA|TOPLINK)-\d{4,9})>',\
+       &add_error(parseHit(0),parseHit(1)))
+    call parse('LOG')
+    call deleteBuffer('LOG')
+
+    # Create the report
+    output F,server_errors
+    title "---+!! '",$srv,"' Server Errors/Warnings Information"
+    title '---## Information Extracted from ',encode($log[0])
+    title $TOC
+
+    # List the errors found
+    prefix
+    {write '---+ Errors'
+     write '|*Error Code*|*Description*| *Count*|'
+    }
+    loop $key (keys($cnt{'Error'}))
+     write '|',$key,' |',$err{'Error',$key},' | ',$cnt{'Error',$key},'|'
+    if hasOutput(true)
+     write $TOP
+
+    # List the warnings found
+    prefix
+    {write '---+ Warnings'
+     write '|*Error Code*|*Description*| *Count*|'
+    }
+    loop $key (keys($cnt{'Warning'}))
+     write '|',$key,' |',$err{'Warning',$key},' | ',$cnt{'Warning',$key},'|'
+    if hasOutput(true)
+     write $TOP
+
+    # Add the report to the table of content
+    if isCreated(true)
+     toc '3:[[',getFile(),'][rda_report][Errors/Warnings Information]]'
+   }
+  }
+
+=head2 Problem Overview
+
+Gathers diagnostic problems. A problem is a critical error in the Application
+Server. Critical errors manifest as internal errors. Problems are tracked in
+the Automatic Diagnostic Repository (ADR), which is a file-based repository for
+application server diagnostic data.
+
+It requires the availability of the ADR Command Interpreter (ADRCI) utility,
+which is a command-line tool that you use to view diagnostic data within the
+Automatic Diagnostic Repository.
+
+=cut
+
+  # Define a macro to locate ADRCI
+  macro get_adrci
+  {import $CHK,$ORACLE_HOME,$WL_HOME,$WLS_TOP
+   keep $CHK
+
+   var $exe = ${AS.EXE:'adrci'}
+   if testFile($CHK,catFile($WL_HOME,'server','adr',$exe))
+    return lastCommand()
+   if findCommand('adrci')
+    return last
+   if or(testFile($CHK,catFile($ORACLE_HOME,'bin',$exe)),\
+         testFile($CHK,catFile($ORACLE_HOME,$exe)))
+    return lastCommand()
+
+   var $exe = cond(isWindows(),'^adrci\.exe$',\
+                   isCygwin(), '^adrci\.exe$',\
+                               '^adrci$')
+   var $pat = concat(\
+     '^(jdk|jrockit|logs|modules|registry|user_projects|utils|wlserver|',\
+     quote(basename($ORACLE_HOME)),')')
+   loop $sub (grepDir($WLS_TOP,'^\.+$','vn'))
+   {next match($sub,$pat,true)
+    if grepDir(catDir($WLS_TOP,$sub),$exe,'ir',2)
+     return catCommand(first(last))
+   }
+  }
+
+  # Collect ADR information
+  if get_adrci()
+  {var $cmd = last
+
+   debug '   - Collecting diagnostic repository'
+   pretoc '3:Diagnostic Repository'
+   var $bas = catDir($top,'servers',$srv,'adr')
+   var $n_h = 0
+   loop $hom (findDir([$bas,catDir('diag','ofm')],'incident','rw',2))
+   {pretoc '4:From ',$hom
+    var $job = createTemp('job')
+    var $out = getTemp('out')
+    var $err = getTemp('err')
+    call writeTemp('job','SET BASE ',$bas)
+    call writeTemp('job','SET HOMEPATH ',$hom)
+    call writeTemp('job','SHOW PROBLEM -ALL -ORDERBY LASTINC_TIME DSC')
+    call writeTemp('job','EXIT')
+    call closeTemp('job')
+    call command(concat($cmd,' script=',quote($job,'x'),\
+                        ' >',quote($out,'x'),' 2>',quote($err,'x')))
+    output F,diag_problems
+    if testFile('z',$out)
+    {write '** No ADR to analyze **'
+     write
+     if testFile('s',$err)
+      call writeFile($err,['C','adrci (stderr)'])
+    }
+    elsif createBuffer('ADR','R',$out)
+    {var ($cnt,$min,$cut,$src,$hdr) = (0,0,true)
+     prefix
+     {write "---+ '",$srv,"' List of Diagnostic Problems"
+      write '---## Using: SHOW PROBLEM -ALL -ORDERBY LASTINC_TIME DSC'
+      if $src
+       write '---## From: ',replace(encode($src),'\s','&nbsp;',true)
+      if $hdr
+       write $hdr
+     }
+     while getLine('ADR')
+     {var $lin = chomp(last)
+      if match($lin,'^ADR Home\s+=\s*(.*):$')
+       var ($cut,$row,$src) = (false,false,last)
+      elsif match($lin,'^DIA\-(\d+):')
+      {if $src
+        write '**',$lin,'**'
+       break
+      }
+      elsif $cut
+       next
+      elsif match($lin,'^\d+\s+rows\s+fetched$')
+      {if !isCreated()
+       {var $hdr = undef
+        write '**No problems found**'
+       }
+       break
+      }
+      elsif $row
+      {next expr('<',length($lin),$min)
+       var @tbl = ()
+       for $pos (0,$cnt)
+        var $tbl[$pos] = trim(substr($lin,$tb_off[$pos],$tb_lgt[$pos]))
+       if @tbl
+        write '|',join(' |',@tbl),' |'
+      }
+      elsif match($lin,'^[\-\s]+$')
+       var $row = true
+      elsif match($lin,'^\w+\s+')
+      {var ($min,@tb_key,@tb_lgt,@tb_off) = (0)
+       var %tbl = ('PROBLEM_ID','Problem ID',\
+                   'PROBLEM_KEY','Problem Key',\
+                   'LAST_INCIDENT','Last Incident',\
+                   'LASTINC_TIME','Last Incident Time')
+       var $lin = trim($lin)
+       while match($lin,'^(\w+\s+)')
+       {var ($key) = last
+        var $lgt = length($key)
+        var $key = trim($key)
+        var $tb_key[$cnt] = nvl($tbl{$key},$key)
+        var $tb_off[$cnt] = $min
+        var $tb_lgt[$cnt] = $lgt
+        var $lin = substr($lin,$lgt)
+        incr $min,$lgt
+        incr $cnt
+       }
+       var $tb_key[$cnt] = nvl($tbl{$lin},$lin)
+       var $tb_off[$cnt] = $min
+       if $cnt
+        var $hdr = concat('|*',join('*|*',@tb_key),'*|')
+      }
+     }
+     call deleteBuffer('ADR')
+    }
+    call unlinkTemp('job')
+    call unlinkTemp('out')
+    call unlinkTemp('err')
+    if isCreated(true)
+     toc '5:[[',getFile(),'][rda_report][Problem Overview]]'
+
+=head2 Most Recent Incidents
+
+Gathers diagnostic incidents. An incident is a single occurrence of a problem.
+When a problem (critical error) occurs repeatedly, an incident is created
+for each occurrence. Incidents are time stamped and tracked in the ADR.
+
+By default, RDA collects the last 10 incidents.
+
+It requires the availability of the ADRCI utility.
+
+=cut
+
+    var $max = $MAX
+    if $max
+    {var ($cut,@inc,%lnk) = (true)
+
+     # Get the incident list
+     var $job = createTemp('job')
+     var $out = getTemp('out')
+     call writeTemp('job','SET BASE ',$bas)
+     call writeTemp('job','SET HOMEPATH ',$hom)
+     call writeTemp('job',\
+                    'QUERY (INCIDENT_ID) INCIDENT -ORDERBY CREATE_TIME DSC')
+     call writeTemp('job','EXIT')
+     call closeTemp('job')
+     call command(concat($cmd,' script=',quote($job,'x'),' >',quote($out,'x')))
+     if createBuffer('ADR','R',$out)
+     {while getLine('ADR')
+      {var $lin = chomp(last)
+       if match($lin,'^-+\s*$')
+        var $cut = false
+       elsif $cut
+        next
+       elsif match($lin,'^(\d+)\s*$')
+       {call push(@inc,last)
+
+        # Limit the incident number
+        decr $max
+        break !$max
+       }
+       elsif match($lin,'^\d+\s+rows\s+fetched$')
+        break
+      }
+      call deleteBuffer('ADR')
+     }
+
+     # Get the incident details
+     loop $inc (@inc)
+     {var $job = createTemp('job')
+      var $out = getTemp('out')
+      call writeTemp('job','SET BASE ',$bas)
+      call writeTemp('job','SET HOMEPATH ',$hom)
+      call writeTemp('job',\
+                     'SHOW INCIDENT -MODE DETAIL -P "INCIDENT_ID=',$inc,'"')
+      call writeTemp('job','EXIT')
+      call closeTemp('job')
+      call command(concat($cmd,' script=',quote($job,'x'),' >',quote($out,'x')))
+      if createBuffer('ADR','R',$out)
+      {output F,concat('incident_',$inc)
+       var ($cut,$src) = (true)
+       prefix
+       {write "---+ '",$srv,"' Display of Incident ",$inc
+        write '---## Using: SHOW INCIDENT -MODE DETAIL -P "INCIDENT_ID=',\
+              $inc,'"'
+        if $src
+         write '---## From: ',replace(encode($src),'\s','&nbsp;',true)
+        write '|*Name*|*Value*|'
+       }
+       while getLine('ADR')
+       {var $lin = chomp(last)
+        if match($lin,'^ADR Home\s+=\s*(.*):$')
+         var ($cut,$src) = (false,last)
+        elsif $cut
+         next
+        elsif match($lin,'^\s+\w+\s')
+        {var (undef,$nam,$val) = split('\s+',$lin,3)
+         write '|',$nam,' |',$val,' |'
+        }
+        elsif match($lin,'^\d+\s+rows\s+fetched$')
+         break
+       }
+       if isCreated(true)
+       {write $TOP
+        var $lnk{$inc} = getFile()
+       }
+       call deleteBuffer('ADR')
+      }
+      call unlinkTemp('job')
+      call unlinkTemp('out')
+     }
+     output F,diag_incidents
+     prefix
+     {write "---+ '",$srv,"' Display of Last ",$MAX,' Incidents'
+      write '| *Incident Id*|'
+     }
+     loop $inc (@inc)
+     {if exists($lnk{$inc})
+       write '| [[',$lnk{$inc},'][_blank][',$inc,']]|'
+     }
+     if isCreated(true)
+      toc '5:[[',getFile(),'][rda_report][Most Recent Incidents]]'
+    }
+
+=head2 Files from Latest Incidents
+
+Gathers the files generated by the latest incidents.
+
+=cut
+
+    if $GET_INCIDENT
+    {var $lnk = 'Files from Latest Incidents'
+     call write_latest_incidents($bas,$hom,concat('i',incr($n_h)),$lnk,5)
+    }
+    unpretoc
+   }
+   unpretoc
+  }
+
+=head2 server_exceptions - Server Exceptions
+
+Displays the exceptions found in the server log files since the last startup.
+
+=cut
+
+  if chk_area('SrvErr',[@fcs])
+  {debug '   - Gathering server exceptions from server log files'
+   var ($beg,%err,%fil) = ()
+   if grepDir(catDir($top,'servers',$srv,'logs'),\
+              concat('^',quote($srv),'\.log\d*'),'ipt')
+   {# Search for last start
+    loop $fil (last)
+    {if and(testFile('fr',$fil),createBuffer('LOG','R',$fil))
+     {if grepBuffer('LOG','^#{4}<(.*?)>.*?<(Starting )?WebLogic Server','o1',-1)
+       var ($fil{$fil},$beg) = split(':',first(last),2)
+      else
+       var $fil{$fil} = undef
+      call deleteBuffer('LOG')
+      break $beg
+     }
+    }
+
+    # Report the exceptions
+    output F,server_exceptions
+    title "---+!! '",$srv,"' Server Exceptions"
+    if ?$beg
+    {title '---## Server Last Start: ',$beg
+     title $TOC
+
+     # Parse the files to find the exceptions
+     call parseReset()
+     call parsePattern('TOP',\
+       'java\.sql\.SQLException: ORA-00020:',\
+         $err{'prc'} = -1,\
+       'ORA-12154: TNS',\
+         $err{'tns'} = -1,\
+       'weblogic\.management\.DeploymentException: Error creating connection \
+           pool myConnectionPool:\&0:Unable to load locale categories',\
+         $err{'loc'} = -1,\
+       '<Critical>\s*<BEA-000386>\s*<Server subsystem failed',\
+         $err{'ser'} = -1,\
+       '<BEA-002637>\s*<Failed to register a disconnect listener',\
+         $err{'lsn'} = -1,\
+       '<Critical>\s*<Security>\s*<BEA-090402> <Authentication denied: Boot',\
+         $err{'idn'} = -1,\
+       'java\.(net\.Socket|io\.IO)Exception: Too many open files',\
+         $err{'jvm'} = -1,\
+       'java\.sql\.SQLException: ORA-01000:',\
+         $err{'cur'} = -1)
+     loop $fil (keys(%fil))
+     {if createBuffer('LOG','R',$fil)
+      {if ?$fil{$fil}
+        call setPos('LOG',last)
+       call parse('LOG')
+       call deleteBuffer('LOG')
+      }
+     }
+
+     # Report locale environment issue
+     if $err{'loc'}
+     {write '---+ Locale Environment Issue'
+      write '|*Exception*\
+             |weblogic.management.DeploymentException: Error creating \
+              connection pool myConnectionPool:&amp;0:Unable to load locale \
+              categories|'
+      write '|*Cause*|locale environment is not set correctly.|'
+      write '|*Action*\
+             |locale environment needs to be checked by starting a database \
+              client in the same environment as WebLogic Server and check if \
+              the locale works there.|'
+      write $TOP
+     }
+
+     # Report SerializedSystemIni.dat file issue
+     if $err{'ser'}
+     {write '---+ SerializedSystemIni.dat File Issue'
+      write '|*Exception*\
+             |&lt;Critical&gt;&lt;BEA-000386&gt; Server subsystem failed.%BR%\
+              Reason: ``java.lang.AssertionError: \
+                      java.lang.reflect.InvocationTargetException``|'
+      write '|*Cause*|The SerializedSystemIni.dat file is corrupted.|'
+      write $TOP
+     }
+
+     # Report server listener address issue
+     if $err{'lsn'}
+     {write '---+ Server Listener Address Issue'
+      write '|*Exception*|\
+              &lt;BEA-002637&gt; Failed to register a disconnect listener \
+              because of weblogic.rmi.extensions.\
+              DisconnectMonitorUnavailableException: Could not register a \
+              DisconnectListener for [weblogic.rmi.internal.BasicRemoteRef - \
+              hostID:|'
+      write '|*Cause*\
+             |The problem was caused as the server had no listen address \
+              specified. This will cause problems in a multi-homed scenario.|'
+      write '|*Action*\
+             |Provide an IP address for the server listen address in the \
+              configuration, instead of leaving it blank.|'
+      write $TOP
+     }
+
+     # Report boot identity issue
+     if $err{'idn'}
+     {write '---+ Boot Identity Issue'
+      write '|*Exception*\
+             |&lt;Critical&gt;&lt;Security&gt;&lt;BEA-090402&gt; \
+              Authentication denied: Boot identity not valid|'
+      write '|*Cause*\
+             |The boot identity may have been changed since the boot identity \
+              file was created.|'
+      write '|*Action*\
+             |Edit and update the boot identity file with the proper values \
+              of username and password in clear text. The first time the \
+              updated boot identity file is used to start the server, these \
+              new values are encrypted.|'
+      write $TOP
+     }
+
+     # Report TNS issue
+     if $err{'tns'}
+     {write '---+ TNS Issue'
+      write '|*Exception*|``ORA-12154: TNS could not resolve service name``|'
+      write '|*Cause*|\
+              tnsnames.ora file or ``ORACLE_HOME`` is not set correctly.|'
+      write '|*Action*\
+             |Make sure that the ``ORACLE_HOME`` environment variable points \
+              to the correct directory and the tnsnames.ora file is stored in \
+              the correct directory. Verify via sqlplus if a connection to \
+              this database is successful.|'
+      write $TOP
+     }
+
+     # Report open cursors issue
+     if $err{'cur'}
+     {write '---+ Open Cursors Issue'
+      write '|*Exception*\
+             |``java.sql.SQLException: ORA-01000: maximum open cursors \
+              exceeded``|'
+      write '|*Cause*\
+             |Sign of incorrect configuration of the JDBC pool regarding the \
+              prepared statement cache.|'
+      write '|*Action*\
+             |Take corrective actions.|'
+      write $TOP
+     }
+
+     # Report connection leak issue
+     if $err{'prc'}
+     {write '---+ Connection Leak Issue'
+      write '|*Exception*\
+             |``java.sql.SQLException: ORA-00020: maximum number of processes \
+              exceeded``|'
+      write '|*Cause*\
+             |This exception is a symptom of connection leak in the \
+              application.|'
+      write '|*Action*\
+             |Enabling WLS JDBC trace logging is a good way to identify \
+              potential leaks and narrow down their cause.|'
+      write $TOP
+     }
+
+     # Report file descriptors issue
+     if $err{'jvm'}
+     {write '---+ File Descriptors Issue'
+      write '|*Exception*\
+             |``java.net.SocketException: Too many open files``%BR%\
+              ``java.io.IOException: Too many open files``|'
+      write '|*Cause*\
+             |The server may be running out of file descriptors (also called \
+              handles on Windows).|'
+      write $TOP
+     }
+
+     # Report that no errors have been found
+     if !isCreated(true)
+      write '** No exceptions found since last start **'
+    }
+    else
+     write '** No recent start found **'
+    toc '3:[[',getFile(),'][rda_report][Server Exceptions]]'
+   }
+  }
+
+=head2 Local Log Files
+
+Gathers the Oracle Forms, Oracle Reports, Oracle WebLogic Communication
+Services (OWLCS), and Oracle WebLogic-related log files. It collects
+product-specific log files on request.
+
+=cut
+
+  debug '   - Collecting the local log files'
+  var ($max,$dir,@tbl) = ($ROTATED_LOGS,catDir($top,'servers',$srv,'logs'))
+  loop $pat (concat('^',$dom,'\.log\d*$'),\
+             concat('^',$srv,'\.log\d*$'),\
+             concat('^',$srv,'\.out\d*$'),\
+             concat('^',$srv,'-diagnostic-?\d*\.log$'),\
+             'access\.log\d*$')
+  {var $cnt = $max
+   loop $nam (grepDir($dir,$pat,'it'))
+   {call push(@tbl,catFile($dir,$nam))
+    if or(match($nam,concat('^',$dom,'\.log$')),\
+          match($nam,concat('^',$srv,'\.log$')),\
+          match($nam,concat('^',$srv,'\.out$')),\
+          match($nam,concat('^',$srv,'-diagnostic\.log$')),\
+          match($nam,'access\.log$'))
+    {break !$cnt
+     next
+    }
+    break !decr($cnt)
+   }
+  }
+  pretoc '3:Common Local Log Files'
+  call sort_files(4,cond($ROTATED_LOGS,0,$TAIL),@tbl)
+  call sort_files(4,$TAIL,grepDir(catDir($dir,'sdp'),'^[^\.]','p'),\
+                          grepDir(catDir($dir,'wlcs'),'^[^\.]','p'))
+  unpretoc
+
+  # Collect the product specific details
+  var $dir = catDir($top,'servers',$srv)
+  loop $fcs (keys($PLUGIN->{'WLS','srvlog'}))
+  {if chk_area($fcs,[@fcs])
+    run &{$PLUGIN->{'WLS','srvlog',$fcs}}($dir,$TAIL)
+  }
+
+=head2 WLST Collections
+
+Collects Oracle WebLogic server runtime-related information.
+
+=head3 Server Configuration
+
+Collects server configuration management objects information.
+
+=head3 Server Runtime
+
+Collects server runtime management objects information.
+
+=head3 Diagnostic Images
+
+Uses the Diagnostic Image Capture component of the Oracle WebLogic Diagnostic
+Framework (WLDF) to create a diagnostic snapshot or dump of a server's internal
+runtime state at the time of the capture.
+
+=head3 Log Exports
+
+Gathers Oracle WebLogic Server-related log information. It executes a query
+against the specified log file and retrieves the exported Oracle WebLogic
+Diagnostic Framework (WLDF) data.
+
+RDA uses C<exportDiagnosticDataFromServer> in connected mode and
+C<exportDiagnosticData> in off-line mode.
+
+The C<exportDiagnosticData> collects data with the default options.
+
+It requires the availability of the Oracle WebLogic Scripting Tool (WLST).
+
+=head3 Product Specific Information
+
+Collects product-specific information.
+
+=cut
+
+  if chk_area('WLST',[@fcs])
+  {pretoc '2:WLST Collections'
+   var %srv
+   if $wls
+   {# Set the login to AdminServer
+    call setWasLogin($LOGIN{$top},undef,$url)
+
+    # Collect the server configuration details
+    call col_srv_config(\%srv,$dom,$srv,$PLUGIN)
+
+    # Collect the server runtime details
+    call col_srv_runtime($dom,$srv,$PLUGIN)
+
+    # Share the credentials for managed servers
+    call sharePassword('wls',$dom,'wls',concat($hst,':',$srv{$srv}))
+
+    # Collect the diagnostic images
+    if !isFiltered()
+     call col_diag_images($dom,$srv,$hst,$srv{$srv},$LOGIN{$top})
+
+    # Collect the thread dumps
+    call col_thread_dump($dom,$srv,$hst,$srv{$srv},$LOGIN{$top})
+   }
+
+   # Collect the log export data
+   if !isFiltered()
+    call col_log_exports($wls,$dom,$srv,$hst,$srv{$srv},$LOGIN{$top})
+
+   # Collect the product specific details
+   if $wls
+   {loop $fcs (keys($PLUGIN->{'WLS','col'}))
+    {if chk_area($fcs,[@fcs])
+      run &{$PLUGIN->{'WLS','col',$fcs}}(\
+       $dom,$srv,$hst,$srv{$srv},$LOGIN{$top})
+    }
+   }
+   unpretoc
+  }
+  unpretoc 2
+ }
+
+ # Remove server symbol and restore module abbreviation
+ call setSymbol('$SH')
+ call setAbbr($ABR)
+}
+
+# Restore the default behavior
+call switchToc()
+
+=head1 SEE ALSO
+
+L<FMWdft.def|modules::FMWdft>,
+L<FMWecm.def|modules::FMWecm>,
+L<INSTinfo.def|modules::INSTinfo>,
+L<library.def|modules::library>,
+L<WASlib.def|modules::WASlib>,
+L<WLSlib.def|modules::WLSlib>,
+L<WLSrun.def|modules::WLSrun>
+
+=begin credits
+
+=over 10
+
+=item RDA 4.21: Greg Cook, Tony Mitri, Eliane Papillon Le Noc, Andrew Salt,
+Hector Viveros.
+
+=item RDA 4.22: Meraj Mohammed, Maria Salzberger.
+
+=item RDA 4.24: Greg Cook, Mark Mayernick, Andrew Salt.
+
+=item RDA 4.26: Laurence De Sulzer Wart, Wes Root, Maria Salzberger.
+
+=item RDA 4.27: Laurent Goldsztejn.
+
+=item RDA 4.28: Richard Bingham, Brad Donison.
+
+=item RDA 4.29: Adriana Dominguez, Roelof Van Suilichem.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

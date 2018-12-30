@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN"
+	                           "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+<struts-config>
+
+    <form-beans>
+        <form-bean
+            name="SmtpServerForm"
+            type="com.bea.alsb.console.smtp.forms.SmtpServerForm"/>
+    </form-beans>
+
+    <global-exceptions>
+        <exception key=""
+                   type="java.lang.Exception"
+                   handler="com.bea.alsb.console.controller.ConsoleException" />
+    </global-exceptions>
+
+    <global-forwards>
+        <forward name="GlobalException"
+                 contextRelative="true"
+                 path="jsp/main/ErrorPage.jsp" />
+    </global-forwards>
+    
+    <action-mappings>
+        <action path="/ViewAllSmtpServers"
+            type="com.bea.alsb.console.smtp.actions.ViewAllSmtpServersAction" >
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/smtp/ViewAllSmtpServers.jsp"/>
+        </action>
+
+        <action path="/ManageSmtpServer"
+            type="com.bea.alsb.console.smtp.actions.ManageSmtpServerAction" >
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/smtp/ViewAllSmtpServers.jsp"/>
+
+            <forward name="view"
+                contextRelative="true"
+                path="jsp/smtp/ViewSmtpServer.jsp"/>
+
+            <forward name="add"
+                contextRelative="true"
+                path="jsp/smtp/EditSmtpServer.jsp"/>
+
+            <forward name="edit"
+                contextRelative="true"
+                path="jsp/smtp/EditSmtpServer.jsp"/>
+
+            <forward name="select_default"
+                contextRelative="true"
+                path="jsp/smtp/SelectDefaultSmtpServer.jsp"/>
+
+            <forward name="success"
+                path="/ViewAllSmtpServers.do"/>
+        </action>
+
+        <action path="/SubmitEditSmtpServer"
+            type="com.bea.alsb.console.smtp.actions.SubmitEditSmtpServerAction"
+            name="SmtpServerForm"
+            attribute="actionform"
+            scope="request"
+            validate="true"
+            input="error">
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/smtp/ViewAllSmtpServers.jsp"/>
+
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/smtp/EditSmtpServer.jsp"/>
+
+            <forward name="success"
+                path="/ViewAllSmtpServers.do"/>
+        </action>
+
+        <action path="/SelectDefaultSmtpServer"
+            type="com.bea.alsb.console.smtp.actions.SelectDefaultSmtpServerAction">
+
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/smtp/ViewAllSmtpServers.jsp"/>
+
+            <forward name="success"
+                contextRelative="true"
+                path="jsp/smtp/SelectDefaultSmtpServer.jsp"/>
+
+        </action>
+
+        <action path="/SubmitDefaultSmtpServer"
+            type="com.bea.alsb.console.smtp.actions.SubmitDefaultSmtpServerAction">
+
+            <forward name="cancel"
+                contextRelative="true"
+                path="jsp/smtp/ViewAllSmtpServers.jsp"/>
+
+            <forward name="error"
+                contextRelative="true"
+                path="jsp/smtp/SelectDefaultSmtpServer.jsp"/>
+
+            <forward name="success"
+                path="/ViewAllSmtpServers.do"/>
+        </action>
+
+    </action-mappings>
+
+    <controller processorClass="com.bea.alsb.console.common.base.SBConsoleRequestProcessor"
+                inputForward="true" nocache="true"/>
+
+</struts-config>

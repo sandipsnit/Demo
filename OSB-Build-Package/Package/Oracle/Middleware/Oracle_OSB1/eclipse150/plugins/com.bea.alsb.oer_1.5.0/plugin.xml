@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <!-- 
+      Define the 'Generate Business Service' command. 
+   -->
+   <extension point="org.eclipse.ui.commands">
+   
+   		<command description="%OerIntegration_GenBusinessService_desc" 
+   		         id="osb.gen.business.service.command.id" 
+   		         name="%OerIntegration_GenBusinessService_label"/>
+   </extension>
+   
+   
+   <!--
+      Define the handler for the 'Generate Business Service' command.
+      Should only be enabled when 1 item is selected and that item is a service Asset.
+   -->
+   <extension point="org.eclipse.ui.handlers">
+   
+   		<handler class="com.bea.alsb.oer.command.GenBusinessServiceCommandHandler" 
+   		         commandId="osb.gen.business.service.command.id">
+   		    <enabledWhen>
+   		    	<with variable="activeMenuSelection">
+   		    		<count value="1"/>
+   		    		<iterate ifEmpty="false" operator="and">
+   		    			<test property="oer.asset.namespace.service" 
+   		    			      value="true" 
+   		    			      forcePluginActivation="true"/>
+   		    		</iterate>
+   		    	</with>
+   		    </enabledWhen>
+   		</handler>
+   </extension>
+   
+   
+   <!-- 
+      Define the 'Oracle Service Bus' submenu and add the 'Generate Business Service' command to it.
+      This is similar to a popup object contribution, in that the submenu is only visible when the
+      context menu is being displayed for an OER Asset.
+   --> 
+   <extension point="org.eclipse.ui.menus">
+   
+   		<menuContribution locationURI="popup:oracle.eclipse.tools.oer.ui.views.asset.ContextMenu?after=additions">
+   			<menu id="alsb.oer.submenu" label="%OerIntegration_SubMenu_label">
+   				<command commandId="osb.gen.business.service.command.id" style="push"/> 
+   				<visibleWhen>
+   				    <with variable="activeMenuSelection">
+   				       <iterate>
+   						<instanceof value="com.flashline.registry.openapi.entity.Asset"/>
+   					   </iterate>
+   					</with>
+   				</visibleWhen>
+  			</menu>
+   		</menuContribution>
+   </extension>
+
+
+   <!--
+   	  Define a property tester for OER Assets. Currently only supports checking
+   	  if an Asset is a Service or not.
+   -->
+   <extension point="org.eclipse.core.expressions.propertyTesters">
+   
+   		<propertyTester class="com.bea.alsb.oer.command.GenBusinessServicePropertyTester"
+   		                id="oer.asset.propertytester.id"
+   		                namespace="oer.asset.namespace"
+   		                properties="service"
+   		                type="com.flashline.registry.openapi.entity.Asset"/>
+   </extension>
+   
+</plugin>

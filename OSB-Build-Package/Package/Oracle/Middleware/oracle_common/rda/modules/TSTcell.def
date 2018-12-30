@@ -1,0 +1,211 @@
+# TSTcell.def: Tests Connection to Exadata Cells
+# $Id: TSTcell.def,v 2.9 2012/05/11 10:04:03 mschenke Exp $
+# ARCS: $Header: /home/cvs/cvs/RDA_4/src/scripting/lib/modules/TSTcell.def,v 2.9 2012/05/11 10:04:03 mschenke Exp $
+#
+# Change History
+# 20120508  KRA  Improve the credential management.
+
+=head1 NAME
+
+TSTcell - Tests Connection to Exadata Cells
+
+=head1 DESCRIPTION
+
+This test module tests the connection to Exadata cells and can be used in two
+ways:
+
+=over 3
+
+=item a)
+
+Runs interactively. It requests the user to input the user for connecting to
+the remote cells.
+
+<rda> -vT cell
+
+=item b)
+
+Runs from the command line. You can specify the user for connecting to
+the remote cells, using the following syntax:
+
+<rda> -vT cell:userid
+
+=back
+
+It extracts the cell access information from the file
+F</etc/oracle/cell/network-config/cellip.ora>.
+
+This test module executes the following tests:
+
+=over 2
+
+=cut
+
+use Remote
+
+echo tput('bold'),'Processing Exadata Cell tool ...',tput('off')
+
+if getSetting('TST_ARGS')
+ var $USERID = last
+else
+{call requestSetting('TSTcell')
+ var $USERID = getSetting('CELL_USERID')
+}
+
+=item o
+
+Tests which commands are available from the PATH.
+
+=cut
+
+echo '\012Command Availability:'
+loop $cmd ('rcp','remsh','rsh','scp','ssh','ssh-add','ssh-agent')
+ echo sprintf('  %-12s %s',$cmd,nvl(findCommand($cmd),'(Not found)'))
+
+=item o
+
+Checks the existence and the permissions of the F<.ssh> directory.
+
+=item o
+
+Checks the existence and the permissions of a DSA or RSA key file.
+
+=cut
+
+if or(isUnix(),isCygwin())
+{var $dir = catDir(getEnv('HOME'),'.ssh')
+ echo '\012.ssh Directory:'
+ if testDir('e',$dir)
+ {var @sta = getStat($dir)
+  echo '  File permissions of .ssh directory are: ',\
+       sprintf('%03o',expr('&',$sta[2],511))
+  if expr('&',$sta[2],63)
+   echo '  Other users than the owner have permissions on it'
+  var $flg = true
+  if testFile('f',catFile($dir,'id_dsa'))
+  {var @sta = getStat(lastFile())
+   if expr('&',$sta[2],7)
+    echo '  DSA key file is ignored due to invalid permissions: ',\
+         sprintf('%03o',expr('&',$sta[2],511))
+   else
+    var $flg= false
+  }
+  if testFile('s',catFile($dir,'id_rsa'))
+  {var @sta = getStat(lastFile())
+   if expr('&',$sta[2],7)
+    echo '  RSA key file is ignored due to invalid permissions: ',\
+         sprintf('%03o',expr('&',$sta[2],511))
+   else
+    var $flg= false
+  }
+  if $flg
+   echo '  No DSA or RSA key file found'
+ }
+ else
+  echo '  ',$dir,' directory does not exist'
+}
+
+=item o
+
+Tests if an authentication agent is configured. When possible, it checks if
+identities have been added.
+
+=cut
+
+macro chk_env
+{var ($key,$flg) = @arg
+
+ if $val = getEnv($key,$flg)
+ {import $TTL
+  if ?$TTL
+  {echo $TTL
+   var $TTL = undef
+  }
+  echo '  ',$key,'=',$val
+ }
+}
+
+var $TTL = '\012Check if an authentication agent is running\012'
+call chk_env('SSH_AGENT_PID')
+call chk_env('SSH_AUTH_SOCK')
+var $agt = $TTL
+if !$agt
+{echo '\012Agent identities:'
+ loop $lin (command('ssh-add -l'))
+  echo '  ',$lin
+}
+
+=item o
+
+Tests which drivers are available for the remote connection.
+
+=cut
+
+echo '\012Driver Availability:'
+loop $typ ('da','jsch','ssh')
+ echo sprintf('  %4s %s',$typ,cond($[REM]->can_use($typ),'Available','-'))
+
+=item o
+
+Checks the access to the F</etc/oracle/cell/network-config/cellip.ora> file.
+
+=cut
+
+if !loadFile('/etc/oracle/cell/network-config/cellip.ora')
+{echo '\012Unable to get the cell information from file \
+       /etc/oracle/cell/network-config/cellip.ora'
+ return
+}
+
+=item o
+
+Checks the connectivity with the best driver that is available.
+
+=cut
+
+var $pwd = undef
+loop $lin (grepLastFile('^cell=\".*?\"'))
+{if match($lin,'^cell=\"(.*?)\"')
+ {var ($cel) = last
+  call addRemoteSession('cell',$cel,$USERID)
+  if and(defined($pwd),not(hasPassword('host',$cel,$USERID)))
+   call setPassword('host',$cel,$USERID,$pwd)
+  if needPassword('cell')
+  {var $pwd = askPassword(concat('Enter ',$USERID,'@',$cel,' password:'))
+   call setPassword('host',$cel,$USERID,$pwd)
+   if needPassword('cell')
+   {echo 'Connection error connecting to cell ',$cel
+    call endRemoteSession('cell')
+    next
+   }
+  }
+  if rexec('cell','env')
+   echo 'Connection error connecting to cell ',$cel,' (error code:',last,')'
+  else
+   echo 'Successful connection to cell ',$cel
+  call endRemoteSession('cell')
+ }
+}
+
+=back
+
+=begin credits
+
+=over 10
+
+=item RDA 4.16:  Jean-Marc Gaudron.
+
+=back
+
+=end credits
+
+=head1 COPYRIGHT NOTICE
+
+Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+
+=head1 TRADEMARK NOTICE
+
+Oracle and Java are registered trademarks of Oracle and/or its
+affiliates. Other names may be trademarks of their respective owners.
+
+=cut

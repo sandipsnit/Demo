@@ -57,4 +57,8 @@ set CLASSPATH=%CLASSPATH%;%OSB_HOME%\lib\alsb.jar
 set CLASSPATH=%CLASSPATH%;%CONFIGJAR_HOME%\configjar.jar
 set CLASSPATH=%CLASSPATH%;%CONFIGJAR_HOME%\L10N
 
-cmd.exe /C "C:\Oracle\Middleware\modules\org.apache.ant_1.7.1\bin\ant.bat -file C:\Oracle\Middleware\Oracle_OSB1\tools\configjar\build.xml run && exit %%ERRORLEVEL%% 
+cmd.exe /C "C:\Oracle\Middleware\modules\org.apache.ant_1.7.1\bin\ant.bat -file C:\Users\sandeepku\Desktop\OSB-Code\build.xml run && exit %%ERRORLEVEL%% 
+
+cmd.exe /C "C:\Oracle\Middleware\modules\org.apache.ant_1.7.1\bin\ant.bat -file C:\Users\sandeepku\Desktop\OSB-Code\build.xml importToOSB && exit %%ERRORLEVEL%% 
+
+

@@ -1,1 +1,0 @@
-The directory 4.1 actually contains do's from DATADIRECT_4.2_GENERIC labels, since this change was done at the end of release cycle, the directory name could not be changed without impacting a whole lot of consumers of J2EE labels

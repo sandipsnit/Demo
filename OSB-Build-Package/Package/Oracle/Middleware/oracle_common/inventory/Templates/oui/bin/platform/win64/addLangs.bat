@@ -1,2 +1,0 @@
-.\setup.exe -addLangs ORACLE_HOME=%ORACLE_HOME%  ORACLE_HOME_NAME=%ORACLE_HOME_NAME% %*
-

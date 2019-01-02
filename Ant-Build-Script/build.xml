@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="windows-1252" ?>
+<project name="ConfigExport" default="run">
+
+   <property file="./build.properties"/>
+<property name="domain.export.script" value="export.py" />
+   <property name="domain.import.script" value="import.py" />
+   <property name="metadata.dir" value="${workspace.dir}/.metadata"/>
+  <!-- <path id="library.osb">
+       <fileset dir="${osb.home}/modules">
+         <include name="com.bea.common.configfwk_1.7.0.0.jar"/>
+        <include name="com.bea.core.xml.xmlbeans_2.2.0.0_2-5-1.jar"/> 
+       </fileset>
+       <fileset dir="${weblogic.home}/server/lib">
+         <include name="weblogic.jar"/>
+       </fileset>
+       <fileset dir="${osb.home}/lib">
+         <include name="alsb.jar"/>
+       </fileset>
+	     <fileset dir="${osb.home}/eclipse150/plugins/com.bea.alsb.core_1.5.0">
+         <include name="alsbcore.jar"/>
+       </fileset>
+	   
+    </path> -->
+	
+ <target name="run">
+		<ant antfile="configjar-ant.xml" target="run">
+			<property name="settingsFile" value="mySettings.xml"/>
+		</ant>
+		<ant  target="importToOSB">
+		</ant>
+	</target> 
+	
+	
+  <target name="importToOSB">
+        <wlst fileName="${domain.import.script}" debug="true" failOnError="false"  
+              arguments="${wls.username} ${wls.password} ${wls.server} ${import.project} ${import.jar} ${import.customFile}">  
+         <script>  
+           adminUser=sys.argv[1]  
+           adminPassword=sys.argv[2]  
+           adminUrl=sys.argv[3]
+
+           passphrase = "osb"
+
+           project=sys.argv[4]
+           importJar=sys.argv[5]
+           customFile=sys.argv[6]
+
+           connect(adminUser,adminPassword,adminUrl) 
+           domainRuntime()
+          </script>
+        </wlst>
+   </target> 
+   
+   
+ <!--  <target name="exportFromWorkspace">
+      delete failonerror="false" includeemptydirs="true"
+              dir="${metadata.dir}"
+      <java dir="${eclipse.home}"
+            jar="${eclipse.home}/plugins/org.eclipse.equinox.launcher_1.1.0.v20100507.jar"
+            fork="true" failonerror="true" maxmemory="768m">
+         <jvmarg line="-XX:MaxPermSize=256m"/>   
+         <arg line="-data ${workspace.dir}"/>
+         <arg line="-application com.bea.alsb.core.ConfigExport"/>
+         <arg line="-configProject ${config.project}"/>
+         <arg line="-configJar ${config.jar}"/>
+         <arg line="-configSubProjects ${config.subprojects}"/>
+         <arg line="-includeDependencies ${config.includeDependencies}"/>
+         <sysproperty key="weblogic.home" value="${weblogic.home}"/>
+         <sysproperty key="osb.home" value="${osb.home}"/>
+         <sysproperty key="osgi.bundlefile.limit" value="500"/>
+         <sysproperty key="harvester.home" value="${osb.home}/harvester"/>
+         <sysproperty key="osgi.nl" value="en_US"/>
+         <sysproperty key="sun.lang.ClassLoader.allowArraySyntax" value="true"/>
+      </java>
+   </target> -->
+   
+   
+ <!--   <target name="exportFromWorkspace">
+      delete failonerror="false" includeemptydirs="true" 
+              dir="${metadata.dir}" 
+			  <available file="${metadata.dir}" type="dir" property="metadata.dir.exists"/> 
+			  <echo message="${eclipse.home}/plugins/org.eclipse.equinox.launcher_1.1.0.v20100507.jar"/> 
+			  <echo message="${osb.home}"/> 
+			    <echo message="library.osb"/> 
+				<echo message="${weblogic.home}"/> 
+				<echo message="${eclipse.home}"/> 
+      <java dir="${eclipse.home}" classpathref="library.osb" jar="${eclipse.home}/plugins/org.eclipse.equinox.launcher_1.1.0.v20100507.jar"
+	  classpath=".;${osb.home}/eclipse150/plugins;${osb.home}/eclipse150/plugins/com.bea.alsb.core_1.5.0/alsbcore.jar;${weblogic.home}/server/lib/weblogic.jar;${osb.home}/lib/alsb.jar"
+	  fork="true" failonerror="true" maxmemory="768m">
+         <jvmarg line="-XX:MaxPermSize=256m"/>   
+         <arg line="-data ${workspace.dir}"/>
+         <arg line="-application com.bea.alsb.core.ConfigExport"/> 
+         <arg line="-configProject ${config.project}"/>
+         <arg line="-configJar ${config.jar}"/>
+         <arg line="-configSubProjects ${config.subprojects}"/>
+         <arg line="-includeDependencies ${config.includeDependencies}"/> 
+         <sysproperty key="weblogic.home" value="${weblogic.home}"/>
+         <sysproperty key="osb.home" value="${osb.home}"/>
+         <sysproperty key="osgi.bundlefile.limit" value="500"/>
+         <sysproperty key="harvester.home" value="${osb.home}/harvester"/>
+         <sysproperty key="osgi.nl" value="en_US"/>
+         <sysproperty key="sun.lang.ClassLoader.allowArraySyntax" value="true"/>
+		 <sysproperty key="osgi.bundlefile.limit" value="750"/>
+         <sysproperty key="middleware.home" value="${fmw.home}"/> 
+      </java>
+   </target> -->
+ 
+</project>

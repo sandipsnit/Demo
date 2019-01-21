@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml-fragment xmlns:ser="http://www.bea.com/wli/sb/services" xmlns:tran="http://www.bea.com/wli/sb/transports" xmlns:env="http://www.bea.com/wli/config/env" xmlns:jca="http://www.bea.com/wli/sb/transports/jca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:con="http://www.bea.com/wli/sb/pipeline/config" xmlns:con1="http://www.bea.com/wli/sb/stages/config" xmlns:con2="http://www.bea.com/wli/sb/stages/logging/config" xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config">
+  <ser:coreEntry isProxy="true" isEnabled="true" isAutoPublish="false" isTracingEnabled="true">
+    <ser:description/>
+    <ser:binding type="SOAP" isSoap12="false" xsi:type="con:SoapBindingType" xmlns:con="http://www.bea.com/wli/sb/services/bindings/config">
+      <con:wsdl ref="CommunicationV4/NotificationFramework/WSDL/GetSMSRecord_db"/>
+      <con:binding>
+        <con:name>GetSMSRecord_ptt-binding</con:name>
+        <con:namespace>http://xmlns.oracle.com/pcbpel/adapter/db/Communication/Notification+Framework/GetSMSRecord</con:namespace>
+      </con:binding>
+      <con:selector type="SOAP action"/>
+    </ser:binding>
+    <ser:monitoring isEnabled="false">
+      <ser:aggregationInterval>10</ser:aggregationInterval>
+      <ser:pipelineMonitoringLevel>Pipeline</ser:pipelineMonitoringLevel>
+    </ser:monitoring>
+    <ser:reporting>true</ser:reporting>
+    <ser:logging isEnabled="true">
+      <ser:logLevel>debug</ser:logLevel>
+    </ser:logging>
+    <ser:sla-alerting isEnabled="true">
+      <ser:alertLevel>normal</ser:alertLevel>
+    </ser:sla-alerting>
+    <ser:pipeline-alerting isEnabled="true">
+      <ser:alertLevel>normal</ser:alertLevel>
+    </ser:pipeline-alerting>
+    <ser:ws-policy>
+      <ser:binding-mode>wsdl-policy-attachments</ser:binding-mode>
+    </ser:ws-policy>
+    <ser:throttling enabled="false">
+      <ser:capacity>0</ser:capacity>
+      <ser:maxQueueLength>0</ser:maxQueueLength>
+      <ser:timeToLive>0</ser:timeToLive>
+    </ser:throttling>
+    <ser:messageTracing enabled="true">
+      <ser:detailsLevel>Full</ser:detailsLevel>
+      <ser:maxSize>8192</ser:maxSize>
+    </ser:messageTracing>
+  </ser:coreEntry>
+  <ser:endpointConfig>
+    <tran:provider-id>jca</tran:provider-id>
+    <tran:inbound>true</tran:inbound>
+    <tran:URI>
+      <env:value>jca://eis/NOTIFICATION_DETAILS</env:value>
+    </tran:URI>
+    <tran:inbound-properties/>
+    <tran:all-headers>false</tran:all-headers>
+    <tran:provider-specific xsi:type="jca:JCAEndPointConfiguration">
+      <jca:jca-file ref="CommunicationV4/NotificationFramework/JCA Adapter/SMS/GetSMSRecord_db"/>
+      <jca:adapter-name>Database Adapter</jca:adapter-name>
+      <jca:adapter-type>DB</jca:adapter-type>
+      <jca:always-use-wsdl>true</jca:always-use-wsdl>
+      <jca:connection-mode>managed</jca:connection-mode>
+      <jca:connection-property-username-password-overwrite>false</jca:connection-property-username-password-overwrite>
+      <jca:inbound-properties>
+        <jca:operation-properties>
+          <jca:operation-name>receive</jca:operation-name>
+          <jca:spec-properties>
+            <jca:property>
+              <jca:name>MaxRaiseSize</jca:name>
+              <jca:value>1</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>PollingInterval</jca:name>
+              <jca:value>5</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>DescriptorName</jca:name>
+              <jca:value>GetSMSRecord.TbSmsDetails</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>MaxTransactionSize</jca:name>
+              <jca:value>10</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>PollingStrategy</jca:name>
+              <jca:value>DeletePollingStrategy</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>ReturnSingleResultSet</jca:name>
+              <jca:value>false</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>MappingsMetaDataURL</jca:name>
+              <jca:value>../../Schema/GetSMSRecord-or-mappings.xml</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>QueryName</jca:name>
+              <jca:value>GetSMSRecordSelect</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>NumberOfThreads</jca:name>
+              <jca:value>1</jca:value>
+            </jca:property>
+          </jca:spec-properties>
+        </jca:operation-properties>
+      </jca:inbound-properties>
+    </tran:provider-specific>
+  </ser:endpointConfig>
+  <ser:router errorHandler="_onErrorHandler-6223524087422462313--74a95f3d.1681296e2d4.-8000">
+    <con:pipeline type="error" name="_onErrorHandler-7453919643623216003--730bb272.167dbac122a.-8000">
+      <con:stage name="UpdateTable">
+        <con:context>
+          <con1:varNsDecl namespace="http://xmlns.oracle.com/pcbpel/adapter/db/top/GetSMSRecord" prefix="get"/>
+        </con:context>
+        <con:actions>
+          <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+            <con2:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-7cfe</con2:id>
+            <con6:logLevel>info</con6:logLevel>
+            <con6:expr>
+              <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord||BS_VFQA_SendNotification|ChannelTransactionID-",$conversationID,"|ERROR HANDLER |",$body|$fault|$header</con2:xqueryText>
+            </con6:expr>
+            <con6:message>BS_VFQA_SendNotification Error Response ::</con6:message>
+          </con6:log>
+          <con2:report>
+            <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7e39</con1:id>
+            <con2:expr>
+              <con1:xqueryText>$body</con1:xqueryText>
+            </con2:expr>
+            <con2:labels>
+              <con2:key>body</con2:key>
+              <con2:varName>body</con2:varName>
+              <con2:value>
+                <con1:xpathText>.</con1:xpathText>
+              </con2:value>
+            </con2:labels>
+            <con2:labels>
+              <con2:key>TransactionID</con2:key>
+              <con2:varName>reportTransactionID</con2:varName>
+              <con2:value>
+                <con1:xpathText>./text()</con1:xpathText>
+              </con2:value>
+            </con2:labels>
+          </con2:report>
+          <con3:wsCallout>
+            <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7e12</con1:id>
+            <con3:service xsi:type="ref:BusinessServiceRef" ref="CommunicationV4/NotificationFramework/Business Service/BS_VFQA_UPDATE_STATUS" xmlns:ref="http://www.bea.com/wli/sb/reference"/>
+            <con3:operation>UPDATE_STATUS</con3:operation>
+            <con3:request>
+              <con3:body wrapped="true">$body</con3:body>
+              <con3:header/>
+            </con3:request>
+            <con3:response>
+              <con3:body wrapped="true">body</con3:body>
+              <con3:header/>
+            </con3:response>
+            <con3:requestTransform>
+              <con3:replace contents-only="true" varName="body">
+                <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7d72</con1:id>
+                <con3:expr>
+                  <con:xqueryTransform xmlns:con="http://www.bea.com/wli/sb/stages/config">
+                    <con:resource ref="CommunicationV4/NotificationFramework/Transformation/XQ_UpdateStatus"/>
+                    <con:param name="retryCount">
+                      <con:path>xs:int($requestBody/*:TbSmsDetailsCollection/*:TbSmsDetails/*:retryCnt) - xs:int(1)</con:path>
+                    </con:param>
+                    <con:param name="status">
+                      <con:path>xs:int(3)</con:path>
+                    </con:param>
+                    <con:param name="type">
+                      <con:path>'SMS'</con:path>
+                    </con:param>
+                    <con:param name="transactionID">
+                      <con:path>data($requestBody/*:TbSmsDetailsCollection/*:TbSmsDetails/*:osbTransactionId)</con:path>
+                    </con:param>
+                    <con:param name="statusMessage">
+                      <con:path>let $reason := 	if(matches(data($body/*:Fault/*:faultstring),"^\s*$"))
+               then
+               	data($fault/ctx:reason)
+               	else
+               	data($body/*:Fault/*:faultstring)	
+               	return
+               		$reason</con:path>
+                    </con:param>
+                  </con:xqueryTransform>
+                </con3:expr>
+              </con3:replace>
+              <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+                <con2:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-7cc5</con2:id>
+                <con6:logLevel>info</con6:logLevel>
+                <con6:expr>
+                  <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord|BS_VFQA_UPDATE_STATUS|.ChannelTransactionID-",$conversationID,"|Request Pipeline|",$body</con2:xqueryText>
+                </con6:expr>
+                <con6:message>BS_VFQA_UPDATE_STATUS Request ::</con6:message>
+              </con6:log>
+            </con3:requestTransform>
+            <con3:responseTransform>
+              <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+                <con2:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-7c71</con2:id>
+                <con6:logLevel>info</con6:logLevel>
+                <con6:expr>
+                  <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord||BS_VFQA_UPDATE_STATUS|.ChannelTransactionID-",$conversationID,"|Request Pipeline|",$body</con2:xqueryText>
+                </con6:expr>
+                <con6:message>BS_VFQA_UPDATE_STATUS Response ::</con6:message>
+              </con6:log>
+              <con2:report>
+                <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7d60</con1:id>
+                <con2:expr>
+                  <con1:xqueryText>$body</con1:xqueryText>
+                </con2:expr>
+                <con2:labels>
+                  <con2:key>body</con2:key>
+                  <con2:varName>body</con2:varName>
+                  <con2:value>
+                    <con1:xpathText>.</con1:xpathText>
+                  </con2:value>
+                </con2:labels>
+                <con2:labels>
+                  <con2:key>TransactionID</con2:key>
+                  <con2:varName>reportTransactionID</con2:varName>
+                  <con2:value>
+                    <con1:xpathText>./text()</con1:xpathText>
+                  </con2:value>
+                </con2:labels>
+              </con2:report>
+            </con3:responseTransform>
+          </con3:wsCallout>
+          <con1:reply isError="true">
+            <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7d96</con1:id>
+          </con1:reply>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:pipeline type="error" name="_onErrorHandler-6223524087422462313--74a95f3d.1681296e2d4.-8000">
+      <con:stage name="Error Handler">
+        <con:context/>
+        <con:actions>
+          <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+            <con2:id>_ActionId-6223524087422462313--74a95f3d.1681296e2d4.-7fac</con2:id>
+            <con6:logLevel>info</con6:logLevel>
+            <con6:expr>
+              <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord|ChannelTransactionID-",$conversationID,"|Proxy ERROR HANDLER|",$fault|$body</con2:xqueryText>
+            </con6:expr>
+            <con6:message>BS_VFQA_UPDATE_STATUS Response ::</con6:message>
+          </con6:log>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:flow>
+      <con:route-node name="RouteToAppconnect" error-handler="_onErrorHandler-7453919643623216003--730bb272.167dbac122a.-8000">
+        <con:context>
+          <con1:varNsDecl namespace="http://xmlns.oracle.com/pcbpel/adapter/db/top/GetSMSRecord" prefix="get"/>
+        </con:context>
+        <con:actions>
+          <con4:route>
+            <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7fdd</con1:id>
+            <con4:service ref="CommunicationV4/NotificationFramework/Business Service/BS_VFQA_SendNotification" xsi:type="ref:BusinessServiceRef" xmlns:ref="http://www.bea.com/wli/sb/reference"/>
+            <con4:operation>sendSMSNotification</con4:operation>
+            <con4:outboundTransform>
+              <con3:assign varName="conversationID">
+                <con1:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-7dfa</con1:id>
+                <con3:expr>
+                  <con1:xqueryText>data($body/*:TbSmsDetailsCollection/*:TbSmsDetails/*:channelTransactionId)</con1:xqueryText>
+                </con3:expr>
+              </con3:assign>
+              <con3:assign varName="reportTransactionID" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config">
+                <con2:id>_ActionId-6223524087422462313--74a95f3d.1681296e2d4.-7d5c</con2:id>
+                <con3:expr>
+                  <con2:xqueryText>&lt;reportTransactionID>{$conversationID}&lt;/reportTransactionID></con2:xqueryText>
+                </con3:expr>
+              </con3:assign>
+              <con3:assign varName="requestBody">
+                <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7e7f</con1:id>
+                <con3:expr>
+                  <con1:xqueryText>$body</con1:xqueryText>
+                </con3:expr>
+              </con3:assign>
+              <con2:report>
+                <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7f9d</con1:id>
+                <con2:expr>
+                  <con1:xqueryText>$body</con1:xqueryText>
+                </con2:expr>
+                <con2:labels>
+                  <con2:key>body</con2:key>
+                  <con2:varName>body</con2:varName>
+                  <con2:value>
+                    <con1:xpathText>.</con1:xpathText>
+                  </con2:value>
+                </con2:labels>
+                <con2:labels>
+                  <con2:key>TransactionID</con2:key>
+                  <con2:varName>reportTransactionID</con2:varName>
+                  <con2:value>
+                    <con1:xpathText>./text()</con1:xpathText>
+                  </con2:value>
+                </con2:labels>
+              </con2:report>
+              <con3:replace contents-only="true" varName="body">
+                <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7f7d</con1:id>
+                <con3:expr>
+                  <con1:xqueryTransform>
+                    <con1:resource ref="CommunicationV4/NotificationFramework/Transformation/XQ_GetSMSRecord_To_SendNotification"/>
+                    <con1:param name="tbSmsDetailsCollection">
+                      <con1:path>$body/*:TbSmsDetailsCollection</con1:path>
+                    </con1:param>
+                  </con1:xqueryTransform>
+                </con3:expr>
+              </con3:replace>
+              <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+                <con2:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-7da6</con2:id>
+                <con6:logLevel>info</con6:logLevel>
+                <con6:expr>
+                  <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord|BS_VFQA_SendNotification|ChannelTransactionID-",$conversationID,"|Request Pipeline|Current Retry Count|",xs:int($requestBody/*:TbSmsDetailsCollection/*:TbSmsDetails/*:retryCnt),"|",$body|$header</con2:xqueryText>
+                </con6:expr>
+                <con6:message>BS_VFQA_SendNotification Request ::</con6:message>
+              </con6:log>
+            </con4:outboundTransform>
+            <con4:responseTransform>
+              <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+                <con2:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-7d52</con2:id>
+                <con6:logLevel>info</con6:logLevel>
+                <con6:expr>
+                  <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord|BS_VFQA_SendNotification|ChannelTransactionID-",$conversationID,"|Request Pipeline|",$body|$header</con2:xqueryText>
+                </con6:expr>
+                <con6:message>BS_VFQA_SendNotification Response ::</con6:message>
+              </con6:log>
+              <con2:report>
+                <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7e6b</con1:id>
+                <con2:expr>
+                  <con1:xqueryText>$body</con1:xqueryText>
+                </con2:expr>
+                <con2:labels>
+                  <con2:key>body</con2:key>
+                  <con2:varName>body</con2:varName>
+                  <con2:value>
+                    <con1:xpathText>.</con1:xpathText>
+                  </con2:value>
+                </con2:labels>
+                <con2:labels>
+                  <con2:key>TransactionID</con2:key>
+                  <con2:varName>reportTransactionID</con2:varName>
+                  <con2:value>
+                    <con1:xpathText>./text()</con1:xpathText>
+                  </con2:value>
+                </con2:labels>
+              </con2:report>
+              <con3:wsCallout>
+                <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7f3d</con1:id>
+                <con3:service xsi:type="ref:BusinessServiceRef" ref="CommunicationV4/NotificationFramework/Business Service/BS_VFQA_UPDATE_STATUS" xmlns:ref="http://www.bea.com/wli/sb/reference"/>
+                <con3:operation>UPDATE_STATUS</con3:operation>
+                <con3:request>
+                  <con3:body wrapped="true">$body</con3:body>
+                  <con3:header/>
+                </con3:request>
+                <con3:response>
+                  <con3:body wrapped="true">body</con3:body>
+                  <con3:header/>
+                </con3:response>
+                <con3:requestTransform>
+                  <con3:replace contents-only="true" varName="body">
+                    <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7f3b</con1:id>
+                    <con3:expr>
+                      <con1:xqueryTransform>
+                        <con1:resource ref="CommunicationV4/NotificationFramework/Transformation/XQ_SendNotification_To_UpdateSMSStatus"/>
+                        <con1:param name="tbSmsDetailsCollection">
+                          <con1:path>$requestBody/*:TbSmsDetailsCollection</con1:path>
+                        </con1:param>
+                        <con1:param name="sendSMSNotificationResp">
+                          <con1:path>$body/*:SendSMSNotificationResp</con1:path>
+                        </con1:param>
+                      </con1:xqueryTransform>
+                    </con3:expr>
+                  </con3:replace>
+                  <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+                    <con2:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-780b</con2:id>
+                    <con6:logLevel>info</con6:logLevel>
+                    <con6:expr>
+                      <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord||BS_VFQA_UPDATE_STATUS|ChannelTransactionID-",$conversationID,"|Request Pipeline|",$body</con2:xqueryText>
+                    </con6:expr>
+                    <con6:message>BS_VFQA_UPDATE_STATUS Request ::</con6:message>
+                  </con6:log>
+                </con3:requestTransform>
+                <con3:responseTransform>
+                  <con6:log xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con5="http://www.bea.com/wli/sb/stages/publish/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con6="http://www.bea.com/wli/sb/stages/logging/config">
+                    <con2:id>_ActionId-2270627183663388124-6ef7fdca.1680d5dcf19.-77b7</con2:id>
+                    <con6:logLevel>info</con6:logLevel>
+                    <con6:expr>
+                      <con2:xqueryText>"CommunicationV4|PS_VFQA_GetSMSRecord||BS_VFQA_UPDATE_STATUS|ChannelTransactionID-",$conversationID,"|Request Pipeline|",$body</con2:xqueryText>
+                    </con6:expr>
+                    <con6:message>BS_VFQA_UPDATE_STATUS Response ::</con6:message>
+                  </con6:log>
+                  <con2:report>
+                    <con1:id>_ActionId-7453919643623216003--730bb272.167dbac122a.-7e58</con1:id>
+                    <con2:expr>
+                      <con1:xqueryText>$body</con1:xqueryText>
+                    </con2:expr>
+                    <con2:labels>
+                      <con2:key>body</con2:key>
+                      <con2:varName>body</con2:varName>
+                      <con2:value>
+                        <con1:xpathText>.</con1:xpathText>
+                      </con2:value>
+                    </con2:labels>
+                    <con2:labels>
+                      <con2:key>TransactionID</con2:key>
+                      <con2:varName>reportTransactionID</con2:varName>
+                      <con2:value>
+                        <con1:xpathText>./text()</con1:xpathText>
+                      </con2:value>
+                    </con2:labels>
+                  </con2:report>
+                </con3:responseTransform>
+              </con3:wsCallout>
+            </con4:responseTransform>
+          </con4:route>
+        </con:actions>
+      </con:route-node>
+    </con:flow>
+  </ser:router>
+</xml-fragment>

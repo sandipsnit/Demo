@@ -1,0 +1,63 @@
+<wsdl:definitions name="SendNotification" targetNamespace="http://appcon.vfqa.org/notification/SendNotification/Interface/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://appcon.vfqa.org/notification/SendNotification/Interface/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsd1="http://appcon.vfqa.org/notification/SendNotification">
+	<wsdl:types>
+		<xsd:schema>
+			<xsd:import namespace="http://appcon.vfqa.org/notification/SendNotification" schemaLocation="../Schema/Notification.xsd">
+			</xsd:import>
+		</xsd:schema>
+	</wsdl:types>
+	<wsdl:message name="sendSMSNotificationRequest">
+		<wsdl:part element="xsd1:SendSMSNotificationReq" name="parameters"/>
+	</wsdl:message>
+	<wsdl:message name="sendSMSNotificationResponse">
+		<wsdl:part element="xsd1:SendSMSNotificationResp" name="parameters"/>
+	</wsdl:message>
+	<wsdl:message name="sendEmailNotificationRequest">
+		<wsdl:part name="parameters" element="xsd1:SendEmailNotificationReq"/>
+	</wsdl:message>
+	<wsdl:message name="sendEmailNotificationResponse">
+		<wsdl:part name="parameters" element="xsd1:SendEmailNotificationResp"/>
+	</wsdl:message>
+	<wsdl:portType name="SendNotification">
+		<wsdl:operation name="sendSMSNotification">
+			<wsdl:input message="tns:sendSMSNotificationRequest"/>
+			<wsdl:output message="tns:sendSMSNotificationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="sendEmailNotification">
+			<wsdl:input message="tns:sendEmailNotificationRequest"/>
+			<wsdl:output message="tns:sendEmailNotificationResponse"/>
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="SendNotificationSOAP" type="tns:SendNotification">
+
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+		<wsdl:operation name="sendSMSNotification">
+
+			<soap:operation soapAction="http://appcon.vfqa.org/notification/SendNotification/Interface/sendSMSNotification"/>
+			<wsdl:input>
+
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="sendEmailNotification">
+
+			<soap:operation soapAction="http://appcon.vfqa.org/notification/SendNotification/Interface/sendEmailNotification"/>
+			<wsdl:input>
+
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="SendNotification">
+		<wsdl:port binding="tns:SendNotificationSOAP" name="SendNotificationSOAP">
+			<soap:address location="http://10.161.60.40:21015/AppCon/SendNotification/Interface"/>
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>

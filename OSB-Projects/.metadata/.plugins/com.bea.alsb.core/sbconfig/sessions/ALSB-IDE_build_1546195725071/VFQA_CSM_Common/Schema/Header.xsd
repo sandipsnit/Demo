@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<con:schemaEntry xmlns:con="http://www.bea.com/wli/sb/resources/config">
+    <con:schema><![CDATA[<!--(c) Vodafone Group Services Limited. All rights reserved. This document 
+	comprises proprietary and confidential information and copyright material 
+	belonging to Vodafone Group Services Limited. Other than as permitted by 
+	law, no part of this document may be reproduced, adapted, or distributed, 
+	in any form or by any means, without the prior written consent of Vodafone 
+	Group Services Limited. The information in this document is subject to change 
+	without notice. All trademarks acknowledged. Vodafone Group Services Limited 
+	- Confidential --><xsd:schema attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://group.vodafone.com/contract/vho/header/v1" version="1.1" xmlns:cmn="http://group.vodafone.com/schema/common/v1" xmlns:tns="http://group.vodafone.com/contract/vho/header/v1" xmlns:vfo="http://group.vodafone.com/contract/vfo/fault/v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <!-- ====================================================================== -->
+    <!-- ===== Imports ===== -->
+    <!-- ====================================================================== -->
+    <xsd:import schemaLocation="Fault.xsd" namespace="http://group.vodafone.com/contract/vfo/fault/v1"/>
+    <xsd:annotation>
+        <xsd:documentation>
+			<p>Schema Definition for Vodafone Header Object</p>
+			<p> Added element definition for all complextypes - 20-02-2015</p>
+		</xsd:documentation>
+    </xsd:annotation>
+    <xsd:element name="Source" type="tns:SourceType"/>
+    <xsd:element name="Destination" type="tns:DestinationType"/>
+    <xsd:element name="Correlation" type="tns:CorrelationType"/>
+    <xsd:element name="Cache" type="tns:CacheType"/>
+    <xsd:element name="ServiceDocumentation" type="tns:ServiceDocumentationType"/>
+    <xsd:element name="ResultStatus" type="vfo:FaultType"/>
+    <xsd:complexType name="SourceType">
+        <xsd:annotation>
+            <xsd:documentation>
+				All request messages must have an identifiable source, or consumer information
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="CountryCode" type="tns:CountryCodeType" minOccurs="0"/>
+            <xsd:element name="Operator" type="xsd:normalizedString" minOccurs="0"/>
+            <xsd:element name="Division" type="xsd:normalizedString" minOccurs="0"/>
+            <xsd:element name="System" type="xsd:normalizedString" minOccurs="0"/>
+            <xsd:element name="Timestamp" type="xsd:dateTime" minOccurs="0"/>
+            <xsd:element name="Identity" type="tns:IdentityType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="LanguageCode" type="tns:LanguageCodeType" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>The Language Code of the source system. This must adhere to the ISO639 Language Codes.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CorrelationType">
+        <xsd:annotation>
+            <xsd:documentation>
+				To understand the correlation between the execution of a service and from where it originated, MessageID and CorrelationID are mapped via WS-Addressing
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="ConversationID" type="xsd:normalizedString" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:simpleType name="CountryCodeType">
+        <xsd:annotation>
+            <xsd:documentation>
+				<p>An ISO3166-Alpha 2 Country Code should be used here.</p>
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:normalizedString">
+            <xsd:pattern value="[A-Z]{2}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="LanguageCodeType">
+        <xsd:annotation>
+            <xsd:documentation>
+				<p>An ISO639 Language Code should be used here.</p>
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:normalizedString">
+            <xsd:pattern value="[a-z]{2}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:complexType name="IdentityType">
+        <xsd:sequence>
+            <xsd:element name="Token" type="xsd:normalizedString"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CacheType">
+        <xsd:annotation>
+            <xsd:documentation>
+				Mandatory cache parameter support by all services
+				(a service must understand the directive even if no caching support
+				in the service – this allows for future extensibility of the service
+				implementation)
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="UseCache" type="tns:CacheOptions"/>
+            <xsd:element name="MaxAge" type="xsd:integer" minOccurs="0"/>
+            <xsd:element name="LastModified" type="xsd:dateTime" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:simpleType name="CacheOptions">
+        <xsd:restriction base="xsd:token">
+            <xsd:enumeration value="yes">
+                <xsd:annotation>
+                    <xsd:documentation>
+						Use cache during queries by default (code may
+						override this).
+					</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="no">
+                <xsd:annotation>
+                    <xsd:documentation>
+						Cache must be ignored, retrieve data from the
+						back-end instead
+					</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="default">
+                <xsd:annotation>
+                    <xsd:documentation>
+						The service can decide whether or not to use a
+						cache
+					</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:complexType name="ServiceDocumentationType">
+        <xsd:annotation>
+            <xsd:documentation>
+				Documentation data structure exposes
+				implementation details – violates the
+				service abstraction principle.
+				To prevent consumers from using, any public
+				service response or
+				perimeter response must strip out the
+				documentation
+				data
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="ContractVersion" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="Implementation" minOccurs="0">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="Version" type="xsd:string" minOccurs="0"/>
+                        <xsd:element name="Build" type="xsd:string" minOccurs="0"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DestinationType">
+        <xsd:annotation>
+            <xsd:documentation>
+				<p>A type representing the headers describing the destination or target system in an interaction. If used in the request message then this is an indication of the required destination and maybe used for routing. The original destination
+					as understood by the source may be changed when the message is in flight. If used in the response message then this should be taken as a description of the actual destination (target) system.</p>
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="CountryCode" type="tns:CountryCodeType" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>The Country Code of the destination system. This must adhere to the ISO3166-Alpha2 Country Codes.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="LanguageCode" type="tns:LanguageCodeType" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>The Language Code of the destination system. This must adhere to the ISO639 Language Codes.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="Operator" type="xsd:normalizedString" minOccurs="0"/>
+            <xsd:element name="Division" type="xsd:normalizedString" minOccurs="0"/>
+            <xsd:element name="System" type="xsd:normalizedString" minOccurs="0"/>
+            <xsd:element name="Timestamp" type="xsd:dateTime" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="QueryResult" type="tns:QueryResultType">
+        <xsd:annotation>
+            <xsd:documentation>
+				<description>A header providing meta-data about the result of a query.</description>
+			</xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+    <xsd:complexType name="QueryResultType">
+        <xsd:annotation>
+            <xsd:documentation>
+				<description>A header providing meta-data about the result of a query.</description>
+			</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="TotalQuantity" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:documentation>
+						<description>The total number of records matched in the query and possibly returned in the payload of the response message.</description>
+					</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="CollationAlgorithmCode" type="xsd:normalizedString">
+                <xsd:annotation>
+                    <xsd:documentation>
+						<description>The collation alogrithm that was used to sort the response to a query.</description>
+					</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RouteInfo" type="tns:RouteInfoType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="EN">A header providing additional routing discriminators that can be used 
+in the context of routing rules</xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+    <xsd:complexType name="RouteInfoType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="EN">A header providing additional routing discriminators that can be used 
+in the context of routing rules</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="Route" type="tns:RouteType" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="RouteType">
+        <xsd:sequence>
+            <xsd:element name="ID" type="xsd:normalizedString" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="EN">The identifier of the route definition. 
+This should be used to identify instances of routes. </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="Priority" type="xsd:integer" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="EN">The priority of the Key relative to other Keys present in the same route. </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="Keys">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="EN">The set of additional keys for the routing purposes.</xsd:documentation>
+                </xsd:annotation>
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="Key" maxOccurs="unbounded">
+                            <xsd:annotation>
+                                <xsd:documentation xml:lang="EN">The Key allows the consumer to pass aditional information relevant 
+to the producer in order to perform the routing of the message to 
+the appropriate system/component</xsd:documentation>
+                            </xsd:annotation>
+                            <xsd:complexType>
+                                <xsd:simpleContent>
+                                    <xsd:extension base="xsd:normalizedString">
+                                        <xsd:attribute name="Name" type="xsd:string" use="optional">
+                                            <xsd:annotation>
+                                                <xsd:documentation>The name of the characteristic</xsd:documentation>
+                                            </xsd:annotation>
+                                        </xsd:attribute>
+                                        <xsd:attribute name="OrderIndex" type="xsd:integer">
+                                            <xsd:annotation>
+                                                <xsd:documentation xml:lang="EN">The priority of the Key relative to other Keys present in the 
+same route. </xsd:documentation>
+                                            </xsd:annotation>
+                                        </xsd:attribute>
+                                    </xsd:extension>
+                                </xsd:simpleContent>
+                            </xsd:complexType>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+</xsd:schema>]]></con:schema>
+    <con:dependencies>
+        <con:import namespace="http://group.vodafone.com/contract/vfo/fault/v1" schemaLocation="Fault.xsd" ref="VFQA_CSM_Common/Schema/Fault"/>
+    </con:dependencies>
+    <con:targetNamespace>http://group.vodafone.com/contract/vho/header/v1</con:targetNamespace>
+</con:schemaEntry>

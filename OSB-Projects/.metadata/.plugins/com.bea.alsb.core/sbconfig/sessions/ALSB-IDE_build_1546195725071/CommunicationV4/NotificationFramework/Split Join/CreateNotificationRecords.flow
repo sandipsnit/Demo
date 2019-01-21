@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<con:flowEntry xmlns:con="http://www.bea.com/alsb/flow/resources/config">
+    <con:flow><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<bpel:process name="CreateNotificationRecords"
+              targetNamespace="http://www.example.com/flow/CommunicationV4/NotificationFramework/Split%20Join/CreateNotificationRecords"
+              xmlns:tns="http://www.example.com/flow/CommunicationV4/NotificationFramework/Split%20Join/CreateNotificationRecords"
+              xmlns:bpel="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+              xmlns:rescon="http://www.bea.com/alsb/flow/resources/config"
+              xmlns:bea="http://www.bea.com/bpel/ui/extensions"
+              xmlns:ext="http://www.bea.com/bpel/extensions"
+              xmlns:expr="http://www.bea.com/wli/sb/stages/config"
+              xmlns:trf="http://www.bea.com/wli/sb/stages/transform/config"
+              xmlns:bind="http://vodafone.qa/CreateNotificationRecord/" 
+              bea:name="CreateNotificationRecords" xmlns:ns1="http://xmlns.oracle.com/pcbpel/adapter/db/Communication/Notification+Framework/CreateSMSRecord" xmlns:ns0="http://www.bea.com/wli/sb/stages/logging/config" xmlns:ns2="http://xmlns.oracle.com/pcbpel/adapter/db/Communication/Notification+Framework/CreateEmailRecord" xmlns:ns3="http://xmlns.oracle.com/pcbpel/adapter/db/Communication/Notification+Framework/CreateMVAPushRecord">
+    <bpel:partnerLinks>
+        <bpel:partnerLink name="CreateNotificationRecords" partnerLinkType="tns:CreateNotificationRecords"
+                          myRole="CreateNotificationRecords">
+	       </bpel:partnerLink>
+	   <bpel:partnerLink name="BS_VFQA_CreateSMSRecord"
+		partnerLinkType="tns:BS_VFQA_CreateSMSRecord_plnkType"
+		partnerRole="BS_VFQA_CreateSMSRecord_PartnerRole">
+	   </bpel:partnerLink>
+	   <bpel:partnerLink name="BS_VFQA_CreateEmailRecord"
+	   	partnerLinkType="tns:BS_VFQA_CreateEmailRecord_plnkType"
+	   	partnerRole="BS_VFQA_CreateEmailRecord_PartnerRole">
+	   </bpel:partnerLink>
+	   <bpel:partnerLink name="BS_VFQA_CreateMVAPushRecord"
+	   	partnerLinkType="tns:BS_VFQA_CreateMVAPushRecord_plnkType"
+	   	partnerRole="BS_VFQA_CreateMVAPushRecord_PartnerRole">
+	   </bpel:partnerLink></bpel:partnerLinks>
+
+	   <bpel:variables>
+        <bpel:variable name="request"
+	                      messageType="bind:CreateNotificationRequest">
+	       </bpel:variable>
+	       <bpel:variable name="response"
+                       messageType="bind:CreateNotificationResponse">
+	       </bpel:variable>
+    </bpel:variables>
+
+    <bpel:sequence>
+        <bpel:receive partnerLink="CreateNotificationRecords" operation="CreateNotification" variable="request" createInstance="yes">
+	           <rescon:receiveInfo>
+                <rescon:wsdl ref="CommunicationV4/NotificationFramework/WSDL/CreateNotificationRecord" binding="bind:CreateNotificationRecordSOAP"/>
+            </rescon:receiveInfo>
+        </bpel:receive>
+        <bpel:assign>
+        	<bpel:extensionAssignOperation>
+        		<trf:assign varName="response.parameters">
+        			<trf:expr>
+        				<expr:xqueryText>&lt;cre:CreateNotificationResponse xmlns:cre=&quot;http://vodafone.qa/CreateNotificationRecord/&quot;&gt;
+&lt;/cre:CreateNotificationResponse&gt;</expr:xqueryText></trf:expr></trf:assign>
+        	</bpel:extensionAssignOperation>
+        </bpel:assign>
+        
+        <bpel:forEach parallel="yes" counterName="cnt">
+        	<bpel:startCounterValue>1</bpel:startCounterValue>
+        	<bpel:finalCounterValue>count($request.parameters/TbDetails)</bpel:finalCounterValue>
+        	<bpel:scope>
+        		<bpel:variables>
+        			<bpel:variable name="TbSmsDetailsCollectionInput"
+        				messageType="ns1:TbSmsDetailsCollection_msg">
+        			</bpel:variable>
+        			<bpel:variable name="TbEmailDetailsCollectionInput"
+        				messageType="ns2:TbEmailDetailsCollection_msg">
+        			</bpel:variable>
+        			<bpel:variable
+        				name="TbMvaPushDetailsCollectionInput"
+        				messageType="ns3:TbMvaPushDetailsCollection_msg">
+        			</bpel:variable></bpel:variables>
+        		<bpel:faultHandlers>
+        			<bpel:catchAll ext:soapFaultVariable="soapFault">
+        				<bpel:sequence>
+        					<bpel:empty></bpel:empty>
+        				<bpel:assign>
+		<bpel:extensionAssignOperation>
+			<ns0:log>
+				<ns0:expr>
+					<expr:xqueryText>$request.parameters,$soapFault,$response.parameters</expr:xqueryText></ns0:expr>
+				<ns0:message>fault log</ns0:message>
+				<ns0:logLevel>error</ns0:logLevel></ns0:log>
+		</bpel:extensionAssignOperation>
+        				</bpel:assign>
+	
+	<bpel:assign>
+		
+        				<bpel:extensionAssignOperation>
+        					<bpel:documentation></bpel:documentation>
+        					<trf:insert varName="response.parameters">
+        						<trf:location>
+        							<expr:xpathText>.</expr:xpathText></trf:location>
+        						<trf:where>first-child</trf:where>
+        						<trf:expr>
+        							<expr:xqueryText>&lt;Column name=&quot;{ string($request.parameters/TbDetails[xs:int($cnt)]/targetType) }&quot;&gt;FAILED&lt;/Column&gt;</expr:xqueryText></trf:expr></trf:insert>
+        				</bpel:extensionAssignOperation></bpel:assign></bpel:sequence>
+        			</bpel:catchAll></bpel:faultHandlers>
+        		<bpel:sequence>
+        			
+        			
+        			<bpel:if>
+        				<bpel:condition>string($request.parameters/TbDetails[number($cnt)]/targetType) = 'SMS'</bpel:condition>
+        				<bpel:sequence>
+        					<bpel:empty></bpel:empty>
+        				
+	
+	<bpel:assign>
+		<bpel:extensionAssignOperation>
+			<trf:assign varName="TbSmsDetailsCollectionInput.TbSmsDetailsCollection">
+				<trf:expr>
+					<expr:xqueryTransform>
+						<expr:resource ref="CommunicationV4/NotificationFramework/Transformation/XQ_CreateNotificationDetails_To_CreateSMSRecord"></expr:resource>
+						<expr:param name="tbDetails">
+							<expr:path>$request.parameters/TbDetails[xs:int($cnt)]</expr:path></expr:param></expr:xqueryTransform></trf:expr></trf:assign>
+		</bpel:extensionAssignOperation>
+		
+        				</bpel:assign>
+	
+	
+	<bpel:invoke operation="insert" partnerLink="BS_VFQA_CreateSMSRecord" inputVariable="TbSmsDetailsCollectionInput">
+        					<rescon:invokeInfo>
+        						<rescon:service isProxy="false" ref="CommunicationV4/NotificationFramework/Business Service/BS_VFQA_CreateSMSRecord"></rescon:service></rescon:invokeInfo></bpel:invoke>
+	
+	<bpel:assign>
+		<bpel:extensionAssignOperation>
+			<trf:insert varName="response.parameters">
+				<trf:location>
+					<expr:xpathText>.</expr:xpathText></trf:location>
+				<trf:where>first-child</trf:where>
+				<trf:expr>
+					<expr:xqueryText>&lt;Column name=&quot;{ string($request.parameters/TbDetails[xs:int($cnt)]/targetType) }&quot;&gt;SUCCESS&lt;/Column&gt;</expr:xqueryText></trf:expr></trf:insert></bpel:extensionAssignOperation></bpel:assign></bpel:sequence>
+        				<bpel:elseif>
+        					<bpel:condition>string($request.parameters/TbDetails[number($cnt)]/targetType) = 'EMAIL'</bpel:condition>
+        					<bpel:sequence>
+        						<bpel:empty></bpel:empty>
+        					
+	<bpel:assign>
+		<bpel:extensionAssignOperation>
+		<bpel:documentation></bpel:documentation>
+		<trf:assign
+			varName="TbEmailDetailsCollectionInput.TbEmailDetailsCollection">
+			<trf:expr>
+				<expr:xqueryTransform>
+					<expr:resource
+						ref="CommunicationV4/NotificationFramework/Transformation/XQ_CreateNotificationDetails_To_CreateEMAILRecord"></expr:resource>
+					
+					<expr:param name="tbDetails">
+						<expr:path>$request.parameters/TbDetails[xs:int($cnt)]</expr:path></expr:param></expr:xqueryTransform></trf:expr></trf:assign>
+		</bpel:extensionAssignOperation>
+	
+        					</bpel:assign>
+	
+	<bpel:invoke operation="insert" partnerLink="BS_VFQA_CreateEmailRecord" inputVariable="TbEmailDetailsCollectionInput">
+		<rescon:invokeInfo>
+			<rescon:service isProxy="false" ref="CommunicationV4/NotificationFramework/Business Service/BS_VFQA_CreateEmailRecord"></rescon:service></rescon:invokeInfo></bpel:invoke>
+	<bpel:assign>
+		
+	<bpel:extensionAssignOperation>
+		<bpel:documentation></bpel:documentation>
+		<trf:insert varName="response.parameters">
+			<trf:location>
+				<expr:xpathText>.</expr:xpathText></trf:location>
+			<trf:where>first-child</trf:where>
+			<trf:expr>
+				<expr:xqueryText>&lt;Column name=&quot;{ string($request.parameters/TbDetails[xs:int($cnt)]/targetType) }&quot;&gt;SUCCESS&lt;/Column&gt;</expr:xqueryText></trf:expr></trf:insert>
+	</bpel:extensionAssignOperation></bpel:assign></bpel:sequence>
+        				</bpel:elseif>
+        				<bpel:elseif>
+        					<bpel:condition>string($request.parameters/TbDetails[number($cnt)]/targetType) = 'MVA PUSH'</bpel:condition>
+        					<bpel:sequence>
+        						<bpel:empty></bpel:empty>
+        					
+	<bpel:assign>
+		<bpel:extensionAssignOperation>
+		<bpel:documentation></bpel:documentation>
+		<trf:assign
+			varName="TbMvaPushDetailsCollectionInput.TbMvaPushDetailsCollection">
+			<trf:expr>
+				<expr:xqueryTransform>
+					<expr:resource
+						ref="CommunicationV4/NotificationFramework/Transformation/XQ_CreateNotificationDetails_To_CreateMVAPushRecord"></expr:resource>
+					
+					<expr:param name="tbDetails">
+						<expr:path>$request.parameters/TbDetails[xs:int($cnt)]</expr:path></expr:param></expr:xqueryTransform></trf:expr></trf:assign>
+		</bpel:extensionAssignOperation>
+	
+        					</bpel:assign>
+	
+	<bpel:invoke operation="insert" partnerLink="BS_VFQA_CreateMVAPushRecord" inputVariable="TbMvaPushDetailsCollectionInput">
+		<rescon:invokeInfo>
+			<rescon:service isProxy="false" ref="CommunicationV4/NotificationFramework/Business Service/BS_VFQA_CreateMVAPushRecord"></rescon:service></rescon:invokeInfo></bpel:invoke>
+	<bpel:assign>
+		
+	<bpel:extensionAssignOperation>
+		<bpel:documentation></bpel:documentation>
+		<trf:insert varName="response.parameters">
+			<trf:location>
+				<expr:xpathText>.</expr:xpathText></trf:location>
+			<trf:where>first-child</trf:where>
+			<trf:expr>
+				<expr:xqueryText>&lt;Column name=&quot;{ string($request.parameters/TbDetails[xs:int($cnt)]/targetType) }&quot;&gt;SUCCESS&lt;/Column&gt;</expr:xqueryText></trf:expr></trf:insert>
+	</bpel:extensionAssignOperation></bpel:assign></bpel:sequence>
+        				</bpel:elseif>
+        				<bpel:else>
+        					<bpel:sequence>
+        						<bpel:empty></bpel:empty>
+        					
+	<bpel:assign>
+		<bpel:extensionAssignOperation>
+		<bpel:documentation></bpel:documentation>
+		<trf:insert varName="response.parameters">
+			<trf:location>
+				<expr:xpathText>.</expr:xpathText></trf:location>
+			<trf:where>first-child</trf:where>
+			<trf:expr>
+				<expr:xqueryText>&lt;Column name=&quot;{ string($request.parameters/TbDetails[xs:int($cnt)]/targetType) }&quot;&gt;TARGET NOT CONFIGURED&lt;/Column&gt;</expr:xqueryText></trf:expr></trf:insert>
+		</bpel:extensionAssignOperation>
+	
+        					</bpel:assign></bpel:sequence>
+        				</bpel:else>
+        			</bpel:if>
+        			</bpel:sequence>
+        	</bpel:scope>
+        </bpel:forEach>
+        <bpel:reply partnerLink="CreateNotificationRecords" operation="CreateNotification" variable="response"></bpel:reply>
+    </bpel:sequence>
+</bpel:process>]]></con:flow>
+</con:flowEntry>

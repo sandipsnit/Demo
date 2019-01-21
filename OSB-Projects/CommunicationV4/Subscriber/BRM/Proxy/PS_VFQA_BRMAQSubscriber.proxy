@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml-fragment xmlns:ser="http://www.bea.com/wli/sb/services" xmlns:tran="http://www.bea.com/wli/sb/transports" xmlns:env="http://www.bea.com/wli/config/env" xmlns:jca="http://www.bea.com/wli/sb/transports/jca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:con="http://www.bea.com/wli/sb/pipeline/config">
+  <ser:coreEntry isProxy="true" isEnabled="true" isAutoPublish="false" isTracingEnabled="true">
+    <ser:binding type="SOAP" isSoap12="false" xsi:type="con:SoapBindingType" xmlns:con="http://www.bea.com/wli/sb/services/bindings/config">
+      <con:wsdl ref="CommunicationV4/Subscriber/BRM/WSDL/EVENT_SYNC_AQ_Adapter_aq"/>
+      <con:binding>
+        <con:name>Dequeue_ptt-binding</con:name>
+        <con:namespace>http://xmlns.oracle.com/pcbpel/adapter/aq/Application1/ProcessNotificationPortalAQ/EVENT_SYNC_AQ_Adapter</con:namespace>
+      </con:binding>
+      <con:selector type="SOAP action"/>
+    </ser:binding>
+    <ser:monitoring isEnabled="false">
+      <ser:aggregationInterval>10</ser:aggregationInterval>
+      <ser:pipelineMonitoringLevel>Pipeline</ser:pipelineMonitoringLevel>
+    </ser:monitoring>
+    <ser:reporting>true</ser:reporting>
+    <ser:logging isEnabled="true">
+      <ser:logLevel>debug</ser:logLevel>
+    </ser:logging>
+    <ser:sla-alerting isEnabled="true">
+      <ser:alertLevel>normal</ser:alertLevel>
+    </ser:sla-alerting>
+    <ser:pipeline-alerting isEnabled="true">
+      <ser:alertLevel>normal</ser:alertLevel>
+    </ser:pipeline-alerting>
+    <ser:ws-policy>
+      <ser:binding-mode>wsdl-policy-attachments</ser:binding-mode>
+    </ser:ws-policy>
+    <ser:throttling enabled="false">
+      <ser:capacity>0</ser:capacity>
+      <ser:maxQueueLength>0</ser:maxQueueLength>
+      <ser:timeToLive>0</ser:timeToLive>
+    </ser:throttling>
+    <ser:messageTracing enabled="true">
+      <ser:detailsLevel>Full</ser:detailsLevel>
+      <ser:maxSize>8192</ser:maxSize>
+    </ser:messageTracing>
+  </ser:coreEntry>
+  <ser:endpointConfig>
+    <tran:provider-id>jca</tran:provider-id>
+    <tran:inbound>true</tran:inbound>
+    <tran:URI>
+      <env:value>jca://eis/AQ/PortalEventSyncAQ1</env:value>
+    </tran:URI>
+    <tran:inbound-properties/>
+    <tran:all-headers>false</tran:all-headers>
+    <tran:provider-specific xsi:type="jca:JCAEndPointConfiguration">
+      <jca:jca-file ref="CommunicationV4/Subscriber/BRM/JCA Adapter/EVENT_SYNC_AQ_Adapter_aq"/>
+      <jca:adapter-name>AQ Adapter</jca:adapter-name>
+      <jca:adapter-type>AQ</jca:adapter-type>
+      <jca:always-use-wsdl>true</jca:always-use-wsdl>
+      <jca:connection-mode>managed</jca:connection-mode>
+      <jca:connection-property-username-password-overwrite>false</jca:connection-property-username-password-overwrite>
+      <jca:inbound-properties>
+        <jca:operation-properties>
+          <jca:operation-name>Dequeue</jca:operation-name>
+          <jca:spec-properties>
+            <jca:property>
+              <jca:name>Correlation</jca:name>
+              <jca:value>VFQANotifications</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>QueueName</jca:name>
+              <jca:value>EVENT_SYNC_AQ</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>SchemaValidation</jca:name>
+              <jca:value>false</jca:value>
+            </jca:property>
+            <jca:property>
+              <jca:name>DatabaseSchema</jca:name>
+              <jca:value>PIN</jca:value>
+            </jca:property>
+          </jca:spec-properties>
+        </jca:operation-properties>
+      </jca:inbound-properties>
+    </tran:provider-specific>
+  </ser:endpointConfig>
+  <ser:router errorHandler="_onErrorHandler-4105609888593089700--17af35b2.1673063ea19.-7f7e">
+    <con:pipeline type="error" name="_onErrorHandler-7924484815529117039--17d2f8fe.167e4167578.-7c23">
+      <con:stage name="Resume1">
+        <con:context xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config"/>
+        <con:actions xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con2:resume>
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7bb4</con2:id>
+          </con2:resume>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:pipeline type="request" name="PipelinePairNode1_request">
+      <con:stage name="LogRequest" errorHandler="_onErrorHandler-4105609888593089700--17af35b2.1673063ea19.-7edf" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config">
+        <con:context>
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/vbm/technical/communication/v1" prefix="v1"/>
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/vbo/technical/communication/v1" prefix="v11"/>
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/common/v1" prefix="v12"/>
+        </con:context>
+        <con:actions>
+          <con1:log>
+            <con2:id>_ActionId-4105609888593089700--17af35b2.1673063ea19.-7ee0</con2:id>
+            <con1:logLevel>info</con1:logLevel>
+            <con1:expr>
+              <con2:xqueryText>"VFQA_BRM_AQSubscriber|PS_VFQA_BRM_AQSubscriber|","|PS_VFQA_BRM_AQSubscriber Request Pipeline|",$body|$header|$inbound</con2:xqueryText>
+            </con1:expr>
+            <con1:message>Request received :: VFQA_BRM_AQSubscriber</con1:message>
+          </con1:log>
+        </con:actions>
+      </con:stage>
+      <con:stage name="ReceiveInputs" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config">
+        <con:context>
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/vbm/technical/communication/v1" prefix="v1"/>
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/common/v1" prefix="v11"/>
+          <con2:varNsDecl prefix="urn" namespace="urn:un:unece:uncefact:documentation:standard:CoreComponentType:2"/>
+          <con2:varNsDecl prefix="v12" namespace="http://group.vodafone.com/contract/vho/header/v1"/>
+          <con2:varNsDecl prefix="v13" namespace="http://group.vodafone.com/schema/vbo/technical/communication/v1"/>
+          <con2:varNsDecl prefix="v14" namespace="http://group.vodafone.com/schema/extension/vbo/technical/communication/v1"/>
+          <con2:varNsDecl prefix="pin" namespace="http://xmlns.oracle.com/xdb/PIN"/>
+        </con:context>
+        <con:actions>
+          <con3:assign varName="LANGUAGE_DVM" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config">
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7e1d</con2:id>
+            <con3:expr>
+              <con2:xqueryTransform>
+                <con2:resource ref="VFQA_CSM_Common/DVM/LANGUAGE_DVM"/>
+              </con2:xqueryTransform>
+            </con3:expr>
+          </con3:assign>
+          <con3:assign varName="target_format">
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-6d7b</con2:id>
+            <con3:expr>
+              <con2:xqueryTransform>
+                <con2:resource ref="VFQA_CSM_Common/DVM/TARGET_FORMAT_DVM"/>
+              </con2:xqueryTransform>
+            </con3:expr>
+          </con3:assign>
+          <con3:assign varName="RequestHeader">
+            <con2:id>_ActionId-1502884945422871939--5b936241.16735640e9f.-7fab</con2:id>
+            <con3:expr>
+              <con2:xqueryText>$inbound/*:transport/*:request/*:headers</con2:xqueryText>
+            </con3:expr>
+          </con3:assign>
+          <con3:assign varName="FLIST_BUF">
+            <con2:id>_ActionId-797344805039831622-9cec475.1682cdebc27.-7f0a</con2:id>
+            <con3:expr>
+              <con2:xqueryText>fn-bea:inlinedXML($body//*:FLIST_BUF[1])</con2:xqueryText>
+            </con3:expr>
+          </con3:assign>
+          <con3:assign varName="RequestBody">
+            <con2:id>_ActionId-4105609888593089700--17af35b2.1673063ea19.-7edc</con2:id>
+            <con3:expr>
+              <con2:xqueryText>$FLIST_BUF</con2:xqueryText>
+            </con3:expr>
+          </con3:assign>
+          <con3:assign varName="transactionID">
+            <con2:id>_ActionId-4105609888593089700--17af35b2.1673063ea19.-7edb</con2:id>
+            <con3:expr>
+              <con:xqueryText xmlns:con="http://www.bea.com/wli/sb/stages/config">let $accountPoid:= data($RequestBody//*:AccountPoid)
+       return       
+concat(data($RequestBody//*:Msisdn),'_',data($RequestBody//*:MsgID),'_',replace(normalize-space($accountPoid),' ',''))</con:xqueryText>
+            </con3:expr>
+          </con3:assign>
+        </con:actions>
+      </con:stage>
+      <con:stage name="ReportRequest">
+        <con:context xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config"/>
+        <con:actions xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con1:report>
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7e71</con2:id>
+            <con1:expr>
+              <con2:xqueryText>$body</con2:xqueryText>
+            </con1:expr>
+            <con1:labels>
+              <con1:key>body</con1:key>
+              <con1:varName>body</con1:varName>
+              <con1:value>
+                <con2:xpathText>.</con2:xpathText>
+              </con1:value>
+            </con1:labels>
+          </con1:report>
+        </con:actions>
+      </con:stage>
+      <con:stage name="RouteToNF" errorHandler="_onErrorHandler-7924484815529117039--17d2f8fe.167e4167578.-7d09">
+        <con:context xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con2:varNsDecl namespace="http://www.vfq.techmahindra.com/SMS" prefix="sms"/>
+          <con2:varNsDecl prefix="pin" namespace="http://xmlns.oracle.com/xdb/PIN"/>
+        </con:context>
+        <con:actions xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con3:assign varName="header">
+            <con2:id>_ActionId-4336149389824491324-1341da9a.167eec3570e.-7ff6</con2:id>
+            <con3:expr>
+              <con:xqueryTransform xmlns:con="http://www.bea.com/wli/sb/stages/config">
+                <con:resource ref="CommunicationV4/Subscriber/BRM/Transformation/XQ_BRM_To_NotificationFramework_RequestHeader"/>
+                <con:param name="languageDVM">
+                  <con:path>$LANGUAGE_DVM</con:path>
+                </con:param>
+                <con:param name="transactionID">
+                  <con:path>$transactionID</con:path>
+                </con:param>
+                <con:param name="lang">
+                  <con:path>data($RequestBody//*:MsgLanguage)</con:path>
+                </con:param>
+              </con:xqueryTransform>
+            </con3:expr>
+          </con3:assign>
+          <con3:replace varName="body" contents-only="true">
+            <con2:id>_ActionId-4336149389824491324-1341da9a.167eec3570e.-7ff5</con2:id>
+            <con3:expr>
+              <con:xqueryTransform xmlns:con="http://www.bea.com/wli/sb/stages/config">
+                <con:resource ref="CommunicationV4/Subscriber/BRM/Transformation/XQ_BRM_To_NotificationFramework_RequestBody"/>
+                <con:param name="targetFormatDVM">
+                  <con:path>$target_format</con:path>
+                </con:param>
+                <con:param name="VFQANotificationsRequest">
+                  <con:path>$RequestBody</con:path>
+                </con:param>
+              </con:xqueryTransform>
+            </con3:expr>
+          </con3:replace>
+          <con1:log>
+            <con2:id>_ActionId-2041127536109167224--4463fbf9.16803b3eb30.-7e38</con2:id>
+            <con1:logLevel>info</con1:logLevel>
+            <con1:expr>
+              <con2:xqueryText>"VFQA_BRM_AQSubscriber|PS_VFQA_BRM_AQSubscriber|","|PS_VFQA_BRM_AQSubscriber Request Pipeline| ",$transactionID,"|",$body|$header</con2:xqueryText>
+            </con1:expr>
+            <con1:message>Request sent to Notification Framework :: VFQA_BRM_AQSubscriber</con1:message>
+          </con1:log>
+          <con6:route>
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7d0e</con2:id>
+            <con6:service ref="CommunicationV4/Subscriber/Business Service/BS_VFQA_Notification_Framework" xsi:type="ref:BusinessServiceRef" xmlns:ref="http://www.bea.com/wli/sb/reference"/>
+            <con6:operation>CreateCommunication</con6:operation>
+            <con6:outboundTransform>
+              <con3:routing-options>
+                <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7d0d</con2:id>
+                <con3:mode>request</con3:mode>
+                <con3:qualityOfService>best-effort</con3:qualityOfService>
+              </con3:routing-options>
+              <con1:report>
+                <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7d0a</con2:id>
+                <con1:expr>
+                  <con2:xqueryText>$body</con2:xqueryText>
+                </con1:expr>
+                <con1:labels>
+                  <con1:key>body</con1:key>
+                  <con1:varName>body</con1:varName>
+                  <con1:value>
+                    <con2:xpathText>.</con2:xpathText>
+                  </con1:value>
+                </con1:labels>
+              </con1:report>
+            </con6:outboundTransform>
+          </con6:route>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:pipeline type="error" name="_onErrorHandler-4105609888593089700--17af35b2.1673063ea19.-7edf">
+      <con:stage name="Resume" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config">
+        <con:context/>
+        <con:actions>
+          <con2:resume>
+            <con2:id>_ActionId-4105609888593089700--17af35b2.1673063ea19.-7ede</con2:id>
+          </con2:resume>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:pipeline type="error" name="_onErrorHandler-7924484815529117039--17d2f8fe.167e4167578.-7d09">
+      <con:stage name="createErrorInfo">
+        <con:context xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config"/>
+        <con:actions xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con1:log>
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7c98</con2:id>
+            <con1:logLevel>error</con1:logLevel>
+            <con1:expr>
+              <con2:xqueryText>"VFQA_BRM_AQSubscriber|PS_VFQA_BRM_AQSubscriber|","|PS_VFQA_BRM_AQSubscriber Fault|",$transactionID,"|",$body|$header|$fault</con2:xqueryText>
+            </con1:expr>
+            <con1:message>Fault received :: VFQA_BRM_AQSubscriber</con1:message>
+          </con1:log>
+          <con2:reply isError="true">
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7c97</con2:id>
+          </con2:reply>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:pipeline type="error" name="_onErrorHandler-4105609888593089700--17af35b2.1673063ea19.-7f7e">
+      <con:stage name="createErrorInfo">
+        <con:context xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config"/>
+        <con:actions xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con5:assign varName="header" xmlns:con5="http://www.bea.com/wli/sb/stages/transform/config">
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7f1e</con2:id>
+            <con5:expr>
+              <con5:xqueryText xmlns:con5="http://www.bea.com/wli/sb/stages/config"><![CDATA[<env:Header xmlns:wsa="http://www.w3.org/2005/08/addressing" xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
+      <wsa:Action>http://www.w3.org/2005/08/addressing/fault</wsa:Action>
+      <wsa:MessageID>urn:7A8939307A4E11E6BFAA8FBEA5042C8F</wsa:MessageID>
+      <wsa:ReplyTo>
+         <wsa:Address>http://www.w3.org/2005/08/addressing/anonymous</wsa:Address>
+      </wsa:ReplyTo>
+      <wsa:FaultTo>
+         <wsa:Address>http://www.w3.org/2005/08/addressing/anonymous</wsa:Address>
+      </wsa:FaultTo>
+ </env:Header>]]></con5:xqueryText>
+            </con5:expr>
+          </con5:assign>
+          <con5:assign varName="body" xmlns:con4="http://www.bea.com/wli/sb/pipeline/config" xmlns:con5="http://www.bea.com/wli/sb/stages/transform/config">
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7f1d</con2:id>
+            <con5:expr>
+              <con2:xqueryText><![CDATA[<soapenv:Body  xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://group.vodafone.com/contract/vho/header/v1" xmlns:v12="http://group.vodafone.com/schema/common/v1">
+      <soapenv:Fault>
+         <faultcode>soapenv:Server</faultcode>
+         <faultstring>An error has been received</faultstring>
+         <detail>
+            <v13:Fault xmlns:v13="http://group.vodafone.com/contract/vfo/fault/v1">
+               <v13:ReasonCode>EGATE_ERR_500</v13:ReasonCode>
+               <v13:Message>Internal Server Error</v13:Message>
+            </v13:Fault>
+         </detail>
+      </soapenv:Fault>
+   </soapenv:Body>]]></con2:xqueryText>
+            </con5:expr>
+          </con5:assign>
+          <con1:log>
+            <con2:id>_ActionId-2041127536109167224--4463fbf9.16803b3eb30.-7e56</con2:id>
+            <con1:logLevel>info</con1:logLevel>
+            <con1:expr>
+              <con2:xqueryText>"VFQA_BRM_AQSubscriber|PS_VFQA_BRM_AQSubscriber|","|PS_VFQA_BRM_AQSubscriber Proxy Error Handler|",$transactionID,"|",$body|$header|$fault</con2:xqueryText>
+            </con1:expr>
+            <con1:message>Response received :: VFQA_BRM_AQSubscriber</con1:message>
+          </con1:log>
+          <con2:reply isError="true" xmlns:con4="http://www.bea.com/wli/sb/pipeline/config">
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7f1c</con2:id>
+          </con2:reply>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:pipeline type="response" name="PipelinePairNode1_response">
+      <con:stage name="LogResponse" errorHandler="_onErrorHandler-7924484815529117039--17d2f8fe.167e4167578.-7c23">
+        <con:context xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/vbm/technical/communication/v1" prefix="v1"/>
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/vbo/technical/communication/v1" prefix="v11"/>
+          <con2:varNsDecl namespace="http://group.vodafone.com/schema/common/v1" prefix="v12"/>
+        </con:context>
+        <con:actions xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con1:log>
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7c26</con2:id>
+            <con1:logLevel>info</con1:logLevel>
+            <con1:expr>
+              <con2:xqueryText>"VFQA_BRM_AQSubscriber|PS_VFQA_BRM_AQSubscriber|","|PS_VFQA_BRM_AQSubscriber Response Pipeline|",$transactionID,"|",$body|$header|$inbound</con2:xqueryText>
+            </con1:expr>
+            <con1:message>Response received :: VFQA_BRM_AQSubscriber</con1:message>
+          </con1:log>
+        </con:actions>
+      </con:stage>
+      <con:stage name="ReportResponse">
+        <con:context xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config"/>
+        <con:actions xmlns:con3="http://www.bea.com/wli/sb/stages/transform/config" xmlns:con2="http://www.bea.com/wli/sb/stages/config" xmlns:con5="http://www.bea.com/wli/sb/typesystem/config" xmlns:con4="http://www.bea.com/wli/sb/stages/routing/config" xmlns:con6="http://www.bea.com/wli/sb/stages/publish/config" xmlns:jms="http://www.bea.com/wli/sb/transports/jms" xmlns:http="http://www.bea.com/wli/sb/transports/http" xmlns:con1="http://www.bea.com/wli/sb/stages/logging/config">
+          <con1:report>
+            <con2:id>_ActionId-7924484815529117039--17d2f8fe.167e4167578.-7ead</con2:id>
+            <con1:expr>
+              <con2:xqueryText>$body</con2:xqueryText>
+            </con1:expr>
+            <con1:labels>
+              <con1:key>body</con1:key>
+              <con1:varName>body</con1:varName>
+              <con1:value>
+                <con2:xpathText>.</con2:xpathText>
+              </con1:value>
+            </con1:labels>
+          </con1:report>
+        </con:actions>
+      </con:stage>
+    </con:pipeline>
+    <con:flow>
+      <con:pipeline-node name="PipelinePairNode1">
+        <con:request>PipelinePairNode1_request</con:request>
+        <con:response>PipelinePairNode1_response</con:response>
+      </con:pipeline-node>
+    </con:flow>
+  </ser:router>
+</xml-fragment>
